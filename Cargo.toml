@@ -1,0 +1,9 @@
+[package]
+name = "egui-wgpu-example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eframe = { git="https://github.com/emilk/egui.git", features = [ "wgpu" ] }
+egui = { git="https://github.com/emilk/egui.git", features = [ "bytemuck" ] }
+bytemuck = { version = "1.7.1" }
