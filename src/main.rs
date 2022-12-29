@@ -1,5 +1,7 @@
 mod shader_widget;
 
+use std::time::Instant;
+
 use shader_widget::{init_shader, render_shader_widget};
 
 fn main() {
@@ -16,15 +18,18 @@ fn main() {
     );
 }
 
-#[derive(Default)]
 struct MyApp {
+    start: Instant,
     angle: f32,
+    frames: usize,
 }
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Hello Ferris");
+            ui.label(format!("fps: {}", self.frames as f32 / self.start.elapsed().as_secs_f32()));
+
             egui::ScrollArea::both()
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
@@ -35,17 +40,19 @@ impl eframe::App for MyApp {
                         ui.label(" (Portable Rust graphics API awesomeness)");
                     });
                     ui.label("It's not a very impressive demo, but it shows you can embed 3D inside of egui.");
-                    render_shader_widget(&mut self.angle, ui);
+                    render_shader_widget(self.start, ui);
                     
                     ui.label("Drag to rotate!");
                 });
         });
+        ctx.request_repaint();
+        self.frames += 1;
     }
 }
 
 impl MyApp {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
         init_shader(cc)?;
-        Some(Self { angle: 0.0 })
+        Some(Self { angle: 0.0, start: Instant::now(), frames: 0 })
     }
 }

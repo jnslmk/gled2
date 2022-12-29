@@ -1,9 +1,9 @@
 use eframe::{
     egui_wgpu::{self, wgpu},
-    wgpu::util::DeviceExt,
+    wgpu::{util::DeviceExt, Instance},
 };
 use egui::Ui;
-use std::{num::NonZeroU64, sync::Arc};
+use std::{num::NonZeroU64, sync::Arc, time::Instant};
 
 pub struct TriangleRenderResources {
     pub pipeline: wgpu::RenderPipeline,
@@ -12,12 +12,35 @@ pub struct TriangleRenderResources {
 }
 
 impl TriangleRenderResources {
-    pub fn prepare(&self, _device: &wgpu::Device, queue: &wgpu::Queue, angle: f32) {
+    pub fn prepare(&self, _device: &wgpu::Device, queue: &wgpu::Queue, start: Instant) {
+        let time = start.elapsed().as_secs_f32() % 1.0;
         // Update our uniform buffer with the angle from the UI
+
+        let colors: Vec<(f32, f32, f32)> = vec![
+            (1., 0., 0.7),
+            (0., 0.2, 0.2),
+            (0., 0., 0.),
+            (0., 0.4, 0.5),
+            (0., 1., 0.),
+        ];
+        let colors_count = colors.len();
+
         queue.write_buffer(
             &self.uniform_buffer,
             0,
-            bytemuck::cast_slice(&[angle, 0.0, 0.0, 0.0]),
+            &time
+                .to_le_bytes()
+                .into_iter()
+                .chain((colors_count as i32).to_le_bytes().into_iter())
+                .chain(std::iter::repeat(0u8).take(8))
+                .chain(colors.into_iter().flat_map(|(r, g, b)| {
+                    r.to_le_bytes()
+                        .into_iter()
+                        .chain(g.to_le_bytes().into_iter())
+                        .chain(b.to_le_bytes().into_iter())
+                        .chain(std::iter::repeat(0u8).take(4))
+                }))
+                .collect::<Vec<u8>>(),
         );
     }
 
@@ -29,13 +52,8 @@ impl TriangleRenderResources {
     }
 }
 
-pub fn custom_painting(angle: &mut f32, ui: &mut egui::Ui) {
-    let (rect, response) = ui.allocate_exact_size(egui::Vec2::splat(300.0), egui::Sense::drag());
-
-    *angle += response.drag_delta().x * 0.01;
-
-    // Clone locals so we can move them into the paint callback:
-    let angle: f32 = angle.clone();
+pub fn custom_painting(start: Instant, ui: &mut egui::Ui) {
+    let (rect, response) = ui.allocate_exact_size(egui::Vec2::splat(800.0), egui::Sense::drag());
 
     // The callback function for WGPU is in two stages: prepare, and paint.
     //
@@ -53,7 +71,7 @@ pub fn custom_painting(angle: &mut f32, ui: &mut egui::Ui) {
     let cb = egui_wgpu::CallbackFn::new()
         .prepare(move |device, queue, _encoder, paint_callback_resources| {
             let resources: &TriangleRenderResources = paint_callback_resources.get().unwrap();
-            resources.prepare(device, queue, angle);
+            resources.prepare(device, queue, start);
             Vec::new()
         })
         .paint(move |_info, render_pass, paint_callback_resources| {
@@ -85,11 +103,11 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<()> {
         label: Some("custom3d"),
         entries: &[wgpu::BindGroupLayoutEntry {
             binding: 0,
-            visibility: wgpu::ShaderStages::VERTEX,
+            visibility: wgpu::ShaderStages::FRAGMENT,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
                 has_dynamic_offset: false,
-                min_binding_size: NonZeroU64::new(16),
+                min_binding_size: NonZeroU64::new(272),
             },
             count: None,
         }],
@@ -122,7 +140,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<()> {
 
     let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("custom3d"),
-        contents: bytemuck::cast_slice(&[0.0_f32; 4]), // 16 bytes aligned!
+        contents: bytemuck::cast_slice(&[0.0_f32; 68]), // 16 bytes aligned!
         // Mapping at creation (as done by the create_buffer_init utility) doesn't require us to to add the MAP_WRITE usage
         // (this *happens* to workaround this bug )
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
@@ -152,8 +170,8 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<()> {
     Some(())
 }
 
-pub fn render_shader_widget(angle: &mut f32, ui: &mut Ui) {
+pub fn render_shader_widget(start: Instant, ui: &mut Ui) {
     egui::Frame::canvas(ui.style()).show(ui, move |ui| {
-        custom_painting(angle, ui);
+        custom_painting(start, ui);
     });
 }
