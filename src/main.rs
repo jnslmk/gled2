@@ -2,6 +2,7 @@ mod shader_widget;
 
 use std::time::Instant;
 
+use eframe::egui_wgpu::WgpuConfiguration;
 use shader_widget::{init_shader, render_shader_widget};
 
 fn main() {
@@ -9,6 +10,10 @@ fn main() {
         drag_and_drop_support: true,
         initial_window_size: Some([1280.0, 1024.0].into()),
         renderer: eframe::Renderer::Wgpu,
+        wgpu_options: WgpuConfiguration {
+            present_mode: eframe::wgpu::PresentMode::Immediate,
+            ..Default::default()
+        },
         ..Default::default()
     };
     eframe::run_native(
@@ -20,7 +25,6 @@ fn main() {
 
 struct MyApp {
     start: Instant,
-    angle: f32,
     frames: usize,
 }
 
@@ -53,6 +57,6 @@ impl eframe::App for MyApp {
 impl MyApp {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
         init_shader(cc)?;
-        Some(Self { angle: 0.0, start: Instant::now(), frames: 0 })
+        Some(Self { start: Instant::now(), frames: 0 })
     }
 }

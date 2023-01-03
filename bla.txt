@@ -1,0 +1,1 @@
+https://sotrh.github.io/learn-wgpu/showcase/gifs/#how-do-we-make-the-frames
