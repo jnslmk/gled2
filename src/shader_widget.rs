@@ -1,9 +1,6 @@
-use eframe::{
-    egui_wgpu::{self, wgpu},
-    wgpu::util::DeviceExt,
-};
-use egui::{Rect, TextureId, Ui};
-use std::{num::NonZeroU64, sync::Arc, time::Instant};
+use eframe::{egui_wgpu::wgpu, wgpu::util::DeviceExt};
+use egui::TextureId;
+use std::{num::NonZeroU64, time::Instant};
 
 pub struct TriangleRenderResources {
     pub pipeline: wgpu::RenderPipeline,
@@ -50,112 +47,6 @@ impl TriangleRenderResources {
         render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.draw(0..3, 0..1);
     }
-}
-
-pub fn custom_painting(start: Instant, ui: &mut egui::Ui, texture_id: &TextureId) {
-    ui.image(*texture_id, egui::Vec2::splat(800.0));
-
-    // The callback function for WGPU is in two stages: prepare, and paint.
-    //
-    // The prepare callback is called every frame before paint and is given access to the wgpu
-    // Device and Queue, which can be used, for instance, to update buffers and uniforms before
-    // rendering.
-    //
-    // You can use the main `CommandEncoder` that is passed-in, return an arbitrary number
-    // of user-defined `CommandBuffer`s, or both.
-    // The main command buffer, as well as all user-defined ones, will be submitted together
-    // to the GPU in a single call.
-    //
-    // The paint callback is called after prepare and is given access to the render pass, which
-    // can be used to issue draw commands.
-    let cb = egui_wgpu::CallbackFn::new()
-        .prepare(move |device, queue, _encoder, paint_callback_resources| {
-            let resources: &TriangleRenderResources = paint_callback_resources.get().unwrap();
-            resources.prepare(device, queue, start);
-
-            let mut encoder =
-                device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-
-            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("GIF Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &resources.view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 1.0,
-                        }),
-                        store: true,
-                    },
-                })],
-                depth_stencil_attachment: None,
-            });
-
-            resources.paint(&mut rpass);
-
-            drop(rpass);
-
-            /*
-            encoder.copy_texture_to_buffer(
-                wgpu::ImageCopyTexture {
-                    texture: &resources.texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                wgpu::ImageCopyBuffer {
-                    buffer: &resources.output_buffer,
-                    layout: wgpu::ImageDataLayout {
-                        offset: 0,
-                        bytes_per_row: padded_bytes_per_row,
-                        rows_per_image: texture_size,
-                    },
-                },
-                render_target.desc.size,
-            );
-
-            // Create the map request
-            let buffer_slice = resources.output_buffer.slice(..);
-            let request = buffer_slice.map_async(wgpu::MapMode::Read);
-            // wait for the GPU to finish
-            device.poll(wgpu::Maintain::Wait);
-            let result = request.await;
-
-            match result {
-                Ok(()) => {
-                    let padded_data = buffer_slice.get_mapped_range();
-                    let data = padded_data
-                        .chunks(padded_bytes_per_row as _)
-                        .map(|chunk| &chunk[..unpadded_bytes_per_row as _])
-                        .flatten()
-                        .map(|x| *x)
-                        .collect::<Vec<_>>();
-                    drop(padded_data);
-                    output_buffer.unmap();
-                    frames.push(data);
-                }
-                _ => {
-                    eprintln!("Something went wrong")
-                }
-            }
-            */
-
-            vec![encoder.finish()]
-        })
-        .paint(move |_info, render_pass, paint_callback_resources| {
-            let resources: &TriangleRenderResources = paint_callback_resources.get().unwrap();
-            //resources.paint(render_pass);
-        });
-
-    let callback = egui::PaintCallback {
-        rect: Rect::NOTHING,
-        callback: Arc::new(cb),
-    };
-
-    ui.painter().add(callback);
 }
 
 pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
@@ -294,8 +185,90 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
     texture_id
 }
 
-pub fn render_shader_widget(start: Instant, ui: &mut Ui, texture_id: &TextureId) {
-    egui::Frame::canvas(ui.style()).show(ui, move |ui| {
-        custom_painting(start, ui, texture_id);
+pub fn render(frame: &eframe::Frame, start: Instant) {
+    let wgpu_render_state = frame
+        .wgpu_render_state()
+        .expect("Could not get wgpu render state");
+
+    let device = &wgpu_render_state.device;
+    let queue = &wgpu_render_state.queue;
+
+    let renderer = wgpu_render_state.renderer.read();
+    let resources: &TriangleRenderResources = renderer.paint_callback_resources.get().unwrap();
+
+    resources.prepare(device, queue, start);
+
+    let mut encoder =
+        device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+    let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("GIF Pass"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view: &resources.view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                    a: 1.0,
+                }),
+                store: true,
+            },
+        })],
+        depth_stencil_attachment: None,
     });
+
+    resources.paint(&mut rpass);
+
+    drop(rpass);
+
+    /*
+    encoder.copy_texture_to_buffer(
+        wgpu::ImageCopyTexture {
+            texture: &resources.texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::ImageCopyBuffer {
+            buffer: &resources.output_buffer,
+            layout: wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: padded_bytes_per_row,
+                rows_per_image: texture_size,
+            },
+        },
+        render_target.desc.size,
+    );
+    */
+
+    queue.submit(std::iter::once(encoder.finish()));
+
+    /*
+    // Create the map request
+    let buffer_slice = resources.output_buffer.slice(..);
+    let request = buffer_slice.map_async(wgpu::MapMode::Read);
+    // wait for the GPU to finish
+    device.poll(wgpu::Maintain::Wait);
+    let result = request.await;
+
+    match result {
+        Ok(()) => {
+            let padded_data = buffer_slice.get_mapped_range();
+            let data = padded_data
+                .chunks(padded_bytes_per_row as _)
+                .map(|chunk| &chunk[..unpadded_bytes_per_row as _])
+                .flatten()
+                .map(|x| *x)
+                .collect::<Vec<_>>();
+            drop(padded_data);
+            output_buffer.unmap();
+            frames.push(data);
+        }
+        _ => {
+            eprintln!("Something went wrong")
+        }
+    }
+    */
 }

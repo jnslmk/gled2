@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use eframe::egui_wgpu::WgpuConfiguration;
 use egui::TextureId;
-use shader_widget::{init_shader, render_shader_widget};
+use shader_widget::{init_shader};
 
 fn main() {
     let options = eframe::NativeOptions {
@@ -31,7 +31,9 @@ struct MyApp {
 }
 
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        shader_widget::render(frame, self.start);
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Hello Ferris");
             ui.label(format!("fps: {}", self.frames as f32 / self.start.elapsed().as_secs_f32()));
@@ -46,9 +48,13 @@ impl eframe::App for MyApp {
                         ui.label(" (Portable Rust graphics API awesomeness)");
                     });
                     ui.label("It's not a very impressive demo, but it shows you can embed 3D inside of egui.");
-                    render_shader_widget(self.start, ui, &self.texture_id);
-                    
-                    ui.label("Drag to rotate!");
+                    ui.image(self.texture_id, egui::Vec2::splat(800.0));   
+                    ui.horizontal(|ui| {
+                        for _ in 0..10 {
+                            ui.image(self.texture_id, egui::Vec2::splat(80.0));       
+                        }             
+                    });
+                                
                 });
         });
         ctx.request_repaint();
