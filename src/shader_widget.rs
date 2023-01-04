@@ -1,6 +1,6 @@
 use eframe::{
     egui_wgpu::{self, wgpu},
-    wgpu::{util::DeviceExt, Instance},
+    wgpu::util::DeviceExt,
 };
 use egui::Ui;
 use std::{num::NonZeroU64, sync::Arc, time::Instant};
@@ -14,8 +14,6 @@ pub struct TriangleRenderResources {
 impl TriangleRenderResources {
     pub fn prepare(&self, _device: &wgpu::Device, queue: &wgpu::Queue, start: Instant) {
         let time = start.elapsed().as_secs_f32() % 1.0;
-        // Update our uniform buffer with the angle from the UI
-
         let colors: Vec<(f32, f32, f32)> = vec![
             (1., 0., 0.7),
             (0., 0.2, 0.2),
@@ -45,7 +43,6 @@ impl TriangleRenderResources {
     }
 
     pub fn paint<'rp>(&'rp self, render_pass: &mut wgpu::RenderPass<'rp>) {
-        // Draw our triangle!
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.draw(0..3, 0..1);
@@ -53,7 +50,7 @@ impl TriangleRenderResources {
 }
 
 pub fn custom_painting(start: Instant, ui: &mut egui::Ui) {
-    let (rect, response) = ui.allocate_exact_size(egui::Vec2::splat(800.0), egui::Sense::drag());
+    let (rect, _response) = ui.allocate_exact_size(egui::Vec2::splat(800.0), egui::Sense::drag());
 
     // The callback function for WGPU is in two stages: prepare, and paint.
     //
