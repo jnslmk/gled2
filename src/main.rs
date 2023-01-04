@@ -3,6 +3,7 @@ mod shader_widget;
 use std::time::Instant;
 
 use eframe::egui_wgpu::WgpuConfiguration;
+use egui::TextureId;
 use shader_widget::{init_shader, render_shader_widget};
 
 fn main() {
@@ -26,6 +27,7 @@ fn main() {
 struct MyApp {
     start: Instant,
     frames: usize,
+    texture_id: TextureId,
 }
 
 impl eframe::App for MyApp {
@@ -44,7 +46,7 @@ impl eframe::App for MyApp {
                         ui.label(" (Portable Rust graphics API awesomeness)");
                     });
                     ui.label("It's not a very impressive demo, but it shows you can embed 3D inside of egui.");
-                    render_shader_widget(self.start, ui);
+                    render_shader_widget(self.start, ui, &self.texture_id);
                     
                     ui.label("Drag to rotate!");
                 });
@@ -56,7 +58,7 @@ impl eframe::App for MyApp {
 
 impl MyApp {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
-        init_shader(cc)?;
-        Some(Self { start: Instant::now(), frames: 0 })
+        let texture_id = init_shader(cc);
+        Some(Self { start: Instant::now(), frames: 0, texture_id })
     }
 }

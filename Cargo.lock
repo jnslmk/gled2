@@ -520,6 +520,7 @@ dependencies = [
  "bytemuck",
  "eframe",
  "egui",
+ "wgpu",
 ]
 
 [[package]]
