@@ -1,6 +1,21 @@
 use eframe::{egui_wgpu::wgpu, wgpu::util::DeviceExt};
 use egui::TextureId;
-use std::{num::NonZeroU64, time::Instant};
+use std::{
+    num::{NonZeroU32, NonZeroU64},
+    thread,
+    time::Instant,
+};
+
+// wgpu requires texture -> buffer copies to be aligned using
+// wgpu::COPY_BYTES_PER_ROW_ALIGNMENT. Because of this we'll
+// need to save both the padded_bytes_per_row as well as the
+// unpadded_bytes_per_row
+const texture_size: u32 = 1024u32;
+const pixel_size: u32 = std::mem::size_of::<[u8; 4]>() as u32;
+const align: u32 = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+const unpadded_bytes_per_row: u32 = pixel_size * texture_size;
+const padding: u32 = (align - unpadded_bytes_per_row % align) % align;
+const padded_bytes_per_row: u32 = unpadded_bytes_per_row + padding;
 
 pub struct TriangleRenderResources {
     pub pipeline: wgpu::RenderPipeline,
@@ -9,6 +24,7 @@ pub struct TriangleRenderResources {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
     pub output_buffer: wgpu::Buffer,
+    pub texture_desc: wgpu::TextureDescriptor<'static>,
 }
 
 impl TriangleRenderResources {
@@ -59,8 +75,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
 
     let device = &wgpu_render_state.device;
 
-    let texture_size = 1024u32;
-    let rt_desc = wgpu::TextureDescriptor {
+    let texture_desc = wgpu::TextureDescriptor {
         size: wgpu::Extent3d {
             width: texture_size,
             height: texture_size,
@@ -76,18 +91,8 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
         label: None,
     };
 
-    let texture = device.create_texture(&rt_desc);
+    let texture = device.create_texture(&texture_desc);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-    // wgpu requires texture -> buffer copies to be aligned using
-    // wgpu::COPY_BYTES_PER_ROW_ALIGNMENT. Because of this we'll
-    // need to save both the padded_bytes_per_row as well as the
-    // unpadded_bytes_per_row
-    let pixel_size = std::mem::size_of::<[u8; 4]>() as u32;
-    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-    let unpadded_bytes_per_row = pixel_size * texture_size;
-    let padding = (align - unpadded_bytes_per_row % align) % align;
-    let padded_bytes_per_row = unpadded_bytes_per_row + padding;
 
     // create a buffer to copy the texture to so we can get the data
     let buffer_size = (padded_bytes_per_row * texture_size) as wgpu::BufferAddress;
@@ -180,6 +185,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
             texture,
             view,
             output_buffer,
+            texture_desc,
         });
 
     texture_id
@@ -223,7 +229,6 @@ pub fn render(frame: &eframe::Frame, start: Instant) {
 
     drop(rpass);
 
-    /*
     encoder.copy_texture_to_buffer(
         wgpu::ImageCopyTexture {
             texture: &resources.texture,
@@ -235,40 +240,40 @@ pub fn render(frame: &eframe::Frame, start: Instant) {
             buffer: &resources.output_buffer,
             layout: wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: padded_bytes_per_row,
-                rows_per_image: texture_size,
+                bytes_per_row: NonZeroU32::new(padded_bytes_per_row),
+                rows_per_image: NonZeroU32::new(texture_size),
             },
         },
-        render_target.desc.size,
+        resources.texture_desc.size,
     );
-    */
 
     queue.submit(std::iter::once(encoder.finish()));
 
-    /*
     // Create the map request
     let buffer_slice = resources.output_buffer.slice(..);
-    let request = buffer_slice.map_async(wgpu::MapMode::Read);
-    // wait for the GPU to finish
-    device.poll(wgpu::Maintain::Wait);
-    let result = request.await;
+    let (tx, rx) = crossbeam_channel::bounded(1);
+    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+        tx.send(result).unwrap();
+    });
 
-    match result {
+    device.poll(wgpu::Maintain::Wait);
+
+    match rx.recv().unwrap() {
         Ok(()) => {
             let padded_data = buffer_slice.get_mapped_range();
-            let data = padded_data
-                .chunks(padded_bytes_per_row as _)
-                .map(|chunk| &chunk[..unpadded_bytes_per_row as _])
-                .flatten()
-                .map(|x| *x)
-                .collect::<Vec<_>>();
+            /*let data = padded_data
+            .chunks(padded_bytes_per_row as _)
+            .flat_map(|chunk| &chunk[..unpadded_bytes_per_row as _])
+            .copied()
+            .collect::<Vec<_>>();
+            */
+            //dbg!(&padded_data[..4]);
             drop(padded_data);
-            output_buffer.unmap();
-            frames.push(data);
+
+            resources.output_buffer.unmap();
         }
         _ => {
             eprintln!("Something went wrong")
         }
     }
-    */
 }

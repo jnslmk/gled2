@@ -8,3 +8,4 @@ eframe = { git="https://github.com/emilk/egui.git", features = [ "wgpu" ] }
 egui = { git="https://github.com/emilk/egui.git", features = [ "bytemuck" ] }
 bytemuck = { version = "1.7.1" }
 wgpu = "0.14.2"
+crossbeam-channel = "0.5.6"
