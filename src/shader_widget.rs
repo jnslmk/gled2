@@ -2,7 +2,6 @@ use eframe::{egui_wgpu::wgpu, wgpu::util::DeviceExt};
 use egui::TextureId;
 use std::{
     num::{NonZeroU32, NonZeroU64},
-    thread,
     time::Instant,
 };
 
@@ -10,12 +9,12 @@ use std::{
 // wgpu::COPY_BYTES_PER_ROW_ALIGNMENT. Because of this we'll
 // need to save both the padded_bytes_per_row as well as the
 // unpadded_bytes_per_row
-const texture_size: u32 = 1024u32;
-const pixel_size: u32 = std::mem::size_of::<[u8; 4]>() as u32;
-const align: u32 = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-const unpadded_bytes_per_row: u32 = pixel_size * texture_size;
-const padding: u32 = (align - unpadded_bytes_per_row % align) % align;
-const padded_bytes_per_row: u32 = unpadded_bytes_per_row + padding;
+const TEXTURE_SIZE: u32 = 1024u32;
+const PIXEL_SIZE: u32 = std::mem::size_of::<[u8; 4]>() as u32;
+const ALIGN: u32 = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+const UNPADDED_BYTES_PER_ROW: u32 = PIXEL_SIZE * TEXTURE_SIZE;
+const PADDING: u32 = (ALIGN - UNPADDED_BYTES_PER_ROW % ALIGN) % ALIGN;
+const PADDED_BYTES_PER_ROW: u32 = UNPADDED_BYTES_PER_ROW + PADDING;
 
 pub struct TriangleRenderResources {
     pub pipeline: wgpu::RenderPipeline,
@@ -77,8 +76,8 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
 
     let texture_desc = wgpu::TextureDescriptor {
         size: wgpu::Extent3d {
-            width: texture_size,
-            height: texture_size,
+            width: TEXTURE_SIZE,
+            height: TEXTURE_SIZE,
             depth_or_array_layers: 1,
         },
         mip_level_count: 1,
@@ -95,7 +94,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
     // create a buffer to copy the texture to so we can get the data
-    let buffer_size = (padded_bytes_per_row * texture_size) as wgpu::BufferAddress;
+    let buffer_size = (PADDED_BYTES_PER_ROW * TEXTURE_SIZE) as wgpu::BufferAddress;
     let buffer_desc = wgpu::BufferDescriptor {
         size: buffer_size,
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
@@ -240,8 +239,8 @@ pub fn render(frame: &eframe::Frame, start: Instant) {
             buffer: &resources.output_buffer,
             layout: wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: NonZeroU32::new(padded_bytes_per_row),
-                rows_per_image: NonZeroU32::new(texture_size),
+                bytes_per_row: NonZeroU32::new(PADDED_BYTES_PER_ROW),
+                rows_per_image: NonZeroU32::new(TEXTURE_SIZE),
             },
         },
         resources.texture_desc.size,
