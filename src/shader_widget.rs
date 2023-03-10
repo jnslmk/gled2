@@ -19,7 +19,8 @@ const PADDED_BYTES_PER_ROW: u32 = UNPADDED_BYTES_PER_ROW + PADDING;
 pub struct TriangleRenderResources {
     pub pipeline: wgpu::RenderPipeline,
     pub bind_group: wgpu::BindGroup,
-    pub uniform_buffer: wgpu::Buffer,
+    pub input_buffer: wgpu::Buffer,
+    pub _work_buffer: wgpu::Buffer,
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
     pub output_buffer: wgpu::Buffer,
@@ -39,7 +40,7 @@ impl TriangleRenderResources {
         let colors_count = colors.len();
 
         queue.write_buffer(
-            &self.uniform_buffer,
+            &self.input_buffer,
             0,
             &time
                 .to_le_bytes()
@@ -94,50 +95,67 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
     // create a buffer to copy the texture to so we can get the data
-    let buffer_size = (PADDED_BYTES_PER_ROW * TEXTURE_SIZE) as wgpu::BufferAddress;
-    let buffer_desc = wgpu::BufferDescriptor {
-        size: buffer_size,
+    let output_buffer_size = (PADDED_BYTES_PER_ROW * TEXTURE_SIZE) as wgpu::BufferAddress;
+    let output_buffer_desc = wgpu::BufferDescriptor {
+        size: output_buffer_size,
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         label: Some("Output Buffer"),
         mapped_at_creation: false,
     };
-    let output_buffer = device.create_buffer(&buffer_desc);
+    let output_buffer = device.create_buffer(&output_buffer_desc);
 
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("custom3d"),
-        source: wgpu::ShaderSource::Wgsl(include_str!("./custom3d_wgpu_shader.wgsl").into()),
+    let vertex_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("vertex shader"),
+        source: wgpu::ShaderSource::Wgsl(include_str!("./vertex_shader.wgsl").into()),
+    });
+
+    let fragment_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("fragment shader"),
+        source: wgpu::ShaderSource::Wgsl(include_str!("./fragment_shader.wgsl").into()),
     });
 
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("custom3d"),
-        entries: &[wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: NonZeroU64::new(272),
+        label: Some("bind group layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: NonZeroU64::new(272),
+                },
+                count: None,
             },
-            count: None,
-        }],
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: NonZeroU64::new(4096),
+                },
+                count: None,
+            },
+        ],
     });
 
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("custom3d"),
+        label: Some("pipeline layout"),
         bind_group_layouts: &[&bind_group_layout],
         push_constant_ranges: &[],
     });
 
     let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("custom3d"),
+        label: Some("pipeline"),
         layout: Some(&pipeline_layout),
         vertex: wgpu::VertexState {
-            module: &shader,
+            module: &vertex_shader,
             entry_point: "vs_main",
             buffers: &[],
         },
         fragment: Some(wgpu::FragmentState {
-            module: &shader,
+            module: &fragment_shader,
             entry_point: "fs_main",
             targets: &[Some(wgpu_render_state.target_format.into())],
         }),
@@ -147,21 +165,33 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
         multiview: None,
     });
 
-    let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("custom3d"),
+    let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("input_buffer"),
         contents: bytemuck::cast_slice(&[0.0_f32; 68]), // 16 bytes aligned!
         // Mapping at creation (as done by the create_buffer_init utility) doesn't require us to to add the MAP_WRITE usage
         // (this *happens* to workaround this bug )
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
     });
 
+    let work_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("work_buffer"),
+        contents: &[0u8; 16_384],
+        usage: wgpu::BufferUsages::STORAGE,
+    });
+
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("custom3d"),
+        label: Some("bind_group"),
         layout: &bind_group_layout,
-        entries: &[wgpu::BindGroupEntry {
-            binding: 0,
-            resource: uniform_buffer.as_entire_binding(),
-        }],
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: input_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: work_buffer.as_entire_binding(),
+            },
+        ],
     });
 
     let texture_id = wgpu_render_state.renderer.write().register_native_texture(
@@ -180,10 +210,11 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
         .insert(TriangleRenderResources {
             pipeline,
             bind_group,
-            uniform_buffer,
+            input_buffer,
             texture,
             view,
             output_buffer,
+            _work_buffer: work_buffer,
             texture_desc,
         });
 
