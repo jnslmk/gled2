@@ -40,6 +40,9 @@ impl TriangleRenderResources {
         let colors_count = colors.len();
 
         let center = &[0.75f32, 0.25];
+        let thickness: f32 = 0.01;
+        let count: i32 = 12;
+
         queue.write_buffer(
             &self.input_buffer,
             0,
@@ -58,7 +61,8 @@ impl TriangleRenderResources {
                 .chain(std::iter::repeat(0u8).take((16 - colors_count) * 16))
                 .chain(center[0].to_le_bytes().into_iter())
                 .chain(center[1].to_le_bytes().into_iter())
-                .chain(std::iter::repeat(0u8).take(8))
+                .chain(thickness.to_le_bytes().into_iter())
+                .chain(count.to_le_bytes().into_iter())
                 .collect::<Vec<u8>>(),
         );
     }
