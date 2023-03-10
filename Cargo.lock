@@ -536,7 +536,6 @@ dependencies = [
 name = "egui-wgpu-example"
 version = "0.1.0"
 dependencies = [
- "bytemuck",
  "crossbeam-channel",
  "eframe",
  "egui",

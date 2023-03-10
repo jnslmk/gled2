@@ -42,6 +42,7 @@ impl TriangleRenderResources {
         let center = &[0.75f32, 0.25];
         let thickness: f32 = 0.01;
         let count: i32 = 12;
+        let frame_rate: f32 = 91.0;
 
         queue.write_buffer(
             &self.input_buffer,
@@ -63,6 +64,8 @@ impl TriangleRenderResources {
                 .chain(center[1].to_le_bytes().into_iter())
                 .chain(thickness.to_le_bytes().into_iter())
                 .chain(count.to_le_bytes().into_iter())
+                .chain(frame_rate.to_le_bytes().into_iter())
+                .chain(std::iter::repeat(0u8).take(12))
                 .collect::<Vec<u8>>(),
         );
     }
@@ -132,7 +135,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size: NonZeroU64::new(288),
+                    min_binding_size: NonZeroU64::new(19 * 16),
                 },
                 count: None,
             },
@@ -176,7 +179,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
 
     let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("input_buffer"),
-        contents: bytemuck::cast_slice(&[0.0_f32; 72]), // 16 bytes aligned!
+        contents: &[0u8; 19 * 16], // 16 bytes aligned!
         // Mapping at creation (as done by the create_buffer_init utility) doesn't require us to to add the MAP_WRITE usage
         // (this *happens* to workaround this bug )
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
