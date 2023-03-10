@@ -39,6 +39,7 @@ impl TriangleRenderResources {
         ];
         let colors_count = colors.len();
 
+        let center = &[0.75f32, 0.25];
         queue.write_buffer(
             &self.input_buffer,
             0,
@@ -54,6 +55,10 @@ impl TriangleRenderResources {
                         .chain(b.to_le_bytes().into_iter())
                         .chain(std::iter::repeat(0u8).take(4))
                 }))
+                .chain(std::iter::repeat(0u8).take((16 - colors_count) * 16))
+                .chain(center[0].to_le_bytes().into_iter())
+                .chain(center[1].to_le_bytes().into_iter())
+                .chain(std::iter::repeat(0u8).take(8))
                 .collect::<Vec<u8>>(),
         );
     }
@@ -123,7 +128,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size: NonZeroU64::new(272),
+                    min_binding_size: NonZeroU64::new(288),
                 },
                 count: None,
             },
@@ -167,7 +172,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
 
     let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("input_buffer"),
-        contents: bytemuck::cast_slice(&[0.0_f32; 68]), // 16 bytes aligned!
+        contents: bytemuck::cast_slice(&[0.0_f32; 72]), // 16 bytes aligned!
         // Mapping at creation (as done by the create_buffer_init utility) doesn't require us to to add the MAP_WRITE usage
         // (this *happens* to workaround this bug )
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
