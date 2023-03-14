@@ -75,28 +75,9 @@ fn stars(coord: vec2<f32>) -> vec3<f32> {
     return vec3(0.);
 }
 
-fn bla(coord: vec2<f32>) -> vec3<f32> {
-    var c: vec3<f32>;
-	var l: f32 = 0.;
-	var z: f32 = uniforms.time;
-
-	for (var i: i32 = 0; i < 3; i = i + 1) {
-		var uv: vec2<f32> = coord;
-		var p: vec2<f32> = coord;
-		p = p - (0.5);
-		p.x = p.x * (16. / 9.);
-		z = z + (0.07);
-		l = length(p);
-		uv = uv + (p / l * (sin(z) + 1.) * abs(sin(l * 9. - z - z)));
-		c[i] = 0.01 / length(((uv) % (1.)) - 0.5);
-	}
-
-	return vec3<f32>((c / l) * uniforms.time);
-}
-
 @fragment
 fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
-    let color = bla(coord);
+    let color = stripes(coord);
 
 	return vec4<f32>(color, 1.);
 }
