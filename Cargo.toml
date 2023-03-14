@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-eframe = { git = "https://github.com/emilk/egui.git", features = ["wgpu"] }
-egui = { git = "https://github.com/emilk/egui.git" }
-wgpu = "0.14.2"
-crossbeam-channel = "0.5.6"
+eframe = { version = "0.21", features = ["wgpu"] }
+egui = "0.21"
+wgpu = "0.15"

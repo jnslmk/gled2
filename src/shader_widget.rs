@@ -101,6 +101,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
             | wgpu::TextureUsages::RENDER_ATTACHMENT
             | wgpu::TextureUsages::TEXTURE_BINDING,
         label: None,
+        view_formats: &[wgpu::TextureFormat::Bgra8Unorm],
     };
 
     let texture = device.create_texture(&texture_desc);
@@ -293,7 +294,7 @@ pub fn render(frame: &eframe::Frame, start: Instant) {
 
     // Create the map request
     let buffer_slice = resources.output_buffer.slice(..);
-    let (tx, rx) = crossbeam_channel::bounded(1);
+    let (tx, rx) = std::sync::mpsc::channel();
     buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
         tx.send(result).unwrap();
     });

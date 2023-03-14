@@ -21,7 +21,7 @@ fn main() {
         "moirë",
         options,
         Box::new(|cc| Box::new(MyApp::new(cc).unwrap())),
-    );
+    ).expect("Could not run native");
 }
 
 struct MyApp {
