@@ -1,4 +1,7 @@
-use crate::animation::Animation;
+use crate::{
+    animation::Animation,
+    extract::{Extract, Positions},
+};
 use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
 use std::time::Instant;
@@ -15,9 +18,11 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
 
     let texture_id = wgpu_render_state.renderer.write().register_native_texture(
         device,
-        &animation.view,
+        animation.view(),
         wgpu::FilterMode::Nearest,
     );
+
+    let extract = Extract::init(device, animation.texture());
 
     // Because the graphics pipeline must have the same lifetime as the egui render pass,
     // instead of storing the pipeline in our `Custom3D` struct, we insert it into the
@@ -27,6 +32,11 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
         .write()
         .paint_callback_resources
         .insert(animation);
+    wgpu_render_state
+        .renderer
+        .write()
+        .paint_callback_resources
+        .insert(extract);
 
     texture_id
 }
@@ -40,70 +50,12 @@ pub fn render(frame: &eframe::Frame, start: Instant) {
     let queue = &wgpu_render_state.queue;
 
     let renderer = wgpu_render_state.renderer.read();
-    let resources: &Animation = renderer.paint_callback_resources.get().unwrap();
 
-    resources.prepare(device, queue, start);
+    let animation: &Animation = renderer.paint_callback_resources.get().unwrap();
+    animation.prepare(device, queue, start);
+    animation.render(device, queue);
 
-    let mut encoder =
-        device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-
-    let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("GIF Pass"),
-        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-            view: &resources.view,
-            resolve_target: None,
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color {
-                    r: 0.0,
-                    g: 0.0,
-                    b: 0.0,
-                    a: 1.0,
-                }),
-                store: true,
-            },
-        })],
-        depth_stencil_attachment: None,
-    });
-
-    resources.paint(&mut rpass);
-
-    drop(rpass);
-
-    /*     encoder.copy_buffer_to_buffer(
-        &resources.artnet_buffer_gpu,
-        0,
-        &resources.artnet_buffer_cpu,
-        0,
-        65536,
-    ); */
-
-    queue.submit(std::iter::once(encoder.finish()));
-
-    /*     // Create the map request
-    let buffer_slice = resources.artnet_buffer_cpu.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-        tx.send(result).unwrap();
-    }); */
-
-    device.poll(wgpu::Maintain::Wait);
-
-    /*  match rx.recv().unwrap() {
-        Ok(()) => {
-            let padded_data = buffer_slice.get_mapped_range();
-            /*let data = padded_data
-            .chunks(padded_bytes_per_row as _)
-            .flat_map(|chunk| &chunk[..unpadded_bytes_per_row as _])
-            .copied()
-            .collect::<Vec<_>>();
-            */
-            //dbg!(&padded_data[..4]);
-            drop(padded_data);
-
-            resources.artnet_buffer_cpu.unmap();
-        }
-        _ => {
-            eprintln!("Something went wrong")
-        }
-    } */
+    let extract: &Extract = renderer.paint_callback_resources.get().unwrap();
+    extract.prepare(queue, &Positions::default());
+    extract.run_and_poll(device, queue);
 }

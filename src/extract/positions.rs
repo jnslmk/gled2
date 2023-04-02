@@ -1,9 +1,9 @@
+use super::UNIVERSES;
 use wgpu::{Buffer, Queue};
 
-/// We support up to 32 Artnet universes
 #[derive(Debug, Clone, Default)]
 pub struct Positions {
-    universes: [Universe; 32],
+    universes: [Universe; UNIVERSES as usize],
 }
 
 /// One Artnet Universe can hold 512 Positions. As we only support RGB (for now), we can have up to 170 lamps in a universe.
@@ -25,7 +25,7 @@ pub enum Lamp {
     #[default]
     None,
     /// Position in rendered texture
-    Position { x: i16, y: i16 },
+    Position { x: u16, y: u16 },
 }
 
 impl Positions {
@@ -38,7 +38,7 @@ impl Positions {
                 Lamp::Position { x, y } => {
                     let x = x.to_be_bytes();
                     let y = y.to_be_bytes();
-                    [x[0], x[1], y[0], y[2]].into_iter()
+                    [x[0], x[1], y[0], y[1]].into_iter()
                 }
             })
             .collect::<Vec<u8>>()
@@ -52,10 +52,11 @@ impl Positions {
 #[cfg(test)]
 mod test {
     use super::Positions;
+    use crate::extract::POSITIONS_BUFFER_SIZE;
 
     #[test]
     fn data() {
         let artnet = Positions::default();
-        assert_eq!(artnet.data().len(), 170 * 4 * 32);
+        assert_eq!(artnet.data().len(), POSITIONS_BUFFER_SIZE as usize);
     }
 }

@@ -7,7 +7,7 @@ Mapping: X+Y pro Artnet Output
 
 mod shader_widget;
 mod animation;
-//mod extract;
+mod extract;
 
 use std::time::Instant;
 
