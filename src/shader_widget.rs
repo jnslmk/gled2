@@ -1,6 +1,6 @@
 use crate::{
     animation::Animation,
-    extract::{Extract, Positions},
+    extract::{Extract, Lamp, Positions},
 };
 use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
@@ -56,6 +56,12 @@ pub fn render(frame: &eframe::Frame, start: Instant) {
     animation.render(device, queue);
 
     let extract: &Extract = renderer.paint_callback_resources.get().unwrap();
-    extract.prepare(queue, &Positions::default());
-    extract.run_and_poll(device, queue);
+    let mut position = Positions::default();
+    position.universes[0].lamps[0] = Lamp::Position { x: 100, y: 42 };
+    position.universes[0].lamps[1] = Lamp::Position { x: 100, y: 42 };
+    position.universes[0].lamps[2] = Lamp::Position { x: 100, y: 42 };
+    position.universes[0].lamps[3] = Lamp::Position { x: 100, y: 42 };
+    extract.prepare(queue, &position);
+    let artnet_data = extract.run_and_poll(device, queue);
+    println!("{:02x?}", &artnet_data[..20]);
 }

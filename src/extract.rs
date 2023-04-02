@@ -8,10 +8,12 @@ use wgpu::{
     *,
 };
 
-pub use positions::Positions;
+pub use positions::{Lamp, Positions, Universe};
 
+/// One Artnet Universe can hold 512 Positions. As we only support RGB (for now), we can have up to 170 lamps in a universe.
 pub const UNIVERSES: u64 = 32;
-pub const LAMPS: u64 = UNIVERSES * 170;
+pub const LAMPS_PER_UNIVERSE: u64 = 170;
+pub const LAMPS: u64 = UNIVERSES * LAMPS_PER_UNIVERSE;
 pub const POSITIONS_BUFFER_SIZE: u64 = LAMPS * 4;
 pub const OUTPUT_BUFFER_SIZE: u64 = UNIVERSES * 512;
 
@@ -76,9 +78,15 @@ impl Extract {
             ],
         });
 
+        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("extract pipeline layout"),
+            bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
         let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
             label: Some("extract pipeline"),
-            layout: None,
+            layout: Some(&pipeline_layout),
             module: &module,
             entry_point: "main",
         });
@@ -109,7 +117,7 @@ impl Extract {
         });
 
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("bind_group"),
+            label: Some("extract bind group"),
             layout: &bind_group_layout,
             entries: &[
                 BindGroupEntry {
@@ -147,7 +155,7 @@ impl Extract {
 
     pub fn run_and_poll(&self, device: &Device, queue: &Queue) -> Vec<u8> {
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("Extract encoder"),
+            label: Some("extract encoder"),
         });
 
         {
@@ -156,8 +164,7 @@ impl Extract {
             });
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &self.bind_group, &[]);
-            compute_pass.insert_debug_marker("extract colors");
-            compute_pass.dispatch_workgroups(LAMPS as u32, 1, 1);
+            compute_pass.dispatch_workgroups(UNIVERSES as u32, LAMPS_PER_UNIVERSE as u32, 1);
         }
         encoder.copy_buffer_to_buffer(&self.output_gpu, 0, &self.output_cpu, 0, OUTPUT_BUFFER_SIZE);
 

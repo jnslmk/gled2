@@ -1,21 +1,20 @@
-use super::UNIVERSES;
+use super::{LAMPS_PER_UNIVERSE, UNIVERSES};
 use wgpu::{Buffer, Queue};
 
 #[derive(Debug, Clone, Default)]
 pub struct Positions {
-    universes: [Universe; UNIVERSES as usize],
+    pub universes: [Universe; UNIVERSES as usize],
 }
 
-/// One Artnet Universe can hold 512 Positions. As we only support RGB (for now), we can have up to 170 lamps in a universe.
 #[derive(Debug, Clone)]
 pub struct Universe {
-    lamps: [Lamp; 170],
+    pub lamps: [Lamp; LAMPS_PER_UNIVERSE as usize],
 }
 
 impl Default for Universe {
     fn default() -> Self {
         Universe {
-            lamps: [Lamp::default(); 170],
+            lamps: [Lamp::default(); LAMPS_PER_UNIVERSE as usize],
         }
     }
 }

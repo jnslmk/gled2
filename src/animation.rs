@@ -84,12 +84,12 @@ impl Animation {
 
         let vertex_shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("vertex shader"),
-            source: ShaderSource::Wgsl(include_str!("./vertex_shader.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("./animation/vertex.wgsl").into()),
         });
 
         let fragment_shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("fragment shader"),
-            source: ShaderSource::Wgsl(include_str!("./fragment_shader.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("./animation/fragment.wgsl").into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
