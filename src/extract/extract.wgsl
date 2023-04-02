@@ -28,31 +28,26 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         color = vec3(0.);
     }
 
-/*
     let red = u32(color.r * 255.) & 0x000000ffu;
     let green = u32(color.g * 255.) & 0x000000ffu;
     let blue = u32(color.b * 255.) & 0x000000ffu;
-*/
-    let red = 1u;
-    let green = 2u;
-    let blue = 3u;
 
-    //rgbr gbrg brgb
+    //rbgr grbg bgrb
     let index = universe * 128u + (3u * (lamp / 4u));
     switch lamp % 4u {
         case 0u, default: {
-            output[index] = red << 24u | green << 16u | blue << 8u | (output[index] & 0x000000ffu);
+            output[index] = red | green << 8u | blue << 16u | (output[index] & 0xff000000u);
         }
         case 1u: {
-            output[index] = (output[index] & 0xffffff00u) | red;
-            output[index + 1u] = green << 24u | blue << 16u | (output[index] & 0x0000ffffu);
+            output[index] = (output[index] & 0x00ffffffu) | red << 24u;
+            output[index + 1u] = green | blue << 8u | (output[index + 1u] & 0xffff0000u);
         }
         case 2u: {
-            output[index + 1u] = (output[index] & 0xffff0000u) | red << 8u | green;
-            output[index + 2u] = blue << 24u | (output[index] & 0x00ffffffu);
+            output[index + 1u] = (output[index + 1u] & 0x0000ffffu) | red << 16u | green << 24u;
+            output[index + 2u] = blue | (output[index + 2u] & 0xffffff00u);
         }
         case 3u: {
-            output[index + 2u] = (output[index] & 0xff000000u) | red << 16u | green << 8u | blue;
+            output[index + 2u] = (output[index + 2u] & 0x000000ffu) | red << 8u | green << 16u | blue << 24u;
         }
     }
 }
