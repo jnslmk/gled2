@@ -1,4 +1,13 @@
+/*
+Render Shader A -> Texture A
+Render Shader B -> Texture B
+Compute Shader: Texture A + Mapping A + Texture B + Mapping B -> Artnet Output
+Mapping: X+Y pro Artnet Output
+*/
+
 mod shader_widget;
+mod animation;
+//mod extract;
 
 use std::time::Instant;
 
