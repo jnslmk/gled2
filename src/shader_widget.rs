@@ -4,7 +4,7 @@ use crate::{
 };
 use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
-use std::time::Instant;
+use std::{sync::atomic::AtomicBool, time::Instant};
 
 pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
     let wgpu_render_state = cc
@@ -41,6 +41,8 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
     texture_id
 }
 
+static PREPARED: AtomicBool = AtomicBool::new(false);
+
 pub fn render(frame: &eframe::Frame, start: Instant) {
     let wgpu_render_state = frame
         .wgpu_render_state()
@@ -56,12 +58,15 @@ pub fn render(frame: &eframe::Frame, start: Instant) {
     animation.render(device, queue);
 
     let extract: &Extract = renderer.paint_callback_resources.get().unwrap();
-    let mut position = Positions::default();
-    position.universes[0].lamps[0] = Lamp::Position { x: 100, y: 42 };
-    position.universes[0].lamps[1] = Lamp::Position { x: 100, y: 42 };
-    position.universes[0].lamps[2] = Lamp::Position { x: 100, y: 42 };
-    position.universes[0].lamps[3] = Lamp::Position { x: 100, y: 42 };
-    extract.prepare(queue, &position);
+
+    if !PREPARED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        let mut position = Positions::default();
+        position.universes[0].lamps[0] = Lamp::Position { x: 100, y: 42 };
+        position.universes[0].lamps[1] = Lamp::Position { x: 100, y: 42 };
+        position.universes[0].lamps[2] = Lamp::Position { x: 100, y: 42 };
+        position.universes[0].lamps[3] = Lamp::Position { x: 100, y: 42 };
+        extract.prepare(queue, &position);
+    }
     let artnet_data = extract.run_and_poll(device, queue);
-    println!("{:02x?}", &artnet_data[..12]);
+    //println!("{:02x?}", &artnet_data[..16]);
 }

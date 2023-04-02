@@ -7,3 +7,6 @@ edition = "2021"
 eframe = { version = "0.21", features = ["wgpu"] }
 egui = "0.21"
 wgpu = "0.15"
+
+[profile.release]
+debug = true
