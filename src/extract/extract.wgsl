@@ -16,38 +16,24 @@ const LAMPS_PER_UNIVERSE: u32 = 170u;
 @workgroup_size(1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let universe: u32 = global_id.x;
-    let lamp: u32 = global_id.y;
+    let idx: u32 = global_id.y;
 
-    let position: u32 = positions[universe * LAMPS_PER_UNIVERSE + lamp];
-    let position_x: u32 = position & 0xffff0000u;
-    let position_y: u32 = position << 16u;
-    let position_tex = vec2<f32>(f32(position_x) / 1920., f32(position_y) / 1080.);
-
-    var color: vec3<f32> = textureSampleLevel(tex, sam, position_tex, 0.).rgb;
-    if position == 0xffffffffu {
-        color = vec3(0.);
+    var colors: array<u32, 12>;
+    for (var i = 0u; i < 4u; i++) {
+        let position: u32 = positions[universe * LAMPS_PER_UNIVERSE + idx * 4u + i];
+        let position_tex = vec2<f32>(f32(position & 0xffff0000u) / 1920., f32(position << 16u) / 1080.);
+        var color: vec3<f32> = textureSampleLevel(tex, sam, position_tex, 0.).rgb;
+        if position == 0xffffffffu {
+            color = vec3(0.);
+        }
+        colors[i * 3u] = u32(color.r * 255.) & 0x000000ffu;
+        colors[i * 3u + 1u] = u32(color.g * 255.) & 0x000000ffu;
+        colors[i * 3u + 2u] = u32(color.b * 255.) & 0x000000ffu;
     }
-
-    let red = u32(color.r * 255.) & 0x000000ffu;
-    let green = u32(color.g * 255.) & 0x000000ffu;
-    let blue = u32(color.b * 255.) & 0x000000ffu;
 
     //rbgr grbg bgrb
-    let index = universe * 128u + (3u * (lamp / 4u));
-    switch lamp % 4u {
-        case 0u, default: {
-            output[index] = red | green << 8u | blue << 16u | (output[index] & 0xff000000u);
-        }
-        case 1u: {
-            output[index] = (output[index] & 0x00ffffffu) | red << 24u;
-            output[index + 1u] = green | blue << 8u | (output[index + 1u] & 0xffff0000u);
-        }
-        case 2u: {
-            output[index + 1u] = (output[index + 1u] & 0x0000ffffu) | red << 16u | green << 24u;
-            output[index + 2u] = blue | (output[index + 2u] & 0xffffff00u);
-        }
-        case 3u: {
-            output[index + 2u] = (output[index + 2u] & 0x000000ffu) | red << 8u | green << 16u | blue << 24u;
-        }
-    }
+    let index = universe * 128u + idx * 3u;
+    output[index]      = colors[0] | colors[1] << 8u | colors[2] << 16u  | colors[3] << 24u;
+    output[index + 1u] = colors[4] | colors[5] << 8u | colors[6] << 16u  | colors[7] << 24u;
+    output[index + 2u] = colors[8] | colors[9] << 8u | colors[10] << 16u | colors[11] << 24u;
 }

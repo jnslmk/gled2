@@ -63,5 +63,5 @@ pub fn render(frame: &eframe::Frame, start: Instant) {
     position.universes[0].lamps[3] = Lamp::Position { x: 100, y: 42 };
     extract.prepare(queue, &position);
     let artnet_data = extract.run_and_poll(device, queue);
-    println!("{:02x?}", &artnet_data[..20]);
+    println!("{:02x?}", &artnet_data[..12]);
 }

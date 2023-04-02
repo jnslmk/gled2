@@ -164,7 +164,7 @@ impl Extract {
             });
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, &self.bind_group, &[]);
-            compute_pass.dispatch_workgroups(UNIVERSES as u32, LAMPS_PER_UNIVERSE as u32, 1);
+            compute_pass.dispatch_workgroups(UNIVERSES as u32, 128, 1);
         }
         encoder.copy_buffer_to_buffer(&self.output_gpu, 0, &self.output_cpu, 0, OUTPUT_BUFFER_SIZE);
 
