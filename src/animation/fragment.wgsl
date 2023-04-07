@@ -1,10 +1,15 @@
 struct Uniforms {
+    // state: 16 bytes
     time: f32,
     beat_progression: f32,
     beats_per_minute: f32,
     frame_rate: f32,
+
+    // colors: 272 bytes
     colors_count: i32,
     colors: array<vec3<f32>, 16>,
+
+    // config: 16 bytes
     center_coord: vec2<f32>,
     thickness: f32,
     count: i32,
