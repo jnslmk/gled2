@@ -8,7 +8,8 @@ pub struct Gradient {
 
 impl Gradient {
     pub fn new(device: &Device, palette: &super::ColorPalette, config: GradientConfig) -> Self {
-        let fragment_shader = match config.gradient {
+        let mut animation_shader = include_str!("../shaders/gradient_common.wgsl").to_owned();
+        animation_shader.push_str(match config.gradient {
             GradientType::Radial { .. } => include_str!("../shaders/gradient_radial.wgsl"),
             GradientType::LinearHorizontal => {
                 include_str!("../shaders/gradient_linear_horizontal.wgsl")
@@ -16,8 +17,9 @@ impl Gradient {
             GradientType::LinearVertical => {
                 include_str!("../shaders/gradient_linear_vertical.wgsl")
             }
-        };
-        let renderer = AnimationRenderer::new(device, fragment_shader, palette, &(&config).into());
+        });
+        let renderer =
+            AnimationRenderer::new(device, &animation_shader, palette, &(&config).into());
 
         Self { renderer, config }
     }

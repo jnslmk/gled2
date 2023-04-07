@@ -24,7 +24,7 @@ pub struct AnimationRenderer {
 impl AnimationRenderer {
     pub fn new(
         device: &Device,
-        animation_shader: &'static str,
+        animation_shader: &str,
         palette: &ColorPalette,
         config: &Config,
     ) -> Self {
