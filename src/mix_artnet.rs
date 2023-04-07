@@ -12,7 +12,7 @@ impl MixArtnet {
     pub fn init(device: &Device) -> Self {
         let module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("MixArtnet shader"),
-            source: ShaderSource::Wgsl(include_str!("./mix_artnet/mix_artnet.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("./shaders/mix_artnet.wgsl").into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {

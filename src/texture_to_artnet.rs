@@ -28,9 +28,7 @@ impl TextureToArtnet {
     pub fn init(device: &Device, texture: &Texture, positions: &Positions) -> Self {
         let module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("TextureToArtnet shader"),
-            source: ShaderSource::Wgsl(
-                include_str!("./texture_to_artnet/texture_to_artnet.wgsl").into(),
-            ),
+            source: ShaderSource::Wgsl(include_str!("./shaders/texture_to_artnet.wgsl").into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {

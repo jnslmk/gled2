@@ -1,5 +1,5 @@
 use crate::{
-    animation::{Animation, Color, ColorPalette, Config},
+    animation::{Color, ColorPalette, Gradient, GradientConfig, GradientType},
     pipeline::Pipeline,
     scene::Scene,
     texture_to_artnet::{Lamp, Positions},
@@ -17,19 +17,20 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
     let mut texture_ids = vec![];
     let mut pipeline = Pipeline::init(device);
 
-    let config = Config {
-        center: (0.75, 0.25),
-        thickness: 0.1,
-        count: 12,
-        opacity: 1.0,
-    };
     let palette = ColorPalette {
-        colors: vec![Color::new(1., 0., 0.5)],
+        colors: vec![Color::new(1., 0., 0.5), Color::new(0., 0., 0.)],
     };
-    let animation = Animation::init(device, &palette, &config);
+    let gradient = Gradient::new(
+        device,
+        &palette,
+        GradientConfig {
+            gradient: GradientType::Radial,
+            ..Default::default()
+        },
+    );
     texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
         device,
-        animation.view(),
+        gradient.renderer().view(),
         wgpu::FilterMode::Nearest,
     ));
     let mut positions = Positions::default();
@@ -37,56 +38,33 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
     positions.universes[0].lamps[1] = Lamp::Position { x: 500, y: 42 };
     positions.universes[0].lamps[2] = Lamp::Position { x: 500, y: 42 };
     positions.universes[0].lamps[3] = Lamp::Position { x: 500, y: 42 };
-    let scene = Scene::new(device, animation, &positions);
+    let scene = Scene::new(device, gradient.into(), &positions);
     pipeline.add_scene(scene);
 
-    let config = Config {
-        center: (0.75, 0.25),
-        thickness: 0.1,
-        count: 12,
-        opacity: 0.2,
-    };
     let palette = ColorPalette {
-        colors: vec![Color::new(0., 0., 1.)],
+        colors: vec![Color::new(0., 0., 1.), Color::new(0., 0., 0.)],
     };
-    let animation = Animation::init(device, &palette, &config);
+    let gradient = Gradient::new(
+        device,
+        &palette,
+        GradientConfig {
+            gradient: GradientType::LinearHorizontal,
+            opacity: 0.2,
+            ..Default::default()
+        },
+    );
     texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
         device,
-        animation.view(),
+        gradient.renderer().view(),
         wgpu::FilterMode::Nearest,
     ));
     let mut positions = Positions::default();
     positions.universes[0].lamps[0] = Lamp::Position { x: 80, y: 42 };
     positions.universes[0].lamps[1] = Lamp::Position { x: 500, y: 42 };
     positions.universes[0].lamps[2] = Lamp::Position { x: 80, y: 42 };
-    let scene = Scene::new(device, animation, &positions);
+    let scene = Scene::new(device, gradient.into(), &positions);
     pipeline.add_scene(scene);
 
-    let config = Config {
-        center: (0.75, 0.25),
-        thickness: 0.1,
-        count: 12,
-        opacity: 0.05,
-    };
-    let palette = ColorPalette {
-        colors: vec![Color::new(0., 1., 0.)],
-    };
-    let animation = Animation::init(device, &palette, &config);
-    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
-        device,
-        animation.view(),
-        wgpu::FilterMode::Nearest,
-    ));
-    let mut positions = Positions::default();
-    positions.universes[0].lamps[0] = Lamp::Position { x: 500, y: 42 };
-    positions.universes[0].lamps[1] = Lamp::Position { x: 500, y: 42 };
-    positions.universes[0].lamps[2] = Lamp::Position { x: 500, y: 42 };
-    let scene = Scene::new(device, animation, &positions);
-    pipeline.add_scene(scene);
-
-    // Because the graphics pipeline must have the same lifetime as the egui render pass,
-    // instead of storing the pipeline in our `Custom3D` struct, we insert it into the
-    // `paint_callback_resources` type map, which is stored alongside the render pass.
     wgpu_render_state
         .renderer
         .write()
