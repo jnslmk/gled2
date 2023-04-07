@@ -43,12 +43,7 @@ impl Animation {
         queue.write_buffer(&self.uniform, 0, &state_data);
     }
 
-    pub fn init(
-        device: &Device,
-        target_format: TextureFormat,
-        palette: &ColorPalette,
-        config: &Config,
-    ) -> Self {
+    pub fn init(device: &Device, palette: &ColorPalette, config: &Config) -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE,
@@ -110,7 +105,7 @@ impl Animation {
             fragment: Some(FragmentState {
                 module: &fragment_shader,
                 entry_point: "fs_main",
-                targets: &[Some(target_format.into())],
+                targets: &[Some(TextureFormat::Bgra8Unorm.into())],
             }),
             primitive: PrimitiveState::default(),
             depth_stencil: None,

@@ -4,7 +4,6 @@ use crate::{
 };
 use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
-use std::time::Instant;
 
 pub struct Scene {
     pub animation: Animation,
@@ -21,7 +20,6 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
         .as_ref()
         .expect("Could not get wgpu render state");
     let device = &wgpu_render_state.device;
-    let target_format = wgpu_render_state.target_format;
 
     let palette = ColorPalette {
         colors: vec![
@@ -39,7 +37,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
         count: 12,
     };
 
-    let animation = Animation::init(device, target_format, &palette, &config);
+    let animation = Animation::init(device, &palette, &config);
 
     let texture_id = wgpu_render_state.renderer.write().register_native_texture(
         device,
