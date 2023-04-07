@@ -10,4 +10,4 @@ slab = "0.4"
 wgpu = "0.15"
 
 [profile.release]
-debug = true
+lto = "fat"

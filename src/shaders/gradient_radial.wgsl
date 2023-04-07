@@ -8,21 +8,9 @@ fn gradient(dist: f32) -> vec3<f32> {
 	return color;
 }
 
-fn radial_gradient(coord: vec2<f32>) -> vec3<f32> {
+fn animation(coord: vec2<f32>, beat_progression: f32) -> vec3<f32> {
     let pos: vec2<f32> = (1.0 + coord) / 2.0;
-    var beat_progression = uniforms.beat_progression;
-    if (uniforms.direction == 1u) {
-        beat_progression = 1.0 - beat_progression;
-    }
-	let dist: f32 = (beat_progression + length(uniforms.center_coord - pos)) % 1.;
+	let dist: f32 = ((1.0 - beat_progression) + length(uniforms.center_coord - pos)) % 1.;
 	
     return gradient(dist);
-}
-
-
-@fragment
-fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
-    let color = radial_gradient(coord);
-
-	return vec4<f32>(color * uniforms.opacity, 1.);
 }

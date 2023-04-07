@@ -11,7 +11,8 @@ pub struct Scene {
 
 impl Scene {
     pub fn new(device: &Device, animation: Animation, positions: &Positions) -> Self {
-        let texture_to_artnet = TextureToArtnet::init(device, animation.texture(), positions);
+        let texture_to_artnet =
+            TextureToArtnet::init(device, animation.renderer().texture(), positions);
 
         Self {
             animation,
@@ -20,11 +21,11 @@ impl Scene {
     }
 
     pub fn prepare(&self, queue: &Queue) {
-        self.animation.prepare(queue);
+        self.animation.renderer().prepare(queue);
     }
 
     pub fn render(&self, encoder: &mut CommandEncoder) {
-        self.animation.render(encoder);
+        self.animation.renderer().render(encoder);
         self.texture_to_artnet.run(encoder);
     }
 

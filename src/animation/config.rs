@@ -27,7 +27,7 @@ impl Config {
         data[8..12].copy_from_slice(&self.thickness.to_le_bytes());
         data[12..16].copy_from_slice(&self.count.to_le_bytes());
         data[16..20].copy_from_slice(&self.opacity.to_le_bytes());
-        data[24] = match self.direction {
+        data[20] = match self.direction {
             Direction::Forward => 0x00,
             Direction::Backward => 0x01,
         };

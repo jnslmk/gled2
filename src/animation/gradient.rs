@@ -1,7 +1,5 @@
-use crate::animation::{config::Direction, renderer::AnimationRenderer, Config};
+use super::{config::Direction, renderer::AnimationRenderer, Animation, Config};
 use wgpu::Device;
-
-use super::Animation;
 
 pub struct Gradient {
     renderer: AnimationRenderer,
@@ -11,7 +9,7 @@ pub struct Gradient {
 impl Gradient {
     pub fn new(device: &Device, palette: &super::ColorPalette, config: GradientConfig) -> Self {
         let fragment_shader = match config.gradient {
-            GradientType::Radial => include_str!("../shaders/gradient_radial.wgsl"),
+            GradientType::Radial { .. } => include_str!("../shaders/gradient_radial.wgsl"),
             GradientType::LinearHorizontal => {
                 include_str!("../shaders/gradient_linear_horizontal.wgsl")
             }
@@ -33,6 +31,7 @@ impl Gradient {
     }
 }
 
+//TODO: Macro
 impl From<Gradient> for Animation {
     fn from(gradient: Gradient) -> Self {
         Self::Gradient(gradient)
@@ -55,12 +54,16 @@ impl Default for GradientConfig {
     }
 }
 
-#[derive(Default)]
 pub enum GradientType {
-    #[default]
-    Radial,
+    Radial { center: (f32, f32) },
     LinearHorizontal,
     LinearVertical,
+}
+
+impl Default for GradientType {
+    fn default() -> Self {
+        Self::Radial { center: (0.5, 0.5) }
+    }
 }
 
 impl From<&GradientConfig> for Config {
@@ -68,6 +71,10 @@ impl From<&GradientConfig> for Config {
         Config {
             direction: config.direction,
             opacity: config.opacity,
+            center: match config.gradient {
+                GradientType::Radial { center } => center,
+                _ => Default::default(),
+            },
             ..Default::default()
         }
     }

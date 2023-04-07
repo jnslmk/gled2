@@ -8,20 +8,9 @@ fn gradient(dist: f32) -> vec3<f32> {
 	return color;
 }
 
-fn linear_gradient_horizontal(coord: vec2<f32>) -> vec3<f32> {
+fn animation(coord: vec2<f32>, beat_progression: f32) -> vec3<f32> {
     let pos: f32 = 1. - (1.0 + coord.x) / 2.0;
-    var beat_progression = uniforms.beat_progression;
-    if (uniforms.direction == 1u) {
-        beat_progression = 1.0 - beat_progression;
-    }
 	let dist: f32 = (beat_progression + pos) % 1.;
 
     return gradient(dist);
-}
-
-@fragment
-fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
-    let color = linear_gradient_horizontal(coord);
-
-	return vec4<f32>(color * uniforms.opacity, 1.);
 }

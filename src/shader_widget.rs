@@ -1,5 +1,8 @@
 use crate::{
-    animation::{Color, ColorPalette, Gradient, GradientConfig, GradientType},
+    animation::{
+        Color, ColorPalette, Direction, Gradient, GradientConfig, GradientType, Stripes,
+        StripesConfig,
+    },
     pipeline::Pipeline,
     scene::Scene,
     texture_to_artnet::{Lamp, Positions},
@@ -13,7 +16,6 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
         .as_ref()
         .expect("Could not get wgpu render state");
     let device = &wgpu_render_state.device;
-
     let mut texture_ids = vec![];
     let mut pipeline = Pipeline::init(device);
 
@@ -24,7 +26,9 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
         device,
         &palette,
         GradientConfig {
-            gradient: GradientType::Radial,
+            gradient: GradientType::Radial {
+                center: (0.25, 0.5),
+            },
             ..Default::default()
         },
     );
@@ -63,6 +67,32 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
     positions.universes[0].lamps[1] = Lamp::Position { x: 500, y: 42 };
     positions.universes[0].lamps[2] = Lamp::Position { x: 80, y: 42 };
     let scene = Scene::new(device, gradient.into(), &positions);
+    pipeline.add_scene(scene);
+
+    let palette = ColorPalette {
+        colors: vec![Color::new(1., 1., 0.)],
+    };
+    let stripes = Stripes::new(
+        device,
+        &palette,
+        StripesConfig {
+            count: 2,
+            direction: Direction::Backward,
+            opacity: 0.1,
+            ..Default::default()
+        },
+    );
+    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
+        device,
+        stripes.renderer().view(),
+        wgpu::FilterMode::Nearest,
+    ));
+    let mut positions = Positions::default();
+    positions.universes[0].lamps[0] = Lamp::Position { x: 500, y: 42 };
+    positions.universes[0].lamps[1] = Lamp::Position { x: 500, y: 42 };
+    positions.universes[0].lamps[2] = Lamp::Position { x: 500, y: 42 };
+    positions.universes[0].lamps[3] = Lamp::Position { x: 500, y: 42 };
+    let scene = Scene::new(device, stripes.into(), &positions);
     pipeline.add_scene(scene);
 
     wgpu_render_state

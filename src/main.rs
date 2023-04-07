@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /*
 Render Shader A -> Texture A
 Render Shader B -> Texture B
@@ -5,17 +7,17 @@ Compute Shader: Texture A + Mapping A + Texture B + Mapping B -> Artnet Output
 Mapping: X+Y pro Artnet Output
 */
 
-mod extract_artnet;
-mod shader_widget;
 mod animation;
-mod texture_to_artnet;
-mod scene;
+mod extract_artnet;
 mod mix_artnet;
 mod pipeline;
+mod scene;
+mod shader_widget;
+mod texture_to_artnet;
 
 use eframe::egui_wgpu::WgpuConfiguration;
 use egui::TextureId;
-use shader_widget::{init_shader};
+use shader_widget::init_shader;
 
 fn main() {
     let options = eframe::NativeOptions {
@@ -29,10 +31,11 @@ fn main() {
         ..Default::default()
     };
     eframe::run_native(
-        "moirë",
+        "gled2",
         options,
         Box::new(|cc| Box::new(MyApp::new(cc).unwrap())),
-    ).expect("Could not run native");
+    )
+    .expect("Could not run native");
 }
 
 struct MyApp {
@@ -44,24 +47,14 @@ impl eframe::App for MyApp {
         shader_widget::render(frame);
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Hello Ferris");
-
             egui::ScrollArea::both()
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 0.0;
-                        ui.label("The triangle is being painted using ");
-                        ui.hyperlink_to("WGPU", "https://wgpu.rs");
-                        ui.label(" (Portable Rust graphics API awesomeness)");
-                    });
-                    ui.label("It's not a very impressive demo, but it shows you can embed 3D inside of egui.");
-                    ui.horizontal(|ui| {
                         for texture_id in self.texture_ids.iter() {
-                            ui.image(*texture_id, egui::Vec2::splat(300.0));       
-                        }             
+                            ui.image(*texture_id, egui::Vec2::splat(300.0));
+                        }
                     });
-                                
                 });
         });
         ctx.request_repaint();

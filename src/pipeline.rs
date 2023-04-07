@@ -23,7 +23,6 @@ impl Pipeline {
         self.scenes.insert(scene)
     }
 
-    #[allow(dead_code)]
     pub fn remove_scene(&mut self, index: usize) {
         self.scenes.remove(index);
     }

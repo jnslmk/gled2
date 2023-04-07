@@ -5,33 +5,26 @@ mod config;
 mod gradient;
 mod renderer;
 mod state;
+mod stripes;
 
-use wgpu::{CommandEncoder, Queue, Texture};
+use self::renderer::AnimationRenderer;
 
 pub use colors::{Color, ColorPalette};
-pub use config::Config;
+pub use config::{Config, Direction};
 pub use gradient::{Gradient, GradientConfig, GradientType};
+pub use stripes::{Stripes, StripesConfig};
 
 pub enum Animation {
     Gradient(gradient::Gradient),
+    Stripes(stripes::Stripes),
 }
 
+// TODO: Macro
 impl Animation {
-    pub fn texture(&self) -> &Texture {
+    pub fn renderer(&self) -> &AnimationRenderer {
         match self {
-            Self::Gradient(gradient) => gradient.renderer().texture(),
-        }
-    }
-
-    pub fn prepare(&self, queue: &Queue) {
-        match self {
-            Self::Gradient(gradient) => gradient.renderer().prepare(queue),
-        }
-    }
-
-    pub fn render(&self, encoder: &mut CommandEncoder) {
-        match self {
-            Self::Gradient(gradient) => gradient.renderer().render(encoder),
+            Self::Gradient(gradient) => gradient.renderer(),
+            Self::Stripes(stripes) => stripes.renderer(),
         }
     }
 }

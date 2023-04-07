@@ -10,7 +10,7 @@ use super::{state::State, ColorPalette, Config};
 // unpadded_bytes_per_row
 const TEXTURE_SIZE: u32 = 1024u32;
 
-static UNIFORMS: &str = include_str!("../shaders/uniforms.wgsl");
+static UNIFORMS: &str = include_str!("../shaders/common.wgsl");
 
 pub struct AnimationRenderer {
     start: Instant,
@@ -54,7 +54,7 @@ impl AnimationRenderer {
         });
 
         let mut fragment_shader = UNIFORMS.to_owned();
-        fragment_shader.extend(animation_shader.chars());
+        fragment_shader.push_str(animation_shader);
 
         let fragment_shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("animation fragment shader"),
