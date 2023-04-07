@@ -16,6 +16,9 @@ const LAMPS_PER_UNIVERSE: u32 = 170u;
 @workgroup_size(1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let universe: u32 = global_id.x;
+
+    // we get the colors for 4 lamps at a time as we need to interleafe those to fill up 12 bytes 
+    // in this pattern: `rbgr grbg bbgr` as access is only possible with 32bit at a time.
     let idx: u32 = global_id.y;
 
     var colors: array<u32, 12>;
@@ -31,7 +34,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         colors[i * 3u + 2u] = u32(color.b * 255.) & 0x000000ffu;
     }
 
-    //rbgr grbg bgrb
     let index = universe * 128u + idx * 3u;
     output[index]      = colors[0] | colors[1] << 8u | colors[2] << 16u  | colors[3] << 24u;
     output[index + 1u] = colors[4] | colors[5] << 8u | colors[6] << 16u  | colors[7] << 24u;

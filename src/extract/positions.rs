@@ -1,5 +1,4 @@
 use super::{LAMPS_PER_UNIVERSE, UNIVERSES};
-use wgpu::{Buffer, Queue};
 
 #[derive(Debug, Clone, Default)]
 pub struct Positions {
@@ -41,10 +40,6 @@ impl Positions {
                 }
             })
             .collect::<Vec<u8>>()
-    }
-
-    pub fn write_to_buffer(&self, queue: &Queue, buffer: &Buffer) {
-        queue.write_buffer(buffer, 0, &self.data());
     }
 }
 

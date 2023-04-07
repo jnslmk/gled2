@@ -26,11 +26,7 @@ pub struct Extract {
 }
 
 impl Extract {
-    pub fn prepare(&self, queue: &Queue, positions: &Positions) {
-        positions.write_to_buffer(queue, &self.positions);
-    }
-
-    pub fn init(device: &Device, texture: &Texture) -> Self {
+    pub fn init(device: &Device, texture: &Texture, positions: &Positions) -> Self {
         let module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("extract shader"),
             source: ShaderSource::Wgsl(include_str!("./extract/extract.wgsl").into()),
@@ -93,7 +89,7 @@ impl Extract {
 
         let positions = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("extract positions buffer"),
-            contents: &[0u8; POSITIONS_BUFFER_SIZE as usize],
+            contents: &positions.data(),
             usage: BufferUsages::COPY_DST | BufferUsages::STORAGE,
         });
 
