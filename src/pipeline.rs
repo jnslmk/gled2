@@ -44,11 +44,11 @@ impl Pipeline {
                         device,
                         queue,
                         main,
-                        scene.texture_to_artnet.artnet(),
+                        scene.artnet_buffer(),
                     );
                     mix_index += 1;
                 }
-                None => main = Some(scene.texture_to_artnet.artnet()),
+                None => main = Some(scene.artnet_buffer()),
             }
         }
 

@@ -2,7 +2,7 @@ use crate::{
     animation::{Animation, Color, ColorPalette, Config},
     pipeline::Pipeline,
     scene::Scene,
-    texture_to_artnet::{Lamp, Positions, TextureToArtnet},
+    texture_to_artnet::{Lamp, Positions},
 };
 use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
@@ -30,27 +30,29 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
         count: 12,
     };
 
-    let animation = Animation::init(device, &palette, &config);
+    let mut pipeline = Pipeline::init(device);
 
+    let animation = Animation::init(device, &palette, &config);
     let texture_id = wgpu_render_state.renderer.write().register_native_texture(
         device,
         animation.view(),
         wgpu::FilterMode::Nearest,
     );
-
     let mut positions = Positions::default();
-    positions.universes[0].lamps[0] = Lamp::Position { x: 100, y: 42 };
+    positions.universes[0].lamps[0] = Lamp::Position { x: 80, y: 42 };
     positions.universes[0].lamps[1] = Lamp::Position { x: 100, y: 42 };
     positions.universes[0].lamps[2] = Lamp::Position { x: 100, y: 42 };
     positions.universes[0].lamps[3] = Lamp::Position { x: 100, y: 42 };
-    let extract = TextureToArtnet::init(device, animation.texture(), &positions);
+    let scene = Scene::new(device, animation, &positions);
+    pipeline.add_scene(scene);
 
-    let scene = Scene {
-        animation,
-        texture_to_artnet: extract,
-    };
-
-    let mut pipeline = Pipeline::init(device);
+    let animation = Animation::init(device, &palette, &config);
+    let mut positions = Positions::default();
+    positions.universes[0].lamps[0] = Lamp::Position { x: 80, y: 42 };
+    positions.universes[0].lamps[1] = Lamp::Position { x: 100, y: 42 };
+    positions.universes[0].lamps[2] = Lamp::Position { x: 80, y: 42 };
+    //positions.universes[0].lamps[3] = Lamp::Position { x: 80, y: 42 };
+    let scene = Scene::new(device, animation, &positions);
     pipeline.add_scene(scene);
 
     // Because the graphics pipeline must have the same lifetime as the egui render pass,

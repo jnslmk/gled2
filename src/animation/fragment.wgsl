@@ -82,7 +82,7 @@ fn stars(coord: vec2<f32>) -> vec3<f32> {
 
 @fragment
 fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
-    let color = linear_gradient_horizontal(coord);
+    let color = line_sweep(coord);
 
 	return vec4<f32>(color, 1.);
 }

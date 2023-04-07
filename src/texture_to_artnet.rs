@@ -160,7 +160,7 @@ impl TextureToArtnet {
         queue.submit(Some(encoder.finish()));
     }
 
-    pub fn artnet(&self) -> &Buffer {
+    pub fn artnet_buffer(&self) -> &Buffer {
         &self.artnet
     }
 }
