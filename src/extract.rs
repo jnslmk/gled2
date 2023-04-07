@@ -87,9 +87,10 @@ impl Extract {
             entry_point: "main",
         });
 
+        let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
         let positions = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("extract positions buffer"),
-            contents: &positions.data(),
+            contents: &positions_contents,
             usage: BufferUsages::COPY_DST | BufferUsages::STORAGE,
         });
 

@@ -1,5 +1,8 @@
 struct Uniforms {
     time: f32,
+    beat_progression: f32,
+    beats_per_minute: f32,
+    frame_rate: f32,
     colors_count: i32,
     colors: array<vec3<f32>, 16>,
     center_coord: vec2<f32>,
@@ -9,9 +12,6 @@ struct Uniforms {
 
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
-
-@group(0) @binding(1)
-var<storage, read_write> work_buffer: array<f32, 4096>;
 
 fn gradient(dist: f32) -> vec3<f32> {
     let color_index: f32 = dist * f32(uniforms.colors_count);
@@ -25,28 +25,28 @@ fn gradient(dist: f32) -> vec3<f32> {
 
 fn radial_gradient(coord: vec2<f32>) -> vec3<f32> {
     let pos: vec2<f32> = (1.0 + coord) / 2.0;
-	let dist: f32 = (uniforms.time + length(uniforms.center_coord - pos)) % 1.;
+	let dist: f32 = (uniforms.beat_progression + length(uniforms.center_coord - pos)) % 1.;
 	
     return gradient(dist);
 }
 
 fn linear_gradient_horizontal(coord: vec2<f32>) -> vec3<f32> {
     let pos: f32 = 1. - (1.0 + coord.x) / 2.0;
-	let dist: f32 = (uniforms.time + pos) % 1.;
+	let dist: f32 = (uniforms.beat_progression + pos) % 1.;
 
     return gradient(dist);
 }
 
 fn linear_gradient_vertical(coord: vec2<f32>) -> vec3<f32> {
     let pos: f32 = 1. - (1. + coord.y) / 2.;
-	let dist: f32 = (uniforms.time + pos) % 1.;
+	let dist: f32 = (uniforms.beat_progression + pos) % 1.;
 
     return gradient(dist);
 }
 
 fn line_sweep(coord: vec2<f32>) -> vec3<f32> {
     let pos: f32 = 1. - (1. + coord.x) / 2.;
-    let dist: f32 = (uniforms.time + pos) % 1.;
+    let dist: f32 = (uniforms.beat_progression + pos) % 1.;
 
     if dist < uniforms.thickness {
         return uniforms.colors[0];
@@ -59,7 +59,7 @@ fn stripes(coord: vec2<f32>) -> vec3<f32> {
     let empty = 1. / f32(uniforms.count) - uniforms.thickness;
     let pos: f32 = 1. - (1.0 + coord.x) / 2.0;
 
-    if ((uniforms.time + pos) % (empty + uniforms.thickness) < uniforms.thickness) {
+    if ((uniforms.beat_progression + pos) % (empty + uniforms.thickness) < uniforms.thickness) {
         return uniforms.colors[0];
     } else {
         return vec3<f32>(0.);

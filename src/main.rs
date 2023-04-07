@@ -9,8 +9,6 @@ mod shader_widget;
 mod animation;
 mod extract;
 
-use std::time::Instant;
-
 use eframe::egui_wgpu::WgpuConfiguration;
 use egui::TextureId;
 use shader_widget::{init_shader};
@@ -34,18 +32,15 @@ fn main() {
 }
 
 struct MyApp {
-    start: Instant,
-    frames: usize,
     texture_id: TextureId,
 }
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        shader_widget::render(frame, self.start);
+        shader_widget::render(frame);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Hello Ferris");
-            ui.label(format!("fps: {}", self.frames as f32 / self.start.elapsed().as_secs_f32()));
 
             egui::ScrollArea::both()
                 .auto_shrink([false; 2])
@@ -67,13 +62,12 @@ impl eframe::App for MyApp {
                 });
         });
         ctx.request_repaint();
-        self.frames += 1;
     }
 }
 
 impl MyApp {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
         let texture_id = init_shader(cc);
-        Some(Self { start: Instant::now(), frames: 0, texture_id })
+        Some(Self { texture_id })
     }
 }

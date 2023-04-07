@@ -1,7 +1,15 @@
 //! Renders to a texture
 
+mod colors;
+mod config;
+mod state;
+
+use state::State;
 use std::{num::NonZeroU64, time::Instant};
 use wgpu::{util::DeviceExt, *};
+
+pub use colors::{Color, ColorPalette};
+pub use config::Config;
 
 // wgpu requires texture -> buffer copies to be aligned using
 // COPY_BYTES_PER_ROW_ALIGNMENT. Because of this we'll
@@ -10,58 +18,37 @@ use wgpu::{util::DeviceExt, *};
 const TEXTURE_SIZE: u32 = 1024u32;
 
 pub struct Animation {
+    start: Instant,
     pipeline: RenderPipeline,
     bind_group: BindGroup,
-    input_buffer: Buffer,
-    _work_buffer: Buffer,
+    uniform: Buffer,
     texture: Texture,
     view: TextureView,
 }
 
 impl Animation {
-    pub fn prepare(&self, _device: &Device, queue: &Queue, start: Instant) {
-        let time = start.elapsed().as_secs_f32() % 1.0;
-        let colors: Vec<(f32, f32, f32)> = vec![
-            (1., 0., 0.7),
-            (0., 0.2, 0.2),
-            (0., 0., 0.),
-            (0., 0.4, 0.5),
-            (0., 1., 0.),
-        ];
-        let colors_count = colors.len();
+    pub fn prepare(&self, queue: &Queue) {
+        let time = self.start.elapsed().as_secs_f32();
+        let beat_progression = time % 1.0; // TODO
+        let beats_per_minute = 130.0; //TODO
+        let framerate = 91.0; // TODO
+        let state_data: [u8; 16] = State {
+            time,
+            beat_progression,
+            beats_per_minute,
+            framerate,
+        }
+        .into();
 
-        let center = &[0.75f32, 0.25];
-        let thickness: f32 = 0.01;
-        let count: i32 = 12;
-        let frame_rate: f32 = 91.0;
-
-        queue.write_buffer(
-            &self.input_buffer,
-            0,
-            &time
-                .to_le_bytes()
-                .into_iter()
-                .chain((colors_count as i32).to_le_bytes().into_iter())
-                .chain(std::iter::repeat(0u8).take(8))
-                .chain(colors.into_iter().flat_map(|(r, g, b)| {
-                    r.to_le_bytes()
-                        .into_iter()
-                        .chain(g.to_le_bytes().into_iter())
-                        .chain(b.to_le_bytes().into_iter())
-                        .chain(std::iter::repeat(0u8).take(4))
-                }))
-                .chain(std::iter::repeat(0u8).take((16 - colors_count) * 16))
-                .chain(center[0].to_le_bytes().into_iter())
-                .chain(center[1].to_le_bytes().into_iter())
-                .chain(thickness.to_le_bytes().into_iter())
-                .chain(count.to_le_bytes().into_iter())
-                .chain(frame_rate.to_le_bytes().into_iter())
-                .chain(std::iter::repeat(0u8).take(12))
-                .collect::<Vec<u8>>(),
-        );
+        queue.write_buffer(&self.uniform, 0, &state_data);
     }
 
-    pub fn init(device: &Device, target_format: TextureFormat) -> Self {
+    pub fn init(
+        device: &Device,
+        target_format: TextureFormat,
+        palette: &ColorPalette,
+        config: &Config,
+    ) -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE,
@@ -83,49 +70,37 @@ impl Animation {
         let view = texture.create_view(&TextureViewDescriptor::default());
 
         let vertex_shader = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("vertex shader"),
+            label: Some("animation vertex shader"),
             source: ShaderSource::Wgsl(include_str!("./animation/vertex.wgsl").into()),
         });
 
         let fragment_shader = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("fragment shader"),
+            label: Some("animation fragment shader"),
             source: ShaderSource::Wgsl(include_str!("./animation/fragment.wgsl").into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("bind group layout"),
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(19 * 16),
-                    },
-                    count: None,
+            label: Some("animation bind group layout"),
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: NonZeroU64::new(19 * 16),
                 },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(4096),
-                    },
-                    count: None,
-                },
-            ],
+                count: None,
+            }],
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("pipeline layout"),
+            label: Some("animation pipeline layout"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("pipeline"),
+            label: Some("animation pipeline"),
             layout: Some(&pipeline_layout),
             vertex: VertexState {
                 module: &vertex_shader,
@@ -143,42 +118,37 @@ impl Animation {
             multiview: None,
         });
 
-        let input_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("input_buffer"),
-            contents: &[0u8; 19 * 16], // 16 bytes aligned!
-            // Mapping at creation (as done by the create_buffer_init utility) doesn't require us to to add the MAP_WRITE usage
-            // (this *happens* to workaround this bug )
+        let mut contents = [0u8; State::size() + ColorPalette::size() + Config::size()];
+        palette.write_data(&mut contents[State::size()..State::size() + ColorPalette::size()]);
+        config.write_data(
+            &mut contents[State::size() + ColorPalette::size()
+                ..State::size() + ColorPalette::size() + Config::size()],
+        );
+
+        let uniform = device.create_buffer_init(&util::BufferInitDescriptor {
+            label: Some("animation uniform buffer"),
+            contents: &contents,
             usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
         });
 
-        let work_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("work_buffer"),
-            contents: &[0u8; 16_384],
-            usage: BufferUsages::STORAGE,
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("animation bind group"),
+            layout: &bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: uniform.as_entire_binding(),
+            }],
         });
 
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("bind_group"),
-            layout: &bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: input_buffer.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: work_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        let start = Instant::now();
 
         Self {
+            start,
             pipeline,
             bind_group,
-            input_buffer,
+            uniform,
             texture,
             view,
-            _work_buffer: work_buffer,
         }
     }
 
@@ -192,7 +162,7 @@ impl Animation {
                     view: self.view(),
                     resolve_target: None,
                     ops: Operations {
-                        load: LoadOp::Clear(Color {
+                        load: LoadOp::Clear(wgpu::Color {
                             r: 0.0,
                             g: 0.0,
                             b: 0.0,

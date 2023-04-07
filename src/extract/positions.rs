@@ -1,4 +1,4 @@
-use super::{LAMPS_PER_UNIVERSE, UNIVERSES};
+use super::{LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, UNIVERSES};
 
 #[derive(Debug, Clone, Default)]
 pub struct Positions {
@@ -26,31 +26,29 @@ pub enum Lamp {
     Position { x: u16, y: u16 },
 }
 
-impl Positions {
-    pub fn data(&self) -> Vec<u8> {
-        self.universes
+/// must be aligned by 16 bytes
+impl From<&Positions> for [u8; POSITIONS_BUFFER_SIZE as usize] {
+    fn from(positions: &Positions) -> Self {
+        let mut data = [0u8; POSITIONS_BUFFER_SIZE as usize];
+        let mut i = 0;
+
+        for lamp in positions
+            .universes
             .iter()
             .flat_map(|universe| universe.lamps.iter())
-            .flat_map(|lamp| match lamp {
-                Lamp::None => [0xff; 4].into_iter(),
-                Lamp::Position { x, y } => {
-                    let x = x.to_be_bytes();
-                    let y = y.to_be_bytes();
-                    [x[0], x[1], y[0], y[1]].into_iter()
-                }
-            })
-            .collect::<Vec<u8>>()
-    }
-}
+        {
+            if let Lamp::Position { x, y } = lamp {
+                let x = x.to_le_bytes();
+                let y = y.to_le_bytes();
+                data[i] = x[0];
+                data[i + 1] = x[1];
+                data[i + 2] = y[0];
+                data[i + 3] = y[1];
+            }
 
-#[cfg(test)]
-mod test {
-    use super::Positions;
-    use crate::extract::POSITIONS_BUFFER_SIZE;
+            i += 4;
+        }
 
-    #[test]
-    fn data() {
-        let artnet = Positions::default();
-        assert_eq!(artnet.data().len(), POSITIONS_BUFFER_SIZE as usize);
+        data
     }
 }
