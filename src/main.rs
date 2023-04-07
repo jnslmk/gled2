@@ -5,10 +5,13 @@ Compute Shader: Texture A + Mapping A + Texture B + Mapping B -> Artnet Output
 Mapping: X+Y pro Artnet Output
 */
 
+mod extract_artnet;
 mod shader_widget;
 mod animation;
-mod extract;
+mod texture_to_artnet;
 mod scene;
+mod mix_artnet;
+mod pipeline;
 
 use eframe::egui_wgpu::WgpuConfiguration;
 use egui::TextureId;

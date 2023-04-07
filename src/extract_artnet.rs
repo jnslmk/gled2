@@ -1,0 +1,56 @@
+//! Copy a artnet buffer to the cpu and return.
+
+use wgpu::*;
+
+use crate::texture_to_artnet::ARTNET_BUFFER_SIZE;
+
+pub struct ExtractArtnet {
+    pub output_cpu: Buffer,
+}
+
+impl ExtractArtnet {
+    pub fn init(device: &Device) -> Self {
+        let output_cpu = device.create_buffer(&BufferDescriptor {
+            size: ARTNET_BUFFER_SIZE,
+            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+            label: Some("TextureToArtnet output buffer cpu"),
+            mapped_at_creation: false,
+        });
+
+        Self { output_cpu }
+    }
+
+    pub fn run_and_poll(&self, device: &Device, queue: &Queue, artnet: &Buffer) -> Vec<u8> {
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("TextureToArtnet encoder"),
+        });
+
+        encoder.copy_buffer_to_buffer(artnet, 0, &self.output_cpu, 0, ARTNET_BUFFER_SIZE);
+
+        queue.submit(Some(encoder.finish()));
+
+        let buffer_slice = self.output_cpu.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        buffer_slice.map_async(MapMode::Read, move |v| {
+            tx.send(v).expect("Could not send one oneshot sender")
+        });
+
+        // Poll the device in a blocking manner so that our future resolves.
+        // In an actual application, `device.poll(...)` should
+        // be called in an event loop or on another thread.
+        device.poll(Maintain::Wait);
+
+        rx.recv().unwrap().unwrap();
+
+        let mut output = Vec::with_capacity(ARTNET_BUFFER_SIZE as usize);
+        {
+            let padded_buffer = buffer_slice.get_mapped_range();
+            for chunk in padded_buffer.chunks(COPY_BYTES_PER_ROW_ALIGNMENT as usize) {
+                output.extend(chunk);
+            }
+        }
+        self.output_cpu.unmap();
+
+        output
+    }
+}

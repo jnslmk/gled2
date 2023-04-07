@@ -1,16 +1,15 @@
-use crate::{animation::Animation, extract::Extract};
+use crate::{animation::Animation, texture_to_artnet::TextureToArtnet};
 use wgpu::{Device, Queue};
 
 pub struct Scene {
     pub animation: Animation,
-    pub extract: Extract,
+    pub texture_to_artnet: TextureToArtnet,
 }
 
 impl Scene {
-    pub fn render(&self, device: &Device, queue: &Queue) -> Vec<u8> {
+    pub fn render(&self, device: &Device, queue: &Queue) {
         self.animation.prepare(queue);
         self.animation.render(device, queue);
-
-        self.extract.run_and_poll(device, queue)
+        self.texture_to_artnet.run(device, queue);
     }
 }

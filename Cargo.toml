@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 eframe = { version = "0.21", features = ["wgpu"] }
 egui = "0.21"
+slab = "0.4"
 wgpu = "0.15"
 
 [profile.release]
