@@ -24,7 +24,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var colors: array<u32, 12>;
     for (var i = 0u; i < 4u; i++) {
         let position: u32 = positions[universe * LAMPS_PER_UNIVERSE + idx * 4u + i];
-        let position_tex = vec2<f32>(f32(position & 0x0000ffffu) / 1920., f32((position >> 16u) & 0x0000ffffu) / 1080.);
+        let position_tex = vec2<f32>(f32(position & 0x0000ffffu) / 2048., f32((position >> 16u) & 0x0000ffffu) / 2048.);
         var color: vec3<f32> = textureSampleLevel(tex, sam, position_tex, 0.).rgb;
         if position == 0xffffffffu {
             color = vec3(0.);

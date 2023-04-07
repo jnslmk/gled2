@@ -8,7 +8,7 @@ use super::{state::State, ColorPalette, Config};
 // COPY_BYTES_PER_ROW_ALIGNMENT. Because of this we'll
 // need to save both the padded_bytes_per_row as well as the
 // unpadded_bytes_per_row
-const TEXTURE_SIZE: u32 = 1024u32;
+const TEXTURE_SIZE: u32 = 2048u32;
 
 static UNIFORMS: &str = include_str!("../shaders/common.wgsl");
 
