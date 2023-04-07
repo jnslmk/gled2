@@ -1,18 +1,10 @@
 use crate::{
     animation::{Animation, Color, ColorPalette, Config},
     extract::{Extract, Lamp, Positions},
+    scene::Scene,
 };
 use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
-
-pub struct Scene {
-    pub animation: Animation,
-    pub extract: Extract,
-}
-
-pub struct Pipeline {
-    scenes: Vec<Scene>,
-}
 
 pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
     let wgpu_render_state = cc
@@ -52,6 +44,8 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
     positions.universes[0].lamps[3] = Lamp::Position { x: 100, y: 42 };
     let extract = Extract::init(device, animation.texture(), &positions);
 
+    let scene = Scene { animation, extract };
+
     // Because the graphics pipeline must have the same lifetime as the egui render pass,
     // instead of storing the pipeline in our `Custom3D` struct, we insert it into the
     // `paint_callback_resources` type map, which is stored alongside the render pass.
@@ -59,12 +53,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
         .renderer
         .write()
         .paint_callback_resources
-        .insert(animation);
-    wgpu_render_state
-        .renderer
-        .write()
-        .paint_callback_resources
-        .insert(extract);
+        .insert(scene);
 
     texture_id
 }
@@ -79,12 +68,8 @@ pub fn render(frame: &eframe::Frame) {
 
     let renderer = wgpu_render_state.renderer.read();
 
-    let animation: &Animation = renderer.paint_callback_resources.get().unwrap();
-    animation.prepare(queue);
-    animation.render(device, queue);
+    let scene: &Scene = renderer.paint_callback_resources.get().unwrap();
+    let artnet_data = scene.render(device, queue);
 
-    let extract: &Extract = renderer.paint_callback_resources.get().unwrap();
-
-    let artnet_data = extract.run_and_poll(device, queue);
     println!("{:02x?}", &artnet_data[..16]);
 }

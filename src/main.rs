@@ -8,6 +8,7 @@ Mapping: X+Y pro Artnet Output
 mod shader_widget;
 mod animation;
 mod extract;
+mod scene;
 
 use eframe::egui_wgpu::WgpuConfiguration;
 use egui::TextureId;
