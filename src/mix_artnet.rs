@@ -60,11 +60,13 @@ impl MixArtnet {
         }
     }
 
-    pub fn run(&self, device: &Device, queue: &Queue, main: &Buffer, other: &Buffer) {
-        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("MixArtnet encoder"),
-        });
-
+    pub fn run(
+        &self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        main: &Buffer,
+        other: &Buffer,
+    ) {
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("MixArtnet bind group"),
             layout: &self.bind_group_layout,
@@ -80,15 +82,11 @@ impl MixArtnet {
             ],
         });
 
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("MixArtnet compute pass"),
-            });
-            compute_pass.set_pipeline(&self.pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-            compute_pass.dispatch_workgroups(LAMPS as u32, 1, 1);
-        }
-
-        queue.submit(Some(encoder.finish()));
+        let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: Some("MixArtnet compute pass"),
+        });
+        compute_pass.set_pipeline(&self.pipeline);
+        compute_pass.set_bind_group(0, &bind_group, &[]);
+        compute_pass.dispatch_workgroups(LAMPS as u32, 1, 1);
     }
 }

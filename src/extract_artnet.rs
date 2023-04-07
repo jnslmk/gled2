@@ -20,15 +20,11 @@ impl ExtractArtnet {
         Self { output_cpu }
     }
 
-    pub fn run_and_poll(&self, device: &Device, queue: &Queue, artnet: &Buffer) -> Vec<u8> {
-        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("TextureToArtnet encoder"),
-        });
-
+    pub fn run(&self, encoder: &mut CommandEncoder, artnet: &Buffer) {
         encoder.copy_buffer_to_buffer(artnet, 0, &self.output_cpu, 0, ARTNET_BUFFER_SIZE);
+    }
 
-        queue.submit(Some(encoder.finish()));
-
+    pub fn poll_artnet_buffer(&self, device: &Device) -> Vec<u8> {
         let buffer_slice = self.output_cpu.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
         buffer_slice.map_async(MapMode::Read, move |v| {

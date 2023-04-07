@@ -7,51 +7,80 @@ use crate::{
 use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
 
-pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
+pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
     let wgpu_render_state = cc
         .wgpu_render_state
         .as_ref()
         .expect("Could not get wgpu render state");
     let device = &wgpu_render_state.device;
 
-    let palette = ColorPalette {
-        colors: vec![
-            Color::new(1., 0., 0.7),
-            Color::new(0., 0.2, 0.2),
-            Color::new(0., 0., 0.),
-            Color::new(0., 0.4, 0.5),
-            Color::new(0., 1., 0.),
-        ],
-    };
+    let mut texture_ids = vec![];
+    let mut pipeline = Pipeline::init(device);
 
     let config = Config {
         center: (0.75, 0.25),
-        thickness: 0.01,
+        thickness: 0.1,
         count: 12,
+        opacity: 1.0,
     };
-
-    let mut pipeline = Pipeline::init(device);
-
+    let palette = ColorPalette {
+        colors: vec![Color::new(1., 0., 0.5)],
+    };
     let animation = Animation::init(device, &palette, &config);
-    let texture_id = wgpu_render_state.renderer.write().register_native_texture(
+    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
         device,
         animation.view(),
         wgpu::FilterMode::Nearest,
-    );
+    ));
     let mut positions = Positions::default();
-    positions.universes[0].lamps[0] = Lamp::Position { x: 80, y: 42 };
-    positions.universes[0].lamps[1] = Lamp::Position { x: 100, y: 42 };
-    positions.universes[0].lamps[2] = Lamp::Position { x: 100, y: 42 };
-    positions.universes[0].lamps[3] = Lamp::Position { x: 100, y: 42 };
+    positions.universes[0].lamps[0] = Lamp::Position { x: 500, y: 42 };
+    positions.universes[0].lamps[1] = Lamp::Position { x: 500, y: 42 };
+    positions.universes[0].lamps[2] = Lamp::Position { x: 500, y: 42 };
+    positions.universes[0].lamps[3] = Lamp::Position { x: 500, y: 42 };
     let scene = Scene::new(device, animation, &positions);
     pipeline.add_scene(scene);
 
+    let config = Config {
+        center: (0.75, 0.25),
+        thickness: 0.1,
+        count: 12,
+        opacity: 0.2,
+    };
+    let palette = ColorPalette {
+        colors: vec![Color::new(0., 0., 1.)],
+    };
     let animation = Animation::init(device, &palette, &config);
+    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
+        device,
+        animation.view(),
+        wgpu::FilterMode::Nearest,
+    ));
     let mut positions = Positions::default();
     positions.universes[0].lamps[0] = Lamp::Position { x: 80, y: 42 };
-    positions.universes[0].lamps[1] = Lamp::Position { x: 100, y: 42 };
+    positions.universes[0].lamps[1] = Lamp::Position { x: 500, y: 42 };
     positions.universes[0].lamps[2] = Lamp::Position { x: 80, y: 42 };
-    //positions.universes[0].lamps[3] = Lamp::Position { x: 80, y: 42 };
+    let scene = Scene::new(device, animation, &positions);
+    pipeline.add_scene(scene);
+
+    let config = Config {
+        center: (0.75, 0.25),
+        thickness: 0.1,
+        count: 12,
+        opacity: 0.05,
+    };
+    let palette = ColorPalette {
+        colors: vec![Color::new(0., 1., 0.)],
+    };
+    let animation = Animation::init(device, &palette, &config);
+    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
+        device,
+        animation.view(),
+        wgpu::FilterMode::Nearest,
+    ));
+    let mut positions = Positions::default();
+    positions.universes[0].lamps[0] = Lamp::Position { x: 500, y: 42 };
+    positions.universes[0].lamps[1] = Lamp::Position { x: 500, y: 42 };
+    positions.universes[0].lamps[2] = Lamp::Position { x: 500, y: 42 };
     let scene = Scene::new(device, animation, &positions);
     pipeline.add_scene(scene);
 
@@ -64,7 +93,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> TextureId {
         .paint_callback_resources
         .insert(pipeline);
 
-    texture_id
+    texture_ids
 }
 
 pub fn render(frame: &eframe::Frame) {

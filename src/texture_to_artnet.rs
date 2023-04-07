@@ -143,21 +143,13 @@ impl TextureToArtnet {
         }
     }
 
-    pub fn run(&self, device: &Device, queue: &Queue) {
-        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("TextureToArtnet encoder"),
+    pub fn run(&self, encoder: &mut CommandEncoder) {
+        let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: Some("TextureToArtnet compute pass"),
         });
-
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("TextureToArtnet compute pass"),
-            });
-            compute_pass.set_pipeline(&self.pipeline);
-            compute_pass.set_bind_group(0, &self.bind_group, &[]);
-            compute_pass.dispatch_workgroups(UNIVERSES as u32, 128, 1);
-        }
-
-        queue.submit(Some(encoder.finish()));
+        compute_pass.set_pipeline(&self.pipeline);
+        compute_pass.set_bind_group(0, &self.bind_group, &[]);
+        compute_pass.dispatch_workgroups(UNIVERSES as u32, 128, 1);
     }
 
     pub fn artnet_buffer(&self) -> &Buffer {

@@ -18,6 +18,7 @@ impl State {
         data[12..16].copy_from_slice(&self.framerate.to_le_bytes());
     }
 
+    /// must be a multiple of 16
     pub const fn size() -> usize {
         16
     }

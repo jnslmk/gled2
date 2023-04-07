@@ -27,22 +27,6 @@ pub struct Animation {
 }
 
 impl Animation {
-    pub fn prepare(&self, queue: &Queue) {
-        let time = self.start.elapsed().as_secs_f32();
-        let beat_progression = time % 1.0; // TODO
-        let beats_per_minute = 130.0; //TODO
-        let framerate = 91.0; // TODO
-        let state_data: [u8; 16] = State {
-            time,
-            beat_progression,
-            beats_per_minute,
-            framerate,
-        }
-        .into();
-
-        queue.write_buffer(&self.uniform, 0, &state_data);
-    }
-
     pub fn init(device: &Device, palette: &ColorPalette, config: &Config) -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
@@ -82,7 +66,9 @@ impl Animation {
                 ty: BindingType::Buffer {
                     ty: BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size: NonZeroU64::new(19 * 16),
+                    min_binding_size: NonZeroU64::new(
+                        (State::size() + ColorPalette::size() + Config::size()) as u64,
+                    ),
                 },
                 count: None,
             }],
@@ -147,34 +133,44 @@ impl Animation {
         }
     }
 
-    pub fn render(&self, device: &Device, queue: &Queue) {
-        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: None });
-
-        {
-            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: Some("GIF Pass"),
-                color_attachments: &[Some(RenderPassColorAttachment {
-                    view: self.view(),
-                    resolve_target: None,
-                    ops: Operations {
-                        load: LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 1.0,
-                        }),
-                        store: true,
-                    },
-                })],
-                depth_stencil_attachment: None,
-            });
-
-            render_pass.set_pipeline(&self.pipeline);
-            render_pass.set_bind_group(0, &self.bind_group, &[]);
-            render_pass.draw(0..3, 0..1);
+    pub fn prepare(&self, queue: &Queue) {
+        let time = self.start.elapsed().as_secs_f32();
+        let beat_progression = time % 1.0; // TODO
+        let beats_per_minute = 130.0; //TODO
+        let framerate = 91.0; // TODO
+        let state_data: [u8; 16] = State {
+            time,
+            beat_progression,
+            beats_per_minute,
+            framerate,
         }
+        .into();
 
-        queue.submit(std::iter::once(encoder.finish()));
+        queue.write_buffer(&self.uniform, 0, &state_data);
+    }
+
+    pub fn render(&self, encoder: &mut CommandEncoder) {
+        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("GIF Pass"),
+            color_attachments: &[Some(RenderPassColorAttachment {
+                view: self.view(),
+                resolve_target: None,
+                ops: Operations {
+                    load: LoadOp::Clear(wgpu::Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
+                        a: 1.0,
+                    }),
+                    store: true,
+                },
+            })],
+            depth_stencil_attachment: None,
+        });
+
+        render_pass.set_pipeline(&self.pipeline);
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
+        render_pass.draw(0..3, 0..1);
     }
 
     pub fn view(&self) -> &TextureView {

@@ -2,7 +2,7 @@ use crate::{
     animation::Animation,
     texture_to_artnet::{Positions, TextureToArtnet},
 };
-use wgpu::{Buffer, Device, Queue};
+use wgpu::{Buffer, CommandEncoder, Device, Queue};
 
 pub struct Scene {
     animation: Animation,
@@ -18,10 +18,14 @@ impl Scene {
             texture_to_artnet,
         }
     }
-    pub fn render(&self, device: &Device, queue: &Queue) {
+
+    pub fn prepare(&self, queue: &Queue) {
         self.animation.prepare(queue);
-        self.animation.render(device, queue);
-        self.texture_to_artnet.run(device, queue);
+    }
+
+    pub fn render(&self, encoder: &mut CommandEncoder) {
+        self.animation.render(encoder);
+        self.texture_to_artnet.run(encoder);
     }
 
     pub fn artnet_buffer(&self) -> &Buffer {

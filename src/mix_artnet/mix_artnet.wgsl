@@ -19,10 +19,10 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let b_2: u32 = (other[idx] >> 16u) & 0x000000ffu;
     let b_3: u32 = (other[idx] >> 24u) & 0x000000ffu;
 
-    let c_0: u32 = (a_0 + b_0) & 0x000000ffu;
-    let c_1: u32 = (a_1 + b_1) & 0x000000ffu;
-    let c_2: u32 = (a_2 + b_2) & 0x000000ffu;
-    let c_3: u32 = (a_3 + b_3) & 0x000000ffu;
+    let c_0: u32 = min(0x000000ffu, (a_0 + b_0));
+    let c_1: u32 = min(0x000000ffu, (a_1 + b_1));
+    let c_2: u32 = min(0x000000ffu, (a_2 + b_2));
+    let c_3: u32 = min(0x000000ffu, (a_3 + b_3));
 
     artnet[idx] = c_0 | c_1 << 8u | c_2 << 16u | c_3 << 24u;
 }

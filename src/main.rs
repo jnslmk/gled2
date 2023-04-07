@@ -36,7 +36,7 @@ fn main() {
 }
 
 struct MyApp {
-    texture_id: TextureId,
+    texture_ids: Vec<TextureId>,
 }
 
 impl eframe::App for MyApp {
@@ -56,10 +56,9 @@ impl eframe::App for MyApp {
                         ui.label(" (Portable Rust graphics API awesomeness)");
                     });
                     ui.label("It's not a very impressive demo, but it shows you can embed 3D inside of egui.");
-                    ui.image(self.texture_id, egui::Vec2::splat(800.0));   
                     ui.horizontal(|ui| {
-                        for _ in 0..10 {
-                            ui.image(self.texture_id, egui::Vec2::splat(80.0));       
+                        for texture_id in self.texture_ids.iter() {
+                            ui.image(*texture_id, egui::Vec2::splat(300.0));       
                         }             
                     });
                                 
@@ -71,7 +70,7 @@ impl eframe::App for MyApp {
 
 impl MyApp {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
-        let texture_id = init_shader(cc);
-        Some(Self { texture_id })
+        let texture_ids = init_shader(cc);
+        Some(Self { texture_ids })
     }
 }

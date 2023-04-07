@@ -20,6 +20,7 @@ impl ColorPalette {
         }
     }
 
+    /// must be a multiple of 16
     pub const fn size() -> usize {
         272
     }

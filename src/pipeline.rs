@@ -1,6 +1,6 @@
 use crate::{extract_artnet::ExtractArtnet, mix_artnet::MixArtnet, scene::Scene};
 use slab::Slab;
-use wgpu::{Device, Queue};
+use wgpu::{CommandEncoderDescriptor, Device, Queue};
 
 pub struct Pipeline {
     scenes: Slab<Scene>,
@@ -29,12 +29,20 @@ impl Pipeline {
     }
 
     pub fn run_and_poll(&mut self, device: &Device, queue: &Queue) -> Option<Vec<u8>> {
+        for (_index, scene) in self.scenes.iter() {
+            scene.prepare(queue);
+        }
+
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("Render animations"),
+        });
+        for (_index, scene) in self.scenes.iter() {
+            scene.render(&mut encoder);
+        }
+
         let mut main = None;
         let mut mix_index = 0;
-
         for (_index, scene) in self.scenes.iter() {
-            scene.render(device, queue);
-
             match main {
                 Some(main) => {
                     if self.mixs.len() <= mix_index {
@@ -42,7 +50,7 @@ impl Pipeline {
                     }
                     self.mixs.get(mix_index).expect("Mix does not exist").run(
                         device,
-                        queue,
+                        &mut encoder,
                         main,
                         scene.artnet_buffer(),
                     );
@@ -52,6 +60,15 @@ impl Pipeline {
             }
         }
 
-        main.map(|main| self.extract.run_and_poll(device, queue, main))
+        if let Some(main) = main {
+            self.extract.run(&mut encoder, main);
+        }
+        queue.submit(std::iter::once(encoder.finish()));
+
+        if main.is_some() {
+            Some(self.extract.poll_artnet_buffer(device))
+        } else {
+            None
+        }
     }
 }

@@ -9,10 +9,12 @@ struct Uniforms {
     colors_count: i32,
     colors: array<vec3<f32>, 16>,
 
-    // config: 16 bytes
+    // config: 32 bytes
     center_coord: vec2<f32>,
     thickness: f32,
     count: i32,
+    opacity: f32
+    //..implicit padding: 24 bytes
 };
 
 @group(0) @binding(0)
@@ -84,5 +86,5 @@ fn stars(coord: vec2<f32>) -> vec3<f32> {
 fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
     let color = line_sweep(coord);
 
-	return vec4<f32>(color, 1.);
+	return vec4<f32>(color * uniforms.opacity, 1.);
 }
