@@ -1,16 +1,11 @@
 //! Renders to a texture
+use super::{state::State, ColorPalette, Config};
 use std::{num::NonZeroU64, time::Instant};
 use wgpu::{util::DeviceExt, *};
 
-use super::{state::State, ColorPalette, Config};
-
-// wgpu requires texture -> buffer copies to be aligned using
-// COPY_BYTES_PER_ROW_ALIGNMENT. Because of this we'll
-// need to save both the padded_bytes_per_row as well as the
-// unpadded_bytes_per_row
 const TEXTURE_SIZE: u32 = 2048u32;
 
-static UNIFORMS: &str = include_str!("../shaders/common.wgsl");
+static COMMON_SHADER_CODE: &str = include_str!("../shaders/common.wgsl");
 
 pub struct AnimationRenderer {
     start: Instant,
@@ -53,7 +48,7 @@ impl AnimationRenderer {
             source: ShaderSource::Wgsl(include_str!("../shaders/vertex.wgsl").into()),
         });
 
-        let mut fragment_shader = UNIFORMS.to_owned();
+        let mut fragment_shader = COMMON_SHADER_CODE.to_owned();
         fragment_shader.push_str(animation_shader);
 
         let fragment_shader = device.create_shader_module(ShaderModuleDescriptor {
