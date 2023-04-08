@@ -33,9 +33,12 @@ impl Pipeline {
         device: &Device,
         queue: &Queue,
         universes: &Universes,
+        beat_progression: f32,
+        beats_per_minute: f32,
+        framerate: f32,
     ) -> Option<Vec<ArtCommand>> {
         for (_index, scene) in self.scenes.iter() {
-            scene.prepare(queue);
+            scene.prepare(queue, beat_progression, beats_per_minute, framerate);
         }
 
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {

@@ -107,7 +107,14 @@ pub fn init_shader<'a>(
     texture_ids
 }
 
-pub fn render(frame: &eframe::Frame, universes: &Universes, artnet_sender: &mut ArtnetSender) {
+pub fn render(
+    frame: &eframe::Frame,
+    universes: &Universes,
+    artnet_sender: &mut ArtnetSender,
+    beat_progression: f32,
+    beats_per_minute: f32,
+    framerate: f32,
+) {
     let wgpu_render_state = frame
         .wgpu_render_state()
         .expect("Could not get wgpu render state");
@@ -123,7 +130,14 @@ pub fn render(frame: &eframe::Frame, universes: &Universes, artnet_sender: &mut 
         .expect("Could not find Pipeline");
 
     let commands = pipeline
-        .run_and_poll(device, queue, universes)
+        .run_and_poll(
+            device,
+            queue,
+            universes,
+            beat_progression,
+            beats_per_minute,
+            framerate,
+        )
         .expect("No scene registered");
 
     for command in commands {

@@ -26,8 +26,9 @@ fn main() {
         initial_window_size: Some([1280.0, 1024.0].into()),
         renderer: eframe::Renderer::Wgpu,
         icon_data: Some(icon::icon()),
+        vsync: false,
         wgpu_options: WgpuConfiguration {
-            //present_mode: eframe::wgpu::PresentMode::Immediate,
+            present_mode: eframe::wgpu::PresentMode::Immediate,
             ..Default::default()
         },
         follow_system_theme: false,

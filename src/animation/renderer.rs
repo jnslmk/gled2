@@ -131,11 +131,14 @@ impl AnimationRenderer {
         }
     }
 
-    pub fn prepare(&self, queue: &Queue) {
+    pub fn prepare(
+        &self,
+        queue: &Queue,
+        beat_progression: f32,
+        beats_per_minute: f32,
+        framerate: f32,
+    ) {
         let time = self.start.elapsed().as_secs_f32();
-        let beat_progression = time % 1.0; // TODO
-        let beats_per_minute = 130.0; //TODO
-        let framerate = 91.0; // TODO
         let state_data: [u8; 16] = State {
             time,
             beat_progression,

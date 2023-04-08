@@ -1,11 +1,13 @@
-use egui::{Image, TextureId};
-use egui_extras::RetainedImage;
+mod timing;
 
 use crate::{
     artnet_sender::{self, ArtnetSender},
     shader_widget::{self, init_shader},
     svg::{MeasurementPoints, Svg, Universes},
 };
+use egui::{Image, TextureId};
+use egui_extras::RetainedImage;
+use timing::Timing;
 
 pub struct App {
     texture_ids: Vec<TextureId>,
@@ -13,11 +15,23 @@ pub struct App {
     universes: Universes,
     artnet_sender: ArtnetSender,
     svg_image: RetainedImage,
+    timing: Timing,
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        shader_widget::render(frame, &self.universes, &mut self.artnet_sender);
+        if let Some(fps) = self.timing.framerate() {
+            frame.set_window_title(&format!("Gled ({fps:.1} fps)"))
+        }
+
+        shader_widget::render(
+            frame,
+            &self.universes,
+            &mut self.artnet_sender,
+            self.timing.beat_progression(),
+            self.timing.beats_per_minute,
+            self.timing.framerate().unwrap_or_default(),
+        );
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::both()
@@ -33,6 +47,8 @@ impl eframe::App for App {
                 });
         });
         ctx.request_repaint();
+
+        self.timing.calculate();
     }
 }
 
@@ -54,6 +70,7 @@ impl App {
             universes,
             artnet_sender,
             svg_image,
+            timing: Default::default(),
         })
     }
 }

@@ -20,8 +20,16 @@ impl Scene {
         }
     }
 
-    pub fn prepare(&self, queue: &Queue) {
-        self.animation.renderer().prepare(queue);
+    pub fn prepare(
+        &self,
+        queue: &Queue,
+        beat_progression: f32,
+        beats_per_minute: f32,
+        framerate: f32,
+    ) {
+        self.animation
+            .renderer()
+            .prepare(queue, beat_progression, beats_per_minute, framerate);
     }
 
     pub fn render(&self, encoder: &mut CommandEncoder) {
