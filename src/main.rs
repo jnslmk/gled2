@@ -13,6 +13,7 @@ mod mix_artnet;
 mod pipeline;
 mod scene;
 mod shader_widget;
+mod svg;
 mod texture_to_artnet;
 
 use eframe::egui_wgpu::WgpuConfiguration;

@@ -1,5 +1,5 @@
 @group(0) @binding(0)
-var<storage> positions: array<u32, 10880>;
+var<storage> positions: array<f32, 21760>;
 
 @group(0) @binding(1)
 var sam: sampler;
@@ -20,13 +20,16 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     // we get the colors for 4 lamps at a time as we need to interleafe those to fill up 12 bytes 
     // in this pattern: `rbgr grbg bbgr` as access is only possible with 32bit at a time.
     let idx: u32 = global_id.y;
+    let start_idx: u32 = universe * LAMPS_PER_UNIVERSE * 2u + idx * 8u;
 
     var colors: array<u32, 12>;
     for (var i = 0u; i < 4u; i++) {
-        let position: u32 = positions[universe * LAMPS_PER_UNIVERSE + idx * 4u + i];
-        let position_tex = vec2<f32>(f32(position & 0x0000ffffu) / 2048., f32((position >> 16u) & 0x0000ffffu) / 2048.);
+        let x: f32 = positions[start_idx + i * 2u];
+        let y: f32 = positions[start_idx + i * 2u + 1u];
+
+        let position_tex = vec2<f32>(x, y);
         var color: vec3<f32> = textureSampleLevel(tex, sam, position_tex, 0.).rgb;
-        if position == 0xffffffffu {
+        if 2. - x < 0.001 && 2. - y < 0.001 {
             color = vec3(0.);
         }
         colors[i * 3u] = u32(color.r * 255.) & 0x000000ffu;

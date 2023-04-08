@@ -14,7 +14,7 @@ pub use positions::{Lamp, Positions, Universe};
 pub const UNIVERSES: u64 = 32;
 pub const LAMPS_PER_UNIVERSE: u64 = 170;
 pub const LAMPS: u64 = UNIVERSES * LAMPS_PER_UNIVERSE;
-pub const POSITIONS_BUFFER_SIZE: u64 = LAMPS * 4;
+pub const POSITIONS_BUFFER_SIZE: u64 = LAMPS * 8;
 pub const ARTNET_BUFFER_SIZE: u64 = UNIVERSES * 512;
 
 pub struct TextureToArtnet {

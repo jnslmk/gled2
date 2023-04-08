@@ -5,12 +5,17 @@ use crate::{
     },
     pipeline::Pipeline,
     scene::Scene,
+    svg::{MeasurementPoints, Svg},
     texture_to_artnet::{Lamp, Positions},
 };
 use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
 
 pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
+    let measurement_points = MeasurementPoints::from(
+        &Svg::read(std::path::Path::new("susifest2022.svg")).expect("Could not read svg file"),
+    );
+
     let wgpu_render_state = cc
         .wgpu_render_state
         .as_ref()
@@ -37,11 +42,9 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
         gradient.renderer().view(),
         wgpu::FilterMode::Nearest,
     ));
-    let mut positions = Positions::default();
-    positions.universes[0].lamps[0] = Lamp::Position { x: 500, y: 42 };
-    positions.universes[0].lamps[1] = Lamp::Position { x: 500, y: 42 };
-    positions.universes[0].lamps[2] = Lamp::Position { x: 500, y: 42 };
-    positions.universes[0].lamps[3] = Lamp::Position { x: 500, y: 42 };
+    let positions = measurement_points
+        .positions("allFull")
+        .expect("Could not find group allFull");
     let scene = Scene::new(device, gradient.into(), &positions);
     pipeline.add_scene(scene);
 
@@ -62,10 +65,9 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
         gradient.renderer().view(),
         wgpu::FilterMode::Nearest,
     ));
-    let mut positions = Positions::default();
-    positions.universes[0].lamps[0] = Lamp::Position { x: 80, y: 42 };
-    positions.universes[0].lamps[1] = Lamp::Position { x: 500, y: 42 };
-    positions.universes[0].lamps[2] = Lamp::Position { x: 80, y: 42 };
+    let positions = measurement_points
+        .positions("innerEdge")
+        .expect("Could not find group innerEdge");
     let scene = Scene::new(device, gradient.into(), &positions);
     pipeline.add_scene(scene);
 
@@ -88,10 +90,10 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
         wgpu::FilterMode::Nearest,
     ));
     let mut positions = Positions::default();
-    positions.universes[0].lamps[0] = Lamp::Position { x: 500, y: 42 };
-    positions.universes[0].lamps[1] = Lamp::Position { x: 500, y: 42 };
-    positions.universes[0].lamps[2] = Lamp::Position { x: 500, y: 42 };
-    positions.universes[0].lamps[3] = Lamp::Position { x: 500, y: 42 };
+    positions.universes[0].lamps[0] = Lamp::Position { x: 0.5, y: 0.1 };
+    positions.universes[0].lamps[1] = Lamp::Position { x: 0.5, y: 0.1 };
+    positions.universes[0].lamps[2] = Lamp::Position { x: 0.5, y: 0.1 };
+    positions.universes[0].lamps[3] = Lamp::Position { x: 0.5, y: 0.1 };
     let scene = Scene::new(device, stripes.into(), &positions);
     pipeline.add_scene(scene);
 
