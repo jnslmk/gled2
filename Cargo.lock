@@ -1002,28 +1002,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "egui-wgpu-example"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "artnet_protocol",
- "chrono",
- "clap",
- "eframe",
- "egui",
- "fern",
- "kurbo",
- "log",
- "once_cell",
- "serde",
- "serde_json",
- "slab",
- "svgdom",
- "usvg",
- "wgpu",
-]
-
-[[package]]
 name = "egui-winit"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1346,6 +1324,28 @@ dependencies = [
  "khronos_api",
  "log",
  "xml-rs",
+]
+
+[[package]]
+name = "gled"
+version = "2.0.0"
+dependencies = [
+ "anyhow",
+ "artnet_protocol",
+ "chrono",
+ "clap",
+ "eframe",
+ "egui",
+ "fern",
+ "kurbo",
+ "log",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "slab",
+ "svgdom",
+ "usvg",
+ "wgpu",
 ]
 
 [[package]]
