@@ -3,19 +3,19 @@ use crate::{
         Color, ColorPalette, Direction, Gradient, GradientConfig, GradientType, Stripes,
         StripesConfig,
     },
+    artnet_sender::ArtnetSender,
     pipeline::Pipeline,
     scene::Scene,
-    svg::{MeasurementPoints, Svg},
+    svg::{MeasurementPoints, Universes},
     texture_to_artnet::{Lamp, Positions},
 };
 use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
 
-pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
-    let measurement_points = MeasurementPoints::from(
-        &Svg::read(std::path::Path::new("susifest2022.svg")).expect("Could not read svg file"),
-    );
-
+pub fn init_shader<'a>(
+    cc: &'a eframe::CreationContext<'a>,
+    measurement_points: &MeasurementPoints,
+) -> Vec<TextureId> {
     let wgpu_render_state = cc
         .wgpu_render_state
         .as_ref()
@@ -106,7 +106,7 @@ pub fn init_shader<'a>(cc: &'a eframe::CreationContext<'a>) -> Vec<TextureId> {
     texture_ids
 }
 
-pub fn render(frame: &eframe::Frame) {
+pub fn render(frame: &eframe::Frame, universes: &Universes, artnet_sender: &mut ArtnetSender) {
     let wgpu_render_state = frame
         .wgpu_render_state()
         .expect("Could not get wgpu render state");
@@ -118,9 +118,13 @@ pub fn render(frame: &eframe::Frame) {
 
     let pipeline: &mut Pipeline = renderer.paint_callback_resources.get_mut().unwrap();
 
-    let artnet_data = pipeline
-        .run_and_poll(device, queue)
+    let commands = pipeline
+        .run_and_poll(device, queue, universes)
         .expect("No scene registered");
 
-    println!("{:02x?}", &artnet_data[..16]);
+    for command in commands {
+        artnet_sender
+            .send(command)
+            .expect("Artnet sender closed its channel");
+    }
 }

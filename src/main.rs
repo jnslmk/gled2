@@ -1,13 +1,7 @@
 #![allow(dead_code)]
 
-/*
-Render Shader A -> Texture A
-Render Shader B -> Texture B
-Compute Shader: Texture A + Mapping A + Texture B + Mapping B -> Artnet Output
-Mapping: X+Y pro Artnet Output
-*/
-
 mod animation;
+mod artnet_sender;
 mod extract_artnet;
 mod mix_artnet;
 mod pipeline;
@@ -16,11 +10,15 @@ mod shader_widget;
 mod svg;
 mod texture_to_artnet;
 
+use artnet_sender::ArtnetSender;
 use eframe::egui_wgpu::WgpuConfiguration;
 use egui::TextureId;
 use shader_widget::init_shader;
+use svg::{MeasurementPoints, Svg, Universes};
 
 fn main() {
+    artnet_sender::set_artnet_host("192.168.1.255".to_string());
+
     let options = eframe::NativeOptions {
         drag_and_drop_support: true,
         initial_window_size: Some([1280.0, 1024.0].into()),
@@ -34,18 +32,21 @@ fn main() {
     eframe::run_native(
         "gled2",
         options,
-        Box::new(|cc| Box::new(MyApp::new(cc).unwrap())),
+        Box::new(|cc| Box::new(Gled::new(cc).unwrap())),
     )
     .expect("Could not run native");
 }
 
-struct MyApp {
+struct Gled {
     texture_ids: Vec<TextureId>,
+    measurement_points: MeasurementPoints,
+    universes: Universes,
+    artnet_sender: ArtnetSender,
 }
 
-impl eframe::App for MyApp {
+impl eframe::App for Gled {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        shader_widget::render(frame);
+        shader_widget::render(frame, &self.universes, &mut self.artnet_sender);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::both()
@@ -62,9 +63,21 @@ impl eframe::App for MyApp {
     }
 }
 
-impl MyApp {
+impl Gled {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
-        let texture_ids = init_shader(cc);
-        Some(Self { texture_ids })
+        let artnet_sender = artnet_sender::start().expect("Could not start artnet sender");
+
+        let measurement_points = MeasurementPoints::from(
+            &Svg::read(std::path::Path::new("susifest2022.svg")).expect("Could not read svg file"),
+        );
+        let universes = measurement_points.universes();
+
+        let texture_ids = init_shader(cc, &measurement_points);
+        Some(Self {
+            texture_ids,
+            measurement_points,
+            universes,
+            artnet_sender,
+        })
     }
 }

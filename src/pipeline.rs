@@ -1,4 +1,5 @@
-use crate::{extract_artnet::ExtractArtnet, mix_artnet::MixArtnet, scene::Scene};
+use crate::{extract_artnet::ExtractArtnet, mix_artnet::MixArtnet, scene::Scene, svg::Universes};
+use artnet_protocol::ArtCommand;
 use slab::Slab;
 use wgpu::{CommandEncoderDescriptor, Device, Queue};
 
@@ -27,7 +28,12 @@ impl Pipeline {
         self.scenes.remove(index);
     }
 
-    pub fn run_and_poll(&mut self, device: &Device, queue: &Queue) -> Option<Vec<u8>> {
+    pub fn run_and_poll(
+        &mut self,
+        device: &Device,
+        queue: &Queue,
+        universes: &Universes,
+    ) -> Option<Vec<ArtCommand>> {
         for (_index, scene) in self.scenes.iter() {
             scene.prepare(queue);
         }
@@ -65,7 +71,7 @@ impl Pipeline {
         queue.submit(std::iter::once(encoder.finish()));
 
         if main.is_some() {
-            Some(self.extract.poll_artnet_buffer(device))
+            Some(self.extract.poll_artnet_buffer(device, universes))
         } else {
             None
         }

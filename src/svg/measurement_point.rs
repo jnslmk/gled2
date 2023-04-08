@@ -1,11 +1,16 @@
 //! Save the list of LEDs, a position for color measurement and the current color for render groups.
 
 use super::{Led, Parameter, Svg};
-use crate::texture_to_artnet::{Lamp, Positions, Universe};
+use crate::texture_to_artnet::{Lamp, Positions, Universe, UNIVERSES};
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::{BTreeSet, HashMap},
+    rc::Rc,
+};
 use usvg::{NodeExt, NodeKind, PathData, PathSegment};
+
+pub type Universes = BTreeSet<u16>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MeasurementPoints {
@@ -14,6 +19,15 @@ pub struct MeasurementPoints {
 }
 
 impl MeasurementPoints {
+    pub fn universes(&self) -> Universes {
+        self.points
+            .values()
+            .flat_map(|points| points.iter())
+            .flat_map(|point| point.leds.iter())
+            .map(|led| led.universe)
+            .collect()
+    }
+
     pub fn positions(&self, group: &str) -> Option<Positions> {
         let points = self.points.get(group)?;
         let mut universes = HashMap::new();
@@ -38,9 +52,15 @@ impl MeasurementPoints {
 
         let mut positions = Positions::default();
 
-        assert!(universes.len() < 33);
-        for (i, universe) in universes.into_values().enumerate() {
-            positions.universes[i] = universe;
+        for (i, universe) in self
+            .universes()
+            .into_iter()
+            .enumerate()
+            .take(UNIVERSES as usize)
+        {
+            if let Some(universe) = universes.remove(&universe) {
+                positions.universes[i] = universe;
+            }
         }
 
         Some(positions)

@@ -1,8 +1,11 @@
 //! Copy a artnet buffer to the cpu and return.
 
+use crate::{
+    svg::Universes,
+    texture_to_artnet::{ARTNET_BUFFER_SIZE, UNIVERSES},
+};
+use artnet_protocol::{ArtCommand, Output, PortAddress};
 use wgpu::*;
-
-use crate::texture_to_artnet::ARTNET_BUFFER_SIZE;
 
 pub struct ExtractArtnet {
     pub output_cpu: Buffer,
@@ -24,7 +27,7 @@ impl ExtractArtnet {
         encoder.copy_buffer_to_buffer(artnet, 0, &self.output_cpu, 0, ARTNET_BUFFER_SIZE);
     }
 
-    pub fn poll_artnet_buffer(&self, device: &Device) -> Vec<u8> {
+    pub fn poll_artnet_buffer(&self, device: &Device, universes: &Universes) -> Vec<ArtCommand> {
         let buffer_slice = self.output_cpu.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
         buffer_slice.map_async(MapMode::Read, move |v| {
@@ -38,15 +41,25 @@ impl ExtractArtnet {
 
         rx.recv().unwrap().unwrap();
 
-        let mut output = Vec::with_capacity(ARTNET_BUFFER_SIZE as usize);
+        let mut artnet_data = Vec::with_capacity(ARTNET_BUFFER_SIZE as usize);
         {
             let padded_buffer = buffer_slice.get_mapped_range();
             for chunk in padded_buffer.chunks(COPY_BYTES_PER_ROW_ALIGNMENT as usize) {
-                output.extend(chunk);
+                artnet_data.extend(chunk);
             }
         }
         self.output_cpu.unmap();
 
-        output
+        universes
+            .iter()
+            .take(UNIVERSES as usize)
+            .zip(artnet_data.chunks(512))
+            .filter_map(|(universe, data)| {
+                let mut output = Output::from(data).ok()?;
+                output.port_address = PortAddress::try_from(*universe).ok()?;
+
+                Some(ArtCommand::Output(output))
+            })
+            .collect()
     }
 }

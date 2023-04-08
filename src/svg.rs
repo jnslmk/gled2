@@ -14,7 +14,7 @@ use svgdom::{Document, ElementId, FilterSvg, Node};
 use usvg::{Tree, TreeParsing};
 
 pub use led::Led;
-pub use measurement_point::{MeasurementPoint, MeasurementPoints};
+pub use measurement_point::{MeasurementPoint, MeasurementPoints, Universes};
 pub use parameter::Parameter;
 
 pub struct Svg {

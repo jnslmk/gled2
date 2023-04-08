@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
+artnet_protocol = "0.4"
 eframe = { version = "0.21", features = ["wgpu"] }
 egui = "0.21"
 kurbo = "0.9"
