@@ -28,7 +28,9 @@ impl ExtractArtnet {
     }
 
     pub fn poll_artnet_buffer(&self, device: &Device, universes: &Universes) -> Vec<ArtCommand> {
-        let buffer_slice = self.output_cpu.slice(..);
+        let active_len = universes.len().min(UNIVERSES as usize) * 512;
+
+        let buffer_slice = self.output_cpu.slice(..active_len as u64);
         let (tx, rx) = std::sync::mpsc::channel();
         buffer_slice.map_async(MapMode::Read, move |v| {
             tx.send(v).expect("Could not send one oneshot sender")
@@ -41,7 +43,7 @@ impl ExtractArtnet {
 
         rx.recv().unwrap().unwrap();
 
-        let mut artnet_data = Vec::with_capacity(ARTNET_BUFFER_SIZE as usize);
+        let mut artnet_data = Vec::with_capacity(active_len);
         {
             let padded_buffer = buffer_slice.get_mapped_range();
             for chunk in padded_buffer.chunks(COPY_BYTES_PER_ROW_ALIGNMENT as usize) {
