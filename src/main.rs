@@ -3,6 +3,7 @@
 mod animation;
 mod artnet_sender;
 mod extract_artnet;
+mod icon;
 mod logging;
 mod mix_artnet;
 mod opts;
@@ -26,14 +27,16 @@ fn main() {
         drag_and_drop_support: true,
         initial_window_size: Some([1280.0, 1024.0].into()),
         renderer: eframe::Renderer::Wgpu,
+        icon_data: Some(icon::icon()),
         wgpu_options: WgpuConfiguration {
             //present_mode: eframe::wgpu::PresentMode::Immediate,
             ..Default::default()
         },
+        follow_system_theme: false,
         ..Default::default()
     };
     eframe::run_native(
-        "gled2",
+        "gled",
         options,
         Box::new(|cc| Box::new(Gled::new(cc).unwrap())),
     )
