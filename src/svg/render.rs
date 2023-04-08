@@ -1,12 +1,13 @@
 use super::Svg;
 use crate::animation::TEXTURE_SIZE;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use egui::ColorImage;
 use egui_extras::RetainedImage;
 
 impl Svg {
     pub fn render(&self) -> Result<RetainedImage> {
-        let mut pixmap = tiny_skia::Pixmap::new(TEXTURE_SIZE, TEXTURE_SIZE).unwrap();
+        let mut pixmap = tiny_skia::Pixmap::new(TEXTURE_SIZE, TEXTURE_SIZE)
+            .context("Could not create pixmap for svg")?;
         resvg::render(
             &self.tree,
             resvg::FitTo::Size(TEXTURE_SIZE, TEXTURE_SIZE),

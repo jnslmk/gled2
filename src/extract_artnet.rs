@@ -33,7 +33,7 @@ impl ExtractArtnet {
         let buffer_slice = self.output_cpu.slice(..active_len as u64);
         let (tx, rx) = std::sync::mpsc::channel();
         buffer_slice.map_async(MapMode::Read, move |v| {
-            tx.send(v).expect("Could not send one oneshot sender")
+            tx.send(v).expect("Could not send on oneshot sender")
         });
 
         // Poll the device in a blocking manner so that our future resolves.
@@ -41,7 +41,9 @@ impl ExtractArtnet {
         // be called in an event loop or on another thread.
         device.poll(Maintain::Wait);
 
-        rx.recv().unwrap().unwrap();
+        rx.recv()
+            .expect("Could not receive on gpu rx")
+            .expect("Error receiving answer to artnet_data map on gpu");
 
         let mut artnet_data = Vec::with_capacity(active_len);
         {

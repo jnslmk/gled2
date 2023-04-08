@@ -136,7 +136,11 @@ fn leds_on_path(
     path_data.segments().for_each(|segment| match segment {
         PathSegment::MoveTo { x, y } => {
             measurement_points.push(MeasurementPoint {
-                leds: vec![parameter.leds.get(leds_added).unwrap().clone()],
+                leds: vec![parameter
+                    .leds
+                    .get(leds_added)
+                    .expect("Could not find led")
+                    .clone()],
                 x: x as f32 / max,
                 y: y as f32 / max,
             });
@@ -156,7 +160,11 @@ fn leds_on_path(
                 let x = prev_x + delta_x * segment_position / segment_length;
                 let y = prev_y + delta_y * segment_position / segment_length;
                 measurement_points.push(MeasurementPoint {
-                    leds: vec![parameter.leds.get(leds_added).unwrap().clone()],
+                    leds: vec![parameter
+                        .leds
+                        .get(leds_added)
+                        .expect("Could not find led")
+                        .clone()],
                     x: x as f32 / max,
                     y: y as f32 / max,
                 });
@@ -194,7 +202,11 @@ fn leds_on_path(
                 if path_position >= led_distance * f64::from(leds_added as i32) {
                     let end = curve.end();
                     measurement_points.push(MeasurementPoint {
-                        leds: vec![parameter.leds.get(leds_added).unwrap().clone()],
+                        leds: vec![parameter
+                            .leds
+                            .get(leds_added)
+                            .expect("Could not find led")
+                            .clone()],
                         x: end.x as f32 / max,
                         y: end.y as f32 / max,
                     });
@@ -209,7 +221,11 @@ fn leds_on_path(
 
     if leds_added == leds - 1 {
         measurement_points.push(MeasurementPoint {
-            leds: vec![parameter.leds.get(leds_added).unwrap().clone()],
+            leds: vec![parameter
+                .leds
+                .get(leds_added)
+                .expect("Could not find led")
+                .clone()],
             x: prev_x as f32 / max,
             y: prev_y as f32 / max,
         });

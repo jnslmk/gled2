@@ -117,7 +117,10 @@ pub fn render(frame: &eframe::Frame, universes: &Universes, artnet_sender: &mut 
 
     let mut renderer = wgpu_render_state.renderer.write();
 
-    let pipeline: &mut Pipeline = renderer.paint_callback_resources.get_mut().unwrap();
+    let pipeline: &mut Pipeline = renderer
+        .paint_callback_resources
+        .get_mut()
+        .expect("Could not find Pipeline");
 
     let commands = pipeline
         .run_and_poll(device, queue, universes)

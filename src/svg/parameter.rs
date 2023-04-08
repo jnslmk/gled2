@@ -13,7 +13,6 @@ pub struct Parameter {
     #[serde(skip)]
     pub leds: Vec<Led>,
 }
-// ANCHOR_END: parameter
 
 impl Parameter {
     pub fn leds(&self) -> Vec<Led> {
