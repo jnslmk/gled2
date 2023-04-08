@@ -3,6 +3,7 @@
 mod led;
 mod measurement_point;
 mod parameter;
+mod render;
 
 use anyhow::{Context, Result};
 use log::info;

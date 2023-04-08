@@ -2,9 +2,7 @@ pub struct Config {
     pub center: (f32, f32),
     pub thickness: f32,
     pub count: i32,
-    /// Opacity: 0.0 -> 1.0
-    pub opacity: f32,
-    pub direction: Direction,
+    pub common: CommonConfig,
 }
 
 impl Default for Config {
@@ -13,8 +11,7 @@ impl Default for Config {
             center: (0.5, 0.5),
             thickness: Default::default(),
             count: Default::default(),
-            opacity: 1.0,
-            direction: Default::default(),
+            common: Default::default(),
         }
     }
 }
@@ -26,8 +23,8 @@ impl Config {
         data[4..8].copy_from_slice(&self.center.1.to_le_bytes());
         data[8..12].copy_from_slice(&self.thickness.to_le_bytes());
         data[12..16].copy_from_slice(&self.count.to_le_bytes());
-        data[16..20].copy_from_slice(&self.opacity.to_le_bytes());
-        data[20] = match self.direction {
+        data[16..20].copy_from_slice(&self.common.opacity.to_le_bytes());
+        data[20] = match self.common.direction {
             Direction::Forward => 0x00,
             Direction::Backward => 0x01,
         };
@@ -39,9 +36,25 @@ impl Config {
     }
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug)]
 pub enum Direction {
     #[default]
     Forward,
     Backward,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct CommonConfig {
+    /// Opacity: 0.0 -> 1.0
+    pub opacity: f32,
+    pub direction: Direction,
+}
+
+impl Default for CommonConfig {
+    fn default() -> Self {
+        Self {
+            opacity: 1.0,
+            direction: Default::default(),
+        }
+    }
 }

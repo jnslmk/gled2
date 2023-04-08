@@ -15,13 +15,14 @@ mod texture_to_artnet;
 
 use artnet_sender::ArtnetSender;
 use eframe::egui_wgpu::WgpuConfiguration;
-use egui::TextureId;
+use egui::{Image, TextureId};
+use egui_extras::RetainedImage;
 use shader_widget::init_shader;
 use svg::{MeasurementPoints, Svg, Universes};
 
 fn main() {
     logging::init();
-    artnet_sender::set_artnet_host("192.168.1.255".to_string());
+    artnet_sender::set_artnet_host("127.255.255.255".to_string());
 
     let options = eframe::NativeOptions {
         drag_and_drop_support: true,
@@ -48,6 +49,7 @@ struct Gled {
     measurement_points: MeasurementPoints,
     universes: Universes,
     artnet_sender: ArtnetSender,
+    svg_image: RetainedImage,
 }
 
 impl eframe::App for Gled {
@@ -60,7 +62,9 @@ impl eframe::App for Gled {
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         for texture_id in self.texture_ids.iter() {
-                            ui.image(*texture_id, egui::Vec2::splat(300.0));
+                            let size = egui::Vec2::splat(500.0);
+                            let res = ui.image(*texture_id, size);
+                            ui.put(res.rect, Image::new(self.svg_image.texture_id(ctx), size));
                         }
                     });
                 });
@@ -73,10 +77,11 @@ impl Gled {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
         let artnet_sender = artnet_sender::start().expect("Could not start artnet sender");
 
-        let measurement_points = MeasurementPoints::from(
-            &Svg::read(std::path::Path::new("susifest2022.svg")).expect("Could not read svg file"),
-        );
+        let svg =
+            Svg::read(std::path::Path::new("susifest2022.svg")).expect("Could not read svg file");
+        let measurement_points = MeasurementPoints::from(&svg);
         let universes = measurement_points.universes();
+        let svg_image = svg.render().expect("Could not render svg");
 
         let texture_ids = init_shader(cc, &measurement_points);
         Some(Self {
@@ -84,6 +89,7 @@ impl Gled {
             measurement_points,
             universes,
             artnet_sender,
+            svg_image,
         })
     }
 }

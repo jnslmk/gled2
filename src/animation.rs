@@ -10,8 +10,9 @@ mod stripes;
 use self::renderer::AnimationRenderer;
 
 pub use colors::{Color, ColorPalette};
-pub use config::{Config, Direction};
+pub use config::{CommonConfig, Direction};
 pub use gradient::{Gradient, GradientConfig, GradientType};
+pub use renderer::TEXTURE_SIZE;
 pub use stripes::{Stripes, StripesConfig};
 
 pub enum Animation {

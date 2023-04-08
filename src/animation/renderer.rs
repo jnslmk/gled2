@@ -1,9 +1,9 @@
 //! Renders to a texture
-use super::{state::State, ColorPalette, Config};
+use super::{config::Config, state::State, ColorPalette};
 use std::{num::NonZeroU64, time::Instant};
 use wgpu::{util::DeviceExt, *};
 
-const TEXTURE_SIZE: u32 = 2048u32;
+pub const TEXTURE_SIZE: u32 = 2048u32;
 
 static COMMON_SHADER_CODE: &str = include_str!("../shaders/common.wgsl");
 

@@ -1,13 +1,12 @@
 use crate::{
     animation::{
-        Color, ColorPalette, Direction, Gradient, GradientConfig, GradientType, Stripes,
-        StripesConfig,
+        Color, ColorPalette, CommonConfig, Direction, Gradient, GradientConfig, GradientType,
+        Stripes, StripesConfig,
     },
     artnet_sender::ArtnetSender,
     pipeline::Pipeline,
     scene::Scene,
     svg::{MeasurementPoints, Universes},
-    texture_to_artnet::{Lamp, Positions},
 };
 use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
@@ -56,8 +55,10 @@ pub fn init_shader<'a>(
         &palette,
         GradientConfig {
             gradient: GradientType::LinearHorizontal,
-            opacity: 0.2,
-            ..Default::default()
+            common: CommonConfig {
+                opacity: 0.2,
+                ..Default::default()
+            },
         },
     );
     texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
@@ -79,8 +80,10 @@ pub fn init_shader<'a>(
         &palette,
         StripesConfig {
             count: 2,
-            direction: Direction::Backward,
-            opacity: 0.1,
+            common: CommonConfig {
+                opacity: 0.1,
+                direction: Direction::Backward,
+            },
             ..Default::default()
         },
     );
@@ -89,11 +92,9 @@ pub fn init_shader<'a>(
         stripes.renderer().view(),
         wgpu::FilterMode::Nearest,
     ));
-    let mut positions = Positions::default();
-    positions.universes[0].lamps[0] = Lamp::Position { x: 0.5, y: 0.1 };
-    positions.universes[0].lamps[1] = Lamp::Position { x: 0.5, y: 0.1 };
-    positions.universes[0].lamps[2] = Lamp::Position { x: 0.5, y: 0.1 };
-    positions.universes[0].lamps[3] = Lamp::Position { x: 0.5, y: 0.1 };
+    let positions = measurement_points
+        .positions("innerFull")
+        .expect("Could not find group innerFull");
     let scene = Scene::new(device, stripes.into(), &positions);
     pipeline.add_scene(scene);
 

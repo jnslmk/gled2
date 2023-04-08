@@ -1,4 +1,8 @@
-use super::{config::Direction, renderer::AnimationRenderer, Animation, Config};
+use super::{
+    config::{CommonConfig, Config},
+    renderer::AnimationRenderer,
+    Animation,
+};
 use wgpu::Device;
 
 pub struct Stripes {
@@ -31,8 +35,7 @@ impl From<Stripes> for Animation {
 }
 
 pub struct StripesConfig {
-    pub direction: Direction,
-    pub opacity: f32,
+    pub common: CommonConfig,
     pub thickness: f32,
     pub count: i32,
 }
@@ -40,8 +43,7 @@ pub struct StripesConfig {
 impl Default for StripesConfig {
     fn default() -> Self {
         Self {
-            direction: Default::default(),
-            opacity: 1.0,
+            common: Default::default(),
             thickness: 0.1,
             count: 5,
         }
@@ -51,8 +53,7 @@ impl Default for StripesConfig {
 impl From<&StripesConfig> for Config {
     fn from(config: &StripesConfig) -> Self {
         Config {
-            direction: config.direction,
-            opacity: config.opacity,
+            common: config.common,
             thickness: config.thickness,
             count: config.count,
             ..Default::default()

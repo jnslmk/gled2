@@ -4,7 +4,7 @@ use crate::{
     svg::Universes,
     texture_to_artnet::{ARTNET_BUFFER_SIZE, UNIVERSES},
 };
-use artnet_protocol::{ArtCommand, Output, PortAddress};
+use artnet_protocol::{ArtCommand, Output, PaddedData, PortAddress};
 use wgpu::*;
 
 pub struct ExtractArtnet {
@@ -57,8 +57,12 @@ impl ExtractArtnet {
             .take(UNIVERSES as usize)
             .zip(artnet_data.chunks(512))
             .filter_map(|(universe, data)| {
-                let mut output = Output::from(data).ok()?;
-                output.port_address = PortAddress::try_from(*universe).ok()?;
+                log::debug!("Preparing artnet command for universe {universe}");
+                let output = Output {
+                    data: PaddedData::from(data.to_vec()),
+                    port_address: PortAddress::try_from(*universe).ok()?,
+                    ..Default::default()
+                };
 
                 Some(ArtCommand::Output(output))
             })

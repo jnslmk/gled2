@@ -24,7 +24,10 @@ pub fn start() -> Result<ArtnetSender> {
     thread::Builder::new()
         .name("gled:artnet:tx".to_owned())
         .spawn(move || {
-            let socket = UdpSocket::bind(("0.0.0.0", 6000)).unwrap();
+            let socket = { 6000..7000 }
+                .filter_map(|port| UdpSocket::bind(("0.0.0.0", port)).ok())
+                .next()
+                .expect("Could not find a port which we can use");
             match socket.set_broadcast(true) {
                 Ok(_) => info!("Activated sending to broadcast"),
                 Err(e) => info!("Could not activate sending to broadcast: {}", e),
@@ -50,7 +53,7 @@ pub fn start() -> Result<ArtnetSender> {
                         continue;
                     };
 
-                log::info!("Sending artnet command");
+                log::debug!("Sending artnet command to {addr}");
                 if let Err(err) = socket.send_to(&bytes, addr) {
                     error!("Could not send data: {:?}", err)
                 };

@@ -1,4 +1,8 @@
-use super::{config::Direction, renderer::AnimationRenderer, Animation, Config};
+use super::{
+    config::{CommonConfig, Config},
+    renderer::AnimationRenderer,
+    Animation,
+};
 use wgpu::Device;
 
 pub struct Gradient {
@@ -40,22 +44,13 @@ impl From<Gradient> for Animation {
     }
 }
 
+#[derive(Default, Debug)]
 pub struct GradientConfig {
-    pub direction: Direction,
-    pub opacity: f32,
+    pub common: CommonConfig,
     pub gradient: GradientType,
 }
 
-impl Default for GradientConfig {
-    fn default() -> Self {
-        Self {
-            direction: Default::default(),
-            opacity: 1.0,
-            gradient: Default::default(),
-        }
-    }
-}
-
+#[derive(Debug)]
 pub enum GradientType {
     Radial { center: (f32, f32) },
     LinearHorizontal,
@@ -71,8 +66,7 @@ impl Default for GradientType {
 impl From<&GradientConfig> for Config {
     fn from(config: &GradientConfig) -> Self {
         Config {
-            direction: config.direction,
-            opacity: config.opacity,
+            common: config.common,
             center: match config.gradient {
                 GradientType::Radial { center } => center,
                 _ => Default::default(),
