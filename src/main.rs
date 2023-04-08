@@ -22,7 +22,7 @@ use svg::{MeasurementPoints, Svg, Universes};
 
 fn main() {
     logging::init();
-    artnet_sender::set_artnet_host("127.255.255.255".to_string());
+    artnet_sender::set_artnet_host("127.0.0.1".to_string());
 
     let options = eframe::NativeOptions {
         drag_and_drop_support: true,
