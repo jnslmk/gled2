@@ -3,7 +3,9 @@
 mod animation;
 mod artnet_sender;
 mod extract_artnet;
+mod logging;
 mod mix_artnet;
+mod opts;
 mod pipeline;
 mod scene;
 mod shader_widget;
@@ -17,6 +19,7 @@ use shader_widget::init_shader;
 use svg::{MeasurementPoints, Svg, Universes};
 
 fn main() {
+    logging::init();
     artnet_sender::set_artnet_host("192.168.1.255".to_string());
 
     let options = eframe::NativeOptions {
