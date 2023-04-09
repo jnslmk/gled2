@@ -35,7 +35,7 @@ impl Scene {
             animation,
             palette,
             opacity: 1.0,
-            artnet_extraction: false,
+            artnet_extraction: true,
             group,
             send_positions: true,
             ..Default::default()

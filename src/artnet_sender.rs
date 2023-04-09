@@ -54,6 +54,7 @@ pub fn start() -> Result<ArtnetSender> {
                     };
 
                 log::debug!("Sending artnet command to {addr}");
+                log::trace!("Artnet data: {bytes:02x?}");
                 if let Err(err) = socket.send_to(&bytes, addr) {
                     error!("Could not send data: {:?}", err)
                 };

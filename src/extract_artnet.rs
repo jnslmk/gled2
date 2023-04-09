@@ -2,7 +2,7 @@
 
 use crate::{
     svg::Universes,
-    texture_to_artnet::{ARTNET_BUFFER_SIZE, UNIVERSES},
+    texture_to_artnet::{ARTNET_BUFFER_SIZE, UNIVERSES, UNIVERSE_BUFFER_SIZE},
     wgpu_render_state,
 };
 use artnet_protocol::{ArtCommand, Output, PaddedData, PortAddress};
@@ -39,7 +39,7 @@ impl ExtractArtnet {
     }
 
     pub fn poll_artnet_buffer(&mut self, universes: &Universes) -> Vec<ArtCommand> {
-        let active_len = universes.len().min(UNIVERSES as usize) * 512;
+        let active_len = universes.len().min(UNIVERSES as usize) * UNIVERSE_BUFFER_SIZE as usize;
 
         if active_len == 0 {
             return vec![];
@@ -73,7 +73,7 @@ impl ExtractArtnet {
         universes
             .iter()
             .take(UNIVERSES as usize)
-            .zip(artnet_data.chunks(512))
+            .zip(artnet_data.chunks(UNIVERSE_BUFFER_SIZE as usize))
             .filter_map(|(universe, data)| {
                 log::debug!("Preparing artnet command for universe {universe}");
                 let output = Output {
