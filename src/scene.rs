@@ -2,7 +2,9 @@ use crate::{
     animation::{Animation, ColorPalette, State},
     app::positions,
     texture_to_artnet::TextureToArtnet,
+    wgpu_render_state,
 };
+use egui::TextureId;
 use wgpu::{Buffer, CommandEncoder, Device, Queue};
 
 pub struct Scene {
@@ -12,8 +14,9 @@ pub struct Scene {
     pub opacity: f32,
     pub artnet_extraction: bool,
     group: String,
-    /// Resend positions to the gpu
+    /// (Re)end positions to the gpu
     send_positions: bool,
+    texture_id: TextureId,
 }
 
 impl Scene {
@@ -24,6 +27,14 @@ impl Scene {
         group: String,
     ) -> Self {
         let texture_to_artnet = TextureToArtnet::init(device, animation.renderer().texture());
+        let texture_id = wgpu_render_state()
+            .renderer
+            .write()
+            .register_native_texture(
+                device,
+                animation.renderer().view(),
+                wgpu::FilterMode::Nearest,
+            );
 
         Self {
             texture_to_artnet,
@@ -33,6 +44,7 @@ impl Scene {
             artnet_extraction: false,
             group,
             send_positions: true,
+            texture_id,
         }
     }
 
@@ -72,5 +84,9 @@ impl Scene {
 
     pub fn send_positions(&mut self) {
         self.send_positions = true;
+    }
+
+    pub fn texture_id(&self) -> TextureId {
+        self.texture_id
     }
 }

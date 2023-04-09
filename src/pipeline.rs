@@ -5,6 +5,7 @@ use crate::{
     svg::Universes,
 };
 use artnet_protocol::ArtCommand;
+use egui::TextureId;
 use slab::Slab;
 use wgpu::{CommandEncoderDescriptor, Device, Queue};
 
@@ -115,5 +116,12 @@ impl Pipeline {
         for (_index, scene) in self.scenes.iter_mut() {
             scene.send_positions();
         }
+    }
+
+    pub fn texture_ids(&self) -> Vec<TextureId> {
+        self.scenes
+            .iter()
+            .map(|(_index, scene)| scene.texture_id())
+            .collect()
     }
 }

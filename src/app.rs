@@ -7,7 +7,7 @@ use self::svg::Svg;
 use crate::{
     artnet_sender::{self, ArtnetSender},
     logo::logo_image,
-    shader_widget::{self},
+    shader_widget::{self, init_shaders},
 };
 use egui::Image;
 use egui_extras::RetainedImage;
@@ -71,6 +71,7 @@ impl App {
     pub fn new() -> Option<Self> {
         let artnet_sender = artnet_sender::start().expect("Could not start artnet sender");
         let logo_image = logo_image();
+        init_shaders();
         let svg = Svg::load(std::path::Path::new("susifest2022.svg")).ok();
 
         Some(Self {

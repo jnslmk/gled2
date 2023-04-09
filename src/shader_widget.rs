@@ -9,13 +9,11 @@ use crate::{
     svg::Universes,
     wgpu_render_state,
 };
-use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
 
-pub fn init() -> Vec<TextureId> {
+pub fn init_shaders() {
     let wgpu_render_state = wgpu_render_state();
     let device = &wgpu_render_state.device;
-    let mut texture_ids = vec![];
     let mut pipeline = Pipeline::init(device);
 
     let palette = ColorPalette {
@@ -30,11 +28,6 @@ pub fn init() -> Vec<TextureId> {
             ..Default::default()
         },
     );
-    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
-        device,
-        gradient.renderer().view(),
-        wgpu::FilterMode::Nearest,
-    ));
     let scene = Scene::new(device, gradient.into(), palette, "allFull".to_owned());
     pipeline.add_scene(scene);
 
@@ -50,11 +43,6 @@ pub fn init() -> Vec<TextureId> {
             },
         },
     );
-    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
-        device,
-        gradient.renderer().view(),
-        wgpu::FilterMode::Nearest,
-    ));
     let scene = Scene::new(device, gradient.into(), palette, "innerEdge".to_owned());
     pipeline.add_scene(scene);
 
@@ -71,11 +59,6 @@ pub fn init() -> Vec<TextureId> {
             ..Default::default()
         },
     );
-    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
-        device,
-        stripes.renderer().view(),
-        wgpu::FilterMode::Nearest,
-    ));
     let scene = Scene::new(device, stripes.into(), palette, "innerFull".to_owned());
     pipeline.add_scene(scene);
 
@@ -84,8 +67,6 @@ pub fn init() -> Vec<TextureId> {
         .write()
         .paint_callback_resources
         .insert(pipeline);
-
-    texture_ids
 }
 
 pub fn render(
@@ -127,11 +108,21 @@ pub fn render(
 }
 
 pub fn send_positions() {
-    let wgpu_render_state = wgpu_render_state();
-    let mut renderer = wgpu_render_state.renderer.write();
-    let pipeline: &mut Pipeline = renderer
+    wgpu_render_state()
+        .renderer
+        .write()
         .paint_callback_resources
-        .get_mut()
-        .expect("Could not find Pipeline");
-    pipeline.send_positions();
+        .get_mut::<Pipeline>()
+        .expect("Could not find Pipeline")
+        .send_positions()
+}
+
+pub fn texture_ids() -> Vec<TextureId> {
+    wgpu_render_state()
+        .renderer
+        .read()
+        .paint_callback_resources
+        .get::<Pipeline>()
+        .expect("Could not find Pipeline")
+        .texture_ids()
 }

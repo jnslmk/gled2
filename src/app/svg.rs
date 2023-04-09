@@ -1,5 +1,5 @@
 use crate::{
-    shader_widget::init,
+    shader_widget::{send_positions, texture_ids},
     svg::{MeasurementPoints, Universes},
     texture_to_artnet::Positions,
 };
@@ -28,7 +28,8 @@ impl Svg {
             .write()
             .expect("MEASUREMENT_POINTS is poisoned") = measurement_points;
         let image = svg.render().context("Could not render svg")?;
-        let texture_ids = init();
+        send_positions();
+        let texture_ids = texture_ids();
 
         Ok(Self {
             universes,
