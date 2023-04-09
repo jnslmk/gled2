@@ -12,7 +12,7 @@ use usvg::{NodeExt, NodeKind, PathData, PathSegment};
 
 pub type Universes = BTreeSet<u16>;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct MeasurementPoints {
     /// points for each render group
     points: HashMap<String, Vec<MeasurementPoint>>,

@@ -15,8 +15,11 @@ mod svg;
 mod texture_to_artnet;
 
 use app::App;
-use eframe::egui_wgpu::WgpuConfiguration;
+use eframe::egui_wgpu::{RenderState, WgpuConfiguration};
 use egui::Vec2;
+use once_cell::sync::OnceCell;
+
+pub static WGPU_RENDER_STATE: OnceCell<RenderState> = OnceCell::new();
 
 fn main() {
     logging::init();
@@ -38,7 +41,24 @@ fn main() {
     eframe::run_native(
         "gled",
         options,
-        Box::new(|cc| Box::new(App::new(cc).expect("Could not create new App"))),
+        Box::new(|cc| {
+            WGPU_RENDER_STATE
+                .set(
+                    cc.wgpu_render_state
+                        .clone()
+                        .expect("wgpu render state is not available"),
+                )
+                .map_err(|_err| ())
+                .expect("Could not set wgpu render state");
+            Box::new(App::new().expect("Could not create new App"))
+        }),
     )
     .expect("Could not run native");
+}
+
+pub fn wgpu_render_state() -> RenderState {
+    WGPU_RENDER_STATE
+        .get()
+        .expect("Could not find wgpu render state")
+        .clone()
 }

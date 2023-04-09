@@ -20,12 +20,12 @@ pub const ARTNET_BUFFER_SIZE: u64 = UNIVERSES * 512;
 pub struct TextureToArtnet {
     pipeline: ComputePipeline,
     bind_group: BindGroup,
-    _positions: Buffer,
+    positions: Buffer,
     artnet: Buffer,
 }
 
 impl TextureToArtnet {
-    pub fn init(device: &Device, texture: &Texture, positions: &Positions) -> Self {
+    pub fn init(device: &Device, texture: &Texture) -> Self {
         let module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("TextureToArtnet shader"),
             source: ShaderSource::Wgsl(include_str!("./shaders/texture_to_artnet.wgsl").into()),
@@ -86,7 +86,7 @@ impl TextureToArtnet {
             entry_point: "main",
         });
 
-        let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
+        let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = Positions::default().into();
         let positions = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("TextureToArtnet positions buffer"),
             contents: &positions_contents,
@@ -136,9 +136,14 @@ impl TextureToArtnet {
         Self {
             pipeline,
             bind_group,
-            _positions: positions,
+            positions,
             artnet,
         }
+    }
+
+    pub fn set_positions(&self, queue: &Queue, positions: Positions) {
+        let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
+        queue.write_buffer(&self.positions, 0, &positions_contents);
     }
 
     pub fn run(&self, encoder: &mut CommandEncoder) {

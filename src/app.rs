@@ -13,6 +13,8 @@ use egui::Image;
 use egui_extras::RetainedImage;
 use timing::Timing;
 
+pub use svg::positions;
+
 pub struct App {
     disable_artnet_extraction: bool,
     artnet_ip: String,
@@ -31,7 +33,6 @@ impl eframe::App for App {
 
         if let Some(svg) = self.svg.as_ref() {
             shader_widget::render(
-                frame,
                 svg.universes(),
                 &mut self.artnet_sender,
                 self.timing.beat_progression(),
@@ -42,7 +43,7 @@ impl eframe::App for App {
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.menu(ctx, frame, ui);
+            self.menu(ctx, ui);
 
             egui::ScrollArea::both()
                 .auto_shrink([false; 2])
@@ -67,16 +68,10 @@ impl eframe::App for App {
 }
 
 impl App {
-    pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
+    pub fn new() -> Option<Self> {
         let artnet_sender = artnet_sender::start().expect("Could not start artnet sender");
         let logo_image = logo_image();
-        let svg = Svg::load(
-            cc.wgpu_render_state
-                .as_ref()
-                .expect("Could not find wgpu render state"),
-            std::path::Path::new("susifest2022.svg"),
-        )
-        .ok();
+        let svg = Svg::load(std::path::Path::new("susifest2022.svg")).ok();
 
         Some(Self {
             disable_artnet_extraction: false,

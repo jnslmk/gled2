@@ -35,8 +35,8 @@ pub enum Lamp {
 }
 
 /// must be aligned by 16 bytes
-impl From<&Positions> for [u8; POSITIONS_BUFFER_SIZE as usize] {
-    fn from(positions: &Positions) -> Self {
+impl From<Positions> for [u8; POSITIONS_BUFFER_SIZE as usize] {
+    fn from(positions: Positions) -> Self {
         let mut data = [0u8; POSITIONS_BUFFER_SIZE as usize];
         let mut i = 0;
 

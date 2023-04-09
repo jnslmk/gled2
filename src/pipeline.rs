@@ -67,7 +67,7 @@ impl Pipeline {
             ..Default::default()
         };
 
-        for (_index, scene) in self.scenes.iter() {
+        for (_index, scene) in self.scenes.iter_mut() {
             scene.prepare(queue, state);
         }
 
@@ -107,6 +107,13 @@ impl Pipeline {
             Some(self.extract.poll_artnet_buffer(device, universes))
         } else {
             None
+        }
+    }
+
+    /// Must be called after we have new [`MeasurementPoints`].
+    pub fn send_positions(&mut self) {
+        for (_index, scene) in self.scenes.iter_mut() {
+            scene.send_positions();
         }
     }
 }

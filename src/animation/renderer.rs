@@ -121,7 +121,7 @@ impl AnimationRenderer {
         }
     }
 
-    pub fn prepare(&self, queue: &Queue, state: &State, palette: &ColorPalette) {
+    pub fn set_buffers(&self, queue: &Queue, state: &State, palette: &ColorPalette) {
         let mut contents = [0; State::size() + ColorPalette::size()];
         state.write_data(&mut contents[..State::size()]);
         palette.write_data(&mut contents[State::size()..State::size() + ColorPalette::size()]);

@@ -6,13 +6,15 @@ use crate::{
     artnet_sender::ArtnetSender,
     pipeline::Pipeline,
     scene::Scene,
-    svg::{MeasurementPoints, Universes},
+    svg::Universes,
+    wgpu_render_state,
 };
-use eframe::egui_wgpu::{wgpu, RenderState};
+use eframe::egui_wgpu::wgpu;
 use egui::TextureId;
 
-pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) -> Vec<TextureId> {
-    let device = &render_state.device;
+pub fn init() -> Vec<TextureId> {
+    let wgpu_render_state = wgpu_render_state();
+    let device = &wgpu_render_state.device;
     let mut texture_ids = vec![];
     let mut pipeline = Pipeline::init(device);
 
@@ -28,13 +30,12 @@ pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) 
             ..Default::default()
         },
     );
-    texture_ids.push(render_state.renderer.write().register_native_texture(
+    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
         device,
         gradient.renderer().view(),
         wgpu::FilterMode::Nearest,
     ));
-    let positions = measurement_points.positions("allFull").unwrap_or_default();
-    let scene = Scene::new(device, gradient.into(), palette, &positions);
+    let scene = Scene::new(device, gradient.into(), palette, "allFull".to_owned());
     pipeline.add_scene(scene);
 
     let palette = ColorPalette {
@@ -49,15 +50,12 @@ pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) 
             },
         },
     );
-    texture_ids.push(render_state.renderer.write().register_native_texture(
+    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
         device,
         gradient.renderer().view(),
         wgpu::FilterMode::Nearest,
     ));
-    let positions = measurement_points
-        .positions("innerEdge")
-        .unwrap_or_default();
-    let scene = Scene::new(device, gradient.into(), palette, &positions);
+    let scene = Scene::new(device, gradient.into(), palette, "innerEdge".to_owned());
     pipeline.add_scene(scene);
 
     let palette = ColorPalette {
@@ -73,18 +71,15 @@ pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) 
             ..Default::default()
         },
     );
-    texture_ids.push(render_state.renderer.write().register_native_texture(
+    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
         device,
         stripes.renderer().view(),
         wgpu::FilterMode::Nearest,
     ));
-    let positions = measurement_points
-        .positions("innerFull")
-        .unwrap_or_default();
-    let scene = Scene::new(device, stripes.into(), palette, &positions);
+    let scene = Scene::new(device, stripes.into(), palette, "innerFull".to_owned());
     pipeline.add_scene(scene);
 
-    render_state
+    wgpu_render_state
         .renderer
         .write()
         .paint_callback_resources
@@ -94,7 +89,6 @@ pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) 
 }
 
 pub fn render(
-    frame: &eframe::Frame,
     universes: &Universes,
     artnet_sender: &mut ArtnetSender,
     beat_progression: f32,
@@ -102,10 +96,7 @@ pub fn render(
     framerate: f32,
     disable_artnet_extraction: bool,
 ) {
-    let wgpu_render_state = frame
-        .wgpu_render_state()
-        .expect("Could not get wgpu render state");
-
+    let wgpu_render_state = wgpu_render_state();
     let device = &wgpu_render_state.device;
     let queue = &wgpu_render_state.queue;
 
@@ -133,4 +124,14 @@ pub fn render(
             .send(command)
             .expect("Artnet sender closed its channel");
     }
+}
+
+pub fn send_positions() {
+    let wgpu_render_state = wgpu_render_state();
+    let mut renderer = wgpu_render_state.renderer.write();
+    let pipeline: &mut Pipeline = renderer
+        .paint_callback_resources
+        .get_mut()
+        .expect("Could not find Pipeline");
+    pipeline.send_positions();
 }
