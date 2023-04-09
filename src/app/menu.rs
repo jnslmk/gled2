@@ -1,11 +1,12 @@
 use crate::artnet_sender;
 
 use super::{svg::Svg, App};
+use eframe::Frame;
 use egui::{Button, Color32, Context, ImageButton, RichText, Ui, Vec2};
 use log::{error, info};
 
 impl App {
-    pub fn menu(&mut self, ctx: &Context, ui: &mut Ui) {
+    pub fn menu(&mut self, ctx: &Context, frame: &Frame, ui: &mut Ui) {
         ui.style_mut().spacing.interact_size.y = 50.0;
         egui::menu::bar(ui, |ui| {
             let menu_button_size = Vec2::new(100.0, ui.available_height());
@@ -41,7 +42,12 @@ impl App {
                         .add_filter("svg", &["svg"])
                         .pick_file()
                     {
-                        self.svg = match Svg::load(&self.render_state, &path) {
+                        self.svg = match Svg::load(
+                            frame
+                                .wgpu_render_state()
+                                .expect("Could not find wgpu render state"),
+                            &path,
+                        ) {
                             Ok(svg) => {
                                 info!("Loaded svg file \"{}\"", path.display());
                                 Some(svg)

@@ -9,7 +9,6 @@ use crate::{
     logo::logo_image,
     shader_widget::{self},
 };
-use eframe::egui_wgpu::RenderState;
 use egui::Image;
 use egui_extras::RetainedImage;
 use timing::Timing;
@@ -17,7 +16,6 @@ use timing::Timing;
 pub struct App {
     blackout: bool,
     artnet_ip: String,
-    render_state: RenderState,
     svg: Option<Svg>,
     artnet_sender: ArtnetSender,
     logo_image: RetainedImage,
@@ -44,7 +42,7 @@ impl eframe::App for App {
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.menu(ctx, ui);
+            self.menu(ctx, frame, ui);
 
             egui::ScrollArea::both()
                 .auto_shrink([false; 2])
@@ -73,13 +71,17 @@ impl App {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
         let artnet_sender = artnet_sender::start().expect("Could not start artnet sender");
         let logo_image = logo_image();
-        let render_state = cc.wgpu_render_state.clone()?;
-        let svg = Svg::load(&render_state, std::path::Path::new("susifest2022.svg")).ok();
+        let svg = Svg::load(
+            cc.wgpu_render_state
+                .as_ref()
+                .expect("Could not find wgpu render state"),
+            std::path::Path::new("susifest2022.svg"),
+        )
+        .ok();
 
         Some(Self {
             blackout: false,
             artnet_ip: "127.0.0.1".to_string(),
-            render_state,
             svg,
             artnet_sender,
             logo_image,
