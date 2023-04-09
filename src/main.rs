@@ -4,8 +4,8 @@ mod animation;
 mod app;
 mod artnet_sender;
 mod extract_artnet;
-mod icon;
 mod logging;
+mod logo;
 mod mix_artnet;
 mod opts;
 mod pipeline;
@@ -16,22 +16,23 @@ mod texture_to_artnet;
 
 use app::App;
 use eframe::egui_wgpu::WgpuConfiguration;
+use egui::Vec2;
 
 fn main() {
     logging::init();
-    artnet_sender::set_artnet_host("127.0.0.1".to_string());
 
     let options = eframe::NativeOptions {
         drag_and_drop_support: true,
         initial_window_size: Some([1280.0, 1024.0].into()),
         renderer: eframe::Renderer::Wgpu,
-        icon_data: Some(icon::icon()),
+        icon_data: Some(logo::icon()),
         vsync: false,
         wgpu_options: WgpuConfiguration {
             present_mode: eframe::wgpu::PresentMode::Immediate,
             ..Default::default()
         },
         follow_system_theme: false,
+        min_window_size: Some(Vec2::new(800.0, 600.0)),
         ..Default::default()
     };
     eframe::run_native(

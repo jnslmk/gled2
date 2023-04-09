@@ -8,18 +8,11 @@ use crate::{
     scene::Scene,
     svg::{MeasurementPoints, Universes},
 };
-use eframe::egui_wgpu::wgpu;
+use eframe::egui_wgpu::{wgpu, RenderState};
 use egui::TextureId;
 
-pub fn init_shader<'a>(
-    cc: &'a eframe::CreationContext<'a>,
-    measurement_points: &MeasurementPoints,
-) -> Vec<TextureId> {
-    let wgpu_render_state = cc
-        .wgpu_render_state
-        .as_ref()
-        .expect("Could not get wgpu render state");
-    let device = &wgpu_render_state.device;
+pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) -> Vec<TextureId> {
+    let device = &render_state.device;
     let mut texture_ids = vec![];
     let mut pipeline = Pipeline::init(device);
 
@@ -36,14 +29,12 @@ pub fn init_shader<'a>(
             ..Default::default()
         },
     );
-    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
+    texture_ids.push(render_state.renderer.write().register_native_texture(
         device,
         gradient.renderer().view(),
         wgpu::FilterMode::Nearest,
     ));
-    let positions = measurement_points
-        .positions("allFull")
-        .expect("Could not find group allFull");
+    let positions = measurement_points.positions("allFull").unwrap_or_default();
     let scene = Scene::new(device, gradient.into(), &positions);
     pipeline.add_scene(scene);
 
@@ -56,19 +47,18 @@ pub fn init_shader<'a>(
         GradientConfig {
             gradient: GradientType::LinearHorizontal,
             common: CommonConfig {
-                opacity: 0.2,
                 ..Default::default()
             },
         },
     );
-    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
+    texture_ids.push(render_state.renderer.write().register_native_texture(
         device,
         gradient.renderer().view(),
         wgpu::FilterMode::Nearest,
     ));
     let positions = measurement_points
         .positions("innerEdge")
-        .expect("Could not find group innerEdge");
+        .unwrap_or_default();
     let scene = Scene::new(device, gradient.into(), &positions);
     pipeline.add_scene(scene);
 
@@ -81,24 +71,23 @@ pub fn init_shader<'a>(
         StripesConfig {
             count: 2,
             common: CommonConfig {
-                opacity: 0.1,
                 direction: Direction::Backward,
             },
             ..Default::default()
         },
     );
-    texture_ids.push(wgpu_render_state.renderer.write().register_native_texture(
+    texture_ids.push(render_state.renderer.write().register_native_texture(
         device,
         stripes.renderer().view(),
         wgpu::FilterMode::Nearest,
     ));
     let positions = measurement_points
         .positions("innerFull")
-        .expect("Could not find group innerFull");
+        .unwrap_or_default();
     let scene = Scene::new(device, stripes.into(), &positions);
     pipeline.add_scene(scene);
 
-    wgpu_render_state
+    render_state
         .renderer
         .write()
         .paint_callback_resources
@@ -114,6 +103,7 @@ pub fn render(
     beat_progression: f32,
     beats_per_minute: f32,
     framerate: f32,
+    blackout: bool,
 ) {
     let wgpu_render_state = frame
         .wgpu_render_state()
@@ -137,6 +127,7 @@ pub fn render(
             beat_progression,
             beats_per_minute,
             framerate,
+            blackout,
         )
         .expect("No scene registered");
 

@@ -1,9 +1,15 @@
-use crate::{extract_artnet::ExtractArtnet, mix_artnet::MixArtnet, scene::Scene, svg::Universes};
+use std::time::Instant;
+
+use crate::{
+    animation::State, extract_artnet::ExtractArtnet, mix_artnet::MixArtnet, scene::Scene,
+    svg::Universes,
+};
 use artnet_protocol::ArtCommand;
 use slab::Slab;
 use wgpu::{CommandEncoderDescriptor, Device, Queue};
 
 pub struct Pipeline {
+    start: Instant,
     scenes: Slab<Scene>,
     mixs: Vec<MixArtnet>,
     extract: ExtractArtnet,
@@ -14,6 +20,7 @@ impl Pipeline {
         let extract = ExtractArtnet::init(device);
 
         Self {
+            start: Instant::now(),
             scenes: Slab::new(),
             mixs: Vec::new(),
             extract,
@@ -28,6 +35,7 @@ impl Pipeline {
         self.scenes.remove(index);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn run_and_poll(
         &mut self,
         device: &Device,
@@ -36,9 +44,20 @@ impl Pipeline {
         beat_progression: f32,
         beats_per_minute: f32,
         framerate: f32,
+        blackout: bool,
     ) -> Option<Vec<ArtCommand>> {
+        let time = self.start.elapsed().as_secs_f32();
+        let opacity = if blackout { 0.0 } else { 1.0 };
+        let state = State {
+            time,
+            beat_progression,
+            beats_per_minute,
+            framerate,
+            opacity,
+        };
+
         for (_index, scene) in self.scenes.iter() {
-            scene.prepare(queue, beat_progression, beats_per_minute, framerate);
+            scene.prepare(queue, &state);
         }
 
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {

@@ -1,51 +1,68 @@
+mod about;
+mod menu;
+mod svg;
 mod timing;
 
+use self::svg::Svg;
 use crate::{
     artnet_sender::{self, ArtnetSender},
-    shader_widget::{self, init_shader},
-    svg::{MeasurementPoints, Svg, Universes},
+    logo::logo_image,
+    shader_widget::{self},
 };
-use egui::{Image, TextureId};
+use eframe::egui_wgpu::RenderState;
+use egui::Image;
 use egui_extras::RetainedImage;
 use timing::Timing;
 
 pub struct App {
-    texture_ids: Vec<TextureId>,
-    measurement_points: MeasurementPoints,
-    universes: Universes,
+    blackout: bool,
+    artnet_ip: String,
+    render_state: RenderState,
+    svg: Option<Svg>,
     artnet_sender: ArtnetSender,
-    svg_image: RetainedImage,
+    logo_image: RetainedImage,
     timing: Timing,
+    about_window_open: bool,
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         if let Some(fps) = self.timing.framerate() {
-            frame.set_window_title(&format!("Gled ({fps:.1} fps)"))
+            frame.set_window_title(&format!("gled ({fps:.1} fps)"))
         }
 
-        shader_widget::render(
-            frame,
-            &self.universes,
-            &mut self.artnet_sender,
-            self.timing.beat_progression(),
-            self.timing.beats_per_minute,
-            self.timing.framerate().unwrap_or_default(),
-        );
+        if let Some(svg) = self.svg.as_ref() {
+            shader_widget::render(
+                frame,
+                svg.universes(),
+                &mut self.artnet_sender,
+                self.timing.beat_progression(),
+                self.timing.beats_per_minute,
+                self.timing.framerate().unwrap_or_default(),
+                self.blackout,
+            );
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            self.menu(ctx, ui);
+
             egui::ScrollArea::both()
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        for texture_id in self.texture_ids.iter() {
-                            let size = egui::Vec2::splat(500.0);
-                            let res = ui.image(*texture_id, size);
-                            ui.put(res.rect, Image::new(self.svg_image.texture_id(ctx), size));
+                        if let Some(svg) = self.svg.as_ref() {
+                            for texture_id in svg.texture_ids().iter() {
+                                let size = egui::Vec2::splat(500.0);
+                                let res = ui.image(*texture_id, size);
+                                ui.put(res.rect, Image::new(svg.image().texture_id(ctx), size));
+                            }
                         }
                     });
                 });
         });
+
+        self.about_window(ctx);
+
         ctx.request_repaint();
 
         self.timing.calculate();
@@ -55,22 +72,19 @@ impl eframe::App for App {
 impl App {
     pub fn new<'a>(cc: &'a eframe::CreationContext<'a>) -> Option<Self> {
         let artnet_sender = artnet_sender::start().expect("Could not start artnet sender");
-
-        let svg =
-            Svg::read(std::path::Path::new("susifest2022.svg")).expect("Could not read svg file");
-        let measurement_points = MeasurementPoints::from(&svg);
-        let universes = measurement_points.universes();
-        let svg_image = svg.render().expect("Could not render svg");
-
-        let texture_ids = init_shader(cc, &measurement_points);
+        let logo_image = logo_image();
+        let render_state = cc.wgpu_render_state.clone()?;
+        let svg = Svg::load(&render_state, std::path::Path::new("susifest2022.svg")).ok();
 
         Some(Self {
-            texture_ids,
-            measurement_points,
-            universes,
+            blackout: false,
+            artnet_ip: "127.0.0.1".to_string(),
+            render_state,
+            svg,
             artnet_sender,
-            svg_image,
+            logo_image,
             timing: Default::default(),
+            about_window_open: false,
         })
     }
 }

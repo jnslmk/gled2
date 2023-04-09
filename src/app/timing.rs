@@ -1,3 +1,4 @@
+use egui::{Button, Color32, Ui, Vec2};
 use floating_duration::TimeAsFloat;
 use log::debug;
 use std::time::{Duration, Instant};
@@ -10,6 +11,8 @@ pub struct Timing {
     start: Instant,
     last_frame: Instant,
     frame_count: usize,
+    tap: Instant,
+    freeze: bool,
 }
 
 impl Default for Timing {
@@ -22,6 +25,8 @@ impl Default for Timing {
             start: Instant::now(),
             last_frame: Instant::now(),
             frame_count: 0,
+            tap: Instant::now(),
+            freeze: false,
         }
     }
 }
@@ -43,11 +48,15 @@ impl Timing {
             log::debug!("Waiting for {:?} ms", wait);
             std::thread::sleep(wait);
         }
-        let duration_milliseconds = 60_000.0 / self.beats_per_minute;
-        self.beat_progression = (self.beat_progression
-            + now.duration_since(self.last_frame).as_fractional_millis() as f32
-                / duration_milliseconds)
-            % 1.;
+
+        if !self.freeze {
+            let duration_milliseconds = 60_000.0 / self.beats_per_minute;
+            self.beat_progression = (self.beat_progression
+                + now.duration_since(self.last_frame).as_fractional_millis() as f32
+                    / duration_milliseconds)
+                % 1.;
+        }
+
         self.last_frame = now;
         self.frame_count += 1;
         let dur = now.duration_since(self.start).as_fractional_secs() as f32;
@@ -57,6 +66,38 @@ impl Timing {
             debug!("fps: {fps}");
             self.start = now;
             self.frame_count = 0;
+        }
+    }
+
+    pub fn beat_button(&mut self, ui: &mut Ui, menu_button_size: Vec2) {
+        let beat_progression = self.beat_progression();
+        let mut alpha = None;
+        if beat_progression < 0.10 {
+            alpha = Some(30.0);
+        } else if beat_progression < 0.20 {
+            alpha = Some(20.0 - ((beat_progression - 0.1) * 200.0));
+        } else if beat_progression > 0.9 {
+            alpha = Some((beat_progression - 0.9) * 200.0);
+        }
+        let mut tap = Button::new("TAP");
+        if let Some(alpha) = alpha {
+            tap = tap.fill(Color32::from_white_alpha(alpha as u8));
+        }
+        if ui.add_sized(menu_button_size, tap).clicked() {
+            let now = Instant::now();
+            self.beats_per_minute =
+                60000.0 / now.duration_since(self.tap).as_fractional_millis() as f32;
+            self.tap = now;
+        }
+    }
+
+    pub fn freeze_button(&mut self, ui: &mut Ui, menu_button_size: Vec2) {
+        let mut freeze = Button::new("Freeze");
+        if self.freeze {
+            freeze = freeze.fill(Color32::DARK_RED);
+        }
+        if ui.add_sized(menu_button_size, freeze).clicked() {
+            self.freeze = !self.freeze;
         }
     }
 }

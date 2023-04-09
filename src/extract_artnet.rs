@@ -30,6 +30,10 @@ impl ExtractArtnet {
     pub fn poll_artnet_buffer(&self, device: &Device, universes: &Universes) -> Vec<ArtCommand> {
         let active_len = universes.len().min(UNIVERSES as usize) * 512;
 
+        if active_len == 0 {
+            return vec![];
+        }
+
         let buffer_slice = self.output_cpu.slice(..active_len as u64);
         let (tx, rx) = std::sync::mpsc::channel();
         buffer_slice.map_async(MapMode::Read, move |v| {

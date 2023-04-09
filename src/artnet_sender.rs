@@ -3,17 +3,17 @@ use anyhow::{Context, Result};
 use artnet_protocol::ArtCommand;
 use log::{error, info};
 use std::{
-    net::{ToSocketAddrs, UdpSocket},
+    net::{IpAddr, Ipv4Addr, ToSocketAddrs, UdpSocket},
     sync::{mpsc::Sender, RwLock},
     thread,
 };
 
 pub type ArtnetSender = Sender<ArtCommand>;
 
-static ARTNET_HOST: RwLock<String> = RwLock::new(String::new());
+static ARTNET_IP: RwLock<IpAddr> = RwLock::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
 
-pub fn set_artnet_host(artnet_host: String) {
-    *ARTNET_HOST.write().expect("ARTNET_HOST is poisoned") = artnet_host;
+pub fn set_artnet_ip(artnet_ip: IpAddr) {
+    *ARTNET_IP.write().expect("ARTNET_HOST is poisoned") = artnet_ip;
 }
 
 /// Start artnet thread
@@ -45,10 +45,10 @@ pub fn start() -> Result<ArtnetSender> {
                         continue;
                     };
 
-                let Some(addr) = ARTNET_HOST
+                let Some(addr) = ARTNET_IP
                     .read()
                     .ok()
-                    .and_then(|host| (host.as_str(), 6454).to_socket_addrs().ok())
+                    .and_then(|ip| (*ip, 6454).to_socket_addrs().ok())
                     .and_then(|mut addr| addr.next()) else {
                         continue;
                     };

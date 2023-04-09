@@ -1,5 +1,5 @@
 use crate::{
-    animation::Animation,
+    animation::{Animation, State},
     texture_to_artnet::{Positions, TextureToArtnet},
 };
 use wgpu::{Buffer, CommandEncoder, Device, Queue};
@@ -20,16 +20,8 @@ impl Scene {
         }
     }
 
-    pub fn prepare(
-        &self,
-        queue: &Queue,
-        beat_progression: f32,
-        beats_per_minute: f32,
-        framerate: f32,
-    ) {
-        self.animation
-            .renderer()
-            .prepare(queue, beat_progression, beats_per_minute, framerate);
+    pub fn prepare(&self, queue: &Queue, state: &State) {
+        self.animation.renderer().prepare(queue, state);
     }
 
     pub fn render(&self, encoder: &mut CommandEncoder) {

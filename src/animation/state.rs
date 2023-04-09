@@ -7,6 +7,8 @@ pub struct State {
     pub beats_per_minute: f32,
     /// Current displayed framerate
     pub framerate: f32,
+    /// Opacity of animation: 0.0 -> 1.0
+    pub opacity: f32,
 }
 
 impl State {
@@ -16,17 +18,18 @@ impl State {
         data[4..8].copy_from_slice(&self.beat_progression.to_le_bytes());
         data[8..12].copy_from_slice(&self.beats_per_minute.to_le_bytes());
         data[12..16].copy_from_slice(&self.framerate.to_le_bytes());
+        data[16..20].copy_from_slice(&self.opacity.to_le_bytes());
     }
 
     /// must be a multiple of 16
     pub const fn size() -> usize {
-        16
+        32
     }
 }
 
-impl From<State> for [u8; 16] {
-    fn from(state: State) -> Self {
-        let mut data = [0; 16];
+impl From<&State> for [u8; 32] {
+    fn from(state: &State) -> Self {
+        let mut data = [0; 32];
         state.write_data(&mut data);
         data
     }

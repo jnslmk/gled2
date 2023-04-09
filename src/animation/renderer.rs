@@ -1,6 +1,6 @@
 //! Renders to a texture
 use super::{config::Config, state::State, ColorPalette};
-use std::{num::NonZeroU64, time::Instant};
+use std::num::NonZeroU64;
 use wgpu::{util::DeviceExt, *};
 
 pub const TEXTURE_SIZE: u32 = 2048u32;
@@ -8,7 +8,6 @@ pub const TEXTURE_SIZE: u32 = 2048u32;
 static COMMON_SHADER_CODE: &str = include_str!("../shaders/common.wgsl");
 
 pub struct AnimationRenderer {
-    start: Instant,
     pipeline: RenderPipeline,
     bind_group: BindGroup,
     uniform: Buffer,
@@ -119,10 +118,7 @@ impl AnimationRenderer {
             }],
         });
 
-        let start = Instant::now();
-
         Self {
-            start,
             pipeline,
             bind_group,
             uniform,
@@ -131,22 +127,8 @@ impl AnimationRenderer {
         }
     }
 
-    pub fn prepare(
-        &self,
-        queue: &Queue,
-        beat_progression: f32,
-        beats_per_minute: f32,
-        framerate: f32,
-    ) {
-        let time = self.start.elapsed().as_secs_f32();
-        let state_data: [u8; 16] = State {
-            time,
-            beat_progression,
-            beats_per_minute,
-            framerate,
-        }
-        .into();
-
+    pub fn prepare(&self, queue: &Queue, state: &State) {
+        let state_data: [u8; State::size()] = state.into();
         queue.write_buffer(&self.uniform, 0, &state_data);
     }
 
