@@ -52,7 +52,6 @@ impl eframe::App for App {
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         crate::get_pipeline!(pipeline);
-
                         for scene in pipeline.scenes() {
                             let size = egui::Vec2::splat(500.0);
                             let res = ui.image(scene.texture_id(), size);

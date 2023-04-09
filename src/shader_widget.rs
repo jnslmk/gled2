@@ -81,7 +81,6 @@ pub fn render(
     let queue = &wgpu_render_state.queue;
 
     crate::get_pipeline!(pipeline);
-
     let commands = pipeline
         .run_and_poll(
             device,
