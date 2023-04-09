@@ -60,7 +60,6 @@ impl eframe::App for App {
         });
 
         self.about_window(ctx);
-
         ctx.request_repaint();
 
         self.timing.calculate();
