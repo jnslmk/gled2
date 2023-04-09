@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Default)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ColorPalette {
     /// Max: 16 colors
     pub colors: Vec<Color>,
@@ -26,7 +28,7 @@ impl ColorPalette {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Color {
     pub red: f32,
     pub green: f32,

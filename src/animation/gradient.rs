@@ -1,11 +1,15 @@
+use serde::{Deserialize, Serialize};
+
 use super::{
     config::{CommonConfig, Config},
     renderer::AnimationRenderer,
     Animation,
 };
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct Gradient {
+    #[serde(skip)]
     renderer: Option<AnimationRenderer>,
     config: GradientConfig,
 }
@@ -18,7 +22,7 @@ impl Gradient {
         }
     }
 
-    pub fn renderer(&mut self) -> &AnimationRenderer {
+    pub fn init_gpu(&mut self) {
         self.renderer.get_or_insert_with(|| {
             let mut animation_shader = include_str!("../shaders/gradient_common.wgsl").to_owned();
             animation_shader.push_str(match self.config.gradient {
@@ -32,7 +36,11 @@ impl Gradient {
             });
 
             AnimationRenderer::new(&animation_shader, &(&self.config).into())
-        })
+        });
+    }
+
+    pub fn renderer(&mut self) -> &AnimationRenderer {
+        self.renderer.as_ref().expect("Gpu was not yet initialized")
     }
 
     pub fn config(&self) -> &GradientConfig {
@@ -47,13 +55,14 @@ impl From<Gradient> for Animation {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(default)]
 pub struct GradientConfig {
     pub common: CommonConfig,
     pub gradient: GradientType,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum GradientType {
     Radial { center: (f32, f32) },
     LinearHorizontal,

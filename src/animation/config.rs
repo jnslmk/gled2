@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 pub struct Config {
     pub center: (f32, f32),
     pub thickness: f32,
@@ -35,14 +37,15 @@ impl Config {
     }
 }
 
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy, Debug)]
 pub enum Direction {
     #[default]
     Forward,
     Backward,
 }
 
-#[derive(Clone, Copy, Default, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
+#[serde(default)]
 pub struct CommonConfig {
     pub direction: Direction,
 }

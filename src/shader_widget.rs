@@ -11,7 +11,7 @@ use crate::{
 };
 
 pub fn init_shaders() {
-    let mut pipeline = Pipeline::init();
+    let mut pipeline = Pipeline::default();
 
     let palette = ColorPalette {
         colors: vec![Color::new(1., 0., 0.5), Color::new(0., 0., 0.)],

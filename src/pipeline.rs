@@ -5,30 +5,40 @@ use crate::{
     svg::Universes,
 };
 use artnet_protocol::ArtCommand;
+use serde::{Deserialize, Serialize};
 use slab::Slab;
 use wgpu::{CommandEncoderDescriptor, Device, Queue};
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Pipeline {
-    start: Instant,
+    #[serde(skip)]
+    start: Option<Instant>,
     scenes: Slab<Scene>,
+    #[serde(skip)]
     mixs: Vec<MixArtnet>,
     extract: ExtractArtnet,
 }
 
 impl Pipeline {
-    pub fn init() -> Self {
-        let extract = ExtractArtnet::default();
-
-        Self {
-            start: Instant::now(),
-            scenes: Slab::new(),
-            mixs: Vec::new(),
-            extract,
+    pub fn init_gpu(&mut self) {
+        for (_index, scene) in self.scenes.iter_mut() {
+            scene.init_gpu();
         }
+
+        self.extract.init_gpu();
+    }
+
+    pub fn start(&mut self) -> Instant {
+        *self.start.get_or_insert_with(Instant::now)
     }
 
     pub fn add_scene(&mut self, scene: Scene) -> usize {
-        self.scenes.insert(scene)
+        let index = self.scenes.insert(scene);
+
+        self.init_gpu();
+
+        index
     }
 
     pub fn remove_scene(&mut self, index: usize) {
@@ -58,7 +68,7 @@ impl Pipeline {
         framerate: f32,
         disable_artnet_extraction: bool,
     ) -> Option<Vec<ArtCommand>> {
-        let time = self.start.elapsed().as_secs_f32();
+        let time = self.start().elapsed().as_secs_f32();
         let state = State {
             time,
             beat_progression,
@@ -80,7 +90,7 @@ impl Pipeline {
 
         let mut main = None;
         let mut mix_index = 0;
-        for (_index, scene) in self.scenes.iter() {
+        for (_index, scene) in self.scenes.iter_mut() {
             match main {
                 Some(main) => {
                     if self.mixs.len() <= mix_index {
@@ -110,11 +120,8 @@ impl Pipeline {
         }
     }
 
-    pub fn scenes(&mut self) -> Vec<&mut Scene> {
-        self.scenes
-            .iter_mut()
-            .map(|(_index, scene)| scene)
-            .collect()
+    pub fn scenes(&mut self) -> Vec<(usize, &mut Scene)> {
+        self.scenes.iter_mut().collect()
     }
 }
 

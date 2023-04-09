@@ -19,6 +19,7 @@ pub const LAMPS: u64 = UNIVERSES * LAMPS_PER_UNIVERSE;
 pub const POSITIONS_BUFFER_SIZE: u64 = LAMPS * 8;
 pub const ARTNET_BUFFER_SIZE: u64 = UNIVERSES * 512;
 
+#[derive(Debug)]
 pub struct TextureToArtnet {
     pipeline: ComputePipeline,
     bind_group: BindGroup,

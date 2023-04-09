@@ -9,6 +9,7 @@ pub const TEXTURE_SIZE: u32 = 2048u32;
 
 static COMMON_SHADER_CODE: &str = include_str!("../shaders/common.wgsl");
 
+#[derive(Debug)]
 pub struct AnimationRenderer {
     pipeline: RenderPipeline,
     bind_group: BindGroup,

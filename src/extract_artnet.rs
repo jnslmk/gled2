@@ -6,15 +6,18 @@ use crate::{
     wgpu_render_state,
 };
 use artnet_protocol::{ArtCommand, Output, PaddedData, PortAddress};
+use serde::{Deserialize, Serialize};
 use wgpu::*;
 
-#[derive(Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct ExtractArtnet {
+    #[serde(skip)]
     pub output_cpu: Option<Buffer>,
 }
 
 impl ExtractArtnet {
-    pub fn output_cpu(&mut self) -> &Buffer {
+    pub fn init_gpu(&mut self) {
         self.output_cpu.get_or_insert_with(|| {
             wgpu_render_state().device.create_buffer(&BufferDescriptor {
                 size: ARTNET_BUFFER_SIZE,
@@ -22,7 +25,13 @@ impl ExtractArtnet {
                 label: Some("TextureToArtnet output buffer cpu"),
                 mapped_at_creation: false,
             })
-        })
+        });
+    }
+
+    pub fn output_cpu(&mut self) -> &Buffer {
+        self.output_cpu
+            .as_ref()
+            .expect("Gpu was not yet initialized")
     }
 
     pub fn run(&mut self, encoder: &mut CommandEncoder, artnet: &Buffer) {

@@ -1,11 +1,14 @@
+use serde::{Deserialize, Serialize};
+
 use super::{
     config::{CommonConfig, Config},
     renderer::AnimationRenderer,
     Animation,
 };
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Stripes {
+    #[serde(skip)]
     renderer: Option<AnimationRenderer>,
     config: StripesConfig,
 }
@@ -18,11 +21,15 @@ impl Stripes {
         }
     }
 
-    pub fn renderer(&mut self) -> &AnimationRenderer {
+    pub fn init_gpu(&mut self) {
         self.renderer.get_or_insert_with(|| {
             let fragment_shader = include_str!("../shaders/stripes.wgsl");
             AnimationRenderer::new(fragment_shader, &(&self.config).into())
-        })
+        });
+    }
+
+    pub fn renderer(&mut self) -> &AnimationRenderer {
+        self.renderer.as_ref().expect("Gpu was not initialized")
     }
 
     pub fn config(&self) -> &StripesConfig {
@@ -37,6 +44,8 @@ impl From<Stripes> for Animation {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(default)]
 pub struct StripesConfig {
     pub common: CommonConfig,
     pub thickness: f32,

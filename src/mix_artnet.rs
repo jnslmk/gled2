@@ -3,6 +3,7 @@ use crate::texture_to_artnet::{ARTNET_BUFFER_SIZE, LAMPS};
 use std::num::NonZeroU64;
 use wgpu::*;
 
+#[derive(Debug)]
 pub struct MixArtnet {
     pipeline: ComputePipeline,
     bind_group_layout: BindGroupLayout,

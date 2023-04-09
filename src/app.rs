@@ -6,6 +6,7 @@ mod timing;
 use self::svg::Svg;
 use crate::{
     artnet_sender::{self, ArtnetSender},
+    get_pipeline,
     logo::logo_image,
     pipeline::Pipeline,
     shader_widget::{self, init_shaders},
@@ -52,7 +53,7 @@ impl eframe::App for App {
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         crate::get_pipeline!(pipeline);
-                        for scene in pipeline.scenes() {
+                        for (_index, scene) in pipeline.scenes() {
                             let size = egui::Vec2::splat(500.0);
                             let res = ui.image(scene.texture_id(), size);
                             if let Some(svg) = self.svg.as_ref() {
@@ -76,6 +77,9 @@ impl App {
         let logo_image = logo_image();
         init_shaders();
         let svg = Svg::load(std::path::Path::new("susifest2022.svg")).ok();
+
+        get_pipeline!(pipeline);
+        pipeline.init_gpu();
 
         Some(Self {
             disable_artnet_extraction: false,

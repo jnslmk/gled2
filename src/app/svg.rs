@@ -29,7 +29,7 @@ impl Svg {
         let image = svg.render().context("Could not render svg")?;
 
         crate::get_pipeline!(pipeline);
-        for scene in pipeline.scenes() {
+        for (_index, scene) in pipeline.scenes() {
             scene.send_positions();
         }
 
