@@ -1,10 +1,10 @@
 use crate::{
-    shader_widget::{send_positions, texture_ids},
+    pipeline::Pipeline,
     svg::{MeasurementPoints, Universes},
     texture_to_artnet::Positions,
+    wgpu_render_state,
 };
 use anyhow::{Context, Result};
-use egui::TextureId;
 use egui_extras::RetainedImage;
 use once_cell::sync::Lazy;
 use std::path::Path;
@@ -16,7 +16,6 @@ static MEASUREMENT_POINTS: Lazy<Arc<RwLock<MeasurementPoints>>> =
 pub struct Svg {
     universes: Universes,
     image: RetainedImage,
-    texture_ids: Vec<TextureId>,
 }
 
 impl Svg {
@@ -28,14 +27,13 @@ impl Svg {
             .write()
             .expect("MEASUREMENT_POINTS is poisoned") = measurement_points;
         let image = svg.render().context("Could not render svg")?;
-        send_positions();
-        let texture_ids = texture_ids();
 
-        Ok(Self {
-            universes,
-            image,
-            texture_ids,
-        })
+        crate::get_pipeline!(pipeline);
+        for scene in pipeline.scenes() {
+            scene.send_positions();
+        }
+
+        Ok(Self { universes, image })
     }
 
     pub fn universes(&self) -> &Universes {
@@ -44,10 +42,6 @@ impl Svg {
 
     pub fn image(&self) -> &RetainedImage {
         &self.image
-    }
-
-    pub fn texture_ids(&self) -> &[TextureId] {
-        self.texture_ids.as_ref()
     }
 }
 

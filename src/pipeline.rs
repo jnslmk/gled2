@@ -5,7 +5,6 @@ use crate::{
     svg::Universes,
 };
 use artnet_protocol::ArtCommand;
-use egui::TextureId;
 use slab::Slab;
 use wgpu::{CommandEncoderDescriptor, Device, Queue};
 
@@ -111,17 +110,22 @@ impl Pipeline {
         }
     }
 
-    /// Must be called after we have new [`MeasurementPoints`].
-    pub fn send_positions(&mut self) {
-        for (_index, scene) in self.scenes.iter_mut() {
-            scene.send_positions();
-        }
-    }
-
-    pub fn texture_ids(&self) -> Vec<TextureId> {
+    pub fn scenes(&mut self) -> Vec<&mut Scene> {
         self.scenes
-            .iter()
-            .map(|(_index, scene)| scene.texture_id())
+            .iter_mut()
+            .map(|(_index, scene)| scene)
             .collect()
     }
+}
+
+#[macro_export]
+macro_rules! get_pipeline {
+    ($field: ident) => {
+        let wgpu_render_state = wgpu_render_state();
+        let mut renderer = wgpu_render_state.renderer.write();
+        let $field = renderer
+            .paint_callback_resources
+            .get_mut::<Pipeline>()
+            .expect("Could not find Pipeline");
+    };
 }

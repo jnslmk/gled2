@@ -7,7 +7,9 @@ use self::svg::Svg;
 use crate::{
     artnet_sender::{self, ArtnetSender},
     logo::logo_image,
+    pipeline::Pipeline,
     shader_widget::{self, init_shaders},
+    wgpu_render_state,
 };
 use egui::Image;
 use egui_extras::RetainedImage;
@@ -49,10 +51,12 @@ impl eframe::App for App {
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        if let Some(svg) = self.svg.as_ref() {
-                            for texture_id in svg.texture_ids().iter() {
-                                let size = egui::Vec2::splat(500.0);
-                                let res = ui.image(*texture_id, size);
+                        crate::get_pipeline!(pipeline);
+
+                        for scene in pipeline.scenes() {
+                            let size = egui::Vec2::splat(500.0);
+                            let res = ui.image(scene.texture_id(), size);
+                            if let Some(svg) = self.svg.as_ref() {
                                 ui.put(res.rect, Image::new(svg.image().texture_id(ctx), size));
                             }
                         }

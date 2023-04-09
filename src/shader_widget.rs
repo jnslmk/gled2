@@ -9,7 +9,6 @@ use crate::{
     svg::Universes,
     wgpu_render_state,
 };
-use egui::TextureId;
 
 pub fn init_shaders() {
     let wgpu_render_state = wgpu_render_state();
@@ -81,12 +80,7 @@ pub fn render(
     let device = &wgpu_render_state.device;
     let queue = &wgpu_render_state.queue;
 
-    let mut renderer = wgpu_render_state.renderer.write();
-
-    let pipeline: &mut Pipeline = renderer
-        .paint_callback_resources
-        .get_mut()
-        .expect("Could not find Pipeline");
+    crate::get_pipeline!(pipeline);
 
     let commands = pipeline
         .run_and_poll(
@@ -105,24 +99,4 @@ pub fn render(
             .send(command)
             .expect("Artnet sender closed its channel");
     }
-}
-
-pub fn send_positions() {
-    wgpu_render_state()
-        .renderer
-        .write()
-        .paint_callback_resources
-        .get_mut::<Pipeline>()
-        .expect("Could not find Pipeline")
-        .send_positions()
-}
-
-pub fn texture_ids() -> Vec<TextureId> {
-    wgpu_render_state()
-        .renderer
-        .read()
-        .paint_callback_resources
-        .get::<Pipeline>()
-        .expect("Could not find Pipeline")
-        .texture_ids()
 }
