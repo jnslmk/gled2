@@ -20,7 +20,7 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn new(animation: Animation, palette: ColorPalette, group: String) -> Self {
+    pub fn new(mut animation: Animation, palette: ColorPalette, group: String) -> Self {
         let texture_to_artnet = TextureToArtnet::init(animation.renderer().texture());
         let texture_id = wgpu_render_state()
             .renderer
@@ -57,7 +57,7 @@ impl Scene {
             .set_buffers(queue, &state, &self.palette);
     }
 
-    pub fn render(&self, encoder: &mut CommandEncoder, disable_artnet_extraction: bool) {
+    pub fn render(&mut self, encoder: &mut CommandEncoder, disable_artnet_extraction: bool) {
         self.animation.renderer().render(encoder);
         if self.artnet_extraction && !disable_artnet_extraction {
             self.texture_to_artnet.run(encoder);

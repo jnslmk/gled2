@@ -4,30 +4,35 @@ use super::{
     Animation,
 };
 
+#[derive(Default)]
 pub struct Gradient {
-    renderer: AnimationRenderer,
+    renderer: Option<AnimationRenderer>,
     config: GradientConfig,
 }
 
 impl Gradient {
     pub fn new(config: GradientConfig) -> Self {
-        let mut animation_shader = include_str!("../shaders/gradient_common.wgsl").to_owned();
-        animation_shader.push_str(match config.gradient {
-            GradientType::Radial { .. } => include_str!("../shaders/gradient_radial.wgsl"),
-            GradientType::LinearHorizontal => {
-                include_str!("../shaders/gradient_linear_horizontal.wgsl")
-            }
-            GradientType::LinearVertical => {
-                include_str!("../shaders/gradient_linear_vertical.wgsl")
-            }
-        });
-        let renderer = AnimationRenderer::new(&animation_shader, &(&config).into());
-
-        Self { renderer, config }
+        Self {
+            config,
+            ..Default::default()
+        }
     }
 
-    pub fn renderer(&self) -> &AnimationRenderer {
-        &self.renderer
+    pub fn renderer(&mut self) -> &AnimationRenderer {
+        self.renderer.get_or_insert_with(|| {
+            let mut animation_shader = include_str!("../shaders/gradient_common.wgsl").to_owned();
+            animation_shader.push_str(match self.config.gradient {
+                GradientType::Radial { .. } => include_str!("../shaders/gradient_radial.wgsl"),
+                GradientType::LinearHorizontal => {
+                    include_str!("../shaders/gradient_linear_horizontal.wgsl")
+                }
+                GradientType::LinearVertical => {
+                    include_str!("../shaders/gradient_linear_vertical.wgsl")
+                }
+            });
+
+            AnimationRenderer::new(&animation_shader, &(&self.config).into())
+        })
     }
 
     pub fn config(&self) -> &GradientConfig {

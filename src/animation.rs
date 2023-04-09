@@ -23,7 +23,7 @@ pub enum Animation {
 
 // TODO: Macro
 impl Animation {
-    pub fn renderer(&self) -> &AnimationRenderer {
+    pub fn renderer(&mut self) -> &AnimationRenderer {
         match self {
             Self::Gradient(gradient) => gradient.renderer(),
             Self::Stripes(stripes) => stripes.renderer(),

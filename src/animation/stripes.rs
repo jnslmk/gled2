@@ -4,21 +4,25 @@ use super::{
     Animation,
 };
 
+#[derive(Default)]
 pub struct Stripes {
-    renderer: AnimationRenderer,
+    renderer: Option<AnimationRenderer>,
     config: StripesConfig,
 }
 
 impl Stripes {
     pub fn new(config: StripesConfig) -> Self {
-        let fragment_shader = include_str!("../shaders/stripes.wgsl");
-        let renderer = AnimationRenderer::new(fragment_shader, &(&config).into());
-
-        Self { renderer, config }
+        Self {
+            config,
+            ..Default::default()
+        }
     }
 
-    pub fn renderer(&self) -> &AnimationRenderer {
-        &self.renderer
+    pub fn renderer(&mut self) -> &AnimationRenderer {
+        self.renderer.get_or_insert_with(|| {
+            let fragment_shader = include_str!("../shaders/stripes.wgsl");
+            AnimationRenderer::new(fragment_shader, &(&self.config).into())
+        })
     }
 
     pub fn config(&self) -> &StripesConfig {

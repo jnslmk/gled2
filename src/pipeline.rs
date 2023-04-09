@@ -17,7 +17,7 @@ pub struct Pipeline {
 
 impl Pipeline {
     pub fn init() -> Self {
-        let extract = ExtractArtnet::init();
+        let extract = ExtractArtnet::default();
 
         Self {
             start: Instant::now(),
@@ -74,7 +74,7 @@ impl Pipeline {
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations"),
         });
-        for (_index, scene) in self.scenes.iter() {
+        for (_index, scene) in self.scenes.iter_mut() {
             scene.render(&mut encoder, disable_artnet_extraction);
         }
 

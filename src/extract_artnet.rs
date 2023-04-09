@@ -8,34 +8,36 @@ use crate::{
 use artnet_protocol::{ArtCommand, Output, PaddedData, PortAddress};
 use wgpu::*;
 
+#[derive(Default)]
 pub struct ExtractArtnet {
-    pub output_cpu: Buffer,
+    pub output_cpu: Option<Buffer>,
 }
 
 impl ExtractArtnet {
-    pub fn init() -> Self {
-        let output_cpu = wgpu_render_state().device.create_buffer(&BufferDescriptor {
-            size: ARTNET_BUFFER_SIZE,
-            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
-            label: Some("TextureToArtnet output buffer cpu"),
-            mapped_at_creation: false,
-        });
-
-        Self { output_cpu }
+    pub fn output_cpu(&mut self) -> &Buffer {
+        self.output_cpu.get_or_insert_with(|| {
+            wgpu_render_state().device.create_buffer(&BufferDescriptor {
+                size: ARTNET_BUFFER_SIZE,
+                usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+                label: Some("TextureToArtnet output buffer cpu"),
+                mapped_at_creation: false,
+            })
+        })
     }
 
-    pub fn run(&self, encoder: &mut CommandEncoder, artnet: &Buffer) {
-        encoder.copy_buffer_to_buffer(artnet, 0, &self.output_cpu, 0, ARTNET_BUFFER_SIZE);
+    pub fn run(&mut self, encoder: &mut CommandEncoder, artnet: &Buffer) {
+        encoder.copy_buffer_to_buffer(artnet, 0, self.output_cpu(), 0, ARTNET_BUFFER_SIZE);
     }
 
-    pub fn poll_artnet_buffer(&self, universes: &Universes) -> Vec<ArtCommand> {
+    pub fn poll_artnet_buffer(&mut self, universes: &Universes) -> Vec<ArtCommand> {
         let active_len = universes.len().min(UNIVERSES as usize) * 512;
 
         if active_len == 0 {
             return vec![];
         }
 
-        let buffer_slice = self.output_cpu.slice(..active_len as u64);
+        let output_cpu = self.output_cpu();
+        let buffer_slice = output_cpu.slice(..active_len as u64);
         let (tx, rx) = std::sync::mpsc::channel();
         buffer_slice.map_async(MapMode::Read, move |v| {
             tx.send(v).expect("Could not send on oneshot sender")
@@ -57,7 +59,7 @@ impl ExtractArtnet {
                 artnet_data.extend(chunk);
             }
         }
-        self.output_cpu.unmap();
+        output_cpu.unmap();
 
         universes
             .iter()
