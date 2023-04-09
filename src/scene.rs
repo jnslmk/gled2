@@ -5,7 +5,7 @@ use crate::{
     wgpu_render_state,
 };
 use egui::TextureId;
-use wgpu::{Buffer, CommandEncoder, Device, Queue};
+use wgpu::{Buffer, CommandEncoder, Queue};
 
 pub struct Scene {
     texture_to_artnet: TextureToArtnet,
@@ -20,18 +20,13 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn new(
-        device: &Device,
-        animation: Animation,
-        palette: ColorPalette,
-        group: String,
-    ) -> Self {
-        let texture_to_artnet = TextureToArtnet::init(device, animation.renderer().texture());
+    pub fn new(animation: Animation, palette: ColorPalette, group: String) -> Self {
+        let texture_to_artnet = TextureToArtnet::init(animation.renderer().texture());
         let texture_id = wgpu_render_state()
             .renderer
             .write()
             .register_native_texture(
-                device,
+                &wgpu_render_state().device,
                 animation.renderer().view(),
                 wgpu::FilterMode::Nearest,
             );

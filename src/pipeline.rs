@@ -16,8 +16,8 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
-    pub fn init(device: &Device) -> Self {
-        let extract = ExtractArtnet::init(device);
+    pub fn init() -> Self {
+        let extract = ExtractArtnet::init();
 
         Self {
             start: Instant::now(),
@@ -104,7 +104,7 @@ impl Pipeline {
         queue.submit(std::iter::once(encoder.finish()));
 
         if main.is_some() {
-            Some(self.extract.poll_artnet_buffer(device, universes))
+            Some(self.extract.poll_artnet_buffer(universes))
         } else {
             None
         }

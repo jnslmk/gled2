@@ -3,7 +3,6 @@ use super::{
     renderer::AnimationRenderer,
     Animation,
 };
-use wgpu::Device;
 
 pub struct Stripes {
     renderer: AnimationRenderer,
@@ -11,9 +10,9 @@ pub struct Stripes {
 }
 
 impl Stripes {
-    pub fn new(device: &Device, config: StripesConfig) -> Self {
+    pub fn new(config: StripesConfig) -> Self {
         let fragment_shader = include_str!("../shaders/stripes.wgsl");
-        let renderer = AnimationRenderer::new(device, fragment_shader, &(&config).into());
+        let renderer = AnimationRenderer::new(fragment_shader, &(&config).into());
 
         Self { renderer, config }
     }

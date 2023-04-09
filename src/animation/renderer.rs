@@ -1,4 +1,6 @@
 //! Renders to a texture
+use crate::wgpu_render_state;
+
 use super::{config::Config, state::State, ColorPalette};
 use std::num::NonZeroU64;
 use wgpu::{util::DeviceExt, *};
@@ -16,7 +18,7 @@ pub struct AnimationRenderer {
 }
 
 impl AnimationRenderer {
-    pub fn new(device: &Device, animation_shader: &str, config: &Config) -> Self {
+    pub fn new(animation_shader: &str, config: &Config) -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE,
@@ -33,6 +35,9 @@ impl AnimationRenderer {
             label: None,
             view_formats: &[TextureFormat::Bgra8Unorm],
         };
+
+        let wgpu_render_state = wgpu_render_state();
+        let device = wgpu_render_state.device;
 
         let texture = device.create_texture(&texture_desc);
         let view = texture.create_view(&TextureViewDescriptor::default());

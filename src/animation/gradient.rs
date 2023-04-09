@@ -3,7 +3,6 @@ use super::{
     renderer::AnimationRenderer,
     Animation,
 };
-use wgpu::Device;
 
 pub struct Gradient {
     renderer: AnimationRenderer,
@@ -11,7 +10,7 @@ pub struct Gradient {
 }
 
 impl Gradient {
-    pub fn new(device: &Device, config: GradientConfig) -> Self {
+    pub fn new(config: GradientConfig) -> Self {
         let mut animation_shader = include_str!("../shaders/gradient_common.wgsl").to_owned();
         animation_shader.push_str(match config.gradient {
             GradientType::Radial { .. } => include_str!("../shaders/gradient_radial.wgsl"),
@@ -22,7 +21,7 @@ impl Gradient {
                 include_str!("../shaders/gradient_linear_vertical.wgsl")
             }
         });
-        let renderer = AnimationRenderer::new(device, &animation_shader, &(&config).into());
+        let renderer = AnimationRenderer::new(&animation_shader, &(&config).into());
 
         Self { renderer, config }
     }

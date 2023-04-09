@@ -11,57 +11,46 @@ use crate::{
 };
 
 pub fn init_shaders() {
-    let wgpu_render_state = wgpu_render_state();
-    let device = &wgpu_render_state.device;
-    let mut pipeline = Pipeline::init(device);
+    let mut pipeline = Pipeline::init();
 
     let palette = ColorPalette {
         colors: vec![Color::new(1., 0., 0.5), Color::new(0., 0., 0.)],
     };
-    let gradient = Gradient::new(
-        device,
-        GradientConfig {
-            gradient: GradientType::Radial {
-                center: (0.25, 0.5),
-            },
-            ..Default::default()
+    let gradient = Gradient::new(GradientConfig {
+        gradient: GradientType::Radial {
+            center: (0.25, 0.5),
         },
-    );
-    let scene = Scene::new(device, gradient.into(), palette, "allFull".to_owned());
+        ..Default::default()
+    });
+    let scene = Scene::new(gradient.into(), palette, "allFull".to_owned());
     pipeline.add_scene(scene);
 
     let palette = ColorPalette {
         colors: vec![Color::new(0., 0., 1.), Color::new(0., 0., 0.)],
     };
-    let gradient = Gradient::new(
-        device,
-        GradientConfig {
-            gradient: GradientType::LinearHorizontal,
-            common: CommonConfig {
-                ..Default::default()
-            },
+    let gradient = Gradient::new(GradientConfig {
+        gradient: GradientType::LinearHorizontal,
+        common: CommonConfig {
+            ..Default::default()
         },
-    );
-    let scene = Scene::new(device, gradient.into(), palette, "innerEdge".to_owned());
+    });
+    let scene = Scene::new(gradient.into(), palette, "innerEdge".to_owned());
     pipeline.add_scene(scene);
 
     let palette = ColorPalette {
         colors: vec![Color::new(1., 1., 0.)],
     };
-    let stripes = Stripes::new(
-        device,
-        StripesConfig {
-            count: 2,
-            common: CommonConfig {
-                direction: Direction::Backward,
-            },
-            ..Default::default()
+    let stripes = Stripes::new(StripesConfig {
+        count: 2,
+        common: CommonConfig {
+            direction: Direction::Backward,
         },
-    );
-    let scene = Scene::new(device, stripes.into(), palette, "innerFull".to_owned());
+        ..Default::default()
+    });
+    let scene = Scene::new(stripes.into(), palette, "innerFull".to_owned());
     pipeline.add_scene(scene);
 
-    wgpu_render_state
+    wgpu_render_state()
         .renderer
         .write()
         .paint_callback_resources

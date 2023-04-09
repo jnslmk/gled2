@@ -10,6 +10,8 @@ use wgpu::{
 
 pub use positions::{Lamp, Positions, Universe};
 
+use crate::wgpu_render_state;
+
 /// One Artnet Universe can hold 512 Positions. As we only support RGB (for now), we can have up to 170 lamps in a universe.
 pub const UNIVERSES: u64 = 32;
 pub const LAMPS_PER_UNIVERSE: u64 = 170;
@@ -25,7 +27,10 @@ pub struct TextureToArtnet {
 }
 
 impl TextureToArtnet {
-    pub fn init(device: &Device, texture: &Texture) -> Self {
+    pub fn init(texture: &Texture) -> Self {
+        let wgpu_render_state = wgpu_render_state();
+        let device = wgpu_render_state.device;
+
         let module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("TextureToArtnet shader"),
             source: ShaderSource::Wgsl(include_str!("./shaders/texture_to_artnet.wgsl").into()),

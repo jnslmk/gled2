@@ -3,6 +3,7 @@
 use crate::{
     svg::Universes,
     texture_to_artnet::{ARTNET_BUFFER_SIZE, UNIVERSES},
+    wgpu_render_state,
 };
 use artnet_protocol::{ArtCommand, Output, PaddedData, PortAddress};
 use wgpu::*;
@@ -12,8 +13,8 @@ pub struct ExtractArtnet {
 }
 
 impl ExtractArtnet {
-    pub fn init(device: &Device) -> Self {
-        let output_cpu = device.create_buffer(&BufferDescriptor {
+    pub fn init() -> Self {
+        let output_cpu = wgpu_render_state().device.create_buffer(&BufferDescriptor {
             size: ARTNET_BUFFER_SIZE,
             usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
             label: Some("TextureToArtnet output buffer cpu"),
@@ -27,7 +28,7 @@ impl ExtractArtnet {
         encoder.copy_buffer_to_buffer(artnet, 0, &self.output_cpu, 0, ARTNET_BUFFER_SIZE);
     }
 
-    pub fn poll_artnet_buffer(&self, device: &Device, universes: &Universes) -> Vec<ArtCommand> {
+    pub fn poll_artnet_buffer(&self, universes: &Universes) -> Vec<ArtCommand> {
         let active_len = universes.len().min(UNIVERSES as usize) * 512;
 
         if active_len == 0 {
@@ -43,7 +44,7 @@ impl ExtractArtnet {
         // Poll the device in a blocking manner so that our future resolves.
         // In an actual application, `device.poll(...)` should
         // be called in an event loop or on another thread.
-        device.poll(Maintain::Wait);
+        wgpu_render_state().device.poll(Maintain::Wait);
 
         rx.recv()
             .expect("Could not receive on gpu rx")
