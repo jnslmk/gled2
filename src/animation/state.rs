@@ -1,3 +1,4 @@
+#[derive(Debug, Default, Clone, Copy)]
 pub struct State {
     /// seconds since the animation started
     pub time: f32,
@@ -24,13 +25,5 @@ impl State {
     /// must be a multiple of 16
     pub const fn size() -> usize {
         32
-    }
-}
-
-impl From<&State> for [u8; 32] {
-    fn from(state: &State) -> Self {
-        let mut data = [0; 32];
-        state.write_data(&mut data);
-        data
     }
 }

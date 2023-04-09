@@ -139,14 +139,14 @@ impl App {
                 blackout_text.append("B", 0.0, underlined);
                 blackout_text.append("lackout", 0.0, TextFormat::default());
                 let mut blackout = Button::new(blackout_text);
-                if self.blackout {
+                if self.disable_artnet_extraction {
                     blackout = blackout.fill(Color32::DARK_RED);
                 }
                 if ui.add_sized(menu_button_size, blackout).clicked()
                     || !ctx.wants_keyboard_input()
                         && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::B))
                 {
-                    self.blackout = !self.blackout;
+                    self.disable_artnet_extraction = !self.disable_artnet_extraction;
                 }
 
                 self.timing.freeze_button(ctx, ui, menu_button_size);

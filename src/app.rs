@@ -14,7 +14,7 @@ use egui_extras::RetainedImage;
 use timing::Timing;
 
 pub struct App {
-    blackout: bool,
+    disable_artnet_extraction: bool,
     artnet_ip: String,
     svg: Option<Svg>,
     artnet_sender: ArtnetSender,
@@ -37,7 +37,7 @@ impl eframe::App for App {
                 self.timing.beat_progression(),
                 self.timing.beats_per_minute,
                 self.timing.framerate().unwrap_or_default(),
-                self.blackout,
+                self.disable_artnet_extraction,
             );
         }
 
@@ -79,7 +79,7 @@ impl App {
         .ok();
 
         Some(Self {
-            blackout: false,
+            disable_artnet_extraction: false,
             artnet_ip: "127.0.0.1".to_string(),
             svg,
             artnet_sender,

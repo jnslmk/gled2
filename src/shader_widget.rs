@@ -21,7 +21,6 @@ pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) 
     };
     let gradient = Gradient::new(
         device,
-        &palette,
         GradientConfig {
             gradient: GradientType::Radial {
                 center: (0.25, 0.5),
@@ -35,7 +34,7 @@ pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) 
         wgpu::FilterMode::Nearest,
     ));
     let positions = measurement_points.positions("allFull").unwrap_or_default();
-    let scene = Scene::new(device, gradient.into(), &positions);
+    let scene = Scene::new(device, gradient.into(), palette, &positions);
     pipeline.add_scene(scene);
 
     let palette = ColorPalette {
@@ -43,7 +42,6 @@ pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) 
     };
     let gradient = Gradient::new(
         device,
-        &palette,
         GradientConfig {
             gradient: GradientType::LinearHorizontal,
             common: CommonConfig {
@@ -59,7 +57,7 @@ pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) 
     let positions = measurement_points
         .positions("innerEdge")
         .unwrap_or_default();
-    let scene = Scene::new(device, gradient.into(), &positions);
+    let scene = Scene::new(device, gradient.into(), palette, &positions);
     pipeline.add_scene(scene);
 
     let palette = ColorPalette {
@@ -67,7 +65,6 @@ pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) 
     };
     let stripes = Stripes::new(
         device,
-        &palette,
         StripesConfig {
             count: 2,
             common: CommonConfig {
@@ -84,7 +81,7 @@ pub fn init(render_state: &RenderState, measurement_points: &MeasurementPoints) 
     let positions = measurement_points
         .positions("innerFull")
         .unwrap_or_default();
-    let scene = Scene::new(device, stripes.into(), &positions);
+    let scene = Scene::new(device, stripes.into(), palette, &positions);
     pipeline.add_scene(scene);
 
     render_state
@@ -103,7 +100,7 @@ pub fn render(
     beat_progression: f32,
     beats_per_minute: f32,
     framerate: f32,
-    blackout: bool,
+    disable_artnet_extraction: bool,
 ) {
     let wgpu_render_state = frame
         .wgpu_render_state()
@@ -127,7 +124,7 @@ pub fn render(
             beat_progression,
             beats_per_minute,
             framerate,
-            blackout,
+            disable_artnet_extraction,
         )
         .expect("No scene registered");
 

@@ -16,12 +16,7 @@ pub struct AnimationRenderer {
 }
 
 impl AnimationRenderer {
-    pub fn new(
-        device: &Device,
-        animation_shader: &str,
-        palette: &ColorPalette,
-        config: &Config,
-    ) -> Self {
+    pub fn new(device: &Device, animation_shader: &str, config: &Config) -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE,
@@ -97,7 +92,6 @@ impl AnimationRenderer {
         });
 
         let mut contents = [0u8; State::size() + ColorPalette::size() + Config::size()];
-        palette.write_data(&mut contents[State::size()..State::size() + ColorPalette::size()]);
         config.write_data(
             &mut contents[State::size() + ColorPalette::size()
                 ..State::size() + ColorPalette::size() + Config::size()],
@@ -127,9 +121,12 @@ impl AnimationRenderer {
         }
     }
 
-    pub fn prepare(&self, queue: &Queue, state: &State) {
-        let state_data: [u8; State::size()] = state.into();
-        queue.write_buffer(&self.uniform, 0, &state_data);
+    pub fn prepare(&self, queue: &Queue, state: &State, palette: &ColorPalette) {
+        let mut contents = [0; State::size() + ColorPalette::size()];
+        state.write_data(&mut contents[..State::size()]);
+        palette.write_data(&mut contents[State::size()..State::size() + ColorPalette::size()]);
+
+        queue.write_buffer(&self.uniform, 0, &contents);
     }
 
     pub fn render(&self, encoder: &mut CommandEncoder) {

@@ -35,6 +35,18 @@ impl Pipeline {
         self.scenes.remove(index);
     }
 
+    pub fn set_opacity(&mut self, index: usize, opacity: f32) {
+        if let Some(scene) = self.scenes.get_mut(index) {
+            scene.opacity = opacity;
+        }
+    }
+
+    pub fn set_artnet_extraction(&mut self, index: usize, artnet_extraction: bool) {
+        if let Some(scene) = self.scenes.get_mut(index) {
+            scene.artnet_extraction = artnet_extraction;
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn run_and_poll(
         &mut self,
@@ -44,27 +56,26 @@ impl Pipeline {
         beat_progression: f32,
         beats_per_minute: f32,
         framerate: f32,
-        blackout: bool,
+        disable_artnet_extraction: bool,
     ) -> Option<Vec<ArtCommand>> {
         let time = self.start.elapsed().as_secs_f32();
-        let opacity = if blackout { 0.0 } else { 1.0 };
         let state = State {
             time,
             beat_progression,
             beats_per_minute,
             framerate,
-            opacity,
+            ..Default::default()
         };
 
         for (_index, scene) in self.scenes.iter() {
-            scene.prepare(queue, &state);
+            scene.prepare(queue, state);
         }
 
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations"),
         });
         for (_index, scene) in self.scenes.iter() {
-            scene.render(&mut encoder);
+            scene.render(&mut encoder, disable_artnet_extraction);
         }
 
         let mut main = None;
