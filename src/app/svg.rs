@@ -1,8 +1,6 @@
 use crate::{
-    pipeline::Pipeline,
     svg::{MeasurementPoints, Universes},
     texture_to_artnet::Positions,
-    wgpu_render_state,
 };
 use anyhow::{Context, Result};
 use egui_extras::RetainedImage;

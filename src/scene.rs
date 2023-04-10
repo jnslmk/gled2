@@ -18,9 +18,7 @@ pub struct Scene {
     pub opacity: f32,
     pub artnet_extraction: bool,
     group: String,
-    /// (Re)end positions to the gpu
-    #[serde(skip_serializing, default = "default_send_positions")]
-    send_positions: bool,
+    sent_group: Option<String>,
     #[serde(skip)]
     texture_id: Option<TextureId>,
 }
@@ -37,7 +35,6 @@ impl Scene {
             opacity: 1.0,
             artnet_extraction: true,
             group,
-            send_positions: true,
             ..Default::default()
         }
     }
@@ -64,10 +61,10 @@ impl Scene {
 
         state.opacity = self.opacity;
 
-        if self.send_positions {
+        if self.sent_group.as_ref() != Some(&self.group) {
             let positions = positions(&self.group);
             self.texture_to_artnet().set_positions(queue, positions);
-            self.send_positions = false;
+            self.sent_group = Some(self.group.clone());
         }
 
         self.animation
@@ -90,13 +87,13 @@ impl Scene {
         &self.group
     }
 
-    pub fn set_group(&mut self, group: String) {
-        self.group = group;
-        self.send_positions();
+    pub fn group_mut(&mut self) -> &mut String {
+        &mut self.group
     }
 
+    /// Resend positions to gpu
     pub fn send_positions(&mut self) {
-        self.send_positions = true;
+        self.sent_group = None;
     }
 
     pub fn texture_to_artnet(&mut self) -> &TextureToArtnet {

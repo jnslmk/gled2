@@ -41,10 +41,27 @@ impl ColorPalette {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct Color {
     rgb: [f32; 3],
 }
+
+impl PartialOrd for Color {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for Color {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.rgb_u32().cmp(&other.rgb_u32())
+    }
+}
+impl PartialEq for Color {
+    fn eq(&self, other: &Self) -> bool {
+        self.rgb_u32() == other.rgb_u32()
+    }
+}
+impl Eq for Color {}
 
 impl Color {
     pub fn new(red: f32, green: f32, blue: f32) -> Self {
@@ -59,5 +76,13 @@ impl Color {
 
     pub fn rgb_mut(&mut self) -> &mut [f32; 3] {
         &mut self.rgb
+    }
+
+    fn rgb_u32(&self) -> [u32; 3] {
+        [
+            (self.rgb[0] * 10000.0).round() as u32,
+            (self.rgb[1] * 10000.0).round() as u32,
+            (self.rgb[2] * 10000.0).round() as u32,
+        ]
     }
 }

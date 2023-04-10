@@ -210,11 +210,11 @@ impl Pipeline {
 #[macro_export]
 macro_rules! get_pipeline {
     ($field: ident) => {
-        let wgpu_render_state = wgpu_render_state();
+        let wgpu_render_state = $crate::wgpu_render_state();
         let mut renderer = wgpu_render_state.renderer.write();
         let $field = renderer
             .paint_callback_resources
-            .get_mut::<Pipeline>()
+            .get_mut::<$crate::pipeline::Pipeline>()
             .expect("Could not find Pipeline");
     };
 }
