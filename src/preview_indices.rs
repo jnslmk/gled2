@@ -174,6 +174,7 @@ impl PreviewIndices {
         }
         self.send_positions = false;
 
+        info!("Calculating indices on the gpu");
         {
             let mut clear_compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("Preview indices clear compute pass"),
