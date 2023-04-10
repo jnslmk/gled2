@@ -1,6 +1,9 @@
 mod about;
 mod config;
+mod deck_selection;
 mod menu;
+mod preview;
+mod scenes;
 mod svg;
 mod timing;
 
@@ -11,21 +14,24 @@ use crate::{
     logo::logo_image,
     shader_widget::init_shaders,
 };
-use egui::Image;
 use egui_extras::RetainedImage;
 use timing::Timing;
 
 pub use svg::{positions, preview_positions};
 
+#[derive(Default)]
 pub struct App {
     disable_artnet_extraction: bool,
     artnet_ip: String,
     svg: Option<Svg>,
-    artnet_sender: ArtnetSender,
-    logo_image: RetainedImage,
+    artnet_sender: Option<ArtnetSender>,
+    logo_image: Option<RetainedImage>,
     timing: Timing,
     about_window_open: bool,
     selected_scene: usize,
+    show_preview: bool,
+    show_preview_svg: bool,
+    show_scenes_svg: bool,
 }
 
 impl eframe::App for App {
@@ -34,11 +40,11 @@ impl eframe::App for App {
             frame.set_window_title(&format!("gled ({fps:.1} fps)"))
         }
 
-        if let Some(svg) = self.svg.as_ref() {
+        if let (Some(svg), Some(artnet_sender)) = (self.svg.as_ref(), self.artnet_sender.as_mut()) {
             get_pipeline!(pipeline);
             pipeline.render(
                 svg.universes(),
-                &mut self.artnet_sender,
+                artnet_sender,
                 self.timing.beat_progression(),
                 self.timing.beats_per_minute,
                 self.timing.framerate().unwrap_or_default(),
@@ -46,42 +52,12 @@ impl eframe::App for App {
             );
         }
 
+        self.about_window(ctx);
         self.menu(ctx);
         self.config(ctx);
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                crate::get_pipeline!(pipeline);
-
-                let size = egui::Vec2::splat(2048.0);
-                let res = self
-                    .svg
-                    .as_ref()
-                    .map(|svg| ui.image(svg.image().texture_id(ctx), size));
-                let preview = Image::new(pipeline.preview_texture_id(), size);
-                match res {
-                    Some(res) => {
-                        ui.put(res.rect, preview);
-                    }
-                    None => {
-                        ui.add(preview);
-                    }
-                }
-
-                //egui::Grid::new("scenes").show(ui, |ui| {
-                for (_index, scene) in pipeline.scenes() {
-                    let res = ui.image(scene.texture_id(), size);
-                    if let Some(svg) = self.svg.as_ref() {
-                        ui.put(res.rect, Image::new(svg.image().texture_id(ctx), size));
-                    }
-
-                    //  ui.end_row();
-                }
-                // });
-            });
-        });
-
-        self.about_window(ctx);
+        self.preview(ctx);
+        self.deck_selection(ctx);
+        self.scenes(ctx);
         ctx.request_repaint();
 
         self.timing.calculate();
@@ -101,14 +77,14 @@ impl App {
         pipeline.init_gpu();
 
         Some(Self {
-            disable_artnet_extraction: false,
             artnet_ip: "127.0.0.1".to_string(),
+            artnet_sender: Some(artnet_sender),
+            logo_image: Some(logo_image),
             svg,
-            artnet_sender,
-            logo_image,
-            timing: Default::default(),
-            about_window_open: false,
-            selected_scene: 0,
+            show_preview: true,
+            show_preview_svg: true,
+            show_scenes_svg: true,
+            ..Default::default()
         })
     }
 }

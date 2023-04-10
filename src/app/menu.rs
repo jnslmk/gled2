@@ -12,17 +12,19 @@ impl App {
             ui.style_mut().spacing.interact_size.y = 50.0;
             egui::menu::bar(ui, |ui| {
                 let menu_button_size = Vec2::new(100.0, ui.available_height());
-                if ui
-                    .add(ImageButton::new(
-                        self.logo_image.texture_id(ctx),
-                        Vec2::splat(ui.available_height()),
-                    ))
-                    .clicked()
-                {
-                    self.about_window_open = true;
-                };
 
-                ui.separator();
+                if let Some(logo_image) = self.logo_image.as_ref() {
+                    if ui
+                        .add(ImageButton::new(
+                            logo_image.texture_id(ctx),
+                            Vec2::splat(ui.available_height()),
+                        ))
+                        .clicked()
+                    {
+                        self.about_window_open = true;
+                    };
+                    ui.separator();
+                }
 
                 let mut create_new_project =
                     ctx.input_mut(|i| i.consume_key(Modifiers::CTRL, Key::N));
