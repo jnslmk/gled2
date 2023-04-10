@@ -34,7 +34,7 @@ impl Pipeline {
         for (_index, scene) in self.scenes.iter_mut() {
             scene.init_gpu();
         }
-        self.update_mix_artnet();
+        self.update_buffers();
     }
 
     pub fn start(&mut self) -> Instant {
@@ -53,7 +53,7 @@ impl Pipeline {
         self.init_gpu();
     }
 
-    pub fn update_mix_artnet(&mut self) {
+    pub fn update_buffers(&mut self) {
         let mut main = None;
         let mut mix_index = 0;
         for (_index, scene) in self.scenes.iter_mut() {
@@ -73,6 +73,19 @@ impl Pipeline {
         }
 
         self.mixs.shrink_to(mix_index);
+
+        if let Some(main) = main {
+            self.preview
+                .as_mut()
+                .expect("Gpu was not yet initialized")
+                .set_buffers(
+                    self.preview_indices
+                        .as_ref()
+                        .expect("Gpu was not yet initialized")
+                        .indices(),
+                    main,
+                );
+        }
     }
 
     pub fn set_opacity(&mut self, index: usize, opacity: f32) {
@@ -145,14 +158,7 @@ impl Pipeline {
             self.preview
                 .as_mut()
                 .expect("Gpu was not yet initialized")
-                .run(
-                    &mut encoder,
-                    self.preview_indices
-                        .as_ref()
-                        .expect("Gpu was not yet initialized")
-                        .indices(),
-                    main,
-                );
+                .run(&mut encoder);
         }
         queue.submit(std::iter::once(encoder.finish()));
 

@@ -13,7 +13,7 @@ use crate::{
 pub fn init_shaders() {
     let mut pipeline = Pipeline::default();
 
-    for i in 0..5 {
+    for i in 0..10 {
         let palette = ColorPalette {
             colors: vec![Color::new(1., 0., 0.), Color::new(0., 0., 0.)],
         };

@@ -11,6 +11,7 @@ use wgpu::*;
 pub struct Preview {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
+    bind_group: Option<BindGroup>,
     texture: Texture,
     view: TextureView,
     texture_id: TextureId,
@@ -111,15 +112,16 @@ impl Preview {
         Self {
             pipeline,
             bind_group_layout,
+            bind_group: None,
             texture,
             view,
             texture_id,
         }
     }
 
-    pub fn run(&mut self, encoder: &mut CommandEncoder, preview_indices: &Buffer, artnet: &Buffer) {
+    pub fn set_buffers(&mut self, preview_indices: &Buffer, artnet: &Buffer) {
         let device = wgpu_render_state().device;
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+        self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
             label: Some("Preview bind group"),
             layout: &self.bind_group_layout,
             entries: &[
@@ -132,27 +134,32 @@ impl Preview {
                     resource: artnet.as_entire_binding(),
                 },
             ],
-        });
-        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("Renderer Pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: &self.view,
-                resolve_target: None,
-                ops: Operations {
-                    load: LoadOp::Clear(wgpu::Color {
-                        r: 0.0,
-                        g: 0.0,
-                        b: 0.0,
-                        a: 1.0,
-                    }),
-                    store: true,
-                },
-            })],
-            depth_stencil_attachment: None,
-        });
-        render_pass.set_pipeline(&self.pipeline);
-        render_pass.set_bind_group(0, &bind_group, &[]);
-        render_pass.draw(0..3, 0..1);
+        }));
+    }
+
+    pub fn run(&mut self, encoder: &mut CommandEncoder) {
+        if let Some(bind_group) = self.bind_group.as_ref() {
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("Renderer Pass"),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &self.view,
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 1.0,
+                        }),
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            });
+            render_pass.set_pipeline(&self.pipeline);
+            render_pass.set_bind_group(0, bind_group, &[]);
+            render_pass.draw(0..3, 0..1);
+        }
     }
 
     pub fn texture_id(&self) -> TextureId {
