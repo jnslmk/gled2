@@ -3,7 +3,7 @@ use crate::{animation::ColorPalette, scene::Scene};
 use super::App;
 use egui::{
     Align, Button, Color32, Context, Image, Layout, Margin, Rect, RichText, Rounding, Sense, Shape,
-    TextureId, Ui,
+    Slider, TextureId, Ui, Vec2, Widget,
 };
 
 impl App {
@@ -13,6 +13,11 @@ impl App {
                 ui.label(RichText::new("Scenes").heading());
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     ui.checkbox(&mut self.show_scenes_svg, RichText::new("SVG").heading());
+                    ui.add(
+                        Slider::new(&mut self.scene_size, 100.0..=512.0)
+                            .show_value(false)
+                            .text(RichText::new("Size").heading()),
+                    );
                 });
             });
 
@@ -22,26 +27,41 @@ impl App {
                 .filter(|_| self.show_scenes_svg)
                 .map(|svg| svg.image().texture_id(ctx));
 
-            //egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                crate::get_pipeline!(pipeline);
-                for (index, scene) in pipeline.scenes() {
-                    self.selectable_scene(ui, index, scene, svg);
-                }
-            });
-            //});
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        crate::get_pipeline!(pipeline);
+                        for (index, scene) in pipeline.scenes() {
+                            ui.add_sized(
+                                Vec2::new(self.scene_size + 40.0, self.scene_size + 60.0),
+                                SceneWidget {
+                                    selected_scene: &mut self.selected_scene,
+                                    index,
+                                    scene,
+                                    svg,
+                                    scene_size: self.scene_size,
+                                },
+                            );
+                        }
+                    });
+                });
         });
     }
+}
 
-    fn selectable_scene(
-        &mut self,
-        ui: &mut Ui,
-        index: usize,
-        scene: &mut Scene,
-        svg: Option<TextureId>,
-    ) {
-        let rect = egui::Frame::none()
-            .fill(if self.selected_scene == index {
+struct SceneWidget<'a> {
+    selected_scene: &'a mut usize,
+    index: usize,
+    scene: &'a mut Scene,
+    svg: Option<TextureId>,
+    scene_size: f32,
+}
+
+impl<'a> Widget for SceneWidget<'a> {
+    fn ui(self, ui: &mut Ui) -> egui::Response {
+        let response = egui::Frame::none()
+            .fill(if *self.selected_scene == self.index {
                 Color32::GREEN
             } else {
                 Color32::TRANSPARENT
@@ -49,40 +69,36 @@ impl App {
             .inner_margin(Margin::from(10.0))
             .rounding(Rounding::from(4.0))
             .show(ui, |ui| {
-                self.scene(ui, scene, svg);
+                egui::Frame::none()
+                    .fill(egui::Color32::RED)
+                    .inner_margin(Margin::from(10.0))
+                    .show(ui, |ui| {
+                        let size = Vec2::splat(self.scene_size);
+                        ui.vertical(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.set_max_width(size.x);
+                                ui.add(
+                                    super::config::group::button(self.scene.group(), false)
+                                        .sense(Sense::hover()),
+                                );
+                                color_band(ui, &mut self.scene.palette);
+                            });
+                            let res = ui.image(self.scene.texture_id(), size);
+                            if let Some(svg_texture_id) = self.svg {
+                                ui.put(res.rect, Image::new(svg_texture_id, size));
+                            }
+                        })
+                    })
             })
-            .response
-            .rect;
+            .response;
         if ui
-            .put(rect, Button::new("").fill(Color32::TRANSPARENT))
+            .put(response.rect, Button::new("").fill(Color32::TRANSPARENT))
             .clicked()
         {
-            self.selected_scene = index;
+            *self.selected_scene = self.index;
         }
-    }
 
-    fn scene(&mut self, ui: &mut Ui, scene: &mut Scene, svg: Option<TextureId>) {
-        let size = egui::Vec2::splat(256.0);
-
-        egui::Frame::none()
-            .fill(egui::Color32::RED)
-            .inner_margin(Margin::from(10.0))
-            .show(ui, |ui| {
-                ui.vertical(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.set_max_width(size.x);
-                        ui.add(
-                            super::config::group::button(scene.group(), false)
-                                .sense(Sense::hover()),
-                        );
-                        color_band(ui, &mut scene.palette);
-                    });
-                    let res = ui.image(scene.texture_id(), size);
-                    if let Some(svg_texture_id) = svg {
-                        ui.put(res.rect, Image::new(svg_texture_id, size));
-                    }
-                });
-            });
+        response
     }
 }
 

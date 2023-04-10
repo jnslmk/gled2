@@ -34,6 +34,7 @@ pub struct App {
     show_scenes_svg: bool,
     show_close_dialog: bool,
     allowed_to_close: bool,
+    scene_size: f32,
 }
 
 impl eframe::App for App {
@@ -88,6 +89,7 @@ impl App {
             show_preview: true,
             show_preview_svg: true,
             show_scenes_svg: true,
+            scene_size: 256.0,
             ..Default::default()
         })
     }
