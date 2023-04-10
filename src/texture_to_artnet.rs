@@ -6,6 +6,7 @@ use crate::{
     constants::{ARTNET_BUFFER_SIZE, LAMPS, POSITIONS_BUFFER_SIZE, UNIVERSES},
     wgpu_render_state,
 };
+use log::info;
 use std::num::NonZeroU64;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
@@ -143,11 +144,13 @@ impl TextureToArtnet {
     }
 
     pub fn set_positions(&self, queue: &Queue, positions: Positions) {
+        info!("Sending positions to gpu");
         let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
         queue.write_buffer(&self.positions, 0, &positions_contents);
     }
 
     pub fn clear_artnet(&self, queue: &Queue) {
+        info!("Clearing artnet buffer");
         queue.write_buffer(&self.artnet, 0, &[0u8; ARTNET_BUFFER_SIZE as usize]);
     }
 

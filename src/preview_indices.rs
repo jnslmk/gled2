@@ -7,6 +7,7 @@ use crate::{
     constants::{LAMPS, POSITIONS_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, TEXTURE_SIZE},
     wgpu_render_state,
 };
+use log::info;
 use std::num::NonZeroU64;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
@@ -161,6 +162,7 @@ impl PreviewIndices {
             return;
         }
 
+        info!("Sending positions to gpu");
         let positions = preview_positions();
         let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
         queue.write_buffer(&self.positions, 0, &positions_contents);
