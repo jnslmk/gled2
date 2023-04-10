@@ -13,7 +13,7 @@ use crate::{
     shader_widget::{self, init_shaders},
     wgpu_render_state,
 };
-use egui::{Button, Color32, Image, Rect, RichText, Stroke, Vec2};
+use egui::{Button, Color32, Image, Rect, RichText, Stroke, Ui, Vec2};
 use egui_extras::RetainedImage;
 use timing::Timing;
 
@@ -27,6 +27,8 @@ pub struct App {
     logo_image: RetainedImage,
     timing: Timing,
     about_window_open: bool,
+    //TODO: Remove
+    group: String,
 }
 
 impl eframe::App for App {
@@ -49,16 +51,7 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.menu(ctx, ui);
 
-            ui.scope(|ui| {
-                ui.set_max_width(150.0);
-                ui.style_mut().spacing.interact_size.y = 30.0;
-
-                ui.horizontal_wrapped(|ui| {
-                    for group in groups() {
-                        ui.add(group_button(&group, true));
-                    }
-                })
-            });
+            group_selection(ui, &mut self.group);
 
             egui::ScrollArea::vertical().show(ui, |ui| {
                 egui::Grid::new("scenes").show(ui, |ui| {
@@ -133,8 +126,25 @@ impl App {
             logo_image,
             timing: Default::default(),
             about_window_open: false,
+            group: String::new(),
         })
     }
+}
+
+pub fn group_selection(ui: &mut Ui, selected_group: &mut String) {
+    ui.scope(|ui| {
+        ui.style_mut().spacing.interact_size.y = 30.0;
+        ui.horizontal_wrapped(|ui| {
+            for group in groups() {
+                if ui
+                    .add(group_button(&group, selected_group == &group))
+                    .clicked()
+                {
+                    *selected_group = group;
+                };
+            }
+        })
+    });
 }
 
 pub fn group_button(group: &str, selected: bool) -> Button {
@@ -155,7 +165,7 @@ pub fn group_button(group: &str, selected: bool) -> Button {
     let button = Button::new(RichText::new(group).color(Color32::from_black_alpha(200)))
         .fill(COLORS[index % COLORS.len()]);
     if selected {
-        button.stroke(Stroke::new(1.0, Color32::RED))
+        button.stroke(Stroke::new(3.0, Color32::RED))
     } else {
         button
     }
