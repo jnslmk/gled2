@@ -3,13 +3,13 @@
 var<storage> positions: array<f32, 10880>;
 
 @group(0) @binding(1)
-// 2 bytes per pixel. Resolution: 2048*2048.
-// Each row has 2048*2 = 4096 bytes.
-// As it is indexed as u32, each row has 1024 entries in the array
-var<storage, read_write> indices: array<u32, 2097152>; 
+// 2 bytes per pixel. Resolution: 1024*1024.
+// Each row has 1024*2 = 2048 bytes.
+// As it is indexed as u32, each row has 512 entries in the array
+var<storage, read_write> indices: array<u32, 524288>; 
 
-const TEXTURE_SIZE_U: u32 = 2048u;
-const TEXTURE_SIZE_F: f32 = 2048.0;
+const TEXTURE_SIZE_U: u32 = 1024u;
+const TEXTURE_SIZE_F: f32 = 1024.0;
 const SQUARE_SIZE: u32 = 4u;
 
 @compute
@@ -22,7 +22,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     for (var xd = max(0u, x - SQUARE_SIZE); xd < min(TEXTURE_SIZE_U, x + SQUARE_SIZE); xd++) {
         for (var yd = max(0u, y - SQUARE_SIZE); yd < min(TEXTURE_SIZE_U, y + SQUARE_SIZE); yd++) {
-            let index = (yd * 1024u) + (xd / 2u);
+            let index = (yd * (TEXTURE_SIZE_U / 2u)) + (xd / 2u);
 
             if (xd % 2u == 0u) {
                 indices[index] = (indices[index] & 0x0000ffffu) | (lamp << 16u);

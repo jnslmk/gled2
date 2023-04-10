@@ -1,18 +1,21 @@
 @group(0) @binding(0)
-// 2 bytes per pixel. Resolution: 2048*2048.
-// Each row has 2048*2 = 4096 bytes.
-// As it is indexed as u32, each row has 1024 entries in the array
-var<storage> indices: array<u32, 2097152>; 
+// 2 bytes per pixel. Resolution: 1024*1024.
+// Each row has 1024*2 = 2048 bytes.
+// As it is indexed as u32, each row has 512 entries in the array
+var<storage> indices: array<u32, 524288>; 
 
 @group(0) @binding(1)
 var<storage> artnet: array<u32, 4096>;
 
+const TEXTURE_SIZE_U: u32 = 1024u;
+const TEXTURE_SIZE_F: f32 = 1024.0;
+
 @fragment
 fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
-	let x: u32 = u32(round(((1.0 + coord.x) / 2.0) * 2047.0));
-	let y: u32 = u32(round(((1.0 + coord.y) / 2.0) * 2047.0));
+	let x: u32 = u32(round(((1.0 + coord.x) / 2.0) * (TEXTURE_SIZE_F - 1.0)));
+	let y: u32 = u32(round(((1.0 + coord.y) / 2.0) * (TEXTURE_SIZE_F - 1.0)));
 
-	let i: u32 = y * 1024u + x / 2u;
+	let i: u32 = y * (TEXTURE_SIZE_U / 2u) + x / 2u;
 	let index = indices[i];
 	var lamp: u32 = 0u;
 	if (x % 2u == 0u) {
