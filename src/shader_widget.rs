@@ -13,42 +13,47 @@ use crate::{
 pub fn init_shaders() {
     let mut pipeline = Pipeline::default();
 
-    let palette = ColorPalette {
-        colors: vec![Color::new(1., 0., 0.), Color::new(0., 0., 0.)],
-    };
-    let gradient = Gradient::new(GradientConfig {
-        gradient: GradientType::Radial {
-            center: (0.25, 0.5),
-        },
-        ..Default::default()
-    });
-    let scene = Scene::new(gradient.into(), palette, "allFull".to_owned());
-    pipeline.add_scene(scene);
-
-    let palette = ColorPalette {
-        colors: vec![Color::new(0., 0., 1.), Color::new(0., 0., 0.)],
-    };
-    let gradient = Gradient::new(GradientConfig {
-        gradient: GradientType::LinearHorizontal,
-        common: CommonConfig {
+    for i in 0..10 {
+        let palette = ColorPalette {
+            colors: vec![Color::new(1., 0., 0.), Color::new(0., 0., 0.)],
+        };
+        let gradient = Gradient::new(GradientConfig {
+            gradient: GradientType::Radial {
+                center: (0.25, 0.5),
+            },
             ..Default::default()
-        },
-    });
-    let scene = Scene::new(gradient.into(), palette, "innerFull".to_owned());
-    pipeline.add_scene(scene);
+        });
+        let mut scene = Scene::new(gradient.into(), palette, "allFull".to_owned());
+        scene.artnet_extraction = i == 0;
+        pipeline.add_scene(scene);
 
-    let palette = ColorPalette {
-        colors: vec![Color::new(1., 1., 0.)],
-    };
-    let stripes = Stripes::new(StripesConfig {
-        count: 2,
-        common: CommonConfig {
-            direction: Direction::Backward,
-        },
-        ..Default::default()
-    });
-    let scene = Scene::new(stripes.into(), palette, "innerEdge".to_owned());
-    pipeline.add_scene(scene);
+        let palette = ColorPalette {
+            colors: vec![Color::new(0., 0., 1.), Color::new(0., 0., 0.)],
+        };
+        let gradient = Gradient::new(GradientConfig {
+            gradient: GradientType::LinearHorizontal,
+            common: CommonConfig {
+                ..Default::default()
+            },
+        });
+        let mut scene = Scene::new(gradient.into(), palette, "innerFull".to_owned());
+        scene.artnet_extraction = i == 0;
+        pipeline.add_scene(scene);
+
+        let palette = ColorPalette {
+            colors: vec![Color::new(1., 1., 0.)],
+        };
+        let stripes = Stripes::new(StripesConfig {
+            count: 2,
+            common: CommonConfig {
+                direction: Direction::Backward,
+            },
+            ..Default::default()
+        });
+        let mut scene = Scene::new(stripes.into(), palette, "innerEdge".to_owned());
+        scene.artnet_extraction = i == 0;
+        pipeline.add_scene(scene);
+    }
 
     wgpu_render_state()
         .renderer

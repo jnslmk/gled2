@@ -73,6 +73,7 @@ impl Pipeline {
         beats_per_minute: f32,
         framerate: f32,
         disable_artnet_extraction: bool,
+        main_dimmer: f32,
     ) -> Option<Vec<ArtCommand>> {
         let time = self.start().elapsed().as_secs_f32();
         let state = State {
@@ -84,7 +85,7 @@ impl Pipeline {
         };
 
         for (_index, scene) in self.scenes.iter_mut() {
-            scene.prepare(queue, state);
+            scene.prepare(queue, state, disable_artnet_extraction, main_dimmer);
         }
         self.preview_indices
             .as_mut()
@@ -174,6 +175,7 @@ impl Pipeline {
             .texture_id()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self,
         universes: &Universes,
@@ -182,6 +184,7 @@ impl Pipeline {
         beats_per_minute: f32,
         framerate: f32,
         disable_artnet_extraction: bool,
+        main_dimmer: f32,
     ) {
         let wgpu_render_state = wgpu_render_state();
         let device = &wgpu_render_state.device;
@@ -196,6 +199,7 @@ impl Pipeline {
                 beats_per_minute,
                 framerate,
                 disable_artnet_extraction,
+                main_dimmer,
             )
             .expect("No scene registered");
 

@@ -21,6 +21,8 @@ pub struct Scene {
     sent_group: Option<String>,
     #[serde(skip)]
     texture_id: Option<TextureId>,
+    #[serde(skip)]
+    artnet_dirty: bool,
 }
 
 fn default_send_positions() -> bool {
@@ -55,11 +57,17 @@ impl Scene {
         });
     }
 
-    pub fn prepare(&mut self, queue: &Queue, mut state: State) {
+    pub fn prepare(
+        &mut self,
+        queue: &Queue,
+        mut state: State,
+        disable_artnet_extraction: bool,
+        main_dimmer: f32,
+    ) {
         // make sure we have a texture id (fixes a deadlock).
         self.texture_id();
 
-        state.opacity = self.opacity;
+        state.opacity = self.opacity * main_dimmer;
 
         if self.sent_group.as_ref() != Some(&self.group) {
             let positions = positions(&self.group);
@@ -70,12 +78,18 @@ impl Scene {
         self.animation
             .renderer()
             .set_buffers(queue, &state, &self.palette);
+
+        if (!self.artnet_extraction || disable_artnet_extraction) && self.artnet_dirty {
+            self.texture_to_artnet().clear_artnet(queue);
+            self.artnet_dirty = false;
+        }
     }
 
     pub fn render(&mut self, encoder: &mut CommandEncoder, disable_artnet_extraction: bool) {
         self.animation.renderer().render(encoder);
         if self.artnet_extraction && !disable_artnet_extraction {
             self.texture_to_artnet().run(encoder);
+            self.artnet_dirty = true;
         }
     }
 

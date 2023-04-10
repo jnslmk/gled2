@@ -101,7 +101,7 @@ impl TextureToArtnet {
 
         let artnet = device.create_buffer(&BufferDescriptor {
             size: ARTNET_BUFFER_SIZE,
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
             label: Some("TextureToArtnet output buffer gpu"),
             mapped_at_creation: false,
         });
@@ -145,6 +145,10 @@ impl TextureToArtnet {
     pub fn set_positions(&self, queue: &Queue, positions: Positions) {
         let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
         queue.write_buffer(&self.positions, 0, &positions_contents);
+    }
+
+    pub fn clear_artnet(&self, queue: &Queue) {
+        queue.write_buffer(&self.artnet, 0, &[0u8; ARTNET_BUFFER_SIZE as usize]);
     }
 
     pub fn run(&self, encoder: &mut CommandEncoder) {

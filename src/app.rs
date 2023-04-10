@@ -14,6 +14,7 @@ use crate::{
     logo::logo_image,
     shader_widget::init_shaders,
 };
+use egui::Modifiers;
 use egui_extras::RetainedImage;
 use timing::Timing;
 
@@ -35,11 +36,18 @@ pub struct App {
     show_close_dialog: bool,
     allowed_to_close: bool,
     scene_size: f32,
+    main_dimmer: f32,
+    fullscreen: bool,
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::gui_zoom::zoom_with_keyboard_shortcuts(ctx, frame.info().native_pixels_per_point);
+
+        if ctx.input_mut(|i| i.consume_key(Modifiers::ALT, egui::Key::Enter)) {
+            self.fullscreen = !self.fullscreen;
+            frame.set_fullscreen(self.fullscreen);
+        }
 
         if let Some(fps) = self.timing.framerate() {
             frame.set_window_title(&format!("gled ({fps:.1} fps)"))
@@ -54,6 +62,7 @@ impl eframe::App for App {
                 self.timing.beats_per_minute,
                 self.timing.framerate().unwrap_or_default(),
                 self.disable_artnet_extraction,
+                self.main_dimmer,
             );
         }
 
@@ -90,6 +99,7 @@ impl App {
             show_preview_svg: true,
             show_scenes_svg: true,
             scene_size: 256.0,
+            main_dimmer: 1.0,
             ..Default::default()
         })
     }
