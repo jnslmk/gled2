@@ -57,49 +57,49 @@ impl eframe::App for App {
                 crate::get_pipeline!(pipeline);
                 ui.image(pipeline.preview_texture_id(), egui::Vec2::splat(512.0));
 
-                egui::Grid::new("scenes").show(ui, |ui| {
-                    for (_index, scene) in pipeline.scenes() {
-                        let rects = scene
-                            .palette
-                            .colors()
-                            .iter_mut()
-                            .map(|color| {
-                                let res = ui.color_edit_button_rgb(color.rgb_mut());
-                                Rect::from_min_max(res.rect.center(), res.rect.right_bottom())
-                            })
-                            .collect::<Vec<_>>();
-                        for (index, rect) in rects.into_iter().enumerate() {
-                            ui.scope(|ui| {
-                                ui.style_mut().spacing.interact_size.y = 10.0;
-                                if ui.put(rect, Button::new("-")).clicked() {
-                                    scene.palette.remove_color(index);
-                                }
-                            });
-                        }
-
-                        if scene.palette.colors.len() < 16
-                            && ui
-                                .add_sized(
-                                    Vec2::new(
-                                        ui.style().spacing.interact_size.y,
-                                        ui.style().spacing.interact_size.y,
-                                    ),
-                                    Button::new("+"),
-                                )
-                                .clicked()
-                        {
-                            scene.palette.add_color(Color::default());
-                        }
-
-                        let size = egui::Vec2::splat(500.0);
-                        let res = ui.image(scene.texture_id(), size);
-                        if let Some(svg) = self.svg.as_ref() {
-                            ui.put(res.rect, Image::new(svg.image().texture_id(ctx), size));
-                        }
-
-                        ui.end_row();
+                //egui::Grid::new("scenes").show(ui, |ui| {
+                for (_index, scene) in pipeline.scenes() {
+                    let rects = scene
+                        .palette
+                        .colors()
+                        .iter_mut()
+                        .map(|color| {
+                            let res = ui.color_edit_button_rgb(color.rgb_mut());
+                            Rect::from_min_max(res.rect.center(), res.rect.right_bottom())
+                        })
+                        .collect::<Vec<_>>();
+                    for (index, rect) in rects.into_iter().enumerate() {
+                        ui.scope(|ui| {
+                            ui.style_mut().spacing.interact_size.y = 10.0;
+                            if ui.put(rect, Button::new("-")).clicked() {
+                                scene.palette.remove_color(index);
+                            }
+                        });
                     }
-                });
+
+                    if scene.palette.colors.len() < 16
+                        && ui
+                            .add_sized(
+                                Vec2::new(
+                                    ui.style().spacing.interact_size.y,
+                                    ui.style().spacing.interact_size.y,
+                                ),
+                                Button::new("+"),
+                            )
+                            .clicked()
+                    {
+                        scene.palette.add_color(Color::default());
+                    }
+
+                    let size = egui::Vec2::splat(500.0);
+                    let res = ui.image(scene.texture_id(), size);
+                    if let Some(svg) = self.svg.as_ref() {
+                        ui.put(res.rect, Image::new(svg.image().texture_id(ctx), size));
+                    }
+
+                    //  ui.end_row();
+                }
+                // });
             });
         });
 

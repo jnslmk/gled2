@@ -3,7 +3,7 @@
 mod positions;
 
 use crate::{
-    constants::{ARTNET_BUFFER_SIZE, POSITIONS_BUFFER_SIZE, UNIVERSES},
+    constants::{ARTNET_BUFFER_SIZE, LAMPS, POSITIONS_BUFFER_SIZE, UNIVERSES},
     wgpu_render_state,
 };
 use std::num::NonZeroU64;
@@ -153,7 +153,7 @@ impl TextureToArtnet {
         });
         compute_pass.set_pipeline(&self.pipeline);
         compute_pass.set_bind_group(0, &self.bind_group, &[]);
-        compute_pass.dispatch_workgroups(UNIVERSES as u32, 128, 1);
+        compute_pass.dispatch_workgroups(UNIVERSES as u32, LAMPS as u32 / 4, 1);
     }
 
     pub fn artnet_buffer(&self) -> &Buffer {

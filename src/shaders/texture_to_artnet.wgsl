@@ -32,9 +32,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         if 2. - x < 0.001 && 2. - y < 0.001 {
             color = vec3(0.);
         }
-        colors[i * 3u] = u32(color.r * 255.) & 0x000000ffu;
-        colors[i * 3u + 1u] = u32(color.g * 255.) & 0x000000ffu;
-        colors[i * 3u + 2u] = u32(color.b * 255.) & 0x000000ffu;
+        colors[i * 3u] = u32(round(color.r * 254.)) & 0x000000ffu;
+        colors[i * 3u + 1u] = u32(round(color.g * 254.)) & 0x000000ffu;
+        colors[i * 3u + 2u] = u32(round(color.b * 254.)) & 0x000000ffu;
     }
 
     let index = universe * 128u + idx * 3u;

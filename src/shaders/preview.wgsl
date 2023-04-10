@@ -9,16 +9,19 @@ var<storage> artnet: array<u32, 4096>;
 
 @fragment
 fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
-	let i: u32 = u32(round(coord.y * 2048.0) * 1024.0 + round(coord.x * 1024.0));
+	let x: u32 = u32(round(((1.0 + coord.x) / 2.0) * 2047.0));
+	let y: u32 = u32(round(((1.0 + coord.y) / 2.0) * 2047.0));
+
+	let i: u32 = y * 1024u + x / 2u;
 	let index = indices[i];
 	var lamp: u32 = 0u;
-	if (u32(round(coord.x * 2048.0)) % 2u == 0u) {
+	if (x % 2u == 0u) {
 		lamp = (index & 0xffff0000u) >> 16u;
 	} else {
 		lamp = index & 0x0000ffffu;
 	}
 	if (lamp == 0x0000ffffu) {
-		return vec4<f32>(0., 0., 0., 1.);
+		return vec4<f32>(0.);
 	} else {
 		var red = 0u;
 		var green = 0u;
@@ -49,6 +52,6 @@ fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
 			}
 		}
 
-		return vec4<f32>(f32(red) * 255., f32(green) * 255., f32(blue) * 255., 1.);
+		return vec4<f32>(f32(red) / 255., f32(green) / 255., f32(blue) / 255., 1.);
 	}
 }

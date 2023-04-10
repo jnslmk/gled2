@@ -22,7 +22,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     for (var xd = max(0u, x - SQUARE_SIZE); xd < min(TEXTURE_SIZE_U, x + SQUARE_SIZE); xd++) {
         for (var yd = max(0u, y - SQUARE_SIZE); yd < min(TEXTURE_SIZE_U, y + SQUARE_SIZE); yd++) {
-            let index = yd * 1024u + xd / 2u;
+            let index = (yd * 1024u) + (xd / 2u);
 
             if (xd % 2u == 0u) {
                 indices[index] = (indices[index] & 0x0000ffffu) | (lamp << 16u);

@@ -1,8 +1,7 @@
 //! Combine two artnet buffers into one artnet buffer.
+use crate::constants::ARTNET_BUFFER_SIZE;
 use std::num::NonZeroU64;
 use wgpu::*;
-
-use crate::constants::{ARTNET_BUFFER_SIZE, LAMPS};
 
 #[derive(Debug)]
 pub struct MixArtnet {
@@ -89,6 +88,6 @@ impl MixArtnet {
         });
         compute_pass.set_pipeline(&self.pipeline);
         compute_pass.set_bind_group(0, &bind_group, &[]);
-        compute_pass.dispatch_workgroups(LAMPS as u32, 1, 1);
+        compute_pass.dispatch_workgroups(ARTNET_BUFFER_SIZE as u32 / 4, 1, 1);
     }
 }
