@@ -17,7 +17,7 @@ use egui::{Button, Color32, Image, Rect, RichText, Stroke, Ui, Vec2};
 use egui_extras::RetainedImage;
 use timing::Timing;
 
-pub use svg::positions;
+pub use svg::{positions, preview_positions};
 
 pub struct App {
     disable_artnet_extraction: bool,

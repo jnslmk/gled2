@@ -1,4 +1,4 @@
-use super::{LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, UNIVERSES};
+use crate::constants::{LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, UNIVERSES};
 
 #[derive(Debug, Clone, Default)]
 pub struct Positions {

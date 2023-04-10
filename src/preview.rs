@@ -1,23 +1,21 @@
-//! Renders to a texture
-use crate::{constants::TEXTURE_SIZE, wgpu_render_state};
-
-use super::{config::Config, state::State, ColorPalette};
+//! Render preview circles.
+use crate::{
+    constants::{ARTNET_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, TEXTURE_SIZE},
+    wgpu_render_state,
+};
 use std::num::NonZeroU64;
-use wgpu::{util::DeviceExt, *};
-
-static COMMON_SHADER_CODE: &str = include_str!("../shaders/common.wgsl");
+use wgpu::*;
 
 #[derive(Debug)]
-pub struct AnimationRenderer {
+pub struct Preview {
     pipeline: RenderPipeline,
-    bind_group: BindGroup,
-    uniform: Buffer,
+    bind_group_layout: BindGroupLayout,
     texture: Texture,
     view: TextureView,
 }
 
-impl AnimationRenderer {
-    pub fn new(animation_shader: &str, config: &Config) -> Self {
+impl Preview {
+    pub fn new() -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE,
@@ -43,31 +41,38 @@ impl AnimationRenderer {
 
         let vertex_shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("animation vertex shader"),
-            source: ShaderSource::Wgsl(include_str!("../shaders/vertex.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("shaders/vertex.wgsl").into()),
         });
-
-        let mut fragment_shader = COMMON_SHADER_CODE.to_owned();
-        fragment_shader.push_str(animation_shader);
 
         let fragment_shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("animation fragment shader"),
-            source: ShaderSource::Wgsl(fragment_shader.into()),
+            source: ShaderSource::Wgsl(include_str!("shaders/preview.wgsl").into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("animation bind group layout"),
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: NonZeroU64::new(
-                        (State::size() + ColorPalette::size() + Config::size()) as u64,
-                    ),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: NonZeroU64::new(PREVIEW_INDICES_BUFFER_SIZE),
+                    },
+                    count: None,
                 },
-                count: None,
-            }],
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: NonZeroU64::new(ARTNET_BUFFER_SIZE),
+                    },
+                    count: None,
+                },
+            ],
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -95,45 +100,30 @@ impl AnimationRenderer {
             multiview: None,
         });
 
-        let mut contents = [0u8; State::size() + ColorPalette::size() + Config::size()];
-        config.write_data(
-            &mut contents[State::size() + ColorPalette::size()
-                ..State::size() + ColorPalette::size() + Config::size()],
-        );
-
-        let uniform = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("animation uniform buffer"),
-            contents: &contents,
-            usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
-        });
-
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("animation bind group"),
-            layout: &bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: uniform.as_entire_binding(),
-            }],
-        });
-
         Self {
             pipeline,
-            bind_group,
-            uniform,
+            bind_group_layout,
             texture,
             view,
         }
     }
 
-    pub fn set_buffers(&self, queue: &Queue, state: &State, palette: &ColorPalette) {
-        let mut contents = [0; State::size() + ColorPalette::size()];
-        state.write_data(&mut contents[..State::size()]);
-        palette.write_data(&mut contents[State::size()..State::size() + ColorPalette::size()]);
-
-        queue.write_buffer(&self.uniform, 0, &contents);
-    }
-
-    pub fn render(&self, encoder: &mut CommandEncoder) {
+    pub fn run(&mut self, encoder: &mut CommandEncoder, preview_indices: &Buffer, artnet: &Buffer) {
+        let device = wgpu_render_state().device;
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Preview bind group"),
+            layout: &self.bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: preview_indices.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: artnet.as_entire_binding(),
+                },
+            ],
+        });
         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Renderer Pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
@@ -151,9 +141,8 @@ impl AnimationRenderer {
             })],
             depth_stencil_attachment: None,
         });
-
         render_pass.set_pipeline(&self.pipeline);
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
+        render_pass.set_bind_group(0, &bind_group, &[]);
         render_pass.draw(0..3, 0..1);
     }
 

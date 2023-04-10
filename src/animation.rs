@@ -12,7 +12,6 @@ use self::renderer::AnimationRenderer;
 pub use colors::{Color, ColorPalette};
 pub use config::{CommonConfig, Direction};
 pub use gradient::{Gradient, GradientConfig, GradientType};
-pub use renderer::TEXTURE_SIZE;
 use serde::{Deserialize, Serialize};
 pub use state::State;
 pub use stripes::{Stripes, StripesConfig};

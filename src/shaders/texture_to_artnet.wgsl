@@ -1,5 +1,5 @@
 @group(0) @binding(0)
-var<storage> positions: array<f32, 21760>;
+var<storage> positions: array<f32, 10880>;
 
 @group(0) @binding(1)
 var sam: sampler;
@@ -8,7 +8,7 @@ var sam: sampler;
 var tex: texture_2d<f32>;
 
 @group(0) @binding(3)
-var<storage, read_write> output: array<u32, 4096>;
+var<storage, read_write> artnet: array<u32, 4096>;
 
 const LAMPS_PER_UNIVERSE: u32 = 170u;
 
@@ -38,7 +38,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 
     let index = universe * 128u + idx * 3u;
-    output[index]      = colors[0] | colors[1] << 8u | colors[2] << 16u  | colors[3] << 24u;
-    output[index + 1u] = colors[4] | colors[5] << 8u | colors[6] << 16u  | colors[7] << 24u;
-    output[index + 2u] = colors[8] | colors[9] << 8u | colors[10] << 16u | colors[11] << 24u;
+    artnet[index]      = colors[0] | colors[1] << 8u | colors[2] << 16u  | colors[3] << 24u;
+    artnet[index + 1u] = colors[4] | colors[5] << 8u | colors[6] << 16u  | colors[7] << 24u;
+    artnet[index + 2u] = colors[8] | colors[9] << 8u | colors[10] << 16u | colors[11] << 24u;
 }

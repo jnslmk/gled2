@@ -29,9 +29,7 @@ impl Svg {
         let image = svg.render().context("Could not render svg")?;
 
         crate::get_pipeline!(pipeline);
-        for (_index, scene) in pipeline.scenes() {
-            scene.send_positions();
-        }
+        pipeline.send_positions();
 
         Ok(Self { universes, image })
     }
@@ -48,11 +46,20 @@ impl Svg {
 pub fn groups() -> Vec<String> {
     MEASUREMENT_POINTS
         .read()
-        .ok()
-        .map(|measurement_points| measurement_points.groups())
-        .unwrap_or_default()
+        .expect("MEASUREMENT_POINTS is poisoned")
+        .groups()
 }
 
-pub fn positions(group: &str) -> Option<Positions> {
-    MEASUREMENT_POINTS.read().ok()?.positions(group)
+pub fn positions(group: &str) -> Positions {
+    MEASUREMENT_POINTS
+        .read()
+        .expect("MEASUREMENT_POINTS is poisoned")
+        .positions(group)
+}
+
+pub fn preview_positions() -> Positions {
+    MEASUREMENT_POINTS
+        .read()
+        .expect("MEASUREMENT_POINTS is poisoned")
+        .preview_positions()
 }

@@ -1,7 +1,10 @@
 //! Save the list of LEDs, a position for color measurement and the current color for render groups.
 
 use super::{Led, Parameter, Svg};
-use crate::texture_to_artnet::{Lamp, Positions, Universe, UNIVERSES};
+use crate::{
+    constants::UNIVERSES,
+    texture_to_artnet::{Lamp, Positions, Universe},
+};
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -12,10 +15,12 @@ use usvg::{NodeExt, NodeKind, PathData, PathSegment};
 
 pub type Universes = BTreeSet<u16>;
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct MeasurementPoints {
     /// points for each render group
     points: BTreeMap<String, Vec<MeasurementPoint>>,
+    /// Positions of each individual led
+    preview_positions: Positions,
 }
 
 impl MeasurementPoints {
@@ -28,42 +33,47 @@ impl MeasurementPoints {
             .collect()
     }
 
-    pub fn positions(&self, group: &str) -> Option<Positions> {
-        let points = self.points.get(group)?;
-        let mut universes = BTreeMap::new();
-        for point in points.iter() {
-            let lamp = Lamp::Position {
-                x: point.x,
-                y: point.y,
-            };
-
-            for led in point.leds.iter() {
-                if led.start % 3 != 1 {
-                    panic!("Unsupported led alignment: {:?}", led);
-                }
-                let i = led.start / 3;
-
-                let mut universe = universes
-                    .entry(led.universe)
-                    .or_insert_with(|| Universe::new(Some(led.universe)));
-                universe.lamps[i] = lamp;
-            }
-        }
-
+    pub fn positions(&self, group: &str) -> Positions {
         let mut positions = Positions::default();
 
-        for (i, universe) in self
-            .universes()
-            .into_iter()
-            .enumerate()
-            .take(UNIVERSES as usize)
-        {
-            if let Some(universe) = universes.remove(&universe) {
-                positions.universes[i] = universe;
+        if let Some(points) = self.points.get(group) {
+            let mut universes = BTreeMap::new();
+            for point in points.iter() {
+                let lamp = Lamp::Position {
+                    x: point.x,
+                    y: point.y,
+                };
+
+                for led in point.leds.iter() {
+                    if led.start % 3 != 1 {
+                        panic!("Unsupported led alignment: {:?}", led);
+                    }
+                    let i = led.start / 3;
+
+                    let mut universe = universes
+                        .entry(led.universe)
+                        .or_insert_with(|| Universe::new(Some(led.universe)));
+                    universe.lamps[i] = lamp;
+                }
+            }
+
+            for (i, universe) in self
+                .universes()
+                .into_iter()
+                .enumerate()
+                .take(UNIVERSES as usize)
+            {
+                if let Some(universe) = universes.remove(&universe) {
+                    positions.universes[i] = universe;
+                }
             }
         }
 
-        Some(positions)
+        positions
+    }
+
+    pub fn preview_positions(&self) -> Positions {
+        self.preview_positions.clone()
     }
 
     pub fn groups(&self) -> Vec<String> {
@@ -103,12 +113,12 @@ impl From<&Svg> for MeasurementPoints {
                         }
                         _ => {
                             if let Some(rect) = &node.calculate_bbox() {
-                                let x = rect.x() + rect.width() / 2.0;
-                                let y = rect.y() + rect.height() / 2.0;
+                                let x = (rect.x() + rect.width() / 2.0) as f32 / max;
+                                let y = (rect.y() + rect.height() / 2.0) as f32 / max;
                                 measurement_points.push(MeasurementPoint {
                                     leds: parameter.leds.clone(),
-                                    x: x as f32 / max,
-                                    y: y as f32 / max,
+                                    x,
+                                    y,
                                 });
                             }
                         }
@@ -118,8 +128,46 @@ impl From<&Svg> for MeasurementPoints {
         });
 
         info!("Done finding measurement points");
+        info!("Determining preview positions");
 
-        MeasurementPoints { points }
+        let mut measurement_points = MeasurementPoints {
+            points,
+            preview_positions: Positions::default(),
+        };
+        let universes: BTreeMap<u16, usize> = measurement_points
+            .universes()
+            .into_iter()
+            .enumerate()
+            .map(|(index, universe)| (universe, index))
+            .collect();
+
+        for measurement_point in measurement_points
+            .points
+            .values()
+            .flat_map(|measurement_points| measurement_points.iter())
+        {
+            if measurement_point.leds.len() == 1 {
+                let led = measurement_point
+                    .leds
+                    .get(0)
+                    .expect("Could not find first led");
+                if led.start % 3 != 1 {
+                    panic!("Unsupported led alignment: {:?}", led);
+                }
+                let i = led.start / 3;
+                if let Some(universe_index) = universes.get(&led.universe) {
+                    measurement_points.preview_positions.universes[*universe_index].lamps[i] =
+                        Lamp::Position {
+                            x: measurement_point.x,
+                            y: measurement_point.y,
+                        }
+                }
+            }
+        }
+
+        info!("Done determining preview positions");
+
+        measurement_points
     }
 }
 

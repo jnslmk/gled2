@@ -1,7 +1,8 @@
 //! Combine two artnet buffers into one artnet buffer.
-use crate::texture_to_artnet::{ARTNET_BUFFER_SIZE, LAMPS};
 use std::num::NonZeroU64;
 use wgpu::*;
+
+use crate::constants::{ARTNET_BUFFER_SIZE, LAMPS};
 
 #[derive(Debug)]
 pub struct MixArtnet {

@@ -65,7 +65,7 @@ impl Scene {
         state.opacity = self.opacity;
 
         if self.send_positions {
-            let positions = positions(&self.group).unwrap_or_default();
+            let positions = positions(&self.group);
             self.texture_to_artnet().set_positions(queue, positions);
             self.send_positions = false;
         }

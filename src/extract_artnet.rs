@@ -1,41 +1,32 @@
 //! Copy a artnet buffer to the cpu and return.
 
 use crate::{
+    constants::{ARTNET_BUFFER_SIZE, UNIVERSES, UNIVERSE_BUFFER_SIZE},
     svg::Universes,
-    texture_to_artnet::{ARTNET_BUFFER_SIZE, UNIVERSES, UNIVERSE_BUFFER_SIZE},
     wgpu_render_state,
 };
 use artnet_protocol::{ArtCommand, Output, PaddedData, PortAddress};
-use serde::{Deserialize, Serialize};
 use wgpu::*;
 
-#[derive(Debug, Serialize, Deserialize, Default)]
-#[serde(default)]
+#[derive(Debug)]
 pub struct ExtractArtnet {
-    #[serde(skip)]
-    pub output_cpu: Option<Buffer>,
+    pub output_cpu: Buffer,
 }
 
 impl ExtractArtnet {
-    pub fn init_gpu(&mut self) {
-        self.output_cpu.get_or_insert_with(|| {
-            wgpu_render_state().device.create_buffer(&BufferDescriptor {
-                size: ARTNET_BUFFER_SIZE,
-                usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
-                label: Some("TextureToArtnet output buffer cpu"),
-                mapped_at_creation: false,
-            })
+    pub fn new() -> Self {
+        let output_cpu = wgpu_render_state().device.create_buffer(&BufferDescriptor {
+            size: ARTNET_BUFFER_SIZE,
+            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+            label: Some("TextureToArtnet output buffer cpu"),
+            mapped_at_creation: false,
         });
-    }
 
-    pub fn output_cpu(&mut self) -> &Buffer {
-        self.output_cpu
-            .as_ref()
-            .expect("Gpu was not yet initialized")
+        Self { output_cpu }
     }
 
     pub fn run(&mut self, encoder: &mut CommandEncoder, artnet: &Buffer) {
-        encoder.copy_buffer_to_buffer(artnet, 0, self.output_cpu(), 0, ARTNET_BUFFER_SIZE);
+        encoder.copy_buffer_to_buffer(artnet, 0, &self.output_cpu, 0, ARTNET_BUFFER_SIZE);
     }
 
     pub fn poll_artnet_buffer(&mut self, universes: &Universes) -> Vec<ArtCommand> {
@@ -45,8 +36,7 @@ impl ExtractArtnet {
             return vec![];
         }
 
-        let output_cpu = self.output_cpu();
-        let buffer_slice = output_cpu.slice(..active_len as u64);
+        let buffer_slice = self.output_cpu.slice(..active_len as u64);
         let (tx, rx) = std::sync::mpsc::channel();
         buffer_slice.map_async(MapMode::Read, move |v| {
             tx.send(v).expect("Could not send on oneshot sender")
@@ -68,7 +58,7 @@ impl ExtractArtnet {
                 artnet_data.extend(chunk);
             }
         }
-        output_cpu.unmap();
+        self.output_cpu.unmap();
 
         universes
             .iter()

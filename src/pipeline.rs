@@ -1,12 +1,11 @@
-use std::time::Instant;
-
 use crate::{
-    animation::State, extract_artnet::ExtractArtnet, mix_artnet::MixArtnet, scene::Scene,
-    svg::Universes,
+    animation::State, extract_artnet::ExtractArtnet, mix_artnet::MixArtnet, preview::Preview,
+    preview_indices::PreviewIndices, scene::Scene, svg::Universes,
 };
 use artnet_protocol::ArtCommand;
 use serde::{Deserialize, Serialize};
 use slab::Slab;
+use std::time::Instant;
 use wgpu::{CommandEncoderDescriptor, Device, Queue};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -17,16 +16,23 @@ pub struct Pipeline {
     scenes: Slab<Scene>,
     #[serde(skip)]
     mixs: Vec<MixArtnet>,
-    extract: ExtractArtnet,
+    #[serde(skip)]
+    extract: Option<ExtractArtnet>,
+    #[serde(skip)]
+    preview_indices: Option<PreviewIndices>,
+    #[serde(skip)]
+    preview: Option<Preview>,
 }
 
 impl Pipeline {
     pub fn init_gpu(&mut self) {
+        self.extract = Some(ExtractArtnet::new());
+        self.preview_indices = Some(PreviewIndices::new());
+        self.preview = Some(Preview::new());
+
         for (_index, scene) in self.scenes.iter_mut() {
             scene.init_gpu();
         }
-
-        self.extract.init_gpu();
     }
 
     pub fn start(&mut self) -> Instant {
@@ -80,6 +86,10 @@ impl Pipeline {
         for (_index, scene) in self.scenes.iter_mut() {
             scene.prepare(queue, state);
         }
+        self.preview_indices
+            .as_mut()
+            .expect("Gpu is not yet initialized")
+            .prepare(queue);
 
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations"),
@@ -109,12 +119,35 @@ impl Pipeline {
         }
 
         if let Some(main) = main {
-            self.extract.run(&mut encoder, main);
+            self.extract
+                .as_mut()
+                .expect("Gpu was not yet initialized")
+                .run(&mut encoder, main);
+            self.preview_indices
+                .as_mut()
+                .expect("Gpu was not yet initialized")
+                .run(&mut encoder);
+            self.preview
+                .as_mut()
+                .expect("Gpu was not yet initialized")
+                .run(
+                    &mut encoder,
+                    self.preview_indices
+                        .as_ref()
+                        .expect("Gpu was not yet initialized")
+                        .indices(),
+                    main,
+                );
         }
         queue.submit(std::iter::once(encoder.finish()));
 
         if main.is_some() {
-            Some(self.extract.poll_artnet_buffer(universes))
+            Some(
+                self.extract
+                    .as_mut()
+                    .expect("Gpu was not yet initialized")
+                    .poll_artnet_buffer(universes),
+            )
         } else {
             None
         }
@@ -122,6 +155,16 @@ impl Pipeline {
 
     pub fn scenes(&mut self) -> Vec<(usize, &mut Scene)> {
         self.scenes.iter_mut().collect()
+    }
+
+    pub fn send_positions(&mut self) {
+        for (_index, scene) in self.scenes.iter_mut() {
+            scene.send_positions();
+        }
+        self.preview_indices
+            .as_mut()
+            .expect("Gpu was not yet initialized")
+            .send_positions();
     }
 }
 

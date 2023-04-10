@@ -1,5 +1,6 @@
+use crate::constants::TEXTURE_SIZE;
+
 use super::Svg;
-use crate::animation::TEXTURE_SIZE;
 use anyhow::{Context, Result};
 use egui::ColorImage;
 use egui_extras::RetainedImage;

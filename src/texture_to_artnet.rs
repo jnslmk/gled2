@@ -2,6 +2,10 @@
 
 mod positions;
 
+use crate::{
+    constants::{ARTNET_BUFFER_SIZE, POSITIONS_BUFFER_SIZE, UNIVERSES},
+    wgpu_render_state,
+};
 use std::num::NonZeroU64;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
@@ -9,16 +13,6 @@ use wgpu::{
 };
 
 pub use positions::{Lamp, Positions, Universe};
-
-use crate::wgpu_render_state;
-
-/// One Artnet Universe can hold up to 512 Positions. As we only support RGB (for now), we can have up to 170 lamps in a universe (=510 Positions).
-pub const UNIVERSES: u64 = 32;
-pub const LAMPS_PER_UNIVERSE: u64 = 170;
-pub const LAMPS: u64 = UNIVERSES * LAMPS_PER_UNIVERSE;
-pub const POSITIONS_BUFFER_SIZE: u64 = LAMPS * 8;
-pub const UNIVERSE_BUFFER_SIZE: u64 = LAMPS_PER_UNIVERSE * 3;
-pub const ARTNET_BUFFER_SIZE: u64 = UNIVERSES * UNIVERSE_BUFFER_SIZE;
 
 #[derive(Debug)]
 pub struct TextureToArtnet {

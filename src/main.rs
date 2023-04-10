@@ -3,12 +3,15 @@
 mod animation;
 mod app;
 mod artnet_sender;
+mod constants;
 mod extract_artnet;
 mod logging;
 mod logo;
 mod mix_artnet;
 mod opts;
 mod pipeline;
+mod preview;
+mod preview_indices;
 mod scene;
 mod shader_widget;
 mod svg;
