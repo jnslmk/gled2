@@ -5,7 +5,12 @@ impl App {
     pub fn preview(&mut self, ctx: &Context) {
         egui::TopBottomPanel::top("preview")
             .default_height(300.0)
-            .resizable(self.show_preview)
+            .exact_height(if self.show_preview {
+                self.preview_size
+            } else {
+                10.0
+            })
+            .resizable(false)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     ui.checkbox(&mut self.show_preview, RichText::new("Preview").heading());
@@ -20,12 +25,19 @@ impl App {
                     }
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         ui.checkbox(&mut self.show_preview_svg, RichText::new("SVG").heading());
+                        if self.show_preview {
+                            ui.add(
+                                Slider::new(&mut self.preview_size, 100.0..=512.0)
+                                    .show_value(false)
+                                    .text(RichText::new("Size").heading()),
+                            );
+                        }
                     });
                 });
 
                 if self.show_preview {
                     ui.horizontal(|ui| {
-                        ui.set_min_height(300.0);
+                        ui.set_min_height(self.preview_size);
 
                         crate::get_pipeline!(pipeline);
                         let size = egui::Vec2::splat(ui.available_height());
@@ -63,8 +75,6 @@ impl App {
                                 .show_value(false),
                         );
                     });
-                } else {
-                    ui.set_min_height(10.0);
                 }
             });
     }

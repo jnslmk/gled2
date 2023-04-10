@@ -35,6 +35,7 @@ pub struct App {
     show_scenes_svg: bool,
     show_close_dialog: bool,
     allowed_to_close: bool,
+    preview_size: f32,
     scene_size: f32,
     main_dimmer: f32,
     fullscreen: bool,
@@ -98,6 +99,7 @@ impl App {
             show_preview: true,
             show_preview_svg: true,
             show_scenes_svg: true,
+            preview_size: 300.0,
             scene_size: 256.0,
             main_dimmer: 1.0,
             ..Default::default()
