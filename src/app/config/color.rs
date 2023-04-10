@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::animation::{Color, ColorPalette};
-use egui::{Button, Rect, Ui, Vec2};
+use egui::{Button, Rect, Ui};
 
 pub fn selection(ui: &mut Ui, palette: &mut ColorPalette, all_colors: BTreeSet<Color>) {
     ui.scope(|ui| {
