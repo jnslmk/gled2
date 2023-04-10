@@ -1,3 +1,4 @@
+use egui::Color32;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -84,5 +85,22 @@ impl Color {
             (self.rgb[1] * 10000.0).round() as u32,
             (self.rgb[2] * 10000.0).round() as u32,
         ]
+    }
+}
+
+impl From<&Color> for Color32 {
+    fn from(color: &Color) -> Self {
+        let rgb = color.rgb();
+        Color32::from_rgb(
+            (rgb[0] * 254.0) as u8,
+            (rgb[1] * 254.0) as u8,
+            (rgb[2] * 254.0) as u8,
+        )
+    }
+}
+
+impl From<Color> for Color32 {
+    fn from(color: Color) -> Self {
+        (&color).into()
     }
 }

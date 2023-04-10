@@ -1,11 +1,10 @@
 mod color;
-mod group;
-
-use std::collections::BTreeSet;
+pub mod group;
 
 use super::App;
 use crate::{animation::Color, scene::Scene};
 use egui::{Context, RichText, Ui};
+use std::collections::BTreeSet;
 
 impl App {
     pub fn config(&mut self, ctx: &Context) {

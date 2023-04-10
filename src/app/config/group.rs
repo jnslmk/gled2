@@ -14,7 +14,7 @@ pub fn selection(ui: &mut Ui, selected_group: &mut String) {
     });
 }
 
-fn button(group: &str, selected: bool) -> Button {
+pub fn button(group: &str, selected: bool) -> Button {
     static COLORS: &[Color32] = &[
         Color32::from_rgb(175, 213, 129),
         Color32::from_rgb(177, 152, 221),

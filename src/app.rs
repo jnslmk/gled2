@@ -32,10 +32,14 @@ pub struct App {
     show_preview: bool,
     show_preview_svg: bool,
     show_scenes_svg: bool,
+    show_close_dialog: bool,
+    allowed_to_close: bool,
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        egui::gui_zoom::zoom_with_keyboard_shortcuts(ctx, frame.info().native_pixels_per_point);
+
         if let Some(fps) = self.timing.framerate() {
             frame.set_window_title(&format!("gled ({fps:.1} fps)"))
         }
