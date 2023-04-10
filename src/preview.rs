@@ -3,6 +3,7 @@ use crate::{
     constants::{ARTNET_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, TEXTURE_SIZE},
     wgpu_render_state,
 };
+use egui::TextureId;
 use std::num::NonZeroU64;
 use wgpu::*;
 
@@ -12,6 +13,7 @@ pub struct Preview {
     bind_group_layout: BindGroupLayout,
     texture: Texture,
     view: TextureView,
+    texture_id: TextureId,
 }
 
 impl Preview {
@@ -40,17 +42,17 @@ impl Preview {
         let view = texture.create_view(&TextureViewDescriptor::default());
 
         let vertex_shader = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("animation vertex shader"),
+            label: Some("preview vertex shader"),
             source: ShaderSource::Wgsl(include_str!("shaders/vertex.wgsl").into()),
         });
 
         let fragment_shader = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("animation fragment shader"),
+            label: Some("preview fragment shader"),
             source: ShaderSource::Wgsl(include_str!("shaders/preview.wgsl").into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("animation bind group layout"),
+            label: Some("preview bind group layout"),
             entries: &[
                 BindGroupLayoutEntry {
                     binding: 0,
@@ -76,13 +78,13 @@ impl Preview {
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("animation pipeline layout"),
+            label: Some("preview pipeline layout"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("animation pipeline"),
+            label: Some("preview pipeline"),
             layout: Some(&pipeline_layout),
             vertex: VertexState {
                 module: &vertex_shader,
@@ -100,11 +102,18 @@ impl Preview {
             multiview: None,
         });
 
+        let texture_id = wgpu_render_state.renderer.write().register_native_texture(
+            &device,
+            &view,
+            wgpu::FilterMode::Nearest,
+        );
+
         Self {
             pipeline,
             bind_group_layout,
             texture,
             view,
+            texture_id,
         }
     }
 
@@ -127,7 +136,7 @@ impl Preview {
         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Renderer Pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
-                view: self.view(),
+                view: &self.view,
                 resolve_target: None,
                 ops: Operations {
                     load: LoadOp::Clear(wgpu::Color {
@@ -146,11 +155,7 @@ impl Preview {
         render_pass.draw(0..3, 0..1);
     }
 
-    pub fn view(&self) -> &TextureView {
-        &self.view
-    }
-
-    pub fn texture(&self) -> &Texture {
-        &self.texture
+    pub fn texture_id(&self) -> TextureId {
+        self.texture_id
     }
 }

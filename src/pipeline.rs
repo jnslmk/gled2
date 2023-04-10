@@ -3,6 +3,7 @@ use crate::{
     preview_indices::PreviewIndices, scene::Scene, svg::Universes,
 };
 use artnet_protocol::ArtCommand;
+use egui::TextureId;
 use serde::{Deserialize, Serialize};
 use slab::Slab;
 use std::time::Instant;
@@ -26,10 +27,9 @@ pub struct Pipeline {
 
 impl Pipeline {
     pub fn init_gpu(&mut self) {
-        self.extract = Some(ExtractArtnet::new());
-        self.preview_indices = Some(PreviewIndices::new());
-        self.preview = Some(Preview::new());
-
+        self.extract.get_or_insert_with(ExtractArtnet::new);
+        self.preview_indices.get_or_insert_with(PreviewIndices::new);
+        self.preview.get_or_insert_with(Preview::new);
         for (_index, scene) in self.scenes.iter_mut() {
             scene.init_gpu();
         }
@@ -41,7 +41,6 @@ impl Pipeline {
 
     pub fn add_scene(&mut self, scene: Scene) -> usize {
         let index = self.scenes.insert(scene);
-
         self.init_gpu();
 
         index
@@ -165,6 +164,13 @@ impl Pipeline {
             .as_mut()
             .expect("Gpu was not yet initialized")
             .send_positions();
+    }
+
+    pub fn preview_texture_id(&self) -> TextureId {
+        self.preview
+            .as_ref()
+            .expect("Gpu was not yet initialized")
+            .texture_id()
     }
 }
 

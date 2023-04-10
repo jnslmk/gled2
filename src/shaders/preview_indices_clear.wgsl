@@ -7,5 +7,5 @@ var<storage, read_write> indices: array<u32, 2097152>;
 @compute
 @workgroup_size(1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    indices[global_id.x] = 0xffffffffu;
+    indices[global_id.y * 1024u + global_id.x] = 0xffffffffu;
 }

@@ -28,10 +28,6 @@ impl Parameter {
                             start -= 510;
                         }
 
-                        if start == 2 {
-                            dbg!(self);
-                        }
-
                         Led { universe, start }
                     })
                     .collect()

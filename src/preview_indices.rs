@@ -4,7 +4,7 @@
 //!  * index of artnet buffer where the color triplet starts.
 use crate::{
     app::preview_positions,
-    constants::{LAMPS, POSITIONS_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE},
+    constants::{LAMPS, POSITIONS_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, TEXTURE_SIZE},
     wgpu_render_state,
 };
 use std::num::NonZeroU64;
@@ -178,7 +178,7 @@ impl PreviewIndices {
             });
             clear_compute_pass.set_pipeline(&self.clear_pipeline);
             clear_compute_pass.set_bind_group(0, &self.clear_bind_group, &[]);
-            clear_compute_pass.dispatch_workgroups(PREVIEW_INDICES_BUFFER_SIZE as u32 / 4, 1, 1);
+            clear_compute_pass.dispatch_workgroups(TEXTURE_SIZE / 2, TEXTURE_SIZE, 1);
         }
 
         let mut index_compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {

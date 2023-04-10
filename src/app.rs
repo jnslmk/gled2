@@ -54,8 +54,10 @@ impl eframe::App for App {
             group_selection(ui, &mut self.group);
 
             egui::ScrollArea::vertical().show(ui, |ui| {
+                crate::get_pipeline!(pipeline);
+                ui.image(pipeline.preview_texture_id(), egui::Vec2::splat(512.0));
+
                 egui::Grid::new("scenes").show(ui, |ui| {
-                    crate::get_pipeline!(pipeline);
                     for (_index, scene) in pipeline.scenes() {
                         let rects = scene
                             .palette
