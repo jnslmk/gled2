@@ -19,7 +19,7 @@ impl Default for Timing {
     fn default() -> Self {
         Self {
             beats_per_minute: 60.0,
-            fps_limit: 200,
+            fps_limit: 120,
             beat_progression: 0.0,
             fps: None,
             start: Instant::now(),
