@@ -5,6 +5,7 @@ mod timing;
 
 use self::svg::Svg;
 use crate::{
+    animation::Color,
     artnet_sender::{self, ArtnetSender},
     get_pipeline,
     logo::logo_image,
@@ -12,7 +13,7 @@ use crate::{
     shader_widget::{self, init_shaders},
     wgpu_render_state,
 };
-use egui::Image;
+use egui::{Button, Image, Rect, Vec2};
 use egui_extras::RetainedImage;
 use timing::Timing;
 
@@ -48,20 +49,52 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.menu(ctx, ui);
 
-            egui::ScrollArea::both()
-                .auto_shrink([false; 2])
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        crate::get_pipeline!(pipeline);
-                        for (_index, scene) in pipeline.scenes() {
-                            let size = egui::Vec2::splat(500.0);
-                            let res = ui.image(scene.texture_id(), size);
-                            if let Some(svg) = self.svg.as_ref() {
-                                ui.put(res.rect, Image::new(svg.image().texture_id(ctx), size));
-                            }
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                egui::Grid::new("scenes").show(ui, |ui| {
+                    crate::get_pipeline!(pipeline);
+                    for (_index, scene) in pipeline.scenes() {
+                        let rects = scene
+                            .palette
+                            .colors()
+                            .iter_mut()
+                            .map(|color| {
+                                let res = ui.color_edit_button_rgb(color.rgb_mut());
+                                Rect::from_min_max(res.rect.center(), res.rect.right_bottom())
+                            })
+                            .collect::<Vec<_>>();
+                        for (index, rect) in rects.into_iter().enumerate() {
+                            ui.scope(|ui| {
+                                ui.style_mut().spacing.interact_size.y = 10.0;
+                                if ui.put(rect, Button::new("-")).clicked() {
+                                    scene.palette.remove_color(index);
+                                }
+                            });
                         }
-                    });
+
+                        if scene.palette.colors.len() < 16
+                            && ui
+                                .add_sized(
+                                    Vec2::new(
+                                        ui.style().spacing.interact_size.y,
+                                        ui.style().spacing.interact_size.y,
+                                    ),
+                                    Button::new("+"),
+                                )
+                                .clicked()
+                        {
+                            scene.palette.add_color(Color::default());
+                        }
+
+                        let size = egui::Vec2::splat(500.0);
+                        let res = ui.image(scene.texture_id(), size);
+                        if let Some(svg) = self.svg.as_ref() {
+                            ui.put(res.rect, Image::new(svg.image().texture_id(ctx), size));
+                        }
+
+                        ui.end_row();
+                    }
                 });
+            });
         });
 
         self.about_window(ctx);

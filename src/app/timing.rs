@@ -18,7 +18,7 @@ pub struct Timing {
 impl Default for Timing {
     fn default() -> Self {
         Self {
-            beats_per_minute: 130.0,
+            beats_per_minute: 60.0,
             fps_limit: 200,
             beat_progression: 0.0,
             fps: None,
