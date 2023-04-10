@@ -8,7 +8,7 @@ use egui::TextureId;
 use serde::{Deserialize, Serialize};
 use slab::Slab;
 use std::time::Instant;
-use wgpu::{CommandEncoderDescriptor, Device, Queue};
+use wgpu::{CommandEncoderDescriptor, Queue};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -34,6 +34,7 @@ impl Pipeline {
         for (_index, scene) in self.scenes.iter_mut() {
             scene.init_gpu();
         }
+        self.update_mix_artnet();
     }
 
     pub fn start(&mut self) -> Instant {
@@ -49,6 +50,29 @@ impl Pipeline {
 
     pub fn remove_scene(&mut self, index: usize) {
         self.scenes.remove(index);
+        self.init_gpu();
+    }
+
+    pub fn update_mix_artnet(&mut self) {
+        let mut main = None;
+        let mut mix_index = 0;
+        for (_index, scene) in self.scenes.iter_mut() {
+            match main {
+                Some(main) => {
+                    if self.mixs.len() <= mix_index {
+                        self.mixs.push(MixArtnet::init());
+                    }
+                    self.mixs
+                        .get_mut(mix_index)
+                        .expect("Mix does not exist")
+                        .set_buffers(main, scene.artnet_buffer());
+                    mix_index += 1;
+                }
+                None => main = Some(scene.artnet_buffer()),
+            }
+        }
+
+        self.mixs.shrink_to(mix_index);
     }
 
     pub fn set_opacity(&mut self, index: usize, opacity: f32) {
@@ -66,7 +90,6 @@ impl Pipeline {
     #[allow(clippy::too_many_arguments)]
     fn run_and_poll(
         &mut self,
-        device: &Device,
         queue: &Queue,
         universes: &Universes,
         beat_progression: f32,
@@ -92,6 +115,7 @@ impl Pipeline {
             .expect("Gpu is not yet initialized")
             .prepare(queue);
 
+        let device = wgpu_render_state().device;
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations"),
         });
@@ -99,25 +123,15 @@ impl Pipeline {
             scene.render(&mut encoder, disable_artnet_extraction);
         }
 
-        let mut main = None;
-        let mut mix_index = 0;
-        for (_index, scene) in self.scenes.iter_mut() {
-            match main {
-                Some(main) => {
-                    if self.mixs.len() <= mix_index {
-                        self.mixs.push(MixArtnet::init(device));
-                    }
-                    self.mixs.get(mix_index).expect("Mix does not exist").run(
-                        device,
-                        &mut encoder,
-                        main,
-                        scene.artnet_buffer(),
-                    );
-                    mix_index += 1;
-                }
-                None => main = Some(scene.artnet_buffer()),
-            }
+        for mix in self.mixs.iter() {
+            mix.run(&mut encoder);
         }
+
+        let main = self
+            .scenes
+            .iter_mut()
+            .next()
+            .map(|(_index, scene)| scene.artnet_buffer());
 
         if let Some(main) = main {
             self.extract
@@ -187,12 +201,10 @@ impl Pipeline {
         main_dimmer: f32,
     ) {
         let wgpu_render_state = wgpu_render_state();
-        let device = &wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
 
         let commands = self
             .run_and_poll(
-                device,
                 queue,
                 universes,
                 beat_progression,

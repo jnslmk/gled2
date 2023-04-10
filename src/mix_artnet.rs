@@ -1,5 +1,5 @@
 //! Combine two artnet buffers into one artnet buffer.
-use crate::constants::ARTNET_BUFFER_SIZE;
+use crate::{constants::ARTNET_BUFFER_SIZE, wgpu_render_state};
 use std::num::NonZeroU64;
 use wgpu::*;
 
@@ -7,10 +7,13 @@ use wgpu::*;
 pub struct MixArtnet {
     pipeline: ComputePipeline,
     bind_group_layout: BindGroupLayout,
+    bind_group: Option<BindGroup>,
 }
 
 impl MixArtnet {
-    pub fn init(device: &Device) -> Self {
+    pub fn init() -> Self {
+        let device = wgpu_render_state().device;
+
         let module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("MixArtnet shader"),
             source: ShaderSource::Wgsl(include_str!("./shaders/mix_artnet.wgsl").into()),
@@ -58,17 +61,13 @@ impl MixArtnet {
         Self {
             pipeline,
             bind_group_layout,
+            bind_group: None,
         }
     }
 
-    pub fn run(
-        &self,
-        device: &Device,
-        encoder: &mut CommandEncoder,
-        main: &Buffer,
-        other: &Buffer,
-    ) {
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+    pub fn set_buffers(&mut self, main: &Buffer, other: &Buffer) {
+        let device = wgpu_render_state().device;
+        self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
             label: Some("MixArtnet bind group"),
             layout: &self.bind_group_layout,
             entries: &[
@@ -81,13 +80,16 @@ impl MixArtnet {
                     resource: other.as_entire_binding(),
                 },
             ],
-        });
-
-        let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-            label: Some("MixArtnet compute pass"),
-        });
-        compute_pass.set_pipeline(&self.pipeline);
-        compute_pass.set_bind_group(0, &bind_group, &[]);
-        compute_pass.dispatch_workgroups(ARTNET_BUFFER_SIZE as u32 / 4, 1, 1);
+        }));
+    }
+    pub fn run(&self, encoder: &mut CommandEncoder) {
+        if let Some(bind_group) = self.bind_group.as_ref() {
+            let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("MixArtnet compute pass"),
+            });
+            compute_pass.set_pipeline(&self.pipeline);
+            compute_pass.set_bind_group(0, bind_group, &[]);
+            compute_pass.dispatch_workgroups(ARTNET_BUFFER_SIZE as u32 / 4, 1, 1);
+        }
     }
 }
