@@ -3,7 +3,7 @@ mod menu;
 mod svg;
 mod timing;
 
-use self::svg::Svg;
+use self::svg::{groups, Svg};
 use crate::{
     animation::Color,
     artnet_sender::{self, ArtnetSender},
@@ -13,7 +13,7 @@ use crate::{
     shader_widget::{self, init_shaders},
     wgpu_render_state,
 };
-use egui::{Button, Image, Rect, Vec2};
+use egui::{Button, Color32, Image, Rect, RichText, Stroke, Vec2};
 use egui_extras::RetainedImage;
 use timing::Timing;
 
@@ -48,6 +48,17 @@ impl eframe::App for App {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             self.menu(ctx, ui);
+
+            ui.scope(|ui| {
+                ui.set_max_width(150.0);
+                ui.style_mut().spacing.interact_size.y = 30.0;
+
+                ui.horizontal_wrapped(|ui| {
+                    for group in groups() {
+                        ui.add(group_button(&group, true));
+                    }
+                })
+            });
 
             egui::ScrollArea::vertical().show(ui, |ui| {
                 egui::Grid::new("scenes").show(ui, |ui| {
@@ -123,5 +134,29 @@ impl App {
             timing: Default::default(),
             about_window_open: false,
         })
+    }
+}
+
+pub fn group_button(group: &str, selected: bool) -> Button {
+    static COLORS: &[Color32] = &[
+        Color32::from_rgb(175, 213, 129),
+        Color32::from_rgb(177, 152, 221),
+        Color32::from_rgb(140, 181, 255),
+        Color32::from_rgb(217, 176, 140),
+        Color32::from_rgb(217, 148, 140),
+        Color32::from_rgb(113, 208, 132),
+        Color32::from_rgb(213, 129, 192),
+        Color32::from_rgb(163, 218, 224),
+        Color32::from_rgb(222, 233, 190),
+        Color32::from_rgb(255, 255, 255),
+    ];
+
+    let index = groups().iter().position(|g| g == group).unwrap_or_default();
+    let button = Button::new(RichText::new(group).color(Color32::from_black_alpha(200)))
+        .fill(COLORS[index % COLORS.len()]);
+    if selected {
+        button.stroke(Stroke::new(1.0, Color32::RED))
+    } else {
+        button
     }
 }

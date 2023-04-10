@@ -45,6 +45,14 @@ impl Svg {
     }
 }
 
+pub fn groups() -> Vec<String> {
+    MEASUREMENT_POINTS
+        .read()
+        .ok()
+        .map(|measurement_points| measurement_points.groups())
+        .unwrap_or_default()
+}
+
 pub fn positions(group: &str) -> Option<Positions> {
     MEASUREMENT_POINTS.read().ok()?.positions(group)
 }

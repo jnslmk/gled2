@@ -5,7 +5,7 @@ use crate::texture_to_artnet::{Lamp, Positions, Universe, UNIVERSES};
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet},
     rc::Rc,
 };
 use usvg::{NodeExt, NodeKind, PathData, PathSegment};
@@ -15,7 +15,7 @@ pub type Universes = BTreeSet<u16>;
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct MeasurementPoints {
     /// points for each render group
-    points: HashMap<String, Vec<MeasurementPoint>>,
+    points: BTreeMap<String, Vec<MeasurementPoint>>,
 }
 
 impl MeasurementPoints {
@@ -30,7 +30,7 @@ impl MeasurementPoints {
 
     pub fn positions(&self, group: &str) -> Option<Positions> {
         let points = self.points.get(group)?;
-        let mut universes = HashMap::new();
+        let mut universes = BTreeMap::new();
         for point in points.iter() {
             let lamp = Lamp::Position {
                 x: point.x,
@@ -65,6 +65,10 @@ impl MeasurementPoints {
 
         Some(positions)
     }
+
+    pub fn groups(&self) -> Vec<String> {
+        self.points.keys().cloned().collect()
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -79,7 +83,7 @@ impl From<&Svg> for MeasurementPoints {
         info!("find measurement points");
 
         let max = svg.tree.size.width().max(svg.tree.size.height()) as f32;
-        let mut points = HashMap::new();
+        let mut points = BTreeMap::new();
         svg.tree.root.descendants().for_each(|node| {
             if let Some(parameter) = svg.parameters.get(&node.borrow().id().to_owned()) {
                 parameter.groups.iter().for_each(|group| {
