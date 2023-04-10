@@ -1,6 +1,7 @@
 use crate::{
-    animation::State, extract_artnet::ExtractArtnet, mix_artnet::MixArtnet, preview::Preview,
-    preview_indices::PreviewIndices, scene::Scene, svg::Universes,
+    animation::State, artnet_sender::ArtnetSender, extract_artnet::ExtractArtnet,
+    mix_artnet::MixArtnet, preview::Preview, preview_indices::PreviewIndices, scene::Scene,
+    svg::Universes, wgpu_render_state,
 };
 use artnet_protocol::ArtCommand;
 use egui::TextureId;
@@ -63,7 +64,7 @@ impl Pipeline {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn run_and_poll(
+    fn run_and_poll(
         &mut self,
         device: &Device,
         queue: &Queue,
@@ -171,6 +172,38 @@ impl Pipeline {
             .as_ref()
             .expect("Gpu was not yet initialized")
             .texture_id()
+    }
+
+    pub fn render(
+        &mut self,
+        universes: &Universes,
+        artnet_sender: &mut ArtnetSender,
+        beat_progression: f32,
+        beats_per_minute: f32,
+        framerate: f32,
+        disable_artnet_extraction: bool,
+    ) {
+        let wgpu_render_state = wgpu_render_state();
+        let device = &wgpu_render_state.device;
+        let queue = &wgpu_render_state.queue;
+
+        let commands = self
+            .run_and_poll(
+                device,
+                queue,
+                universes,
+                beat_progression,
+                beats_per_minute,
+                framerate,
+                disable_artnet_extraction,
+            )
+            .expect("No scene registered");
+
+        for command in commands {
+            artnet_sender
+                .send(command)
+                .expect("Artnet sender closed its channel");
+        }
     }
 }
 

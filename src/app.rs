@@ -10,7 +10,7 @@ use crate::{
     get_pipeline,
     logo::logo_image,
     pipeline::Pipeline,
-    shader_widget::{self, init_shaders},
+    shader_widget::init_shaders,
     wgpu_render_state,
 };
 use egui::{Button, Color32, Image, Rect, RichText, Stroke, Ui, Vec2};
@@ -38,7 +38,8 @@ impl eframe::App for App {
         }
 
         if let Some(svg) = self.svg.as_ref() {
-            shader_widget::render(
+            get_pipeline!(pipeline);
+            pipeline.render(
                 svg.universes(),
                 &mut self.artnet_sender,
                 self.timing.beat_progression(),
@@ -55,7 +56,21 @@ impl eframe::App for App {
 
             egui::ScrollArea::vertical().show(ui, |ui| {
                 crate::get_pipeline!(pipeline);
-                ui.image(pipeline.preview_texture_id(), egui::Vec2::splat(512.0));
+
+                let size = egui::Vec2::splat(2048.0);
+                let res = self
+                    .svg
+                    .as_ref()
+                    .map(|svg| ui.image(svg.image().texture_id(ctx), size));
+                let preview = Image::new(pipeline.preview_texture_id(), size);
+                match res {
+                    Some(res) => {
+                        ui.put(res.rect, preview);
+                    }
+                    None => {
+                        ui.add(preview);
+                    }
+                }
 
                 //egui::Grid::new("scenes").show(ui, |ui| {
                 for (_index, scene) in pipeline.scenes() {
@@ -91,7 +106,6 @@ impl eframe::App for App {
                         scene.palette.add_color(Color::default());
                     }
 
-                    let size = egui::Vec2::splat(500.0);
                     let res = ui.image(scene.texture_id(), size);
                     if let Some(svg) = self.svg.as_ref() {
                         ui.put(res.rect, Image::new(svg.image().texture_id(ctx), size));
