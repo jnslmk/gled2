@@ -45,6 +45,8 @@ pub fn start() -> Result<(ArtnetSender, GpuReadyReceiver)> {
 
             for mut extract_artnet in artnet_receiver.iter() {
                 let commands = extract_artnet.poll_artnet_buffer();
+                gpu_ready_sender.send(()).ok();
+
                 for command in commands {
                     let Ok(bytes) = command
                     .write_to_buffer()
@@ -67,8 +69,6 @@ pub fn start() -> Result<(ArtnetSender, GpuReadyReceiver)> {
                         error!("Could not send data: {:?}", err)
                     };
                 }
-
-                gpu_ready_sender.send(()).ok();
             }
         })
         .context("Could not spawn artnet thread")?;
