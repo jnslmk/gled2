@@ -6,11 +6,13 @@ use crate::{
     wgpu_render_state,
 };
 use artnet_protocol::{ArtCommand, Output, PaddedData, PortAddress};
+use std::{collections::BTreeSet, sync::Arc};
 use wgpu::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExtractArtnet {
-    pub output_cpu: Buffer,
+    pub output_cpu: Arc<Buffer>,
+    pub universes: Universes,
 }
 
 impl ExtractArtnet {
@@ -22,15 +24,19 @@ impl ExtractArtnet {
             mapped_at_creation: false,
         });
 
-        Self { output_cpu }
+        Self {
+            output_cpu: Arc::new(output_cpu),
+            universes: BTreeSet::new(),
+        }
     }
 
     pub fn run(&mut self, encoder: &mut CommandEncoder, artnet: &Buffer) {
         encoder.copy_buffer_to_buffer(artnet, 0, &self.output_cpu, 0, ARTNET_BUFFER_SIZE);
     }
 
-    pub fn poll_artnet_buffer(&mut self, universes: &Universes) -> Vec<ArtCommand> {
-        let active_len = universes.len().min(UNIVERSES as usize) * UNIVERSE_BUFFER_SIZE as usize;
+    pub fn poll_artnet_buffer(&mut self) -> Vec<ArtCommand> {
+        let active_len =
+            self.universes.len().min(UNIVERSES as usize) * UNIVERSE_BUFFER_SIZE as usize;
 
         if active_len == 0 {
             return vec![];
@@ -60,7 +66,7 @@ impl ExtractArtnet {
         }
         self.output_cpu.unmap();
 
-        universes
+        self.universes
             .iter()
             .take(UNIVERSES as usize)
             .zip(artnet_data.chunks(UNIVERSE_BUFFER_SIZE as usize))

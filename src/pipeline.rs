@@ -1,14 +1,19 @@
 use crate::{
-    animation::State, artnet_sender::ArtnetSender, extract_artnet::ExtractArtnet,
-    mix_artnet::MixArtnet, preview::Preview, preview_indices::PreviewIndices, scene::Scene,
-    svg::Universes, wgpu_render_state,
+    animation::State,
+    artnet_sender::{ArtnetSender, GpuReadyReceiver},
+    extract_artnet::ExtractArtnet,
+    mix_artnet::MixArtnet,
+    preview::Preview,
+    preview_indices::PreviewIndices,
+    scene::Scene,
+    svg::Universes,
+    wgpu_render_state,
 };
-use artnet_protocol::ArtCommand;
 use egui::TextureId;
 use serde::{Deserialize, Serialize};
 use slab::Slab;
 use std::time::Instant;
-use wgpu::{CommandEncoderDescriptor, Queue};
+use wgpu::CommandEncoderDescriptor;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -100,80 +105,6 @@ impl Pipeline {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn run_and_poll(
-        &mut self,
-        queue: &Queue,
-        universes: &Universes,
-        beat_progression: f32,
-        beats_per_minute: f32,
-        framerate: f32,
-        disable_artnet_extraction: bool,
-        main_dimmer: f32,
-    ) -> Option<Vec<ArtCommand>> {
-        let time = self.start().elapsed().as_secs_f32();
-        let state = State {
-            time,
-            beat_progression,
-            beats_per_minute,
-            framerate,
-            ..Default::default()
-        };
-
-        for (_index, scene) in self.scenes.iter_mut() {
-            scene.prepare(queue, state, disable_artnet_extraction, main_dimmer);
-        }
-        self.preview_indices
-            .as_mut()
-            .expect("Gpu is not yet initialized")
-            .prepare(queue);
-
-        let device = wgpu_render_state().device;
-        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("Render animations"),
-        });
-        for (_index, scene) in self.scenes.iter_mut() {
-            scene.render(&mut encoder, disable_artnet_extraction);
-        }
-
-        for mix in self.mixs.iter() {
-            mix.run(&mut encoder);
-        }
-
-        let main = self
-            .scenes
-            .iter_mut()
-            .next()
-            .map(|(_index, scene)| scene.artnet_buffer());
-
-        if let Some(main) = main {
-            self.extract
-                .as_mut()
-                .expect("Gpu was not yet initialized")
-                .run(&mut encoder, main);
-            self.preview_indices
-                .as_mut()
-                .expect("Gpu was not yet initialized")
-                .run(&mut encoder);
-            self.preview
-                .as_mut()
-                .expect("Gpu was not yet initialized")
-                .run(&mut encoder);
-        }
-        queue.submit(std::iter::once(encoder.finish()));
-
-        if main.is_some() {
-            Some(
-                self.extract
-                    .as_mut()
-                    .expect("Gpu was not yet initialized")
-                    .poll_artnet_buffer(universes),
-            )
-        } else {
-            None
-        }
-    }
-
     pub fn scenes(&mut self) -> Vec<(usize, &mut Scene)> {
         self.scenes.iter_mut().collect()
     }
@@ -200,6 +131,7 @@ impl Pipeline {
         &mut self,
         universes: &Universes,
         artnet_sender: &mut ArtnetSender,
+        gpu_ready_receiver: &mut GpuReadyReceiver,
         beat_progression: f32,
         beats_per_minute: f32,
         framerate: f32,
@@ -207,25 +139,69 @@ impl Pipeline {
         main_dimmer: f32,
     ) {
         let wgpu_render_state = wgpu_render_state();
+        let device = wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
 
-        let commands = self
-            .run_and_poll(
-                queue,
-                universes,
-                beat_progression,
-                beats_per_minute,
-                framerate,
-                disable_artnet_extraction,
-                main_dimmer,
-            )
-            .expect("No scene registered");
+        let time = self.start().elapsed().as_secs_f32();
+        let state = State {
+            time,
+            beat_progression,
+            beats_per_minute,
+            framerate,
+            ..Default::default()
+        };
 
-        for command in commands {
-            artnet_sender
-                .send(command)
-                .expect("Artnet sender closed its channel");
+        for (_index, scene) in self.scenes.iter_mut() {
+            scene.prepare(queue, state, disable_artnet_extraction, main_dimmer);
         }
+        self.preview_indices
+            .as_mut()
+            .expect("Gpu is not yet initialized")
+            .prepare(queue);
+
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("Render animations"),
+        });
+        for (_index, scene) in self.scenes.iter_mut() {
+            scene.render(&mut encoder, disable_artnet_extraction);
+        }
+
+        for mix in self.mixs.iter() {
+            mix.run(&mut encoder);
+        }
+
+        let main = self
+            .scenes
+            .iter_mut()
+            .next()
+            .map(|(_index, scene)| scene.artnet_buffer());
+
+        if let Some(main) = main {
+            self.extract
+                .as_mut()
+                .expect("Gpu was not yet initialized")
+                .universes = universes.clone();
+            self.extract
+                .as_mut()
+                .expect("Gpu was not yet initialized")
+                .run(&mut encoder, main);
+            self.preview_indices
+                .as_mut()
+                .expect("Gpu was not yet initialized")
+                .run(&mut encoder);
+            self.preview
+                .as_mut()
+                .expect("Gpu was not yet initialized")
+                .run(&mut encoder);
+        }
+
+        //wait for gpu to be ready for the next queue submission
+        gpu_ready_receiver.recv().ok();
+        queue.submit(std::iter::once(encoder.finish()));
+
+        artnet_sender
+            .send(self.extract.clone().expect("Gpu was not yet initialized"))
+            .expect("Artnet sender closed its channel");
     }
 }
 

@@ -9,7 +9,7 @@ mod timing;
 
 use self::svg::Svg;
 use crate::{
-    artnet_sender::{self, ArtnetSender},
+    artnet_sender::{self, ArtnetSender, GpuReadyReceiver},
     get_pipeline,
     logo::logo_image,
     shader_widget::init_shaders,
@@ -26,6 +26,7 @@ pub struct App {
     artnet_ip: String,
     svg: Option<Svg>,
     artnet_sender: Option<ArtnetSender>,
+    gpu_ready_receiver: Option<GpuReadyReceiver>,
     logo_image: Option<RetainedImage>,
     timing: Timing,
     about_window_open: bool,
@@ -54,11 +55,16 @@ impl eframe::App for App {
             frame.set_window_title(&format!("gled ({fps:.1} fps)"))
         }
 
-        if let (Some(svg), Some(artnet_sender)) = (self.svg.as_ref(), self.artnet_sender.as_mut()) {
+        if let (Some(svg), Some(artnet_sender), Some(gpu_ready_receiver)) = (
+            self.svg.as_ref(),
+            self.artnet_sender.as_mut(),
+            self.gpu_ready_receiver.as_mut(),
+        ) {
             get_pipeline!(pipeline);
             pipeline.render(
                 svg.universes(),
                 artnet_sender,
+                gpu_ready_receiver,
                 self.timing.beat_progression(),
                 self.timing.beats_per_minute,
                 self.timing.framerate().unwrap_or_default(),
@@ -81,7 +87,8 @@ impl eframe::App for App {
 
 impl App {
     pub fn new() -> Option<Self> {
-        let artnet_sender = artnet_sender::start().expect("Could not start artnet sender");
+        let (artnet_sender, gpu_ready_receiver) =
+            artnet_sender::start().expect("Could not start artnet sender");
         let logo_image = logo_image();
 
         //TODO: Empty project
@@ -94,6 +101,7 @@ impl App {
         Some(Self {
             artnet_ip: "127.0.0.1".to_string(),
             artnet_sender: Some(artnet_sender),
+            gpu_ready_receiver: Some(gpu_ready_receiver),
             logo_image: Some(logo_image),
             svg,
             show_preview: true,

@@ -1,14 +1,18 @@
 //! Send data via Art-Net udp protocol.
 use anyhow::{Context, Result};
-use artnet_protocol::ArtCommand;
 use log::{error, info};
 use std::{
     net::{IpAddr, Ipv4Addr, ToSocketAddrs, UdpSocket},
-    sync::{mpsc::Sender, RwLock},
+    sync::{
+        mpsc::{Receiver, Sender},
+        RwLock,
+    },
     thread,
 };
 
-pub type ArtnetSender = Sender<ArtCommand>;
+use crate::extract_artnet::ExtractArtnet;
+pub type ArtnetSender = Sender<ExtractArtnet>;
+pub type GpuReadyReceiver = Receiver<()>;
 
 static ARTNET_IP: RwLock<IpAddr> = RwLock::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
 
@@ -17,9 +21,11 @@ pub fn set_artnet_ip(artnet_ip: IpAddr) {
 }
 
 /// Start artnet thread
-pub fn start() -> Result<ArtnetSender> {
+pub fn start() -> Result<(ArtnetSender, GpuReadyReceiver)> {
     info!("Spawning artnet thread");
-    let (sender, receiver) = std::sync::mpsc::channel::<ArtCommand>();
+    let (artnet_sender, artnet_receiver) = std::sync::mpsc::channel::<ExtractArtnet>();
+    let (gpu_ready_sender, gpu_ready_receiver) = std::sync::mpsc::channel::<()>();
+    gpu_ready_sender.send(()).ok();
 
     thread::Builder::new()
         .name("gled:artnet:tx".to_owned())
@@ -37,15 +43,17 @@ pub fn start() -> Result<ArtnetSender> {
                 Err(e) => info!("Could not activate non-blocking mode: {}", e),
             };
 
-            for command in receiver.iter() {
-                let Ok(bytes) = command
+            for mut extract_artnet in artnet_receiver.iter() {
+                let commands = extract_artnet.poll_artnet_buffer();
+                for command in commands {
+                    let Ok(bytes) = command
                     .write_to_buffer()
                     .map_err(|e| error!("Could not convert command into buffer: {:?}", e))
                     else {
                         continue;
                     };
 
-                let Some(addr) = ARTNET_IP
+                    let Some(addr) = ARTNET_IP
                     .read()
                     .ok()
                     .and_then(|ip| (*ip, 6454).to_socket_addrs().ok())
@@ -53,14 +61,17 @@ pub fn start() -> Result<ArtnetSender> {
                         continue;
                     };
 
-                log::debug!("Sending artnet command to {addr}");
-                log::trace!("Artnet data: {bytes:02x?}");
-                if let Err(err) = socket.send_to(&bytes, addr) {
-                    error!("Could not send data: {:?}", err)
-                };
+                    log::debug!("Sending artnet command to {addr}");
+                    log::trace!("Artnet data: {bytes:02x?}");
+                    if let Err(err) = socket.send_to(&bytes, addr) {
+                        error!("Could not send data: {:?}", err)
+                    };
+                }
+
+                gpu_ready_sender.send(()).ok();
             }
         })
         .context("Could not spawn artnet thread")?;
 
-    Ok(sender)
+    Ok((artnet_sender, gpu_ready_receiver))
 }
