@@ -1,7 +1,7 @@
 use egui::ColorImage;
 use egui_extras::RetainedImage;
 
-const LOGO: &[u8; 38897] = include_bytes!("logo.png");
+const LOGO: &[u8; 38897] = include_bytes!("../assets/logo.png");
 
 pub fn icon() -> eframe::IconData {
     let (icon_rgba, icon_width, icon_height) = {

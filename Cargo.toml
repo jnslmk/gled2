@@ -30,8 +30,8 @@ tiny-skia = { version = "0.8", default-features = false, features = [
 usvg = "0.31"
 wgpu = "0.15"
 
-[target.'cfg(windows)'.build-dependencies]
-windres = "0.2"
+[build-dependencies]
+winresource = "0.1"
 
 [profile.release]
 lto = "fat"
