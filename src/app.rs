@@ -56,14 +56,12 @@ impl eframe::App for App {
             frame.set_window_title(&format!("gled ({fps:.1} fps)"))
         }
 
-        if let (Some(svg), Some(artnet_sender), Some(gpu_ready_receiver)) = (
-            self.svg.as_ref(),
+        if let (Some(artnet_sender), Some(gpu_ready_receiver)) = (
             self.artnet_sender.as_mut(),
             self.gpu_ready_receiver.as_mut(),
         ) {
             get_pipeline!(pipeline);
             pipeline.render(
-                svg.universes(),
                 artnet_sender,
                 gpu_ready_receiver,
                 self.timing.beat_progression(),

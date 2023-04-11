@@ -112,7 +112,7 @@ impl Pipeline {
         self.scenes.iter_mut().collect()
     }
 
-    pub fn send_positions(&mut self) {
+    pub fn svg_or_groups_changed(&mut self, universes: Universes) {
         for (_index, scene) in self.scenes.iter_mut() {
             scene.send_positions();
         }
@@ -120,6 +120,10 @@ impl Pipeline {
             .as_mut()
             .expect("Gpu was not yet initialized")
             .send_positions();
+        self.extract
+            .as_mut()
+            .expect("Gpu was not yet initialized")
+            .set_universes(universes);
     }
 
     pub fn preview_texture_id(&self) -> TextureId {
@@ -132,7 +136,6 @@ impl Pipeline {
     #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self,
-        universes: &Universes,
         artnet_sender: &mut ArtnetSender,
         gpu_ready_receiver: &mut GpuReadyReceiver,
         beat_progression: f32,
@@ -180,10 +183,6 @@ impl Pipeline {
             .map(|(_index, scene)| scene.artnet_buffer());
 
         if let Some(main) = main {
-            self.extract
-                .as_mut()
-                .expect("Gpu was not yet initialized")
-                .universes = universes.clone();
             self.extract
                 .as_mut()
                 .expect("Gpu was not yet initialized")

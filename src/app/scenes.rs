@@ -76,7 +76,7 @@ impl<'a> Widget for SceneWidget<'a> {
                     .fill(if self.scene.artnet_extraction {
                         Color32::RED
                     } else {
-                        Color32::TRANSPARENT
+                        Color32::DARK_GRAY
                     })
                     .inner_margin(Margin::from(10.0))
                     .show(ui, |ui| {

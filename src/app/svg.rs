@@ -27,7 +27,7 @@ impl Svg {
         let image = svg.render().context("Could not render svg")?;
 
         crate::get_pipeline!(pipeline);
-        pipeline.send_positions();
+        pipeline.svg_or_groups_changed(universes.clone());
 
         Ok(Self { universes, image })
     }

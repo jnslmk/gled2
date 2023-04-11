@@ -6,13 +6,16 @@ use crate::{
     wgpu_render_state,
 };
 use artnet_protocol::{ArtCommand, Output, PaddedData, PortAddress};
-use std::{collections::BTreeSet, sync::Arc};
+use std::{
+    collections::BTreeSet,
+    sync::{Arc, RwLock},
+};
 use wgpu::*;
 
 #[derive(Debug, Clone)]
 pub struct ExtractArtnet {
-    pub output_cpu: Arc<Buffer>,
-    pub universes: Universes,
+    output_cpu: Arc<Buffer>,
+    universes: Arc<RwLock<Universes>>,
 }
 
 impl ExtractArtnet {
@@ -26,8 +29,12 @@ impl ExtractArtnet {
 
         Self {
             output_cpu: Arc::new(output_cpu),
-            universes: BTreeSet::new(),
+            universes: Arc::new(RwLock::new(BTreeSet::new())),
         }
+    }
+
+    pub fn set_universes(&mut self, universes: Universes) {
+        *self.universes.write().expect("universes is poisoned") = universes;
     }
 
     pub fn run(&mut self, encoder: &mut CommandEncoder, artnet: &Buffer) {
@@ -35,8 +42,8 @@ impl ExtractArtnet {
     }
 
     pub fn poll_artnet_buffer(&mut self) -> Vec<ArtCommand> {
-        let active_len =
-            self.universes.len().min(UNIVERSES as usize) * UNIVERSE_BUFFER_SIZE as usize;
+        let universes = self.universes.read().expect("universes is poisoned");
+        let active_len = universes.len().min(UNIVERSES as usize) * UNIVERSE_BUFFER_SIZE as usize;
 
         if active_len == 0 {
             return vec![];
@@ -66,7 +73,7 @@ impl ExtractArtnet {
         }
         self.output_cpu.unmap();
 
-        self.universes
+        universes
             .iter()
             .take(UNIVERSES as usize)
             .zip(artnet_data.chunks(UNIVERSE_BUFFER_SIZE as usize))
