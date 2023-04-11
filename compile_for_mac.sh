@@ -1,6 +1,8 @@
+set -e
+
 cargo build --release --target x86_64-apple-darwin
 cargo build --release --target=aarch64-apple-darwin
-lipo -create Gled.app/Contens/MacOS/gled target/aarch64-apple-darwin/release/gled target/x86_64-apple-darwin/release/gled
+lipo -create -output Gled.app/Contens/MacOS/gled target/aarch64-apple-darwin/release/gled target/x86_64-apple-darwin/release/gled
 rm -rf /tmp/gled
 mkdir /tmp/gled
 cp -r Gled.app /tmp/gled/
