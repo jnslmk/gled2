@@ -11,7 +11,7 @@ use std::{
 };
 
 use crate::extract_artnet::ExtractArtnet;
-pub type ArtnetSender = Sender<ExtractArtnet>;
+pub type ArtnetSender = Sender<()>;
 pub type GpuReadyReceiver = Receiver<()>;
 
 static ARTNET_IP: RwLock<IpAddr> = RwLock::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
@@ -23,7 +23,7 @@ pub fn set_artnet_ip(artnet_ip: IpAddr) {
 /// Start artnet thread
 pub fn start(mut extract_artnet: ExtractArtnet) -> Result<(ArtnetSender, GpuReadyReceiver)> {
     info!("Spawning artnet thread");
-    let (artnet_sender, artnet_receiver) = std::sync::mpsc::channel::<ExtractArtnet>();
+    let (artnet_sender, artnet_receiver) = std::sync::mpsc::channel::<()>();
     let (gpu_ready_sender, gpu_ready_receiver) = std::sync::mpsc::channel::<()>();
     gpu_ready_sender.send(()).ok();
 

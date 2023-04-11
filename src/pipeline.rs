@@ -203,7 +203,7 @@ impl Pipeline {
         queue.submit(std::iter::once(encoder.finish()));
 
         artnet_sender
-            .send(self.extract.clone().expect("Gpu was not yet initialized"))
+            .send(())
             .expect("Artnet sender closed its channel");
     }
 }
