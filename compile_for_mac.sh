@@ -7,6 +7,7 @@ rm -rf /tmp/gled
 mkdir /tmp/gled
 cp -r Gled.app /tmp/gled/
 brew install create-dmg
+rm -f Gled.dmg
 create-dmg \
     --volname "Gled" \
     --volicon "Gled.app/Contents/Resources/icon.icns" \
