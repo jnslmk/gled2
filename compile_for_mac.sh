@@ -9,7 +9,7 @@ cp -r Gled.app /tmp/gled/
 brew install create-dmg
 rm -f rw.Gled.dmg Gled.dmg
 create-dmg \
-    --volname "Gled" \
+    --volname "Gled Installer" \
     --volicon "Gled.app/Contents/Resources/icon.icns" \
     --window-pos 200 120 \
     --window-size 800 400 \
