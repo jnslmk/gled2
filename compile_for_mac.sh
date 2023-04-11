@@ -10,7 +10,7 @@ brew install create-dmg
 rm -f rw.Gled.dmg Gled.dmg
 create-dmg \
     --volname "Gled Installer" \
-    --volicon "Gled.app/Contents/Resources/icon.icns" \
+    --volicon "assets/Gled.app/Contents/Resources/icon.icns" \
     --window-pos 200 120 \
     --window-size 800 400 \
     --icon-size 100 \
