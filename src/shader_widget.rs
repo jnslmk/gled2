@@ -5,13 +5,15 @@ use crate::{
         Color, ColorPalette, CommonConfig, Direction, Gradient, GradientConfig, GradientType,
         Stripes, StripesConfig,
     },
+    extract_artnet::ExtractArtnet,
     pipeline::Pipeline,
     scene::Scene,
     wgpu_render_state,
 };
 
-pub fn init_shaders() {
+pub fn init_shaders(extract_artnet: ExtractArtnet) {
     let mut pipeline = Pipeline::default();
+    pipeline.set_extract_artnet(extract_artnet);
 
     for i in 0..10 {
         let palette = ColorPalette {

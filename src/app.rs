@@ -10,6 +10,7 @@ mod timing;
 use self::svg::Svg;
 use crate::{
     artnet_sender::{self, ArtnetSender, GpuReadyReceiver},
+    extract_artnet::ExtractArtnet,
     get_pipeline,
     logo::logo_image,
     shader_widget::init_shaders,
@@ -87,12 +88,13 @@ impl eframe::App for App {
 
 impl App {
     pub fn new() -> Option<Self> {
+        let extract_artnet = ExtractArtnet::new();
         let (artnet_sender, gpu_ready_receiver) =
-            artnet_sender::start().expect("Could not start artnet sender");
+            artnet_sender::start(extract_artnet.clone()).expect("Could not start artnet sender");
         let logo_image = logo_image();
 
         //TODO: Empty project
-        init_shaders();
+        init_shaders(extract_artnet);
         let svg = Svg::load(std::path::Path::new("susifest2022.svg")).ok();
 
         get_pipeline!(pipeline);

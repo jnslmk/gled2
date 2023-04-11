@@ -32,8 +32,11 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
+    pub fn set_extract_artnet(&mut self, extract_artnet: ExtractArtnet) {
+        self.extract = Some(extract_artnet);
+    }
+
     pub fn init_gpu(&mut self) {
-        self.extract.get_or_insert_with(ExtractArtnet::new);
         self.preview_indices.get_or_insert_with(PreviewIndices::new);
         self.preview.get_or_insert_with(Preview::new);
         for (_index, scene) in self.scenes.iter_mut() {

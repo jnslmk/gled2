@@ -21,7 +21,7 @@ pub fn set_artnet_ip(artnet_ip: IpAddr) {
 }
 
 /// Start artnet thread
-pub fn start() -> Result<(ArtnetSender, GpuReadyReceiver)> {
+pub fn start(mut extract_artnet: ExtractArtnet) -> Result<(ArtnetSender, GpuReadyReceiver)> {
     info!("Spawning artnet thread");
     let (artnet_sender, artnet_receiver) = std::sync::mpsc::channel::<ExtractArtnet>();
     let (gpu_ready_sender, gpu_ready_receiver) = std::sync::mpsc::channel::<()>();
@@ -43,7 +43,7 @@ pub fn start() -> Result<(ArtnetSender, GpuReadyReceiver)> {
                 Err(e) => info!("Could not activate non-blocking mode: {}", e),
             };
 
-            for mut extract_artnet in artnet_receiver.iter() {
+            for _ in artnet_receiver.iter() {
                 let commands = extract_artnet.poll_artnet_buffer();
                 gpu_ready_sender.send(()).ok();
 
