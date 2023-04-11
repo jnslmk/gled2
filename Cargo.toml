@@ -36,8 +36,3 @@ lto = "fat"
 [profile.dev.package."*"]
 opt-level = 3
 
-
-[package.metadata.bundle]
-name = "Gled"
-identifier = "de.freshx.rene.gled"
-icon = ["src/logo.png"]
