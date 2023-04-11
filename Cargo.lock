@@ -751,6 +751,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "concat-string"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7439becb5fafc780b6f4de382b1a7a3e70234afe783854a4702ee8adbb838609"
+
+[[package]]
 name = "concolor-override"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1195,6 +1201,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "find-winsdk"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8cbf17b871570c1f8612b763bac3e86290602bcf5dc3c5ce657e0e1e9071d9e"
+dependencies = [
+ "serde",
+ "serde_derive",
+ "winreg",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1449,6 +1466,7 @@ dependencies = [
  "tiny-skia",
  "usvg",
  "wgpu",
+ "windres",
 ]
 
 [[package]]
@@ -3846,6 +3864,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
 
 [[package]]
+name = "windres"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82115619221b2b66001a39088b8059d171b1f9005a00d6a10c6e8a71a30a4cdc"
+dependencies = [
+ "concat-string",
+ "find-winsdk",
+]
+
+[[package]]
 name = "winit"
 version = "0.28.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3887,6 +3915,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee7b2c67f962bf5042bfd8b6a916178df33a26eec343ae064cb8e069f638fa6f"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "winreg"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a27a759395c1195c4cc5cda607ef6f8f6498f64e78f7900f5de0a127a424704a"
+dependencies = [
+ "serde",
+ "winapi",
 ]
 
 [[package]]

@@ -1,11 +1,11 @@
 set -e
 
-cargo build --release --target x86_64-apple-darwin
-cargo build --release --target=aarch64-apple-darwin
-lipo -create -output Gled.app/Contents/MacOS/gled target/aarch64-apple-darwin/release/gled target/x86_64-apple-darwin/release/gled
 rm -rf /tmp/gled
 mkdir /tmp/gled
-cp -r Gled.app /tmp/gled/
+cargo build --release --target x86_64-apple-darwin
+cargo build --release --target=aarch64-apple-darwin
+cp -r assets/Gled.app /tmp/gled/
+lipo -create -output /tmp/gled/Gled.app/Contents/MacOS/gled target/aarch64-apple-darwin/release/gled target/x86_64-apple-darwin/release/gled
 brew install create-dmg
 rm -f rw.Gled.dmg Gled.dmg
 create-dmg \
