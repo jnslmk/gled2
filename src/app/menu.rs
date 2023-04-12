@@ -120,7 +120,8 @@ impl App {
                     ui.label(RichText::new("Main Dimmer").heading());
                     ui.add(
                         Slider::new(&mut self.main_dimmer, 0.0..=1.0)
-                            .custom_formatter(|n, _| format!("{:.0} %", n * 100.0)),
+                            .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
+                            .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
                     );
                 });
                 ui.separator();

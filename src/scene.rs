@@ -69,6 +69,7 @@ impl Scene {
         self.texture_id();
 
         state.opacity = self.opacity * main_dimmer;
+        state.beat_progression = (state.beat_progression + self.beat_progression_offset) % 1.0;
 
         if self.sent_group.as_ref() != Some(&self.group) {
             let positions = positions(&self.group);
