@@ -2,13 +2,15 @@ use super::App;
 use crate::app::preview_positions;
 use egui::{Align, Color32, Context, Image, Layout, RichText, Slider, Vec2};
 
+const BORDER: f32 = 0.03;
+
 impl App {
     pub fn preview(&mut self, ctx: &Context) {
         if let Some(mut uv) = preview_positions().uv() {
-            uv.min.x = (uv.min.x - 0.03).max(0.0);
-            uv.min.y = (uv.min.y - 0.03).max(0.0);
-            uv.max.x = (uv.max.x + 0.03).min(1.0);
-            uv.max.y = (uv.max.y + 0.03).min(1.0);
+            uv.min.y = (uv.min.y - BORDER).max(0.0);
+            uv.min.x = (uv.min.x - BORDER).max(0.0);
+            uv.max.x = (uv.max.x + BORDER).min(1.0);
+            uv.max.y = (uv.max.y + BORDER).min(1.0);
 
             egui::TopBottomPanel::top("preview")
                 .default_height(300.0)
