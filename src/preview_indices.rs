@@ -181,7 +181,7 @@ impl PreviewIndices {
             });
             clear_compute_pass.set_pipeline(&self.clear_pipeline);
             clear_compute_pass.set_bind_group(0, &self.clear_bind_group, &[]);
-            clear_compute_pass.dispatch_workgroups(TEXTURE_SIZE / 2, TEXTURE_SIZE, 1);
+            clear_compute_pass.dispatch_workgroups(TEXTURE_SIZE as u32 / 2, TEXTURE_SIZE as u32, 1);
         }
 
         let mut index_compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {

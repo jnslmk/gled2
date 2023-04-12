@@ -1,5 +1,5 @@
 /// One Artnet Universe can hold up to 512 Positions. As we only support RGB (for now), we can have up to 170 lamps in a universe (=510 Positions).
-pub const TEXTURE_SIZE: u32 = 1024;
+pub const TEXTURE_SIZE: u16 = 1024;
 pub const UNIVERSES: u64 = 32;
 pub const LAMPS_PER_UNIVERSE: u64 = 170;
 pub const LAMPS: u64 = UNIVERSES * LAMPS_PER_UNIVERSE;

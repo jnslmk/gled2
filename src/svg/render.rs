@@ -7,11 +7,11 @@ use egui_extras::RetainedImage;
 
 impl Svg {
     pub fn render(&self) -> Result<RetainedImage> {
-        let mut pixmap = tiny_skia::Pixmap::new(TEXTURE_SIZE, TEXTURE_SIZE)
+        let mut pixmap = tiny_skia::Pixmap::new(TEXTURE_SIZE as u32, TEXTURE_SIZE as u32)
             .context("Could not create pixmap for svg")?;
         resvg::render(
             &self.tree,
-            resvg::FitTo::Size(TEXTURE_SIZE, TEXTURE_SIZE),
+            resvg::FitTo::Size(TEXTURE_SIZE as u32, TEXTURE_SIZE as u32),
             tiny_skia::Transform::default(),
             pixmap.as_mut(),
         )

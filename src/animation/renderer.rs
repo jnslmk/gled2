@@ -20,8 +20,8 @@ impl AnimationRenderer {
     pub fn new(animation_shader: &str, config: &Config) -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
-                width: TEXTURE_SIZE,
-                height: TEXTURE_SIZE,
+                width: TEXTURE_SIZE as u32,
+                height: TEXTURE_SIZE as u32,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,

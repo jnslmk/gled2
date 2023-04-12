@@ -10,7 +10,7 @@ var<storage, read_write> indices: array<u32, 524288>;
 
 const TEXTURE_SIZE_U: u32 = 1024u;
 const TEXTURE_SIZE_F: f32 = 1024.0;
-const SQUARE_SIZE: u32 = 4u;
+const SQUARE_SIZE: u32 = 2u;
 
 @compute
 @workgroup_size(1)

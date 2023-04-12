@@ -1,8 +1,40 @@
-use crate::constants::{LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, UNIVERSES};
+use egui::{Pos2, Rect};
+
+use crate::constants::{LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, TEXTURE_SIZE, UNIVERSES};
 
 #[derive(Debug, Clone, Default)]
 pub struct Positions {
     pub universes: [Universe; UNIVERSES as usize],
+}
+
+impl Positions {
+    pub fn uv(&self) -> Option<Rect> {
+        self.universes
+            .iter()
+            .flat_map(|universe| universe.lamps.iter())
+            .fold(None, |uv, lamp| match (uv, lamp) {
+                (uv, Lamp::None) => uv,
+                (None, Lamp::Position { x, y }) => Some(Rect::from_min_max(
+                    Pos2::new(*x, *y),
+                    Pos2::new(*x, 1. - *y),
+                )),
+                (Some(mut uv), Lamp::Position { x, y }) => {
+                    if uv.min.x > *x {
+                        uv.min.x = *x;
+                    }
+                    if uv.min.y > 1. - *y {
+                        uv.min.y = 1. - *y;
+                    }
+                    if uv.max.x < *x {
+                        uv.max.x = *x;
+                    }
+                    if uv.max.y < 1. - *y {
+                        uv.max.y = 1. - *y;
+                    }
+                    Some(uv)
+                }
+            })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -59,3 +91,31 @@ impl From<Positions> for [u8; POSITIONS_BUFFER_SIZE as usize] {
         data
     }
 }
+
+impl Lamp {
+    pub fn pixel_values(&self) -> (u32, u32) {
+        match self {
+            Lamp::None => (0, 0),
+            Lamp::Position { x, y } => (
+                (x * f32::from(TEXTURE_SIZE - 1)) as u32,
+                (y * f32::from(TEXTURE_SIZE - 1)) as u32,
+            ),
+        }
+    }
+}
+impl PartialOrd for Lamp {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for Lamp {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.pixel_values().cmp(&other.pixel_values())
+    }
+}
+impl PartialEq for Lamp {
+    fn eq(&self, other: &Self) -> bool {
+        self.pixel_values() == other.pixel_values()
+    }
+}
+impl Eq for Lamp {}
