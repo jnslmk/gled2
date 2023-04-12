@@ -1,6 +1,5 @@
 mod about;
 mod config;
-mod deck_selection;
 mod menu;
 mod preview;
 mod scenes;
@@ -13,6 +12,7 @@ use crate::{
     extract_artnet::ExtractArtnet,
     get_pipeline,
     logo::logo_image,
+    pipeline::RenderDeactivatedScenes,
     shader_widget::init_shaders,
 };
 use egui::Modifiers;
@@ -32,6 +32,7 @@ pub struct App {
     timing: Timing,
     about_window_open: bool,
     selected_scene: usize,
+    hovered_scene: usize,
     show_preview_svg: bool,
     show_scenes_svg: bool,
     show_close_dialog: bool,
@@ -39,6 +40,7 @@ pub struct App {
     scene_size: f32,
     main_dimmer: f32,
     fullscreen: bool,
+    always_render_deactivated_scenes: bool,
 }
 
 impl eframe::App for App {
@@ -67,6 +69,11 @@ impl eframe::App for App {
                 self.timing.framerate().unwrap_or_default(),
                 self.disable_artnet_extraction,
                 self.main_dimmer,
+                if self.always_render_deactivated_scenes {
+                    RenderDeactivatedScenes::Always
+                } else {
+                    RenderDeactivatedScenes::Some(self.selected_scene, self.hovered_scene)
+                },
             );
         }
 
@@ -74,7 +81,6 @@ impl eframe::App for App {
         self.menu(ctx);
         self.config(ctx);
         self.preview(ctx);
-        self.deck_selection(ctx);
         self.scenes(ctx);
         ctx.request_repaint();
 
