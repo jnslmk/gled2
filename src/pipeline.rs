@@ -1,8 +1,10 @@
 use crate::{
     animation::State,
+    artnet_clear::ArtnetClear,
+    artnet_mix::ArtnetMix,
     artnet_sender::{ArtnetSender, GpuReadyReceiver},
+    constants::ARTNET_BUFFER_SIZE,
     extract_artnet::ExtractArtnet,
-    mix_artnet::MixArtnet,
     preview::Preview,
     preview_indices::PreviewIndices,
     scene::Scene,
@@ -13,7 +15,7 @@ use egui::TextureId;
 use serde::{Deserialize, Serialize};
 use slab::Slab;
 use std::time::Instant;
-use wgpu::CommandEncoderDescriptor;
+use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -22,13 +24,17 @@ pub struct Pipeline {
     start: Option<Instant>,
     scenes: Slab<Scene>,
     #[serde(skip)]
-    mixs: Vec<MixArtnet>,
+    mixs: Vec<ArtnetMix>,
     #[serde(skip)]
     extract: Option<ExtractArtnet>,
     #[serde(skip)]
     preview_indices: Option<PreviewIndices>,
     #[serde(skip)]
     preview: Option<Preview>,
+    #[serde(skip)]
+    artnet: Option<Buffer>,
+    #[serde(skip)]
+    artnet_clear: Option<ArtnetClear>,
 }
 
 impl Pipeline {
@@ -37,6 +43,15 @@ impl Pipeline {
     }
 
     pub fn init_gpu(&mut self) {
+        self.artnet_clear.get_or_insert_with(ArtnetClear::init);
+        self.artnet.get_or_insert_with(|| {
+            wgpu_render_state().device.create_buffer(&BufferDescriptor {
+                size: ARTNET_BUFFER_SIZE,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                label: Some("Artnet buffer"),
+                mapped_at_creation: false,
+            })
+        });
         self.preview_indices.get_or_insert_with(PreviewIndices::new);
         self.preview.get_or_insert_with(Preview::new);
         for (_index, scene) in self.scenes.iter_mut() {
@@ -62,38 +77,38 @@ impl Pipeline {
     }
 
     pub fn update_buffers(&mut self) {
-        let mut main = None;
         let mut mix_index = 0;
         for (_index, scene) in self.scenes.iter_mut() {
-            match main {
-                Some(main) => {
-                    if self.mixs.len() <= mix_index {
-                        self.mixs.push(MixArtnet::init());
-                    }
-                    self.mixs
-                        .get_mut(mix_index)
-                        .expect("Mix does not exist")
-                        .set_buffers(main, scene.artnet_buffer());
-                    mix_index += 1;
-                }
-                None => main = Some(scene.artnet_buffer()),
+            if self.mixs.len() <= mix_index {
+                self.mixs.push(ArtnetMix::init());
             }
+            self.mixs
+                .get_mut(mix_index)
+                .expect("Mix does not exist")
+                .set_buffers(
+                    self.artnet.as_ref().expect("Gpu was not yet initialized"),
+                    scene.artnet_buffer(),
+                );
+            mix_index += 1;
         }
 
         self.mixs.shrink_to(mix_index);
 
-        if let Some(main) = main {
-            self.preview
-                .as_mut()
-                .expect("Gpu was not yet initialized")
-                .set_buffers(
-                    self.preview_indices
-                        .as_ref()
-                        .expect("Gpu was not yet initialized")
-                        .indices(),
-                    main,
-                );
-        }
+        self.preview
+            .as_mut()
+            .expect("Gpu was not yet initialized")
+            .set_buffers(
+                self.preview_indices
+                    .as_ref()
+                    .expect("Gpu was not yet initialized")
+                    .indices(),
+                self.artnet.as_ref().expect("Gpu was not yet initialized"),
+            );
+
+        self.artnet_clear
+            .as_mut()
+            .expect("Gpu was not yet initialized")
+            .set_buffers(self.artnet.as_ref().expect("Gpu was not yet initialized"))
     }
 
     pub fn set_opacity(&mut self, index: usize, opacity: f32) {
@@ -172,30 +187,29 @@ impl Pipeline {
             scene.render(&mut encoder, disable_artnet_extraction);
         }
 
+        self.artnet_clear
+            .as_ref()
+            .expect("Gpu is not yet initialized")
+            .run(&mut encoder);
         for mix in self.mixs.iter() {
             mix.run(&mut encoder);
         }
 
-        let main = self
-            .scenes
-            .iter_mut()
-            .next()
-            .map(|(_index, scene)| scene.artnet_buffer());
-
-        if let Some(main) = main {
-            self.extract
-                .as_mut()
-                .expect("Gpu was not yet initialized")
-                .run(&mut encoder, main);
-            self.preview_indices
-                .as_mut()
-                .expect("Gpu was not yet initialized")
-                .run(&mut encoder);
-            self.preview
-                .as_mut()
-                .expect("Gpu was not yet initialized")
-                .run(&mut encoder);
-        }
+        self.extract
+            .as_mut()
+            .expect("Gpu was not yet initialized")
+            .run(
+                &mut encoder,
+                self.artnet.as_ref().expect("Gpu was not yet initialized"),
+            );
+        self.preview_indices
+            .as_mut()
+            .expect("Gpu was not yet initialized")
+            .run(&mut encoder);
+        self.preview
+            .as_mut()
+            .expect("Gpu was not yet initialized")
+            .run(&mut encoder);
 
         //wait for gpu to be ready for the next queue submission
         gpu_ready_receiver.recv().ok();

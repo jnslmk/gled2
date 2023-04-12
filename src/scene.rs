@@ -17,6 +17,7 @@ pub struct Scene {
     pub palette: ColorPalette,
     pub opacity: f32,
     pub artnet_extraction: bool,
+    pub beat_progression_offset: f32,
     group: String,
     sent_group: Option<String>,
     #[serde(skip)]
