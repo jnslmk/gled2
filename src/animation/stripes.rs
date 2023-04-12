@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::constants::GPU_NOT_INIT;
+
 use super::{
     config::{CommonConfig, Config},
     renderer::AnimationRenderer,
@@ -29,7 +31,7 @@ impl Stripes {
     }
 
     pub fn renderer(&mut self) -> &AnimationRenderer {
-        self.renderer.as_ref().expect("Gpu was not initialized")
+        self.renderer.as_ref().expect(GPU_NOT_INIT)
     }
 
     pub fn config(&self) -> &StripesConfig {

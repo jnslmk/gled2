@@ -1,6 +1,8 @@
 use crate::{
     animation::{Animation, ColorPalette, State},
     app::positions,
+    artnet_mix::ArtnetMix,
+    constants::GPU_NOT_INIT,
     texture_to_artnet::TextureToArtnet,
     wgpu_render_state,
 };
@@ -11,8 +13,6 @@ use wgpu::{Buffer, CommandEncoder, Queue};
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Scene {
-    #[serde(skip)]
-    texture_to_artnet: Option<TextureToArtnet>,
     animation: Animation,
     pub palette: ColorPalette,
     pub opacity: f32,
@@ -20,10 +20,17 @@ pub struct Scene {
     pub beat_progression_offset: f32,
     group: String,
     sent_group: Option<String>,
+
+    #[serde(skip)]
+    texture_to_artnet: Option<TextureToArtnet>,
     #[serde(skip)]
     texture_id: Option<TextureId>,
     #[serde(skip)]
     artnet_dirty: bool,
+    #[serde(skip)]
+    was_ever_rendered: bool,
+    #[serde(skip)]
+    artnet_mix: Option<ArtnetMix>,
 }
 
 fn default_send_positions() -> bool {
@@ -43,6 +50,7 @@ impl Scene {
     }
 
     pub fn init_gpu(&mut self) {
+        self.artnet_mix.get_or_insert_with(ArtnetMix::new);
         self.animation.init_gpu();
         self.texture_to_artnet
             .get_or_insert_with(|| TextureToArtnet::init(self.animation.renderer().texture()));
@@ -58,45 +66,74 @@ impl Scene {
         });
     }
 
+    pub fn set_buffers(&mut self, main: &Buffer) {
+        let ours = self
+            .texture_to_artnet
+            .as_ref()
+            .expect(GPU_NOT_INIT)
+            .artnet_buffer();
+        self.artnet_mix
+            .as_mut()
+            .expect(GPU_NOT_INIT)
+            .set_buffers(main, ours)
+    }
+
     pub fn prepare(
         &mut self,
         queue: &Queue,
         mut state: State,
         disable_artnet_extraction: bool,
         main_dimmer: f32,
+        always_render: bool,
     ) {
         // make sure we have a texture id (fixes a deadlock).
         self.texture_id();
 
-        state.opacity = self.opacity * main_dimmer;
-        state.beat_progression = (state.beat_progression + self.beat_progression_offset) % 1.0;
+        if always_render || self.artnet_extraction || !self.was_ever_rendered {
+            state.opacity = self.opacity * main_dimmer;
+            state.beat_progression = (state.beat_progression + self.beat_progression_offset) % 1.0;
 
-        if self.sent_group.as_ref() != Some(&self.group) {
-            let positions = positions(&self.group);
-            self.texture_to_artnet().set_positions(queue, positions);
-            self.sent_group = Some(self.group.clone());
-        }
+            if self.sent_group.as_ref() != Some(&self.group) {
+                let positions = positions(&self.group);
+                self.texture_to_artnet
+                    .as_ref()
+                    .expect(GPU_NOT_INIT)
+                    .set_positions(queue, positions);
+                self.sent_group = Some(self.group.clone());
+            }
 
-        self.animation
-            .renderer()
-            .set_buffers(queue, &state, &self.palette);
+            self.animation
+                .renderer()
+                .set_buffers(queue, &state, &self.palette);
 
-        if (!self.artnet_extraction || disable_artnet_extraction) && self.artnet_dirty {
-            self.texture_to_artnet().clear_artnet(queue);
-            self.artnet_dirty = false;
+            if (!self.artnet_extraction || disable_artnet_extraction) && self.artnet_dirty {
+                self.texture_to_artnet
+                    .as_ref()
+                    .expect(GPU_NOT_INIT)
+                    .clear_artnet(queue);
+                self.artnet_dirty = false;
+            }
         }
     }
 
-    pub fn render(&mut self, encoder: &mut CommandEncoder, disable_artnet_extraction: bool) {
-        self.animation.renderer().render(encoder);
-        if self.artnet_extraction && !disable_artnet_extraction {
-            self.texture_to_artnet().run(encoder);
-            self.artnet_dirty = true;
+    pub fn render(
+        &mut self,
+        encoder: &mut CommandEncoder,
+        disable_artnet_extraction: bool,
+        always_render: bool,
+    ) {
+        if always_render || self.artnet_extraction || !self.was_ever_rendered {
+            self.animation.renderer().render(encoder);
+            if self.artnet_extraction && !disable_artnet_extraction {
+                self.texture_to_artnet
+                    .as_ref()
+                    .expect(GPU_NOT_INIT)
+                    .run(encoder);
+                self.artnet_dirty = true;
+                self.artnet_mix.as_ref().expect(GPU_NOT_INIT).run(encoder);
+            }
+            self.was_ever_rendered = true;
         }
-    }
-
-    pub fn artnet_buffer(&mut self) -> &Buffer {
-        self.texture_to_artnet().artnet_buffer()
     }
 
     pub fn group(&self) -> &str {
@@ -112,13 +149,7 @@ impl Scene {
         self.sent_group = None;
     }
 
-    pub fn texture_to_artnet(&mut self) -> &TextureToArtnet {
-        self.texture_to_artnet
-            .as_ref()
-            .expect("Gpu was not yet initialized")
-    }
-
-    pub fn texture_id(&mut self) -> TextureId {
-        self.texture_id.expect("Gpu was not yet initialized")
+    pub fn texture_id(&self) -> TextureId {
+        self.texture_id.expect(GPU_NOT_INIT)
     }
 }

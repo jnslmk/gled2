@@ -13,6 +13,10 @@ impl App {
                 ui.label(RichText::new("Scenes").heading());
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     ui.checkbox(&mut self.show_scenes_svg, RichText::new("SVG").heading());
+                    ui.checkbox(
+                        &mut self.always_render_deactivated_scenes,
+                        RichText::new("Render all").heading(),
+                    );
                     ui.add(
                         Slider::new(&mut self.scene_size, 100.0..=512.0)
                             .show_value(false)
@@ -37,6 +41,8 @@ impl App {
                                 Vec2::new(self.scene_size + 40.0, self.scene_size + 60.0),
                                 SceneWidget {
                                     selected_scene: &mut self.selected_scene,
+                                    hovered_scene: &mut self.hovered_scene,
+
                                     index,
                                     scene,
                                     svg,
@@ -52,6 +58,7 @@ impl App {
 
 struct SceneWidget<'a> {
     selected_scene: &'a mut usize,
+    hovered_scene: &'a mut usize,
     index: usize,
     scene: &'a mut Scene,
     svg: Option<TextureId>,
@@ -134,11 +141,12 @@ impl<'a> Widget for SceneWidget<'a> {
                     })
             })
             .response;
-        if ui
-            .put(response.rect, Button::new("").fill(Color32::TRANSPARENT))
-            .clicked()
-        {
+        let res = ui.put(response.rect, Button::new("").fill(Color32::TRANSPARENT));
+        if res.clicked() {
             *self.selected_scene = self.index;
+        }
+        if res.hovered() {
+            *self.hovered_scene = self.index;
         }
 
         if let Some(slider_rect) = slider_rect {

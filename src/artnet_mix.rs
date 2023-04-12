@@ -11,7 +11,7 @@ pub struct ArtnetMix {
 }
 
 impl ArtnetMix {
-    pub fn init() -> Self {
+    pub fn new() -> Self {
         let device = wgpu_render_state().device;
 
         let module = device.create_shader_module(ShaderModuleDescriptor {

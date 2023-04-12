@@ -106,7 +106,7 @@ impl App {
                 ui.menu_button("Config", |ui| {
                     ui.label(RichText::new("Framerate Limiter").heading());
                     ui.add(
-                        Slider::new(&mut self.timing.fps_limit, 30..=200)
+                        Slider::new(&mut self.timing.fps_limit, 30..=1000)
                             .custom_formatter(|n, _| format!("{n} fps")),
                     );
                     ui.separator();

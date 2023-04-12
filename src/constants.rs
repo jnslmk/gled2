@@ -7,3 +7,4 @@ pub const POSITIONS_BUFFER_SIZE: u64 = LAMPS * 8;
 pub const UNIVERSE_BUFFER_SIZE: u64 = 512;
 pub const ARTNET_BUFFER_SIZE: u64 = UNIVERSES * UNIVERSE_BUFFER_SIZE;
 pub const PREVIEW_INDICES_BUFFER_SIZE: u64 = TEXTURE_SIZE as u64 * TEXTURE_SIZE as u64 * 2;
+pub const GPU_NOT_INIT: &str = "init_gpu was not yet run :/";

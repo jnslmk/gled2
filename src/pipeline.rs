@@ -1,9 +1,8 @@
 use crate::{
     animation::State,
     artnet_clear::ArtnetClear,
-    artnet_mix::ArtnetMix,
     artnet_sender::{ArtnetSender, GpuReadyReceiver},
-    constants::ARTNET_BUFFER_SIZE,
+    constants::{ARTNET_BUFFER_SIZE, GPU_NOT_INIT},
     extract_artnet::ExtractArtnet,
     preview::Preview,
     preview_indices::PreviewIndices,
@@ -23,8 +22,6 @@ pub struct Pipeline {
     #[serde(skip)]
     start: Option<Instant>,
     scenes: Slab<Scene>,
-    #[serde(skip)]
-    mixs: Vec<ArtnetMix>,
     #[serde(skip)]
     extract: Option<ExtractArtnet>,
     #[serde(skip)]
@@ -77,38 +74,19 @@ impl Pipeline {
     }
 
     pub fn update_buffers(&mut self) {
-        let mut mix_index = 0;
         for (_index, scene) in self.scenes.iter_mut() {
-            if self.mixs.len() <= mix_index {
-                self.mixs.push(ArtnetMix::init());
-            }
-            self.mixs
-                .get_mut(mix_index)
-                .expect("Mix does not exist")
-                .set_buffers(
-                    self.artnet.as_ref().expect("Gpu was not yet initialized"),
-                    scene.artnet_buffer(),
-                );
-            mix_index += 1;
+            scene.set_buffers(self.artnet.as_ref().expect(GPU_NOT_INIT))
         }
 
-        self.mixs.shrink_to(mix_index);
-
-        self.preview
-            .as_mut()
-            .expect("Gpu was not yet initialized")
-            .set_buffers(
-                self.preview_indices
-                    .as_ref()
-                    .expect("Gpu was not yet initialized")
-                    .indices(),
-                self.artnet.as_ref().expect("Gpu was not yet initialized"),
-            );
+        self.preview.as_mut().expect(GPU_NOT_INIT).set_buffers(
+            self.preview_indices.as_ref().expect(GPU_NOT_INIT).indices(),
+            self.artnet.as_ref().expect(GPU_NOT_INIT),
+        );
 
         self.artnet_clear
             .as_mut()
-            .expect("Gpu was not yet initialized")
-            .set_buffers(self.artnet.as_ref().expect("Gpu was not yet initialized"))
+            .expect(GPU_NOT_INIT)
+            .set_buffers(self.artnet.as_ref().expect(GPU_NOT_INIT))
     }
 
     pub fn set_opacity(&mut self, index: usize, opacity: f32) {
@@ -133,19 +111,16 @@ impl Pipeline {
         }
         self.preview_indices
             .as_mut()
-            .expect("Gpu was not yet initialized")
+            .expect(GPU_NOT_INIT)
             .send_positions();
         self.extract
             .as_mut()
-            .expect("Gpu was not yet initialized")
+            .expect(GPU_NOT_INIT)
             .set_universes(universes);
     }
 
     pub fn preview_texture_id(&self) -> TextureId {
-        self.preview
-            .as_ref()
-            .expect("Gpu was not yet initialized")
-            .texture_id()
+        self.preview.as_ref().expect(GPU_NOT_INIT).texture_id()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -158,6 +133,7 @@ impl Pipeline {
         framerate: f32,
         disable_artnet_extraction: bool,
         main_dimmer: f32,
+        render_deactivated_scenes: RenderDeactivatedScenes,
     ) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
@@ -172,44 +148,46 @@ impl Pipeline {
             ..Default::default()
         };
 
-        for (_index, scene) in self.scenes.iter_mut() {
-            scene.prepare(queue, state, disable_artnet_extraction, main_dimmer);
+        for (index, scene) in self.scenes.iter_mut() {
+            scene.prepare(
+                queue,
+                state,
+                disable_artnet_extraction,
+                main_dimmer,
+                render_deactivated_scenes.should_render(index),
+            );
         }
         self.preview_indices
             .as_mut()
-            .expect("Gpu is not yet initialized")
+            .expect(GPU_NOT_INIT)
             .prepare(queue);
 
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations"),
         });
-        for (_index, scene) in self.scenes.iter_mut() {
-            scene.render(&mut encoder, disable_artnet_extraction);
-        }
 
         self.artnet_clear
             .as_ref()
-            .expect("Gpu is not yet initialized")
+            .expect(GPU_NOT_INIT)
             .run(&mut encoder);
-        for mix in self.mixs.iter() {
-            mix.run(&mut encoder);
+
+        for (index, scene) in self.scenes.iter_mut() {
+            scene.render(
+                &mut encoder,
+                disable_artnet_extraction,
+                render_deactivated_scenes.should_render(index),
+            );
         }
 
         self.extract
             .as_mut()
-            .expect("Gpu was not yet initialized")
-            .run(
-                &mut encoder,
-                self.artnet.as_ref().expect("Gpu was not yet initialized"),
-            );
+            .expect(GPU_NOT_INIT)
+            .run(&mut encoder, self.artnet.as_ref().expect(GPU_NOT_INIT));
         self.preview_indices
             .as_mut()
-            .expect("Gpu was not yet initialized")
+            .expect(GPU_NOT_INIT)
             .run(&mut encoder);
-        self.preview
-            .as_mut()
-            .expect("Gpu was not yet initialized")
-            .run(&mut encoder);
+        self.preview.as_mut().expect(GPU_NOT_INIT).run(&mut encoder);
 
         //wait for gpu to be ready for the next queue submission
         gpu_ready_receiver.recv().ok();
@@ -231,4 +209,20 @@ macro_rules! get_pipeline {
             .get_mut::<$crate::pipeline::Pipeline>()
             .expect("Could not find Pipeline");
     };
+}
+
+pub enum RenderDeactivatedScenes {
+    Always,
+    Some(usize, usize),
+}
+
+impl RenderDeactivatedScenes {
+    pub fn should_render(&self, index: usize) -> bool {
+        match self {
+            RenderDeactivatedScenes::Always => true,
+            RenderDeactivatedScenes::Some(selected, hovered) => {
+                *selected == index || *hovered == index
+            }
+        }
+    }
 }
