@@ -9,119 +9,95 @@ use egui::{
     Rounding, Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
 };
 
+pub struct Scenes {
+    pub size: f32,
+    pub show_svg: bool,
+    pub always_render: bool,
+}
+
+impl Default for Scenes {
+    fn default() -> Self {
+        Self {
+            size: 200.0,
+            show_svg: true,
+            always_render: false,
+        }
+    }
+}
+
+impl Scenes {
+    pub fn header(&mut self, ui: &mut Ui, label: &str) {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(label).heading());
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.checkbox(&mut self.show_svg, RichText::new("SVG").heading());
+                ui.checkbox(
+                    &mut self.always_render,
+                    RichText::new("Render all").heading(),
+                );
+                ui.add(
+                    Slider::new(&mut self.size, 100.0..=512.0)
+                        .show_value(false)
+                        .text(RichText::new("Size").heading()),
+                );
+            });
+        });
+    }
+}
+
 impl App {
     pub fn scenes(&mut self, ctx: &Context) {
+        let svg = self
+            .svg
+            .as_ref()
+            .filter(|_| self.foreground.show_svg)
+            .map(|svg| svg.image().texture_id(ctx));
+
         egui::SidePanel::right("foreground_scenes")
             .resizable(false)
             .exact_width(ctx.available_rect().width() / 2.0)
             .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Foreground Scenes").heading());
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.checkbox(
-                            &mut self.foreground.show_svg,
-                            RichText::new("SVG").heading(),
-                        );
-                        ui.checkbox(
-                            &mut self.foreground.always_render,
-                            RichText::new("Render all").heading(),
-                        );
-                        ui.add(
-                            Slider::new(&mut self.foreground.size, 100.0..=512.0)
-                                .show_value(false)
-                                .text(RichText::new("Size").heading()),
-                        );
-                    });
-                });
-
-                let svg = self
-                    .svg
-                    .as_ref()
-                    .filter(|_| self.foreground.show_svg)
-                    .map(|svg| svg.image().texture_id(ctx));
-
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| {
-                        ui.horizontal_wrapped(|ui| {
-                            crate::get_pipeline!(pipeline);
-                            for (index, scene) in pipeline
-                                .scenes()
-                                .into_iter()
-                                .filter(|(_index, scene)| scene.kind == SceneKind::Foreground)
-                            {
-                                ui.add_sized(
-                                    Vec2::new(
-                                        self.foreground.size + 40.0,
-                                        self.foreground.size + 60.0,
-                                    ),
-                                    SceneWidget {
-                                        selected_scene: &mut self.selected_scene,
-                                        hovered_scene: &mut self.hovered_scene,
-
-                                        index,
-                                        scene,
-                                        svg,
-                                        scene_size: self.foreground.size,
-                                    },
-                                );
-                            }
-                        });
-                    });
+                self.foreground.header(ui, "Foreground");
+                self.scenes_grid(ui, SceneKind::Foreground, svg)
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Background Scenes").heading());
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.checkbox(
-                        &mut self.background.show_svg,
-                        RichText::new("SVG").heading(),
-                    );
-                    ui.checkbox(
-                        &mut self.background.always_render,
-                        RichText::new("Render all").heading(),
-                    );
-                    ui.add(
-                        Slider::new(&mut self.background.size, 100.0..=512.0)
-                            .show_value(false)
-                            .text(RichText::new("Size").heading()),
-                    );
+            self.background.header(ui, "Background");
+            self.scenes_grid(ui, SceneKind::Background, svg)
+        });
+    }
+
+    fn scenes_grid(&mut self, ui: &mut Ui, kind: SceneKind, svg: Option<TextureId>) {
+        let scenes = match kind {
+            SceneKind::Background => &self.background,
+            SceneKind::Foreground => &self.foreground,
+        };
+
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    crate::get_pipeline!(pipeline);
+                    for (index, scene) in pipeline
+                        .scenes()
+                        .into_iter()
+                        .filter(|(_index, scene)| scene.kind == kind)
+                    {
+                        ui.add_sized(
+                            Vec2::new(scenes.size + 40.0, scenes.size + 60.0),
+                            SceneWidget {
+                                selected_scene: &mut self.selected_scene,
+                                hovered_scene: &mut self.hovered_scene,
+
+                                index,
+                                scene,
+                                svg,
+                                scene_size: scenes.size,
+                            },
+                        );
+                    }
                 });
             });
-
-            let svg = self
-                .svg
-                .as_ref()
-                .filter(|_| self.background.show_svg)
-                .map(|svg| svg.image().texture_id(ctx));
-
-            egui::ScrollArea::vertical()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    ui.horizontal_wrapped(|ui| {
-                        crate::get_pipeline!(pipeline);
-                        for (index, scene) in pipeline
-                            .scenes()
-                            .into_iter()
-                            .filter(|(_index, scene)| scene.kind == SceneKind::Background)
-                        {
-                            ui.add_sized(
-                                Vec2::new(self.background.size + 40.0, self.background.size + 60.0),
-                                SceneWidget {
-                                    selected_scene: &mut self.selected_scene,
-                                    hovered_scene: &mut self.hovered_scene,
-
-                                    index,
-                                    scene,
-                                    svg,
-                                    scene_size: self.background.size,
-                                },
-                            );
-                        }
-                    });
-                });
-        });
     }
 }
 

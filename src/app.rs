@@ -6,7 +6,7 @@ mod scenes;
 mod svg;
 mod timing;
 
-use self::svg::Svg;
+use self::{scenes::Scenes, svg::Svg};
 use crate::{
     artnet_sender::{self, ArtnetSender, GpuReadyReceiver},
     extract_artnet::ExtractArtnet,
@@ -38,22 +38,6 @@ pub struct App {
     background: Scenes,
     selected_scene: usize,
     hovered_scene: usize,
-}
-
-pub struct Scenes {
-    size: f32,
-    show_svg: bool,
-    always_render: bool,
-}
-
-impl Default for Scenes {
-    fn default() -> Self {
-        Self {
-            size: 200.0,
-            show_svg: true,
-            always_render: false,
-        }
-    }
 }
 
 impl eframe::App for App {
