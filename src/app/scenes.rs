@@ -1,4 +1,7 @@
-use crate::{animation::ColorPalette, scene::Scene};
+use crate::{
+    animation::ColorPalette,
+    scene::{Scene, SceneKind},
+};
 
 use super::App;
 use egui::{
@@ -8,17 +11,79 @@ use egui::{
 
 impl App {
     pub fn scenes(&mut self, ctx: &Context) {
+        egui::SidePanel::right("foreground_scenes")
+            .resizable(false)
+            .exact_width(ctx.available_rect().width() / 2.0)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Foreground Scenes").heading());
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        ui.checkbox(
+                            &mut self.foreground.show_svg,
+                            RichText::new("SVG").heading(),
+                        );
+                        ui.checkbox(
+                            &mut self.foreground.always_render,
+                            RichText::new("Render all").heading(),
+                        );
+                        ui.add(
+                            Slider::new(&mut self.foreground.size, 100.0..=512.0)
+                                .show_value(false)
+                                .text(RichText::new("Size").heading()),
+                        );
+                    });
+                });
+
+                let svg = self
+                    .svg
+                    .as_ref()
+                    .filter(|_| self.foreground.show_svg)
+                    .map(|svg| svg.image().texture_id(ctx));
+
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            crate::get_pipeline!(pipeline);
+                            for (index, scene) in pipeline
+                                .scenes()
+                                .into_iter()
+                                .filter(|(_index, scene)| scene.kind == SceneKind::Foreground)
+                            {
+                                ui.add_sized(
+                                    Vec2::new(
+                                        self.foreground.size + 40.0,
+                                        self.foreground.size + 60.0,
+                                    ),
+                                    SceneWidget {
+                                        selected_scene: &mut self.selected_scene,
+                                        hovered_scene: &mut self.hovered_scene,
+
+                                        index,
+                                        scene,
+                                        svg,
+                                        scene_size: self.foreground.size,
+                                    },
+                                );
+                            }
+                        });
+                    });
+            });
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Scenes").heading());
+                ui.label(RichText::new("Background Scenes").heading());
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.checkbox(&mut self.show_scenes_svg, RichText::new("SVG").heading());
                     ui.checkbox(
-                        &mut self.always_render_deactivated_scenes,
+                        &mut self.background.show_svg,
+                        RichText::new("SVG").heading(),
+                    );
+                    ui.checkbox(
+                        &mut self.background.always_render,
                         RichText::new("Render all").heading(),
                     );
                     ui.add(
-                        Slider::new(&mut self.scene_size, 100.0..=512.0)
+                        Slider::new(&mut self.background.size, 100.0..=512.0)
                             .show_value(false)
                             .text(RichText::new("Size").heading()),
                     );
@@ -28,7 +93,7 @@ impl App {
             let svg = self
                 .svg
                 .as_ref()
-                .filter(|_| self.show_scenes_svg)
+                .filter(|_| self.background.show_svg)
                 .map(|svg| svg.image().texture_id(ctx));
 
             egui::ScrollArea::vertical()
@@ -36,9 +101,13 @@ impl App {
                 .show(ui, |ui| {
                     ui.horizontal_wrapped(|ui| {
                         crate::get_pipeline!(pipeline);
-                        for (index, scene) in pipeline.scenes() {
+                        for (index, scene) in pipeline
+                            .scenes()
+                            .into_iter()
+                            .filter(|(_index, scene)| scene.kind == SceneKind::Background)
+                        {
                             ui.add_sized(
-                                Vec2::new(self.scene_size + 40.0, self.scene_size + 60.0),
+                                Vec2::new(self.background.size + 40.0, self.background.size + 60.0),
                                 SceneWidget {
                                     selected_scene: &mut self.selected_scene,
                                     hovered_scene: &mut self.hovered_scene,
@@ -46,7 +115,7 @@ impl App {
                                     index,
                                     scene,
                                     svg,
-                                    scene_size: self.scene_size,
+                                    scene_size: self.background.size,
                                 },
                             );
                         }

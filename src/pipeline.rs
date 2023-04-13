@@ -133,7 +133,8 @@ impl Pipeline {
         framerate: f32,
         disable_artnet_extraction: bool,
         main_dimmer: f32,
-        render_deactivated_scenes: RenderDeactivatedScenes,
+        render_deactivated_background_scenes: RenderDeactivatedScenes,
+        render_deactivated_foreground_scenes: RenderDeactivatedScenes,
     ) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
@@ -154,7 +155,14 @@ impl Pipeline {
                 state,
                 disable_artnet_extraction,
                 main_dimmer,
-                render_deactivated_scenes.should_render(index),
+                match scene.kind {
+                    crate::scene::SceneKind::Background => {
+                        render_deactivated_background_scenes.should_render(index)
+                    }
+                    crate::scene::SceneKind::Foreground => {
+                        render_deactivated_foreground_scenes.should_render(index)
+                    }
+                },
             );
         }
         self.preview_indices
@@ -175,7 +183,14 @@ impl Pipeline {
             scene.render(
                 &mut encoder,
                 disable_artnet_extraction,
-                render_deactivated_scenes.should_render(index),
+                match scene.kind {
+                    crate::scene::SceneKind::Background => {
+                        render_deactivated_background_scenes.should_render(index)
+                    }
+                    crate::scene::SceneKind::Foreground => {
+                        render_deactivated_foreground_scenes.should_render(index)
+                    }
+                },
             );
         }
 

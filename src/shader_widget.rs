@@ -7,7 +7,7 @@ use crate::{
     },
     extract_artnet::ExtractArtnet,
     pipeline::Pipeline,
-    scene::Scene,
+    scene::{Scene, SceneKind},
     wgpu_render_state,
 };
 
@@ -53,6 +53,7 @@ pub fn init_shaders(extract_artnet: ExtractArtnet) {
             ..Default::default()
         });
         let mut scene = Scene::new(stripes.into(), palette, "innerEdge".to_owned());
+        scene.kind = SceneKind::Foreground;
         scene.artnet_extraction = i == 0;
         pipeline.add_scene(scene);
     }

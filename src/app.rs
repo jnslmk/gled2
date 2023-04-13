@@ -31,16 +31,29 @@ pub struct App {
     logo_image: Option<RetainedImage>,
     timing: Timing,
     about_window_open: bool,
-    selected_scene: usize,
-    hovered_scene: usize,
     show_preview_svg: bool,
-    show_scenes_svg: bool,
-    show_close_dialog: bool,
-    allowed_to_close: bool,
-    scene_size: f32,
     main_dimmer: f32,
     fullscreen: bool,
-    always_render_deactivated_scenes: bool,
+    foreground: Scenes,
+    background: Scenes,
+    selected_scene: usize,
+    hovered_scene: usize,
+}
+
+pub struct Scenes {
+    size: f32,
+    show_svg: bool,
+    always_render: bool,
+}
+
+impl Default for Scenes {
+    fn default() -> Self {
+        Self {
+            size: 200.0,
+            show_svg: true,
+            always_render: false,
+        }
+    }
 }
 
 impl eframe::App for App {
@@ -69,7 +82,12 @@ impl eframe::App for App {
                 self.timing.framerate().unwrap_or_default(),
                 self.disable_artnet_extraction,
                 self.main_dimmer,
-                if self.always_render_deactivated_scenes {
+                if self.background.always_render {
+                    RenderDeactivatedScenes::Always
+                } else {
+                    RenderDeactivatedScenes::Some(self.selected_scene, self.hovered_scene)
+                },
+                if self.foreground.always_render {
                     RenderDeactivatedScenes::Always
                 } else {
                     RenderDeactivatedScenes::Some(self.selected_scene, self.hovered_scene)
@@ -109,8 +127,6 @@ impl App {
             logo_image: Some(logo_image),
             svg,
             show_preview_svg: true,
-            show_scenes_svg: true,
-            scene_size: 256.0,
             main_dimmer: 1.0,
             ..Default::default()
         })

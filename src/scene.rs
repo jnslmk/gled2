@@ -13,6 +13,7 @@ use wgpu::{Buffer, CommandEncoder, Queue};
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Scene {
+    pub kind: SceneKind,
     animation: Animation,
     pub palette: ColorPalette,
     pub opacity: f32,
@@ -152,4 +153,11 @@ impl Scene {
     pub fn texture_id(&self) -> TextureId {
         self.texture_id.expect(GPU_NOT_INIT)
     }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum SceneKind {
+    #[default]
+    Background,
+    Foreground,
 }
