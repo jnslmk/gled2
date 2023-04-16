@@ -22,7 +22,7 @@ impl App {
                     )
                     .collect();
 
-                let mut delete_scene = false;
+                let mut action = Action::None;
                 match pipeline.scene(self.selected_scene) {
                     Some(scene) => {
                         ui.label(RichText::new("Colors").heading());
@@ -57,6 +57,36 @@ impl App {
                             ui.style_mut().spacing.interact_size.y = 40.0;
 
                             if ui
+                                .add(Button::new("🗐 Duplicate Scene").fill(Color32::DARK_BLUE))
+                                .clicked()
+                            {
+                                action = Action::Clone;
+                            }
+                        });
+                        ui.vertical_centered_justified(|ui| {
+                            ui.style_mut().spacing.interact_size.y = 40.0;
+
+                            if ui
+                                .add(
+                                    Button::new(match scene.kind {
+                                        crate::scene::SceneKind::Background => {
+                                            "➡ Move to Foreground"
+                                        }
+                                        crate::scene::SceneKind::Foreground => {
+                                            "⬅ Move to Background"
+                                        }
+                                    })
+                                    .fill(Color32::from_rgb(204, 85, 0)),
+                                )
+                                .clicked()
+                            {
+                                action = Action::Move;
+                            }
+                        });
+                        ui.vertical_centered_justified(|ui| {
+                            ui.style_mut().spacing.interact_size.y = 40.0;
+
+                            if ui
                                 .add(
                                     Button::new("🗑 Remove Scene")
                                         .fill(Color32::DARK_RED)
@@ -68,7 +98,7 @@ impl App {
                                         || i.consume_key(Modifiers::default(), egui::Key::Delete)
                                 })
                             {
-                                delete_scene = true;
+                                action = Action::Delete;
                             }
                         });
 
@@ -87,21 +117,45 @@ impl App {
                     }
                 }
 
-                if delete_scene {
-                    let kind = pipeline
-                        .remove_scene(self.selected_scene)
-                        .map(|scene| scene.kind);
+                match action {
+                    Action::None => (),
+                    Action::Delete => {
+                        let kind = pipeline
+                            .remove_scene(self.selected_scene)
+                            .map(|scene| scene.kind);
 
-                    self.selected_scene = pipeline
-                        .scenes()
-                        .into_iter()
-                        .find(|(_index, scene)| match kind {
-                            Some(kind) => scene.kind == kind,
-                            None => true,
-                        })
-                        .map(|(index, _scene)| index)
-                        .unwrap_or_default();
+                        self.selected_scene = pipeline
+                            .scenes()
+                            .into_iter()
+                            .find(|(_index, scene)| match kind {
+                                Some(kind) => scene.kind == kind,
+                                None => true,
+                            })
+                            .map(|(index, _scene)| index)
+                            .unwrap_or_default();
+                    }
+                    Action::Clone => {
+                        if let Some(index) = pipeline
+                            .scene(self.selected_scene)
+                            .cloned()
+                            .map(|scene| pipeline.add_scene(scene))
+                        {
+                            self.selected_scene = index;
+                        }
+                    }
+                    Action::Move => {
+                        if let Some(scene) = pipeline.scene(self.selected_scene) {
+                            scene.kind.switch()
+                        };
+                    }
                 }
             });
     }
+}
+
+enum Action {
+    None,
+    Delete,
+    Clone,
+    Move,
 }
