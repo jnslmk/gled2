@@ -33,7 +33,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
                 Self::#ident(animation) => animation.config(),
             )
         });
-    let config_ui = animation
+    let ui = animation
         .data
         .as_ref()
         .take_enum()
@@ -42,7 +42,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         .map(|child| {
             let ident = child.ident.to_owned();
             quote!(
-                Self::#ident(animation) => animation.ui(ui),
+                Self::#ident(animation) => animation.ui(ui, texture_id),
             )
         });
     let shader_code = animation
@@ -60,9 +60,9 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
     quote!(
         impl AnimationConfig for Animation {
-            fn ui(&mut self, ui: &mut egui::Ui) {
+            fn ui(&mut self, ui: &mut egui::Ui, texture_id: egui::TextureId) {
                 match self {
-                    #(#config_ui)*
+                    #(#ui)*
                 }
             }
 

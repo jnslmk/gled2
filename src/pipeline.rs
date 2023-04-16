@@ -54,9 +54,8 @@ impl Pipeline {
                 colors: vec![Color::new(1., 0., 0.), Color::new(0., 0., 0.)],
             };
             let gradient = Gradient {
-                gradient: GradientType::Radial {
-                    center: (0.25, 0.5),
-                },
+                gradient: GradientType::Radial,
+                center: (0.25, 0.5),
                 ..Default::default()
             };
             let mut scene = Scene::new(gradient.into(), palette, "allFull".to_owned());
@@ -71,6 +70,7 @@ impl Pipeline {
                 common: CommonConfig {
                     ..Default::default()
                 },
+                ..Default::default()
             };
             let mut scene = Scene::new(gradient.into(), palette, "innerFull".to_owned());
             scene.artnet_extraction = i == 0;

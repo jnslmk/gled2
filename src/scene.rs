@@ -168,7 +168,7 @@ impl Scene {
     }
 
     pub fn config_ui(&mut self, ui: &mut egui::Ui) {
-        self.animation.ui(ui);
+        self.animation.ui(ui, self.texture_id());
     }
 }
 

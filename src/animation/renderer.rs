@@ -138,7 +138,6 @@ impl AnimationRenderer {
             &mut contents[State::size() + ColorPalette::size()
                 ..State::size() + ColorPalette::size() + Config::size()],
         );
-        dbg!(config);
         queue.write_buffer(&self.uniform, 0, &contents);
     }
 
