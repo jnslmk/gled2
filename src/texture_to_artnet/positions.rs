@@ -22,14 +22,14 @@ impl Positions {
                     if uv.min.x > *x {
                         uv.min.x = *x;
                     }
-                    if uv.min.y > 1. - *y {
-                        uv.min.y = 1. - *y;
+                    if uv.min.y > *y {
+                        uv.min.y = *y;
                     }
                     if uv.max.x < *x {
                         uv.max.x = *x;
                     }
-                    if uv.max.y < 1. - *y {
-                        uv.max.y = 1. - *y;
+                    if uv.max.y < *y {
+                        uv.max.y = *y;
                     }
                     Some(uv)
                 }

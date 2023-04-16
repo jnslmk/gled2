@@ -41,7 +41,7 @@ impl MeasurementPoints {
             for point in points.iter() {
                 let lamp = Lamp::Position {
                     x: point.x,
-                    y: 1.0 - point.y,
+                    y: point.y,
                 };
 
                 for led in point.leds.iter() {
@@ -159,7 +159,7 @@ impl From<&ParsedSvg> for MeasurementPoints {
                     measurement_points.preview_positions.universes[*universe_index].lamps[i] =
                         Lamp::Position {
                             x: measurement_point.x,
-                            y: 1.0 - measurement_point.y,
+                            y: measurement_point.y,
                         }
                 }
             }
