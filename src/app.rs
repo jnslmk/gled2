@@ -23,7 +23,7 @@ pub use svg::{positions, preview_positions};
 
 #[derive(Default)]
 pub struct App {
-    disable_artnet_extraction: bool,
+    blackout: bool,
     artnet_ip: String,
     svg: Option<Svg>,
     artnet_sender: Option<ArtnetSender>,
@@ -65,7 +65,7 @@ impl eframe::App for App {
                 self.timing.beat_progression(),
                 self.timing.beats_per_minute,
                 self.timing.framerate().unwrap_or_default(),
-                self.disable_artnet_extraction,
+                self.blackout,
                 self.main_dimmer,
                 if self.background.always_render {
                     RenderDeactivatedScenes::Always

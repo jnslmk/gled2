@@ -83,7 +83,7 @@ impl Scene {
         &mut self,
         queue: &Queue,
         mut state: State,
-        disable_artnet_extraction: bool,
+        blackout: bool,
         main_dimmer: f32,
         always_render: bool,
     ) {
@@ -107,7 +107,7 @@ impl Scene {
                 .renderer()
                 .set_buffers(queue, &state, &self.palette);
 
-            if (!self.artnet_extraction || disable_artnet_extraction) && self.artnet_dirty {
+            if (!self.artnet_extraction || blackout) && self.artnet_dirty {
                 self.texture_to_artnet
                     .as_ref()
                     .expect(GPU_NOT_INIT)
@@ -117,15 +117,10 @@ impl Scene {
         }
     }
 
-    pub fn render(
-        &mut self,
-        encoder: &mut CommandEncoder,
-        disable_artnet_extraction: bool,
-        always_render: bool,
-    ) {
+    pub fn render(&mut self, encoder: &mut CommandEncoder, blackout: bool, always_render: bool) {
         if always_render || self.artnet_extraction || !self.was_ever_rendered {
             self.animation.renderer().render(encoder);
-            if self.artnet_extraction && !disable_artnet_extraction {
+            if self.artnet_extraction && !blackout {
                 self.texture_to_artnet
                     .as_ref()
                     .expect(GPU_NOT_INIT)
