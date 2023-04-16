@@ -5,7 +5,7 @@ use super::{
 use egui::Slider;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Stripes {
     pub common: CommonConfig,
@@ -13,6 +13,8 @@ pub struct Stripes {
     pub count: u32,
     pub orientation: Orientation,
 }
+
+impl Eq for Stripes {}
 
 impl AnimationConfig for Stripes {
     fn ui(&mut self, ui: &mut egui::Ui, _texture_id: egui::TextureId) {

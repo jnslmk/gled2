@@ -1,4 +1,4 @@
-use egui::Ui;
+use egui::{RichText, Ui};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -49,7 +49,7 @@ pub enum Direction {
     Backward,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq, Eq)]
 #[serde(default)]
 pub struct CommonConfig {
     pub direction: Direction,
@@ -62,5 +62,7 @@ impl CommonConfig {
             ui.radio_value(&mut self.direction, Direction::Backward, "Backward");
         });
         ui.separator();
+
+        ui.label(RichText::new("Settings").heading());
     }
 }

@@ -19,7 +19,7 @@ pub struct Scene {
     pub artnet_extraction: bool,
     pub beat_progression_offset: f32,
     pub group: String,
-    animation: Animation,
+    pub animation: Animation,
 
     #[serde(skip)]
     sent_group: Option<String>,
@@ -92,8 +92,17 @@ impl Scene {
         });
     }
 
+    pub fn reset_gpu_state(&mut self) {
+        self.sent_group.take();
+        self.texture_id.take();
+        self.texture_to_artnet.take();
+        self.renderer.take();
+        self.artnet_mix.take();
+        self.init_gpu();
+    }
+
     pub fn set_buffers(&mut self, main: &Buffer) {
-        let ours = self
+        let other = self
             .texture_to_artnet
             .as_ref()
             .expect(GPU_NOT_INIT)
@@ -101,7 +110,7 @@ impl Scene {
         self.artnet_mix
             .as_mut()
             .expect(GPU_NOT_INIT)
-            .set_buffers(main, ours)
+            .set_buffers(main, other);
     }
 
     pub fn prepare(

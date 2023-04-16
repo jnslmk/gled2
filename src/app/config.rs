@@ -2,9 +2,10 @@ mod color;
 pub mod group;
 
 use super::App;
-use crate::animation::Color;
+use crate::animation::{Animation, Color};
 use egui::{Button, Checkbox, Color32, Context, Layout, Modifiers, RichText, Slider};
 use std::collections::BTreeSet;
+use strum::IntoEnumIterator;
 
 impl App {
     pub fn config(&mut self, ctx: &Context) {
@@ -29,7 +30,29 @@ impl App {
 
                         ui.separator();
 
-                        ui.label(RichText::new("Settings").heading());
+                        ui.label(RichText::new("Animation").heading());
+                        let animation_changed = egui::ComboBox::from_label("Animation")
+                            .selected_text(format!("{}", scene.animation))
+                            .show_ui(ui, |ui| {
+                                let mut changed = false;
+                                for animation in Animation::iter() {
+                                    let text = format!("{animation}");
+                                    if ui
+                                        .selectable_value(&mut scene.animation, animation, text)
+                                        .changed()
+                                    {
+                                        changed = true;
+                                    }
+                                }
+                                changed
+                            })
+                            .inner
+                            .unwrap_or_default();
+                        if animation_changed {
+                            scene.reset_gpu_state();
+                            action = Action::InitGpu;
+                        }
+
                         ui.add(Checkbox::new(&mut scene.artnet_extraction, "Active"));
                         ui.add(
                             Slider::new(&mut scene.opacity, 0.0..=1.0)
@@ -43,6 +66,7 @@ impl App {
                                 .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0))
                                 .text("Beat offset"),
                         );
+
                         scene.config_ui(ui);
 
                         ui.separator();
@@ -136,11 +160,14 @@ impl App {
                             .unwrap_or_default();
                     }
                     Action::Clone => {
-                        if let Some(index) = self
-                            .pipeline
-                            .scene(self.selected_scene)
-                            .cloned()
-                            .map(|scene| self.pipeline.add_scene(scene))
+                        if let Some(index) =
+                            self.pipeline
+                                .scene(self.selected_scene)
+                                .cloned()
+                                .map(|mut scene| {
+                                    scene.artnet_extraction = false;
+                                    self.pipeline.add_scene(scene)
+                                })
                         {
                             self.selected_scene = index;
                         }
@@ -149,6 +176,9 @@ impl App {
                         if let Some(scene) = self.pipeline.scene(self.selected_scene) {
                             scene.kind.switch()
                         };
+                    }
+                    Action::InitGpu => {
+                        self.pipeline.init_gpu();
                     }
                 }
             });
@@ -160,4 +190,5 @@ enum Action {
     Delete,
     Clone,
     Move,
+    InitGpu,
 }

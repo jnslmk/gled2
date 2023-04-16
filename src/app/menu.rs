@@ -36,6 +36,8 @@ impl App {
                     .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::O));
 
                 ui.menu_button("File", |ui| {
+                    ui.set_min_width(300.0);
+
                     if ui
                         .add(Button::new("Create new project").shortcut_text("Ctrl + N"))
                         .clicked()
@@ -133,6 +135,8 @@ impl App {
                 }
 
                 ui.menu_button("Config", |ui| {
+                    ui.set_min_width(300.0);
+
                     ui.label(RichText::new("Framerate Limiter").heading());
                     if ui
                         .add(

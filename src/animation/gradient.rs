@@ -5,13 +5,15 @@ use super::{
 use egui::{CursorIcon, Image, Sense, Vec2};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Gradient {
     pub common: CommonConfig,
     pub gradient: GradientType,
     pub center: (f32, f32),
 }
+
+impl Eq for Gradient {}
 
 impl Default for Gradient {
     fn default() -> Self {

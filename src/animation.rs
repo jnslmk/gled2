@@ -10,6 +10,7 @@ mod stripes;
 use gled_proc_macros::Animation;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use strum::{Display, EnumIter};
 
 pub use colors::{Color, ColorPalette};
 pub use config::{CommonConfig, Config, Direction};
@@ -24,7 +25,7 @@ pub trait AnimationConfig: Into<Animation> + Default + Debug + Clone {
     fn config(&self) -> Config;
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Animation)]
+#[derive(Serialize, Deserialize, Debug, Clone, Animation, EnumIter, Display, PartialEq, Eq)]
 pub enum Animation {
     Gradient(gradient::Gradient),
     Stripes(stripes::Stripes),

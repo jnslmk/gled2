@@ -113,7 +113,7 @@ impl Pipeline {
         for scene in self.scenes.iter_mut() {
             scene.init_gpu();
         }
-        self.update_buffers();
+        self.set_buffers();
     }
 
     pub fn start(&mut self) -> Instant {
@@ -138,7 +138,7 @@ impl Pipeline {
         scene
     }
 
-    pub fn update_buffers(&mut self) {
+    pub fn set_buffers(&mut self) {
         for scene in self.scenes.iter_mut() {
             scene.set_buffers(self.artnet.as_ref().expect(GPU_NOT_INIT))
         }

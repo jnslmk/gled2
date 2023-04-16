@@ -132,12 +132,11 @@ impl App {
         self.use_project(project);
     }
 
-    pub fn use_project(&mut self, mut project: Project) {
-        project
-            .pipeline
-            .set_extract_artnet(self.extract_artnet.clone());
-        project.pipeline.init_gpu();
+    pub fn use_project(&mut self, project: Project) {
         self.pipeline = project.pipeline;
+        self.pipeline
+            .set_extract_artnet(self.extract_artnet.clone());
+        self.pipeline.init_gpu();
 
         svg::reset();
         self.svg = project.svg;
