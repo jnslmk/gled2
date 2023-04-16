@@ -135,6 +135,10 @@ impl App {
                                 scene,
                                 svg: svg.filter(|_| scenes.show_svg),
                                 scene_size: scenes.size,
+                                live_color: match kind {
+                                    SceneKind::Background => Color32::DARK_BLUE,
+                                    SceneKind::Foreground => Color32::DARK_RED,
+                                },
                             },
                         );
                     }
@@ -150,6 +154,7 @@ struct SceneWidget<'a> {
     scene: &'a mut Scene,
     svg: Option<TextureId>,
     scene_size: f32,
+    live_color: Color32,
 }
 
 impl<'a> Widget for SceneWidget<'a> {
@@ -169,7 +174,7 @@ impl<'a> Widget for SceneWidget<'a> {
             .show(ui, |ui| {
                 egui::Frame::none()
                     .fill(if self.scene.artnet_extraction {
-                        Color32::RED
+                        self.live_color
                     } else {
                         Color32::DARK_GRAY
                     })
