@@ -14,12 +14,12 @@ use wgpu::{Buffer, CommandEncoder, Queue};
 #[serde(default)]
 pub struct Scene {
     pub kind: SceneKind,
-    animation: Animation,
     pub palette: ColorPalette,
     pub opacity: f32,
     pub artnet_extraction: bool,
     pub beat_progression_offset: f32,
-    group: String,
+    pub group: String,
+    animation: Animation,
 
     #[serde(skip)]
     sent_group: Option<String>,
@@ -144,14 +144,6 @@ impl Scene {
             }
             self.was_ever_rendered = true;
         }
-    }
-
-    pub fn group(&self) -> &str {
-        &self.group
-    }
-
-    pub fn group_mut(&mut self) -> &mut String {
-        &mut self.group
     }
 
     /// Resend positions to gpu

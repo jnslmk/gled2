@@ -175,7 +175,7 @@ impl<'a> Widget for SceneWidget<'a> {
                             ui.horizontal(|ui| {
                                 ui.set_max_width(size.x + 28.0);
                                 ui.add(
-                                    super::config::group::button(self.scene.group(), false)
+                                    super::config::group::button(&self.scene.group, false)
                                         .sense(Sense::hover()),
                                 );
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {

@@ -49,7 +49,7 @@ impl App {
                         ui.separator();
 
                         ui.label(RichText::new("Group").heading());
-                        group::selection(ui, scene.group_mut());
+                        group::selection(ui, &mut scene.group);
 
                         ui.separator();
 
