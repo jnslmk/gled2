@@ -7,12 +7,13 @@ mod renderer;
 mod state;
 mod stripes;
 
-pub use colors::{Color, ColorPalette};
-pub use config::{CommonConfig, Direction};
 use gled_proc_macros::Animation;
-pub use gradient::{Gradient, GradientConfig, GradientType};
 use renderer::AnimationRenderer;
 use serde::{Deserialize, Serialize};
+
+pub use colors::{Color, ColorPalette};
+pub use config::{CommonConfig, Direction};
+pub use gradient::{Gradient, GradientConfig, GradientType};
 pub use state::State;
 pub use stripes::{Stripes, StripesConfig};
 

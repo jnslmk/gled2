@@ -1,11 +1,10 @@
-use egui::Ui;
-use serde::{Deserialize, Serialize};
-
 use super::{
     config::{CommonConfig, Config},
     renderer::AnimationRenderer,
     Animation,
 };
+use egui::Ui;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(default)]
