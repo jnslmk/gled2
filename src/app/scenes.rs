@@ -63,6 +63,11 @@ impl App {
                 })
                 .heading(),
             );
+            if ui.button("Add").clicked() {
+                let mut scene = Scene::default();
+                scene.kind = kind;
+                self.selected_scene = self.pipeline.add_scene(scene);
+            }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let scenes = match kind {
                     SceneKind::Background => &mut self.persistant_state.background,
@@ -174,10 +179,12 @@ impl<'a> Widget for SceneWidget<'a> {
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
                                 ui.set_max_width(size.x + 28.0);
-                                ui.add(
-                                    super::config::group::button(&self.scene.group, false)
-                                        .sense(Sense::hover()),
-                                );
+                                if !self.scene.group.is_empty() {
+                                    ui.add(
+                                        super::config::group::button(&self.scene.group, false)
+                                            .sense(Sense::hover()),
+                                    );
+                                }
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     checkbox_rect = Some(ui.checkbox(&mut false, "").rect);
                                     beat_progression_offset_rect = Some(

@@ -10,7 +10,7 @@ use egui::TextureId;
 use serde::{Deserialize, Serialize};
 use wgpu::{Buffer, CommandEncoder, Queue};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Scene {
     pub kind: SceneKind,
@@ -35,6 +35,27 @@ pub struct Scene {
     artnet_mix: Option<ArtnetMix>,
     #[serde(skip)]
     renderer: Option<AnimationRenderer>,
+}
+
+impl Default for Scene {
+    fn default() -> Self {
+        Self {
+            opacity: 1.0,
+            kind: Default::default(),
+            palette: Default::default(),
+            artnet_extraction: Default::default(),
+            beat_progression_offset: Default::default(),
+            group: Default::default(),
+            animation: Default::default(),
+            sent_group: Default::default(),
+            texture_to_artnet: Default::default(),
+            texture_id: Default::default(),
+            artnet_dirty: Default::default(),
+            was_ever_rendered: Default::default(),
+            artnet_mix: Default::default(),
+            renderer: Default::default(),
+        }
+    }
 }
 
 impl Clone for Scene {
