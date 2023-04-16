@@ -119,9 +119,7 @@ impl Scene {
                 self.sent_group = Some(self.group.clone());
             }
 
-            self.animation
-                .renderer()
-                .set_buffers(queue, &state, &self.palette);
+            self.animation.set_buffers(queue, &state, &self.palette);
 
             if (!self.artnet_extraction || blackout) && self.artnet_dirty {
                 self.texture_to_artnet
@@ -163,6 +161,10 @@ impl Scene {
 
     pub fn texture_id(&self) -> TextureId {
         self.texture_id.expect(GPU_NOT_INIT)
+    }
+
+    pub fn config_ui(&mut self, ui: &mut egui::Ui) {
+        self.animation.config_ui(ui);
     }
 }
 

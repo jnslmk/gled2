@@ -1,6 +1,5 @@
+use egui::Ui;
 use serde::{Deserialize, Serialize};
-
-use crate::constants::GPU_NOT_INIT;
 
 use super::{
     config::{CommonConfig, Config},
@@ -11,8 +10,8 @@ use super::{
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Stripes {
     #[serde(skip)]
-    renderer: Option<AnimationRenderer>,
-    config: StripesConfig,
+    pub renderer: Option<AnimationRenderer>,
+    pub config: StripesConfig,
 }
 
 impl Clone for Stripes {
@@ -38,14 +37,6 @@ impl Stripes {
             AnimationRenderer::new(fragment_shader, &(&self.config).into())
         });
     }
-
-    pub fn renderer(&mut self) -> &AnimationRenderer {
-        self.renderer.as_ref().expect(GPU_NOT_INIT)
-    }
-
-    pub fn config(&self) -> &StripesConfig {
-        &self.config
-    }
 }
 
 impl From<Stripes> for Animation {
@@ -60,6 +51,13 @@ pub struct StripesConfig {
     pub common: CommonConfig,
     pub thickness: f32,
     pub count: i32,
+}
+
+impl StripesConfig {
+    pub fn ui(&mut self, ui: &mut Ui) {
+        self.common.ui(ui);
+        ui.label("Todo: stripes");
+    }
 }
 
 impl Default for StripesConfig {

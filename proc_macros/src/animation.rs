@@ -30,7 +30,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         .map(|child| {
             let ident = child.ident.to_owned();
             quote!(
-                Self::#ident(animation) => animation.renderer(),
+                Self::#ident(animation) => animation.renderer.as_ref().expect(crate::constants::GPU_NOT_INIT),
             )
         });
     let init_gpu = animation
@@ -45,6 +45,30 @@ pub fn derive(input: TokenStream) -> TokenStream {
                 Self::#ident(animation) => animation.init_gpu(),
             )
         });
+    let config_ui = animation
+        .data
+        .as_ref()
+        .take_enum()
+        .expect("Should never be a struct")
+        .into_iter()
+        .map(|child| {
+            let ident = child.ident.to_owned();
+            quote!(
+                Self::#ident(animation) => animation.config.ui(ui),
+            )
+        });
+    let set_buffers = animation
+        .data
+        .as_ref()
+        .take_enum()
+        .expect("Should never be a struct")
+        .into_iter()
+        .map(|child| {
+            let ident = child.ident.to_owned();
+            quote!(
+                Self::#ident(animation) => animation.renderer.as_ref().expect(crate::constants::GPU_NOT_INIT).set_buffers(queue, state, palette, &(&animation.config).into()),
+            )
+        });
 
     quote!(
         impl Animation {
@@ -57,6 +81,23 @@ pub fn derive(input: TokenStream) -> TokenStream {
             pub fn init_gpu(&mut self) {
                 match self {
                     #(#init_gpu)*
+                }
+            }
+
+            pub fn config_ui(&mut self, ui: &mut egui::Ui) {
+                match self {
+                    #(#config_ui)*
+                }
+            }
+
+            pub fn set_buffers(
+                &self,
+                queue: &wgpu::Queue,
+                state: &State,
+                palette: &ColorPalette
+            ) {
+                match self {
+                    #(#set_buffers)*
                 }
             }
         }

@@ -1,3 +1,4 @@
+use egui::Ui;
 use serde::{Deserialize, Serialize};
 
 pub struct Config {
@@ -37,7 +38,7 @@ impl Config {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Direction {
     #[default]
     Forward,
@@ -48,4 +49,14 @@ pub enum Direction {
 #[serde(default)]
 pub struct CommonConfig {
     pub direction: Direction,
+}
+
+impl CommonConfig {
+    pub fn ui(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.radio_value(&mut self.direction, Direction::Forward, "Forward");
+            ui.radio_value(&mut self.direction, Direction::Backward, "Backward");
+        });
+        ui.separator();
+    }
 }

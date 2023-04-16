@@ -1,6 +1,5 @@
+use egui::Ui;
 use serde::{Deserialize, Serialize};
-
-use crate::constants::GPU_NOT_INIT;
 
 use super::{
     config::{CommonConfig, Config},
@@ -12,8 +11,8 @@ use super::{
 #[serde(default)]
 pub struct Gradient {
     #[serde(skip)]
-    renderer: Option<AnimationRenderer>,
-    config: GradientConfig,
+    pub renderer: Option<AnimationRenderer>,
+    pub config: GradientConfig,
 }
 
 impl Clone for Gradient {
@@ -49,14 +48,6 @@ impl Gradient {
             AnimationRenderer::new(&animation_shader, &(&self.config).into())
         });
     }
-
-    pub fn renderer(&mut self) -> &AnimationRenderer {
-        self.renderer.as_ref().expect(GPU_NOT_INIT)
-    }
-
-    pub fn config(&self) -> &GradientConfig {
-        &self.config
-    }
 }
 
 impl From<Gradient> for Animation {
@@ -70,6 +61,13 @@ impl From<Gradient> for Animation {
 pub struct GradientConfig {
     pub common: CommonConfig,
     pub gradient: GradientType,
+}
+
+impl GradientConfig {
+    pub fn ui(&mut self, ui: &mut Ui) {
+        self.common.ui(ui);
+        ui.label("Todo: gradient");
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -3,7 +3,7 @@ pub mod group;
 
 use super::App;
 use crate::animation::Color;
-use egui::{Button, Color32, Context, Layout, Modifiers, RichText};
+use egui::{Button, Checkbox, Color32, Context, Layout, Modifiers, RichText, Slider};
 use std::collections::BTreeSet;
 
 impl App {
@@ -31,7 +31,20 @@ impl App {
                         ui.separator();
 
                         ui.label(RichText::new("Settings").heading());
-                        ui.label("TODO: Animation settings");
+                        ui.add(Checkbox::new(&mut scene.artnet_extraction, "Active"));
+                        ui.add(
+                            Slider::new(&mut scene.opacity, 0.0..=1.0)
+                                .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
+                                .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0))
+                                .text("Opacity"),
+                        );
+                        ui.add(
+                            Slider::new(&mut scene.beat_progression_offset, 0.0..=1.0)
+                                .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
+                                .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0))
+                                .text("Beat offset"),
+                        );
+                        scene.config_ui(ui);
 
                         ui.separator();
 

@@ -125,11 +125,20 @@ impl AnimationRenderer {
         }
     }
 
-    pub fn set_buffers(&self, queue: &Queue, state: &State, palette: &ColorPalette) {
-        let mut contents = [0; State::size() + ColorPalette::size()];
+    pub fn set_buffers(
+        &self,
+        queue: &Queue,
+        state: &State,
+        palette: &ColorPalette,
+        config: &Config,
+    ) {
+        let mut contents = [0; State::size() + ColorPalette::size() + Config::size()];
         state.write_data(&mut contents[..State::size()]);
         palette.write_data(&mut contents[State::size()..State::size() + ColorPalette::size()]);
-
+        config.write_data(
+            &mut contents[State::size() + ColorPalette::size()
+                ..State::size() + ColorPalette::size() + Config::size()],
+        );
         queue.write_buffer(&self.uniform, 0, &contents);
     }
 
