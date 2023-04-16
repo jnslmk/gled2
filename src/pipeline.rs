@@ -131,7 +131,7 @@ impl Pipeline {
         beat_progression: f32,
         beats_per_minute: f32,
         framerate: f32,
-        disable_artnet_extraction: bool,
+        blackout: bool,
         main_dimmer: f32,
         render_deactivated_background_scenes: RenderDeactivatedScenes,
         render_deactivated_foreground_scenes: RenderDeactivatedScenes,
@@ -153,7 +153,7 @@ impl Pipeline {
             scene.prepare(
                 queue,
                 state,
-                disable_artnet_extraction,
+                blackout,
                 main_dimmer,
                 match scene.kind {
                     crate::scene::SceneKind::Background => {
@@ -182,7 +182,7 @@ impl Pipeline {
         for (index, scene) in self.scenes.iter_mut() {
             scene.render(
                 &mut encoder,
-                disable_artnet_extraction,
+                blackout,
                 match scene.kind {
                     crate::scene::SceneKind::Background => {
                         render_deactivated_background_scenes.should_render(index)
