@@ -26,7 +26,7 @@ pub struct Scene {
     #[serde(skip)]
     texture_to_artnet: Option<TextureToArtnet>,
     #[serde(skip)]
-    texture_id: Option<TextureId>,
+    texture_id: Option<OwnedTextureId>,
     #[serde(skip)]
     artnet_dirty: bool,
     #[serde(skip)]
@@ -79,14 +79,16 @@ impl Scene {
             TextureToArtnet::init(self.renderer.as_ref().expect(GPU_NOT_INIT).texture())
         });
         self.texture_id.get_or_insert_with(|| {
-            wgpu_render_state()
-                .renderer
-                .write()
-                .register_native_texture(
-                    &wgpu_render_state().device,
-                    self.renderer.as_ref().expect(GPU_NOT_INIT).view(),
-                    wgpu::FilterMode::Nearest,
-                )
+            OwnedTextureId(
+                wgpu_render_state()
+                    .renderer
+                    .write()
+                    .register_native_texture(
+                        &wgpu_render_state().device,
+                        self.renderer.as_ref().expect(GPU_NOT_INIT).view(),
+                        wgpu::FilterMode::Nearest,
+                    ),
+            )
         });
     }
 
@@ -164,7 +166,7 @@ impl Scene {
     }
 
     pub fn texture_id(&self) -> TextureId {
-        self.texture_id.expect(GPU_NOT_INIT)
+        self.texture_id.as_ref().expect(GPU_NOT_INIT).0
     }
 
     pub fn config_ui(&mut self, ui: &mut egui::Ui) {
@@ -177,4 +179,22 @@ pub enum SceneKind {
     #[default]
     Background,
     Foreground,
+}
+
+impl SceneKind {
+    pub fn switch(&mut self) {
+        *self = match self {
+            Self::Background => Self::Foreground,
+            Self::Foreground => Self::Background,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct OwnedTextureId(pub TextureId);
+
+impl Drop for OwnedTextureId {
+    fn drop(&mut self) {
+        wgpu_render_state().renderer.write().free_texture(&self.0)
+    }
 }
