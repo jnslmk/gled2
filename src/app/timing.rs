@@ -4,7 +4,6 @@ use std::time::Instant;
 
 pub struct Timing {
     pub beats_per_minute: f32,
-    pub fps_limit: u64,
     last_beat_time: Instant,
     beat_progression: f32,
     avg_fps: Option<f32>,
@@ -19,7 +18,6 @@ impl Default for Timing {
     fn default() -> Self {
         Self {
             beats_per_minute: 60.0,
-            fps_limit: 120,
             last_beat_time: Instant::now(),
             beat_progression: 0.0,
             avg_fps: None,
@@ -41,15 +39,15 @@ impl Timing {
         self.avg_fps
     }
 
-    pub fn tick(&mut self) {
-        self.limit_fps();
+    pub fn tick(&mut self, fps_limit: f32) {
+        self.limit_fps(fps_limit);
         self.progress_beat();
         self.calculate_avg_fps();
         self.remove_old_taps();
     }
 
-    fn limit_fps(&mut self) {
-        let target_frame_time_nanos = 1e+9f32 / self.fps_limit as f32;
+    fn limit_fps(&mut self, fps_limit: f32) {
+        let target_frame_time_nanos = 1e+9f32 / fps_limit;
         while target_frame_time_nanos > (self.last_frame.elapsed().as_nanos() as f32) {
             std::thread::sleep(std::time::Duration::from_nanos(100));
         }

@@ -1,43 +1,51 @@
-use crate::{
-    svg::{MeasurementPoints, Universes},
-    texture_to_artnet::Positions,
-};
-use anyhow::{Context, Result};
+use crate::{svg::MeasurementPoints, texture_to_artnet::Positions};
+use anyhow::Result;
 use egui_extras::RetainedImage;
 use once_cell::sync::Lazy;
-use std::path::Path;
-use std::sync::{Arc, RwLock};
+use serde::{Deserialize, Serialize};
+use std::{
+    path::Path,
+    sync::{Arc, RwLock},
+};
 
 static MEASUREMENT_POINTS: Lazy<Arc<RwLock<MeasurementPoints>>> =
     Lazy::new(|| Arc::new(RwLock::new(MeasurementPoints::default())));
 
+#[derive(Serialize, Deserialize)]
 pub struct Svg {
-    universes: Universes,
-    image: RetainedImage,
+    svg_contents: String,
+    #[serde(skip)]
+    image: Option<RetainedImage>,
 }
 
 impl Svg {
     pub fn load(path: &Path) -> Result<Self> {
-        let svg = crate::svg::Svg::read(path).context("Could not read svg file")?;
-        let measurement_points = MeasurementPoints::from(&svg);
-        let universes = measurement_points.universes();
-        *MEASUREMENT_POINTS
-            .write()
-            .expect("MEASUREMENT_POINTS is poisoned") = measurement_points;
-        let image = svg.render().context("Could not render svg")?;
+        let svg_contents = std::fs::read_to_string(path)?;
 
-        crate::get_pipeline!(pipeline);
-        pipeline.svg_or_groups_changed(universes.clone());
-
-        Ok(Self { universes, image })
+        Ok(Self {
+            svg_contents,
+            image: None,
+        })
     }
 
-    pub fn universes(&self) -> &Universes {
-        &self.universes
-    }
+    pub fn image(&mut self) -> Option<&RetainedImage> {
+        if self.image.is_none() {
+            self.image = {
+                let svg = crate::svg::Svg::parse(&self.svg_contents).ok()?;
+                let measurement_points = MeasurementPoints::from(&svg);
+                let universes = measurement_points.universes();
+                *MEASUREMENT_POINTS
+                    .write()
+                    .expect("MEASUREMENT_POINTS is poisoned") = measurement_points;
+                let image = svg.render().ok()?;
 
-    pub fn image(&self) -> &RetainedImage {
-        &self.image
+                crate::get_pipeline!(pipeline);
+                pipeline.svg_or_groups_changed(universes);
+
+                Some(image)
+            };
+        }
+        self.image.as_ref()
     }
 }
 

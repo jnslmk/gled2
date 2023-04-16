@@ -49,7 +49,11 @@ impl App {
 
         ui.separator();
 
-        if let Some(framerate) = self.timing.framerate().filter(|_| self.fullscreen) {
+        if let Some(framerate) = self
+            .timing
+            .framerate()
+            .filter(|_| self.persistant_state.fullscreen)
+        {
             ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
                 ui.label(format!("{framerate:.01} fps"));
             });

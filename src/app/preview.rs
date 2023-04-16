@@ -12,15 +12,23 @@ impl App {
             uv.max.x = (uv.max.x + BORDER).min(1.0);
             uv.max.y = (uv.max.y + BORDER).min(1.0);
 
-            egui::TopBottomPanel::top("preview")
-                .default_height(300.0)
+            let preview_rect = egui::TopBottomPanel::top("preview")
+                .default_height(self.persistant_state.preview_height)
                 .min_height(50.0)
                 .resizable(true)
                 .show(ctx, |ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new("Preview").heading());
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                            ui.checkbox(&mut self.show_preview_svg, RichText::new("SVG").heading());
+                            if ui
+                                .checkbox(
+                                    &mut self.persistant_state.show_preview_svg,
+                                    RichText::new("SVG").heading(),
+                                )
+                                .changed()
+                            {
+                                self.persistant_state.dirty = true;
+                            }
                         });
                     });
 
@@ -43,17 +51,18 @@ impl App {
 
                     let res = self
                         .svg
-                        .as_ref()
-                        .filter(|_| self.show_preview_svg)
-                        .map(|svg| {
+                        .as_mut()
+                        .filter(|_| self.persistant_state.show_preview_svg)
+                        .and_then(|svg| svg.image())
+                        .map(|image| {
                             ui.add(
-                                Image::new(svg.image().texture_id(ctx), size)
+                                Image::new(image.texture_id(ctx), size)
                                     .uv(uv)
                                     .bg_fill(Color32::BLACK),
                             )
                         });
                     let mut preview = Image::new(pipeline.preview_texture_id(), size).uv(uv);
-                    if !self.show_preview_svg {
+                    if !self.persistant_state.show_preview_svg {
                         preview = preview.bg_fill(Color32::BLACK);
                     }
                     match res {
@@ -64,7 +73,13 @@ impl App {
                             ui.add(preview);
                         }
                     }
-                });
+                })
+                .response
+                .rect;
+            if preview_rect.height() != self.persistant_state.preview_height {
+                self.persistant_state.preview_height = preview_rect.height();
+                self.persistant_state.dirty = true;
+            }
         }
     }
 }

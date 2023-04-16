@@ -1,14 +1,15 @@
+use super::App;
 use crate::{
     animation::ColorPalette,
     scene::{Scene, SceneKind},
 };
-
-use super::App;
 use egui::{
     Align, Button, Checkbox, Color32, Context, DragValue, Image, Layout, Margin, Rect, RichText,
     Rounding, Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
 };
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Scenes {
     pub size: f32,
     pub show_svg: bool,
@@ -25,52 +26,77 @@ impl Default for Scenes {
     }
 }
 
-impl Scenes {
-    pub fn header(&mut self, ui: &mut Ui, label: &str) {
-        ui.horizontal(|ui| {
-            ui.label(RichText::new(label).heading());
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                ui.checkbox(&mut self.show_svg, RichText::new("SVG").heading());
-                ui.checkbox(
-                    &mut self.always_render,
-                    RichText::new("Render all").heading(),
-                );
-                ui.add(
-                    Slider::new(&mut self.size, 100.0..=512.0)
-                        .show_value(false)
-                        .text(RichText::new("Size").heading()),
-                );
-            });
-        });
-    }
-}
-
 impl App {
     pub fn scenes(&mut self, ctx: &Context) {
         let svg = self
             .svg
-            .as_ref()
-            .filter(|_| self.foreground.show_svg)
-            .map(|svg| svg.image().texture_id(ctx));
+            .as_mut()
+            .filter(|_| self.persistant_state.foreground.show_svg)
+            .and_then(|svg| svg.image())
+            .map(|image| image.texture_id(ctx));
 
         egui::SidePanel::right("foreground_scenes")
             .resizable(false)
             .exact_width(ctx.available_rect().width() / 2.0)
             .show(ctx, |ui| {
-                self.foreground.header(ui, "Foreground");
+                self.scenes_header(ui, SceneKind::Foreground);
                 self.scenes_grid(ui, SceneKind::Foreground, svg)
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.background.header(ui, "Background");
+            self.scenes_header(ui, SceneKind::Background);
             self.scenes_grid(ui, SceneKind::Background, svg)
+        });
+    }
+
+    fn scenes_header(&mut self, ui: &mut Ui, kind: SceneKind) {
+        ui.horizontal(|ui| {
+            ui.label(
+                RichText::new(match kind {
+                    SceneKind::Background => "Foreground",
+                    SceneKind::Foreground => "Background",
+                })
+                .heading(),
+            );
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                let scenes = match kind {
+                    SceneKind::Background => &mut self.persistant_state.background,
+                    SceneKind::Foreground => &mut self.persistant_state.foreground,
+                };
+
+                if ui
+                    .checkbox(&mut scenes.show_svg, RichText::new("SVG").heading())
+                    .changed()
+                {
+                    self.persistant_state.dirty = true;
+                };
+                if ui
+                    .checkbox(
+                        &mut scenes.always_render,
+                        RichText::new("Render all").heading(),
+                    )
+                    .changed()
+                {
+                    self.persistant_state.dirty = true;
+                };
+                if ui
+                    .add(
+                        Slider::new(&mut scenes.size, 100.0..=512.0)
+                            .show_value(false)
+                            .text(RichText::new("Size").heading()),
+                    )
+                    .changed()
+                {
+                    self.persistant_state.dirty = true;
+                }
+            });
         });
     }
 
     fn scenes_grid(&mut self, ui: &mut Ui, kind: SceneKind, svg: Option<TextureId>) {
         let scenes = match kind {
-            SceneKind::Background => &self.background,
-            SceneKind::Foreground => &self.foreground,
+            SceneKind::Background => &self.persistant_state.background,
+            SceneKind::Foreground => &self.persistant_state.foreground,
         };
 
         egui::ScrollArea::vertical()
@@ -91,7 +117,7 @@ impl App {
 
                                 index,
                                 scene,
-                                svg,
+                                svg: svg.filter(|_| scenes.show_svg),
                                 scene_size: scenes.size,
                             },
                         );
