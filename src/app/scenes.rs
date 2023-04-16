@@ -46,7 +46,7 @@ impl App {
                                 .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
                                 .show(ui, |ui| {
                                     self.scenes_header(ui, kind);
-                                    self.scenes_grid(ui, kind, svg)
+                                    self.scenes_grid(ctx, ui, kind, svg)
                                 });
                         });
                     }
@@ -102,7 +102,7 @@ impl App {
         });
     }
 
-    fn scenes_grid(&mut self, ui: &mut Ui, kind: SceneKind, svg: Option<TextureId>) {
+    fn scenes_grid(&mut self, ctx: &Context, ui: &mut Ui, kind: SceneKind, svg: Option<TextureId>) {
         let scenes = match kind {
             SceneKind::Background => &self.persistant_state.background,
             SceneKind::Foreground => &self.persistant_state.foreground,
@@ -116,23 +116,38 @@ impl App {
                 ui.set_max_width(ui.available_width() - 30.0);
                 ui.horizontal_wrapped(|ui| {
                     crate::get_pipeline!(pipeline);
+                    let mut delete_scene_index = None;
                     for (index, scene) in pipeline
                         .scenes()
                         .into_iter()
                         .filter(|(_index, scene)| scene.kind == kind)
                     {
-                        ui.add_sized(
+                        let res = ui.add_sized(
                             Vec2::new(scenes.size + 40.0, scenes.size + 60.0),
                             SceneWidget {
                                 selected_scene: &mut self.selected_scene,
                                 hovered_scene: &mut self.hovered_scene,
-
                                 index,
                                 scene,
                                 svg: svg.filter(|_| scenes.show_svg),
                                 scene_size: scenes.size,
                             },
                         );
+                        if ctx.input(|i| {
+                            i.key_down(egui::Key::Backspace) || i.key_down(egui::Key::Delete)
+                        }) && ui
+                            .put(
+                                res.rect,
+                                Button::new("Delete scene")
+                                    .fill(Color32::from_rgba_unmultiplied(255, 0, 0, 50)),
+                            )
+                            .clicked()
+                        {
+                            delete_scene_index = Some(index);
+                        }
+                    }
+                    if let Some(index) = delete_scene_index {
+                        pipeline.remove_scene(index);
                     }
                 });
             });
@@ -224,6 +239,7 @@ impl<'a> Widget for SceneWidget<'a> {
                     })
             })
             .response;
+
         let res = ui.put(response.rect, Button::new("").fill(Color32::TRANSPARENT));
         if res.clicked() {
             *self.selected_scene = self.index;
