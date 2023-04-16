@@ -150,7 +150,7 @@ impl Scene {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SceneKind {
     #[default]
     Background,

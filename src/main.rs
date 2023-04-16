@@ -30,7 +30,7 @@ fn main() {
 
     let options = eframe::NativeOptions {
         drag_and_drop_support: true,
-        initial_window_size: Some([1280.0, 1024.0].into()),
+        initial_window_size: Some([1300.0, 1024.0].into()),
         renderer: eframe::Renderer::Wgpu,
         icon_data: Some(logo::icon()),
         vsync: false,

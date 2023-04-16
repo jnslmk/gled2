@@ -5,11 +5,12 @@ use crate::{
 };
 use egui::{
     Align, Button, Checkbox, Color32, Context, DragValue, Image, Layout, Margin, Rect, RichText,
-    Rounding, Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
+    Rounding, Sense, Shape, Slider, Stroke, TextureId, Ui, Vec2, Widget,
 };
+use egui_extras::{Size, StripBuilder};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Scenes {
     pub size: f32,
     pub show_svg: bool,
@@ -35,17 +36,22 @@ impl App {
             .and_then(|svg| svg.image())
             .map(|image| image.texture_id(ctx));
 
-        egui::SidePanel::right("foreground_scenes")
-            .resizable(false)
-            .exact_width(ctx.available_rect().width() / 2.0)
-            .show(ctx, |ui| {
-                self.scenes_header(ui, SceneKind::Foreground);
-                self.scenes_grid(ui, SceneKind::Foreground, svg)
-            });
-
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.scenes_header(ui, SceneKind::Background);
-            self.scenes_grid(ui, SceneKind::Background, svg)
+            StripBuilder::new(ui)
+                .sizes(Size::relative(0.5), 2)
+                .horizontal(|mut strip| {
+                    for kind in [SceneKind::Background, SceneKind::Foreground] {
+                        strip.cell(|ui| {
+                            egui::Frame::none()
+                                .inner_margin(Margin::from(6.0))
+                                .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
+                                .show(ui, |ui| {
+                                    self.scenes_header(ui, kind);
+                                    self.scenes_grid(ui, kind, svg)
+                                });
+                        });
+                    }
+                });
         });
     }
 
@@ -100,8 +106,11 @@ impl App {
         };
 
         egui::ScrollArea::vertical()
+            .id_source(format!("{kind:?}_scroll"))
             .auto_shrink([false, false])
+            .always_show_scroll(true)
             .show(ui, |ui| {
+                ui.set_max_width(ui.available_width() - 30.0);
                 ui.horizontal_wrapped(|ui| {
                     crate::get_pipeline!(pipeline);
                     for (index, scene) in pipeline

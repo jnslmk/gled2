@@ -1,7 +1,6 @@
-use crate::artnet_sender;
-
 use super::scenes::Scenes;
-use log::error;
+use crate::artnet_sender;
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -64,7 +63,7 @@ impl PersistantState {
                 error!("Could not persist state: {err:?}");
             }
 
-            println!("bla");
+            info!("Saved persistant state");
         });
     }
 
