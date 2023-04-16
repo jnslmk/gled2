@@ -48,7 +48,6 @@ impl Stripes {
     }
 }
 
-// TODO: Macro
 impl From<Stripes> for Animation {
     fn from(line_sweep: Stripes) -> Self {
         Self::Stripes(line_sweep)

@@ -7,16 +7,16 @@ mod renderer;
 mod state;
 mod stripes;
 
-use self::renderer::AnimationRenderer;
-
 pub use colors::{Color, ColorPalette};
 pub use config::{CommonConfig, Direction};
+use gled_proc_macros::Animation;
 pub use gradient::{Gradient, GradientConfig, GradientType};
+use renderer::AnimationRenderer;
 use serde::{Deserialize, Serialize};
 pub use state::State;
 pub use stripes::{Stripes, StripesConfig};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Animation)]
 pub enum Animation {
     Gradient(gradient::Gradient),
     Stripes(stripes::Stripes),
@@ -25,22 +25,5 @@ pub enum Animation {
 impl Default for Animation {
     fn default() -> Self {
         Self::Gradient(Gradient::default())
-    }
-}
-
-// TODO: Macro
-impl Animation {
-    pub fn renderer(&mut self) -> &AnimationRenderer {
-        match self {
-            Self::Gradient(gradient) => gradient.renderer(),
-            Self::Stripes(stripes) => stripes.renderer(),
-        }
-    }
-
-    pub fn init_gpu(&mut self) {
-        match self {
-            Self::Gradient(gradient) => gradient.init_gpu(),
-            Self::Stripes(stripes) => stripes.init_gpu(),
-        }
     }
 }

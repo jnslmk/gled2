@@ -1,0 +1,14 @@
+[package]
+name = "gled_proc_macros"
+version = "0.1.0"
+edition = "2021"
+authors = ["René Rössler <rene@freshx.de>"]
+
+[dependencies]
+darling = "0.14"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = "1.0"
+
+[lib]
+proc-macro = true

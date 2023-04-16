@@ -59,7 +59,6 @@ impl Gradient {
     }
 }
 
-//TODO: Macro
 impl From<Gradient> for Animation {
     fn from(gradient: Gradient) -> Self {
         Self::Gradient(gradient)
