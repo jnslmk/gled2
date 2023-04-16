@@ -7,35 +7,38 @@ mod scenes;
 mod svg;
 mod timing;
 
-use self::{persistant_state::PersistantState, svg::Svg};
+use std::path::PathBuf;
+
 use crate::{
     artnet_sender::{self, ArtnetSender, GpuReadyReceiver},
     extract_artnet::ExtractArtnet,
     get_pipeline,
     logo::logo_image,
     pipeline::RenderDeactivatedScenes,
-    shader_widget::init_shaders,
+    project::Project,
 };
 use egui::Modifiers;
 use egui_extras::RetainedImage;
+use persistant_state::PersistantState;
 use timing::Timing;
 
-pub use svg::{positions, preview_positions};
+pub use svg::{positions, preview_positions, Svg};
 
-#[derive(Default)]
 pub struct App {
+    artnet_sender: ArtnetSender,
+    gpu_ready_receiver: GpuReadyReceiver,
+    logo_image: RetainedImage,
+    extract_artnet: ExtractArtnet,
+    timing: Timing,
+    persistant_state: PersistantState,
+    project_path: Option<PathBuf>,
+
     artnet_ip_input: String,
     blackout: bool,
     svg: Option<Svg>,
-    artnet_sender: Option<ArtnetSender>,
-    gpu_ready_receiver: Option<GpuReadyReceiver>,
-    logo_image: Option<RetainedImage>,
-    timing: Timing,
     about_window_open: bool,
     selected_scene: usize,
     hovered_scene: usize,
-
-    persistant_state: PersistantState,
 }
 
 impl eframe::App for App {
@@ -53,14 +56,11 @@ impl eframe::App for App {
             frame.set_window_title(&format!("gled ({fps:.1} fps)"))
         }
 
-        if let (Some(artnet_sender), Some(gpu_ready_receiver)) = (
-            self.artnet_sender.as_mut(),
-            self.gpu_ready_receiver.as_mut(),
-        ) {
+        {
             get_pipeline!(pipeline);
             pipeline.render(
-                artnet_sender,
-                gpu_ready_receiver,
+                &mut self.artnet_sender,
+                &mut self.gpu_ready_receiver,
                 self.timing.beat_progression(),
                 self.timing.beats_per_minute,
                 self.timing.framerate().unwrap_or_default(),
@@ -92,28 +92,42 @@ impl eframe::App for App {
 
 impl App {
     pub fn new() -> Option<Self> {
+        let persistant_state = PersistantState::load();
+        persistant_state.set_artnet_ip();
+
         let extract_artnet = ExtractArtnet::new();
         let (artnet_sender, gpu_ready_receiver) =
             artnet_sender::start(extract_artnet.clone()).expect("Could not start artnet sender");
         let logo_image = logo_image();
 
-        //TODO: Empty project
-        init_shaders(extract_artnet);
-        let svg = Svg::load(std::path::Path::new("susifest2022.svg")).ok();
-
-        get_pipeline!(pipeline);
-        pipeline.init_gpu();
-        let persistant_state = PersistantState::load();
-        persistant_state.set_artnet_ip();
-
-        Some(Self {
-            artnet_sender: Some(artnet_sender),
-            gpu_ready_receiver: Some(gpu_ready_receiver),
-            logo_image: Some(logo_image),
-            svg,
+        let mut app = Self {
+            artnet_sender,
+            gpu_ready_receiver,
+            logo_image,
+            extract_artnet,
+            svg: None,
+            project_path: crate::opts::OPTS.project_path.clone(),
             artnet_ip_input: persistant_state.artnet_ip.clone(),
             persistant_state,
-            ..Default::default()
-        })
+            timing: Timing::default(),
+            blackout: false,
+            about_window_open: false,
+            selected_scene: 0,
+            hovered_scene: 0,
+        };
+
+        app.load_project();
+
+        Some(app)
+    }
+
+    pub fn load_project(&mut self) {
+        let mut project = Project::load(self.project_path.as_deref());
+        project
+            .pipeline
+            .set_extract_artnet(self.extract_artnet.clone());
+        project.pipeline.init_gpu();
+        project.pipeline.set_in_render_state();
+        self.svg = project.svg;
     }
 }

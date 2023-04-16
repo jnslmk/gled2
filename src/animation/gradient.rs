@@ -16,6 +16,15 @@ pub struct Gradient {
     config: GradientConfig,
 }
 
+impl Clone for Gradient {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            ..Default::default()
+        }
+    }
+}
+
 impl Gradient {
     pub fn new(config: GradientConfig) -> Self {
         Self {
@@ -57,14 +66,14 @@ impl From<Gradient> for Animation {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(default)]
 pub struct GradientConfig {
     pub common: CommonConfig,
     pub gradient: GradientType,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum GradientType {
     Radial { center: (f32, f32) },
     LinearHorizontal,

@@ -20,8 +20,9 @@ pub struct Scene {
     pub artnet_extraction: bool,
     pub beat_progression_offset: f32,
     group: String,
-    sent_group: Option<String>,
 
+    #[serde(skip)]
+    sent_group: Option<String>,
     #[serde(skip)]
     texture_to_artnet: Option<TextureToArtnet>,
     #[serde(skip)]
@@ -32,6 +33,21 @@ pub struct Scene {
     was_ever_rendered: bool,
     #[serde(skip)]
     artnet_mix: Option<ArtnetMix>,
+}
+
+impl Clone for Scene {
+    fn clone(&self) -> Self {
+        Self {
+            kind: self.kind,
+            animation: self.animation.clone(),
+            palette: self.palette.clone(),
+            opacity: self.opacity,
+            artnet_extraction: self.artnet_extraction,
+            beat_progression_offset: self.beat_progression_offset,
+            group: self.group.clone(),
+            ..Default::default()
+        }
+    }
 }
 
 fn default_send_positions() -> bool {

@@ -8,7 +8,6 @@ use crate::{
     extract_artnet::ExtractArtnet,
     pipeline::Pipeline,
     scene::{Scene, SceneKind},
-    wgpu_render_state,
 };
 
 pub fn init_shaders(extract_artnet: ExtractArtnet) {
@@ -57,10 +56,4 @@ pub fn init_shaders(extract_artnet: ExtractArtnet) {
         scene.artnet_extraction = i == 0;
         pipeline.add_scene(scene);
     }
-
-    wgpu_render_state()
-        .renderer
-        .write()
-        .paint_callback_resources
-        .insert(pipeline);
 }

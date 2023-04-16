@@ -10,9 +10,7 @@ impl App {
                 .open(&mut self.about_window_open)
                 .show(ctx, |ui| {
                     ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
-                        if let Some(logo_image) = self.logo_image.as_ref() {
-                            ui.image(logo_image.texture_id(ctx), Vec2::splat(500.0));
-                        }
+                        ui.image(self.logo_image.texture_id(ctx), Vec2::splat(500.0));
                         ui.label(RichText::new("gled").text_style(egui::TextStyle::Heading));
                         ui.spacing();
                         ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));

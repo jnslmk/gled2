@@ -13,6 +13,7 @@ mod opts;
 mod pipeline;
 mod preview;
 mod preview_indices;
+mod project;
 mod scene;
 mod shader_widget;
 mod svg;

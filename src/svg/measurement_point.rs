@@ -1,6 +1,6 @@
 //! Save the list of LEDs, a position for color measurement and the current color for render groups.
 
-use super::{Led, Parameter, Svg};
+use super::{Led, Parameter, ParsedSvg};
 use crate::{
     constants::UNIVERSES,
     texture_to_artnet::{Lamp, Positions, Universe},
@@ -88,8 +88,8 @@ pub struct MeasurementPoint {
     y: f32,
 }
 
-impl From<&Svg> for MeasurementPoints {
-    fn from(svg: &Svg) -> Self {
+impl From<&ParsedSvg> for MeasurementPoints {
+    fn from(svg: &ParsedSvg) -> Self {
         info!("find measurement points");
 
         let max = svg.tree.size.width().max(svg.tree.size.height()) as f32;

@@ -32,7 +32,6 @@ impl App {
         let svg = self
             .svg
             .as_mut()
-            .filter(|_| self.persistant_state.foreground.show_svg)
             .and_then(|svg| svg.image())
             .map(|image| image.texture_id(ctx));
 
@@ -71,11 +70,15 @@ impl App {
                 };
 
                 if ui
-                    .checkbox(&mut scenes.show_svg, RichText::new("SVG").heading())
+                    .add_enabled(
+                        self.svg.is_some(),
+                        Checkbox::new(&mut scenes.show_svg, RichText::new("SVG").heading()),
+                    )
                     .changed()
                 {
                     self.persistant_state.dirty = true;
                 };
+
                 if ui
                     .checkbox(
                         &mut scenes.always_render,

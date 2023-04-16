@@ -1,11 +1,11 @@
 use crate::constants::TEXTURE_SIZE;
 
-use super::Svg;
+use super::ParsedSvg;
 use anyhow::{Context, Result};
 use egui::ColorImage;
 use egui_extras::RetainedImage;
 
-impl Svg {
+impl ParsedSvg {
     pub fn render(&self) -> Result<RetainedImage> {
         let mut pixmap = tiny_skia::Pixmap::new(TEXTURE_SIZE as u32, TEXTURE_SIZE as u32)
             .context("Could not create pixmap for svg")?;

@@ -9,7 +9,7 @@ pub static OPTS: Lazy<Opts> = Lazy::new(Opts::parse);
 pub struct Opts {
     /// Project file to open
     #[arg(name = "PROJECT")]
-    pub file: Option<PathBuf>,
+    pub project_path: Option<PathBuf>,
 
     /// Verbose mode (-v, -vv, -vvv, etc.)
     #[arg(short, long, action = clap::ArgAction::Count)]

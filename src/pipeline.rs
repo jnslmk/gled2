@@ -1,12 +1,15 @@
 use crate::{
-    animation::State,
+    animation::{
+        Color, ColorPalette, CommonConfig, Direction, Gradient, GradientConfig, GradientType,
+        State, Stripes, StripesConfig,
+    },
     artnet_clear::ArtnetClear,
     artnet_sender::{ArtnetSender, GpuReadyReceiver},
     constants::{ARTNET_BUFFER_SIZE, GPU_NOT_INIT},
     extract_artnet::ExtractArtnet,
     preview::Preview,
     preview_indices::PreviewIndices,
-    scene::Scene,
+    scene::{Scene, SceneKind},
     svg::Universes,
     wgpu_render_state,
 };
@@ -16,12 +19,12 @@ use slab::Slab;
 use std::time::Instant;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Pipeline {
+    scenes: Slab<Scene>,
     #[serde(skip)]
     start: Option<Instant>,
-    scenes: Slab<Scene>,
     #[serde(skip)]
     extract: Option<ExtractArtnet>,
     #[serde(skip)]
@@ -32,6 +35,74 @@ pub struct Pipeline {
     artnet: Option<Buffer>,
     #[serde(skip)]
     artnet_clear: Option<ArtnetClear>,
+}
+
+impl Default for Pipeline {
+    fn default() -> Self {
+        let mut pipeline = Self {
+            scenes: Default::default(),
+            start: Default::default(),
+            extract: Default::default(),
+            preview_indices: Default::default(),
+            preview: Default::default(),
+            artnet: Default::default(),
+            artnet_clear: Default::default(),
+        };
+
+        for i in 0..10 {
+            let palette = ColorPalette {
+                colors: vec![Color::new(1., 0., 0.), Color::new(0., 0., 0.)],
+            };
+            let gradient = Gradient::new(GradientConfig {
+                gradient: GradientType::Radial {
+                    center: (0.25, 0.5),
+                },
+                ..Default::default()
+            });
+            let mut scene = Scene::new(gradient.into(), palette, "allFull".to_owned());
+            scene.artnet_extraction = i == 0;
+            pipeline.add_scene(scene);
+
+            let palette = ColorPalette {
+                colors: vec![Color::new(0., 0., 1.), Color::new(0., 0., 0.)],
+            };
+            let gradient = Gradient::new(GradientConfig {
+                gradient: GradientType::LinearHorizontal,
+                common: CommonConfig {
+                    ..Default::default()
+                },
+            });
+            let mut scene = Scene::new(gradient.into(), palette, "innerFull".to_owned());
+            scene.artnet_extraction = i == 0;
+            pipeline.add_scene(scene);
+
+            let palette = ColorPalette {
+                colors: vec![Color::new(1., 1., 0.)],
+            };
+            let stripes = Stripes::new(StripesConfig {
+                count: 2,
+                common: CommonConfig {
+                    direction: Direction::Backward,
+                },
+                ..Default::default()
+            });
+            let mut scene = Scene::new(stripes.into(), palette, "innerEdge".to_owned());
+            scene.kind = SceneKind::Foreground;
+            scene.artnet_extraction = i == 0;
+            pipeline.add_scene(scene);
+        }
+
+        pipeline
+    }
+}
+
+impl Clone for Pipeline {
+    fn clone(&self) -> Self {
+        Self {
+            scenes: self.scenes.clone(),
+            ..Default::default()
+        }
+    }
 }
 
 impl Pipeline {
@@ -211,6 +282,14 @@ impl Pipeline {
         artnet_sender
             .send(())
             .expect("Artnet sender closed its channel");
+    }
+
+    pub fn set_in_render_state(self) {
+        wgpu_render_state()
+            .renderer
+            .write()
+            .paint_callback_resources
+            .insert(self);
     }
 }
 

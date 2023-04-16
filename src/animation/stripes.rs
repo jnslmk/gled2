@@ -15,6 +15,15 @@ pub struct Stripes {
     config: StripesConfig,
 }
 
+impl Clone for Stripes {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            ..Default::default()
+        }
+    }
+}
+
 impl Stripes {
     pub fn new(config: StripesConfig) -> Self {
         Self {
@@ -46,7 +55,7 @@ impl From<Stripes> for Animation {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(default)]
 pub struct StripesConfig {
     pub common: CommonConfig,

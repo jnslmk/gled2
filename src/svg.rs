@@ -15,12 +15,12 @@ pub use led::Led;
 pub use measurement_point::{MeasurementPoint, MeasurementPoints, Universes};
 pub use parameter::Parameter;
 
-pub struct Svg {
+pub struct ParsedSvg {
     pub parameters: HashMap<String, Parameter>,
     pub tree: Tree,
 }
 
-impl std::fmt::Debug for Svg {
+impl std::fmt::Debug for ParsedSvg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Svg")
             .field("parameters", &self.parameters)
@@ -28,7 +28,7 @@ impl std::fmt::Debug for Svg {
     }
 }
 
-impl Svg {
+impl ParsedSvg {
     /// Open and parse svg files and determine parameters
     pub fn parse(svg_contents: &str) -> Result<Self> {
         info!("Parsing svg");

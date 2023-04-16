@@ -31,7 +31,7 @@ impl Svg {
     pub fn image(&mut self) -> Option<&RetainedImage> {
         if self.image.is_none() {
             self.image = {
-                let svg = crate::svg::Svg::parse(&self.svg_contents).ok()?;
+                let svg = crate::svg::ParsedSvg::parse(&self.svg_contents).ok()?;
                 let measurement_points = MeasurementPoints::from(&svg);
                 let universes = measurement_points.universes();
                 *MEASUREMENT_POINTS

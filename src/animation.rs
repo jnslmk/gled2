@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 pub use state::State;
 pub use stripes::{Stripes, StripesConfig};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Animation {
     Gradient(gradient::Gradient),
     Stripes(stripes::Stripes),
