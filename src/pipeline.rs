@@ -14,14 +14,13 @@ use crate::{
 };
 use egui::TextureId;
 use serde::{Deserialize, Serialize};
-use slab::Slab;
 use std::time::Instant;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Pipeline {
-    scenes: Slab<Scene>,
+    scenes: Vec<Scene>,
     #[serde(skip)]
     start: Option<Instant>,
     #[serde(skip)]
@@ -111,7 +110,7 @@ impl Pipeline {
         });
         self.preview_indices.get_or_insert_with(PreviewIndices::new);
         self.preview.get_or_insert_with(Preview::new);
-        for (_index, scene) in self.scenes.iter_mut() {
+        for scene in self.scenes.iter_mut() {
             scene.init_gpu();
         }
         self.update_buffers();
@@ -122,16 +121,16 @@ impl Pipeline {
     }
 
     pub fn add_scene(&mut self, scene: Scene) -> usize {
-        let index = self.scenes.insert(scene);
+        self.scenes.push(scene);
         self.init_gpu();
 
-        index
+        self.scenes.len() - 1
     }
 
     pub fn remove_scene(&mut self, index: usize) -> Option<Scene> {
         let mut scene = None;
 
-        if self.scenes.contains(index) {
+        if self.scenes.len() > index {
             scene = Some(self.scenes.remove(index));
             self.init_gpu();
         }
@@ -140,7 +139,7 @@ impl Pipeline {
     }
 
     pub fn update_buffers(&mut self) {
-        for (_index, scene) in self.scenes.iter_mut() {
+        for scene in self.scenes.iter_mut() {
             scene.set_buffers(self.artnet.as_ref().expect(GPU_NOT_INIT))
         }
 
@@ -168,7 +167,7 @@ impl Pipeline {
     }
 
     pub fn scenes(&mut self) -> Vec<(usize, &mut Scene)> {
-        self.scenes.iter_mut().collect()
+        self.scenes.iter_mut().enumerate().collect()
     }
 
     pub fn scene(&mut self, index: usize) -> Option<&mut Scene> {
@@ -176,7 +175,7 @@ impl Pipeline {
     }
 
     pub fn svg_or_groups_changed(&mut self, universes: Universes) {
-        for (_index, scene) in self.scenes.iter_mut() {
+        for scene in self.scenes.iter_mut() {
             scene.send_positions();
         }
         self.preview_indices
@@ -219,7 +218,7 @@ impl Pipeline {
             ..Default::default()
         };
 
-        for (index, scene) in self.scenes.iter_mut() {
+        for (index, scene) in self.scenes() {
             scene.prepare(
                 queue,
                 state,
@@ -249,7 +248,7 @@ impl Pipeline {
             .expect(GPU_NOT_INIT)
             .run(&mut encoder);
 
-        for (index, scene) in self.scenes.iter_mut() {
+        for (index, scene) in self.scenes() {
             scene.render(
                 &mut encoder,
                 blackout,
