@@ -18,6 +18,15 @@ pub struct Svg {
     image: Option<RetainedImage>,
 }
 
+impl Clone for Svg {
+    fn clone(&self) -> Self {
+        Self {
+            svg_contents: self.svg_contents.clone(),
+            image: None,
+        }
+    }
+}
+
 impl Svg {
     pub fn load(path: &Path) -> Result<Self> {
         let svg_contents = std::fs::read_to_string(path)?;
@@ -47,6 +56,12 @@ impl Svg {
         }
         self.image.as_ref()
     }
+}
+
+pub fn reset() {
+    *MEASUREMENT_POINTS
+        .write()
+        .expect("MEASUREMENT_POINTS is poisoned") = MeasurementPoints::default();
 }
 
 pub fn groups() -> Vec<String> {

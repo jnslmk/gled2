@@ -6,7 +6,7 @@ mod parameter;
 mod render;
 
 use anyhow::{Context, Result};
-use log::info;
+use log::{debug, info};
 use std::collections::{HashMap, HashSet};
 use svgdom::{Document, ElementId, FilterSvg, Node};
 use usvg::{Tree, TreeParsing};
@@ -31,14 +31,14 @@ impl std::fmt::Debug for ParsedSvg {
 impl ParsedSvg {
     /// Open and parse svg files and determine parameters
     pub fn parse(svg_contents: &str) -> Result<Self> {
-        info!("Parsing svg");
+        debug!("Parsing svg");
         let doc = Document::from_str(svg_contents).context("Could not parse svg file")?;
 
         let mut parameters = HashMap::new();
         traverse_node(&mut parameters, &doc.root(), 0, &HashSet::new());
 
         let tree = Tree::from_str(svg_contents, &Default::default()).unwrap();
-        info!(
+        debug!(
             "Done parsing svg. Found {} parameter sets",
             parameters.len()
         );

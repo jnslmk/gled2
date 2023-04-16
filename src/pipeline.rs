@@ -19,7 +19,7 @@ use slab::Slab;
 use std::time::Instant;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Pipeline {
     scenes: Slab<Scene>,
@@ -37,17 +37,18 @@ pub struct Pipeline {
     artnet_clear: Option<ArtnetClear>,
 }
 
-impl Default for Pipeline {
-    fn default() -> Self {
-        let mut pipeline = Self {
-            scenes: Default::default(),
-            start: Default::default(),
-            extract: Default::default(),
-            preview_indices: Default::default(),
-            preview: Default::default(),
-            artnet: Default::default(),
-            artnet_clear: Default::default(),
-        };
+impl Clone for Pipeline {
+    fn clone(&self) -> Self {
+        Self {
+            scenes: self.scenes.clone(),
+            ..Default::default()
+        }
+    }
+}
+
+impl Pipeline {
+    pub fn demo() -> Self {
+        let mut pipeline = Self::default();
 
         for i in 0..10 {
             let palette = ColorPalette {
@@ -94,18 +95,7 @@ impl Default for Pipeline {
 
         pipeline
     }
-}
 
-impl Clone for Pipeline {
-    fn clone(&self) -> Self {
-        Self {
-            scenes: self.scenes.clone(),
-            ..Default::default()
-        }
-    }
-}
-
-impl Pipeline {
     pub fn set_extract_artnet(&mut self, extract_artnet: ExtractArtnet) {
         self.extract = Some(extract_artnet);
     }

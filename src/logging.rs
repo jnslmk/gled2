@@ -12,9 +12,12 @@ pub fn init() {
         {
             "trace" => 4,
             "debug" => 3,
+            /*
             "info" => 2,
             "warn" => 1,
             _ => 0,
+            */
+            _ => 2,
         },
     ) {
         0 => base_config.level(log::LevelFilter::Error),

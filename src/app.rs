@@ -52,9 +52,17 @@ impl eframe::App for App {
             frame.set_fullscreen(self.persistant_state.fullscreen);
         }
 
-        if let Some(fps) = self.timing.framerate() {
-            frame.set_window_title(&format!("gled ({fps:.1} fps)"))
-        }
+        frame.set_window_title(&format!(
+            "gled - {} {}",
+            match self.project_path.as_ref() {
+                None => "demo project".to_string(),
+                Some(path) => format!("{}", path.display()),
+            },
+            match self.timing.framerate() {
+                Some(fps) => format!("({fps:.1} fps)"),
+                None => String::new(),
+            }
+        ));
 
         {
             get_pipeline!(pipeline);
@@ -122,12 +130,17 @@ impl App {
     }
 
     pub fn load_project(&mut self) {
-        let mut project = Project::load(self.project_path.as_deref());
+        let project = Project::load(self.project_path.as_deref());
+        self.use_project(project);
+    }
+
+    pub fn use_project(&mut self, mut project: Project) {
         project
             .pipeline
             .set_extract_artnet(self.extract_artnet.clone());
         project.pipeline.init_gpu();
         project.pipeline.set_in_render_state();
+        svg::reset();
         self.svg = project.svg;
     }
 }

@@ -1,6 +1,6 @@
 //! Send data via Art-Net udp protocol.
 use anyhow::{Context, Result};
-use log::{error, info};
+use log::{debug, error};
 use std::{
     net::{IpAddr, Ipv4Addr, ToSocketAddrs, UdpSocket},
     sync::{
@@ -22,7 +22,7 @@ pub fn set_artnet_ip(artnet_ip: IpAddr) {
 
 /// Start artnet thread
 pub fn start(mut extract_artnet: ExtractArtnet) -> Result<(ArtnetSender, GpuReadyReceiver)> {
-    info!("Spawning artnet thread");
+    debug!("Spawning artnet thread");
     let (artnet_sender, artnet_receiver) = std::sync::mpsc::channel::<()>();
     let (gpu_ready_sender, gpu_ready_receiver) = std::sync::mpsc::channel::<()>();
     gpu_ready_sender.send(()).ok();
@@ -35,12 +35,12 @@ pub fn start(mut extract_artnet: ExtractArtnet) -> Result<(ArtnetSender, GpuRead
                 .next()
                 .expect("Could not find a port which we can use");
             match socket.set_broadcast(true) {
-                Ok(_) => info!("Activated sending to broadcast"),
-                Err(e) => info!("Could not activate sending to broadcast: {}", e),
+                Ok(_) => debug!("Activated sending to broadcast"),
+                Err(e) => debug!("Could not activate sending to broadcast: {}", e),
             }
             match socket.set_nonblocking(true) {
-                Ok(_) => info!("Activated non-blocking mode"),
-                Err(e) => info!("Could not activate non-blocking mode: {}", e),
+                Ok(_) => debug!("Activated non-blocking mode"),
+                Err(e) => debug!("Could not activate non-blocking mode: {}", e),
             };
 
             for _ in artnet_receiver.iter() {

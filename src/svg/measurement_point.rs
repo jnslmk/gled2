@@ -5,7 +5,7 @@ use crate::{
     constants::UNIVERSES,
     texture_to_artnet::{Lamp, Positions, Universe},
 };
-use log::info;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -90,7 +90,7 @@ pub struct MeasurementPoint {
 
 impl From<&ParsedSvg> for MeasurementPoints {
     fn from(svg: &ParsedSvg) -> Self {
-        info!("find measurement points");
+        debug!("find measurement points");
 
         let max = svg.tree.size.width().max(svg.tree.size.height()) as f32;
         let mut points = BTreeMap::new();
@@ -127,8 +127,8 @@ impl From<&ParsedSvg> for MeasurementPoints {
             }
         });
 
-        info!("Done finding measurement points");
-        info!("Determining preview positions");
+        debug!("Done finding measurement points");
+        debug!("Determining preview positions");
 
         let mut measurement_points = MeasurementPoints {
             points,
@@ -165,7 +165,7 @@ impl From<&ParsedSvg> for MeasurementPoints {
             }
         }
 
-        info!("Done determining preview positions");
+        debug!("Done determining preview positions");
 
         measurement_points
     }

@@ -1,10 +1,11 @@
 use super::{svg::Svg, App};
+use crate::project::Project;
 use eframe::Frame;
 use egui::{
     text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers, RichText, Slider,
     Stroke, TextEdit, TextFormat, Vec2,
 };
-use log::{error, info};
+use log::{debug, error};
 use std::net::IpAddr;
 
 impl App {
@@ -72,16 +73,41 @@ impl App {
                 });
 
                 if create_new_project {
-                    todo!();
+                    self.use_project(Project::default());
                 }
                 if open_project {
-                    todo!();
+                    if let Some(path) = rfd::FileDialog::new()
+                        .set_title("Open Project file")
+                        .add_filter("gled2", &["gled2"])
+                        .pick_file()
+                    {
+                        self.project_path = Some(path);
+                        self.load_project();
+                    }
                 }
-                if save_project {
-                    todo!();
-                }
-                if save_project_as {
-                    todo!();
+                if save_project || save_project_as {
+                    let project_path = self
+                        .project_path
+                        .as_ref()
+                        .filter(|_| save_project)
+                        .cloned()
+                        .or_else(|| {
+                            rfd::FileDialog::new()
+                                .set_title("Save Project file")
+                                .add_filter("gled2", &["gled2"])
+                                .save_file()
+                        });
+                    if let Some(mut project_path) = project_path {
+                        if project_path
+                            .extension()
+                            .map(|extension| extension.to_string_lossy())
+                            != Some("gled2".into())
+                        {
+                            project_path.set_extension("gled2");
+                        }
+                        self.project_path = Some(project_path.clone());
+                        Project::from_svg(self.svg.clone()).store(&project_path);
+                    }
                 }
                 if open_svg_file {
                     if let Some(path) = rfd::FileDialog::new()
@@ -91,7 +117,7 @@ impl App {
                     {
                         self.svg = match Svg::load(&path) {
                             Ok(svg) => {
-                                info!("Loaded svg file \"{}\"", path.display());
+                                debug!("Loaded svg file \"{}\"", path.display());
                                 Some(svg)
                             }
                             Err(err) => {
