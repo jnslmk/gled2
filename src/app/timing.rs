@@ -1,17 +1,17 @@
 use egui::{text::LayoutJob, Button, Color32, Key, Modifiers, Stroke, TextFormat, Ui, Vec2};
-use floating_duration::TimeAsFloat;
 use log::debug;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 pub struct Timing {
     pub beats_per_minute: f32,
     pub fps_limit: u64,
+    last_beat_time: Instant,
     beat_progression: f32,
-    fps: Option<f32>,
-    start: Instant,
+    avg_fps: Option<f32>,
+    avg_fps_time: Instant,
     last_frame: Instant,
     frame_count: usize,
-    tap: Instant,
+    taps: Vec<Instant>,
     freeze: bool,
 }
 
@@ -20,12 +20,13 @@ impl Default for Timing {
         Self {
             beats_per_minute: 60.0,
             fps_limit: 120,
+            last_beat_time: Instant::now(),
             beat_progression: 0.0,
-            fps: None,
-            start: Instant::now(),
+            avg_fps: None,
+            avg_fps_time: Instant::now(),
             last_frame: Instant::now(),
             frame_count: 0,
-            tap: Instant::now(),
+            taps: vec![],
             freeze: false,
         }
     }
@@ -37,35 +38,57 @@ impl Timing {
     }
 
     pub fn framerate(&self) -> Option<f32> {
-        self.fps
+        self.avg_fps
     }
 
-    pub fn calculate(&mut self) {
-        let now = Instant::now();
-        let wait_until = self.last_frame + Duration::from_nanos(1_000_000_000 / self.fps_limit);
-        if now < wait_until {
-            let wait = wait_until - now;
-            log::debug!("Waiting for {:?} ms", wait);
-            std::thread::sleep(wait);
-        }
+    pub fn tick(&mut self) {
+        self.limit_fps();
+        self.progress_beat();
+        self.calculate_avg_fps();
+        self.remove_old_taps();
+    }
 
+    fn limit_fps(&mut self) {
+        let target_frame_time_nanos = 1e+9f32 / self.fps_limit as f32;
+        while target_frame_time_nanos > (self.last_frame.elapsed().as_nanos() as f32) {
+            std::thread::sleep(std::time::Duration::from_nanos(100));
+        }
+        self.last_frame = Instant::now();
+    }
+
+    fn progress_beat(&mut self) {
         if !self.freeze {
-            let duration_milliseconds = 60_000.0 / self.beats_per_minute;
+            let now = Instant::now();
+            let beat_duration_nanoseconds = 60e+9f64 / self.beats_per_minute as f64;
             self.beat_progression = (self.beat_progression
-                + now.duration_since(self.last_frame).as_fractional_millis() as f32
-                    / duration_milliseconds)
+                + (now.duration_since(self.last_beat_time).as_nanos() as f64
+                    / beat_duration_nanoseconds) as f32)
                 % 1.;
+            self.last_beat_time = now;
         }
+    }
 
-        self.last_frame = now;
+    fn calculate_avg_fps(&mut self) {
         self.frame_count += 1;
-        let dur = now.duration_since(self.start).as_fractional_secs() as f32;
-        if dur >= 1.0 {
-            let fps = self.frame_count as f32 / dur;
-            self.fps = Some(fps);
+        let now = Instant::now();
+        if now.duration_since(self.avg_fps_time).as_millis() > 1000 {
+            let avg_frame_time = self.avg_fps_time.elapsed() / self.frame_count as u32;
+            let fps = 1e+9f32 / (avg_frame_time.as_nanos() as f32);
+            self.avg_fps = Some(fps);
             debug!("fps: {fps}");
-            self.start = now;
+            self.avg_fps_time = now;
             self.frame_count = 0;
+        }
+    }
+
+    fn remove_old_taps(&mut self) {
+        if self
+            .taps
+            .last()
+            .map(|tap| Instant::now().duration_since(*tap).as_millis() > 1000)
+            .unwrap_or_default()
+        {
+            self.taps.clear();
         }
     }
 
@@ -86,22 +109,37 @@ impl Timing {
         };
         let mut tap_text = LayoutJob::default();
         tap_text.append("T", 0.0, underlined);
-        tap_text.append("ap", 0.0, TextFormat::default());
+        tap_text.append(
+            &format!("ap{}", vec!["."; self.taps.len()].join("")),
+            0.0,
+            TextFormat::default(),
+        );
         let mut tap = Button::new(tap_text);
         if let Some(alpha) = alpha {
             tap = tap.fill(Color32::from_white_alpha(alpha as u8));
         }
-        if ui.add_sized(menu_button_size, tap).clicked()
+
+        let tapped = ui.add_sized(menu_button_size, tap).clicked()
             || !ctx.wants_keyboard_input()
                 && ctx.input_mut(|i| {
                     i.consume_key(Modifiers::NONE, Key::Space)
                         || i.consume_key(Modifiers::NONE, Key::T)
-                })
-        {
+                });
+
+        if tapped {
             let now = Instant::now();
-            self.beats_per_minute =
-                60000.0 / now.duration_since(self.tap).as_fractional_millis() as f32;
-            self.tap = now;
+            self.taps.push(now);
+
+            if self.taps.len() > 1 {
+                if let (Some(first), Some(last)) = (self.taps.first(), self.taps.last()) {
+                    let beat_time_first = now.duration_since(*first);
+                    let beat_time_last = now.duration_since(*last);
+                    let avg_beat_time = (beat_time_first.as_nanos() - beat_time_last.as_nanos())
+                        / (self.taps.len() as u128 - 1);
+
+                    self.beats_per_minute = (60e+9f64 / f64::from(avg_beat_time as u32)) as f32;
+                }
+            }
         }
     }
 

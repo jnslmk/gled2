@@ -1,5 +1,6 @@
 use super::{svg::Svg, App};
 use crate::artnet_sender;
+use eframe::Frame;
 use egui::{
     text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers, RichText, Slider,
     Stroke, TextEdit, TextFormat, Vec2,
@@ -7,7 +8,7 @@ use egui::{
 use log::{error, info};
 
 impl App {
-    pub fn menu(&mut self, ctx: &Context) {
+    pub fn menu(&mut self, ctx: &Context, frame: &Frame) {
         egui::TopBottomPanel::top("menu").show(ctx, |ui| {
             ui.style_mut().spacing.interact_size.y = 50.0;
             egui::menu::bar(ui, |ui| {
@@ -109,20 +110,29 @@ impl App {
                         Slider::new(&mut self.timing.fps_limit, 30..=1000)
                             .custom_formatter(|n, _| format!("{n} fps")),
                     );
+
                     ui.separator();
+
                     ui.label(RichText::new("Artnet IP").heading());
                     if ui.add(TextEdit::singleline(&mut self.artnet_ip)).changed() {
                         if let Ok(ip) = self.artnet_ip.parse() {
                             artnet_sender::set_artnet_ip(ip)
                         }
                     };
+
                     ui.separator();
+
                     ui.label(RichText::new("Main Dimmer").heading());
                     ui.add(
                         Slider::new(&mut self.main_dimmer, 0.0..=1.0)
                             .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
                             .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
                     );
+
+                    ui.separator();
+
+                    ui.label(RichText::new("UI Zoom").heading());
+                    egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
                 });
                 ui.separator();
 

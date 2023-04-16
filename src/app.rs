@@ -42,8 +42,9 @@ pub struct App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        egui::gui_zoom::zoom_with_keyboard_shortcuts(ctx, frame.info().native_pixels_per_point);
+        self.timing.tick();
 
+        egui::gui_zoom::zoom_with_keyboard_shortcuts(ctx, frame.info().native_pixels_per_point);
         if ctx.input_mut(|i| i.consume_key(Modifiers::ALT, egui::Key::Enter)) {
             self.fullscreen = !self.fullscreen;
             frame.set_fullscreen(self.fullscreen);
@@ -80,13 +81,11 @@ impl eframe::App for App {
         }
 
         self.about_window(ctx);
-        self.menu(ctx);
+        self.menu(ctx, frame);
         self.config(ctx);
         self.preview(ctx);
         self.scenes(ctx);
         ctx.request_repaint();
-
-        self.timing.calculate();
     }
 }
 

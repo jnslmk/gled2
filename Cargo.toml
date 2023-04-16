@@ -12,7 +12,6 @@ eframe = { version = "0.21", features = ["wgpu"] }
 egui = "0.21"
 egui_extras = { version = "0.21", features = ["image"] }
 fern = { version = "0.6", features = ["colored"] }
-floating-duration = "0.1.2"
 image = { version = "0.24", default-features = false, features = ["png"] }
 kurbo = "0.9"
 log = "0.4"
