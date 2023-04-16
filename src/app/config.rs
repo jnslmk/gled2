@@ -2,8 +2,8 @@ mod color;
 pub mod group;
 
 use super::App;
-use crate::{animation::Color, scene::Scene};
-use egui::{Context, Layout, RichText, Ui};
+use crate::animation::Color;
+use egui::{Button, Color32, Context, Layout, Modifiers, RichText};
 use std::collections::BTreeSet;
 
 impl App {
@@ -22,41 +22,73 @@ impl App {
                     )
                     .collect();
 
-                match pipeline.scenes().get_mut(self.selected_scene) {
-                    Some((_index, scene)) => {
-                        self.scene_config(ui, scene, all_colors);
+                let mut delete_scene = false;
+                match pipeline.scene(self.selected_scene) {
+                    Some(scene) => {
+                        ui.label(RichText::new("Colors").heading());
+                        color::selection(ui, &mut scene.palette, all_colors);
+
+                        ui.separator();
+
+                        ui.label(RichText::new("Settings").heading());
+                        ui.label("TODO: Animation settings");
+
+                        ui.separator();
+
+                        ui.label(RichText::new("Group").heading());
+                        group::selection(ui, scene.group_mut());
+
+                        ui.separator();
+
+                        ui.vertical_centered_justified(|ui| {
+                            ui.style_mut().spacing.interact_size.y = 40.0;
+
+                            if ui
+                                .add(
+                                    Button::new("🗑 Remove Scene")
+                                        .fill(Color32::DARK_RED)
+                                        .shortcut_text("Del"),
+                                )
+                                .clicked()
+                                || ctx.input_mut(|i| {
+                                    i.consume_key(Modifiers::default(), egui::Key::Backspace)
+                                        || i.consume_key(Modifiers::default(), egui::Key::Delete)
+                                })
+                            {
+                                delete_scene = true;
+                            }
+                        });
+
+                        if let Some(framerate) = self
+                            .timing
+                            .framerate()
+                            .filter(|_| self.persistant_state.fullscreen)
+                        {
+                            ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
+                                ui.label(format!("{framerate:.01} fps"));
+                            });
+                        }
                     }
                     None => {
                         ui.label("There's no Scene to configure.");
                     }
                 }
+
+                if delete_scene {
+                    let kind = pipeline
+                        .remove_scene(self.selected_scene)
+                        .map(|scene| scene.kind);
+
+                    self.selected_scene = pipeline
+                        .scenes()
+                        .into_iter()
+                        .find(|(_index, scene)| match kind {
+                            Some(kind) => scene.kind == kind,
+                            None => true,
+                        })
+                        .map(|(index, _scene)| index)
+                        .unwrap_or_default();
+                }
             });
-    }
-
-    fn scene_config(&mut self, ui: &mut Ui, scene: &mut Scene, all_colors: BTreeSet<Color>) {
-        ui.label(RichText::new("Colors").heading());
-        color::selection(ui, &mut scene.palette, all_colors);
-
-        ui.separator();
-
-        ui.label(RichText::new("Settings").heading());
-        ui.label("TODO: Animation settings");
-
-        ui.separator();
-
-        ui.label(RichText::new("Group").heading());
-        group::selection(ui, scene.group_mut());
-
-        ui.separator();
-
-        if let Some(framerate) = self
-            .timing
-            .framerate()
-            .filter(|_| self.persistant_state.fullscreen)
-        {
-            ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
-                ui.label(format!("{framerate:.01} fps"));
-            });
-        }
     }
 }

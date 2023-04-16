@@ -129,9 +129,15 @@ impl Pipeline {
         index
     }
 
-    pub fn remove_scene(&mut self, index: usize) {
-        self.scenes.remove(index);
-        self.init_gpu();
+    pub fn remove_scene(&mut self, index: usize) -> Option<Scene> {
+        let mut scene = None;
+
+        if self.scenes.contains(index) {
+            scene = Some(self.scenes.remove(index));
+            self.init_gpu();
+        }
+
+        scene
     }
 
     pub fn update_buffers(&mut self) {
@@ -151,19 +157,23 @@ impl Pipeline {
     }
 
     pub fn set_opacity(&mut self, index: usize, opacity: f32) {
-        if let Some(scene) = self.scenes.get_mut(index) {
+        if let Some(scene) = self.scene(index) {
             scene.opacity = opacity;
         }
     }
 
     pub fn set_artnet_extraction(&mut self, index: usize, artnet_extraction: bool) {
-        if let Some(scene) = self.scenes.get_mut(index) {
+        if let Some(scene) = self.scene(index) {
             scene.artnet_extraction = artnet_extraction;
         }
     }
 
     pub fn scenes(&mut self) -> Vec<(usize, &mut Scene)> {
         self.scenes.iter_mut().collect()
+    }
+
+    pub fn scene(&mut self, index: usize) -> Option<&mut Scene> {
+        self.scenes.get_mut(index)
     }
 
     pub fn svg_or_groups_changed(&mut self, universes: Universes) {
