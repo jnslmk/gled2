@@ -281,26 +281,6 @@ impl Pipeline {
             .send(())
             .expect("Artnet sender closed its channel");
     }
-
-    pub fn set_in_render_state(self) {
-        wgpu_render_state()
-            .renderer
-            .write()
-            .paint_callback_resources
-            .insert(self);
-    }
-}
-
-#[macro_export]
-macro_rules! get_pipeline {
-    ($field: ident) => {
-        let wgpu_render_state = $crate::wgpu_render_state();
-        let mut renderer = wgpu_render_state.renderer.write();
-        let $field = renderer
-            .paint_callback_resources
-            .get_mut::<$crate::pipeline::Pipeline>()
-            .expect("Could not find Pipeline");
-    };
 }
 
 pub enum RenderDeactivatedScenes {

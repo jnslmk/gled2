@@ -12,10 +12,9 @@ impl App {
             .resizable(false)
             .default_width(200.0)
             .show(ctx, |ui| {
-                crate::get_pipeline!(pipeline);
                 let all_colors: BTreeSet<Color> = std::iter::once(Color::default())
                     .chain(
-                        pipeline
+                        self.pipeline
                             .scenes()
                             .into_iter()
                             .flat_map(|(_index, scene)| scene.palette.colors.iter().copied()),
@@ -23,7 +22,7 @@ impl App {
                     .collect();
 
                 let mut action = Action::None;
-                match pipeline.scene(self.selected_scene) {
+                match self.pipeline.scene(self.selected_scene) {
                     Some(scene) => {
                         ui.label(RichText::new("Colors").heading());
                         color::selection(ui, &mut scene.palette, all_colors);
@@ -120,11 +119,13 @@ impl App {
                 match action {
                     Action::None => (),
                     Action::Delete => {
-                        let kind = pipeline
+                        let kind = self
+                            .pipeline
                             .remove_scene(self.selected_scene)
                             .map(|scene| scene.kind);
 
-                        self.selected_scene = pipeline
+                        self.selected_scene = self
+                            .pipeline
                             .scenes()
                             .into_iter()
                             .find(|(_index, scene)| match kind {
@@ -135,16 +136,17 @@ impl App {
                             .unwrap_or_default();
                     }
                     Action::Clone => {
-                        if let Some(index) = pipeline
+                        if let Some(index) = self
+                            .pipeline
                             .scene(self.selected_scene)
                             .cloned()
-                            .map(|scene| pipeline.add_scene(scene))
+                            .map(|scene| self.pipeline.add_scene(scene))
                         {
                             self.selected_scene = index;
                         }
                     }
                     Action::Move => {
-                        if let Some(scene) = pipeline.scene(self.selected_scene) {
+                        if let Some(scene) = self.pipeline.scene(self.selected_scene) {
                             scene.kind.switch()
                         };
                     }

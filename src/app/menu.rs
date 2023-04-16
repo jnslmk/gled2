@@ -106,7 +106,11 @@ impl App {
                             project_path.set_extension("gled2");
                         }
                         self.project_path = Some(project_path.clone());
-                        Project::from_svg(self.svg.clone()).store(&project_path);
+                        Project {
+                            svg: self.svg.clone(),
+                            pipeline: self.pipeline.clone(),
+                        }
+                        .store(&project_path);
                     }
                 }
                 if open_svg_file {

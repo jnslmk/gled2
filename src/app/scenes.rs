@@ -32,7 +32,7 @@ impl App {
         let svg = self
             .svg
             .as_mut()
-            .and_then(|svg| svg.image())
+            .and_then(|svg| svg.image(&mut self.pipeline))
             .map(|image| image.texture_id(ctx));
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -115,8 +115,8 @@ impl App {
             .show(ui, |ui| {
                 ui.set_max_width(ui.available_width() - 30.0);
                 ui.horizontal_wrapped(|ui| {
-                    crate::get_pipeline!(pipeline);
-                    for (index, scene) in pipeline
+                    for (index, scene) in self
+                        .pipeline
                         .scenes()
                         .into_iter()
                         .filter(|(_index, scene)| scene.kind == kind)

@@ -1,4 +1,4 @@
-use crate::{app::Svg, get_pipeline, pipeline::Pipeline};
+use crate::{app::Svg, pipeline::Pipeline};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -10,12 +10,6 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn from_svg(svg: Option<Svg>) -> Self {
-        get_pipeline!(pipeline);
-        let pipeline = pipeline.clone();
-        Self { svg, pipeline }
-    }
-
     pub fn load(path: Option<&Path>) -> Self {
         let project = path
             .and_then(|path| {

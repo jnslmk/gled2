@@ -12,9 +12,8 @@ use std::path::PathBuf;
 use crate::{
     artnet_sender::{self, ArtnetSender, GpuReadyReceiver},
     extract_artnet::ExtractArtnet,
-    get_pipeline,
     logo::logo_image,
-    pipeline::RenderDeactivatedScenes,
+    pipeline::{Pipeline, RenderDeactivatedScenes},
     project::Project,
 };
 use egui::Modifiers;
@@ -32,6 +31,7 @@ pub struct App {
     timing: Timing,
     persistant_state: PersistantState,
     project_path: Option<PathBuf>,
+    pipeline: Pipeline,
 
     artnet_ip_input: String,
     blackout: bool,
@@ -64,28 +64,25 @@ impl eframe::App for App {
             }
         ));
 
-        {
-            get_pipeline!(pipeline);
-            pipeline.render(
-                &mut self.artnet_sender,
-                &mut self.gpu_ready_receiver,
-                self.timing.beat_progression(),
-                self.timing.beats_per_minute,
-                self.timing.framerate().unwrap_or_default(),
-                self.blackout,
-                self.persistant_state.main_dimmer,
-                if self.persistant_state.background.always_render {
-                    RenderDeactivatedScenes::Always
-                } else {
-                    RenderDeactivatedScenes::Some(self.selected_scene, self.hovered_scene)
-                },
-                if self.persistant_state.foreground.always_render {
-                    RenderDeactivatedScenes::Always
-                } else {
-                    RenderDeactivatedScenes::Some(self.selected_scene, self.hovered_scene)
-                },
-            );
-        }
+        self.pipeline.render(
+            &mut self.artnet_sender,
+            &mut self.gpu_ready_receiver,
+            self.timing.beat_progression(),
+            self.timing.beats_per_minute,
+            self.timing.framerate().unwrap_or_default(),
+            self.blackout,
+            self.persistant_state.main_dimmer,
+            if self.persistant_state.background.always_render {
+                RenderDeactivatedScenes::Always
+            } else {
+                RenderDeactivatedScenes::Some(self.selected_scene, self.hovered_scene)
+            },
+            if self.persistant_state.foreground.always_render {
+                RenderDeactivatedScenes::Always
+            } else {
+                RenderDeactivatedScenes::Some(self.selected_scene, self.hovered_scene)
+            },
+        );
 
         self.about_window(ctx);
         self.menu(ctx, frame);
@@ -122,6 +119,7 @@ impl App {
             about_window_open: false,
             selected_scene: 0,
             hovered_scene: 0,
+            pipeline: Pipeline::default(),
         };
 
         app.load_project();
@@ -139,7 +137,8 @@ impl App {
             .pipeline
             .set_extract_artnet(self.extract_artnet.clone());
         project.pipeline.init_gpu();
-        project.pipeline.set_in_render_state();
+        self.pipeline = project.pipeline;
+
         svg::reset();
         self.svg = project.svg;
     }

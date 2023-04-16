@@ -1,4 +1,4 @@
-use crate::{svg::MeasurementPoints, texture_to_artnet::Positions};
+use crate::{pipeline::Pipeline, svg::MeasurementPoints, texture_to_artnet::Positions};
 use anyhow::Result;
 use egui_extras::RetainedImage;
 use once_cell::sync::Lazy;
@@ -37,7 +37,7 @@ impl Svg {
         })
     }
 
-    pub fn image(&mut self) -> Option<&RetainedImage> {
+    pub fn image(&mut self, pipeline: &mut Pipeline) -> Option<&RetainedImage> {
         if self.image.is_none() {
             self.image = {
                 let svg = crate::svg::ParsedSvg::parse(&self.svg_contents).ok()?;
@@ -47,8 +47,6 @@ impl Svg {
                     .write()
                     .expect("MEASUREMENT_POINTS is poisoned") = measurement_points;
                 let image = svg.render().ok()?;
-
-                crate::get_pipeline!(pipeline);
                 pipeline.svg_or_groups_changed(universes);
 
                 Some(image)

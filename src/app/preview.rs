@@ -32,7 +32,6 @@ impl App {
                         });
                     });
 
-                    crate::get_pipeline!(pipeline);
                     let size = if uv.max.x > uv.max.y {
                         Vec2::new(
                             ui.available_width()
@@ -53,7 +52,7 @@ impl App {
                         .svg
                         .as_mut()
                         .filter(|_| self.persistant_state.show_preview_svg)
-                        .and_then(|svg| svg.image())
+                        .and_then(|svg| svg.image(&mut self.pipeline))
                         .map(|image| {
                             ui.add(
                                 Image::new(image.texture_id(ctx), size)
@@ -61,7 +60,7 @@ impl App {
                                     .bg_fill(Color32::BLACK),
                             )
                         });
-                    let mut preview = Image::new(pipeline.preview_texture_id(), size).uv(uv);
+                    let mut preview = Image::new(self.pipeline.preview_texture_id(), size).uv(uv);
                     if !self.persistant_state.show_preview_svg {
                         preview = preview.bg_fill(Color32::BLACK);
                     }
