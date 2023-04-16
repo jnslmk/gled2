@@ -1,60 +1,20 @@
 use super::{
     config::{CommonConfig, Config},
-    renderer::AnimationRenderer,
-    Animation,
+    Animation, AnimationConfig,
 };
-use egui::Ui;
 use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct Stripes {
-    #[serde(skip)]
-    pub renderer: Option<AnimationRenderer>,
-    pub config: StripesConfig,
-}
-
-impl Clone for Stripes {
-    fn clone(&self) -> Self {
-        Self {
-            config: self.config.clone(),
-            ..Default::default()
-        }
-    }
-}
-
-impl Stripes {
-    pub fn new(config: StripesConfig) -> Self {
-        Self {
-            config,
-            ..Default::default()
-        }
-    }
-
-    pub fn init_gpu(&mut self) {
-        self.renderer.get_or_insert_with(|| {
-            let fragment_shader = include_str!("../shaders/stripes.wgsl");
-            AnimationRenderer::new(fragment_shader, &(&self.config).into())
-        });
-    }
-}
-
-impl From<Stripes> for Animation {
-    fn from(line_sweep: Stripes) -> Self {
-        Self::Stripes(line_sweep)
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(default)]
-pub struct StripesConfig {
+pub struct Stripes {
     pub common: CommonConfig,
     pub thickness: f32,
     pub count: u32,
     pub orientation: Orientation,
 }
 
-impl StripesConfig {
-    pub fn ui(&mut self, ui: &mut Ui) {
+impl AnimationConfig for Stripes {
+    fn ui(&mut self, ui: &mut egui::Ui) {
         self.common.ui(ui);
         ui.label("Todo: stripes");
         ui.horizontal(|ui| {
@@ -62,9 +22,26 @@ impl StripesConfig {
             ui.radio_value(&mut self.orientation, Orientation::Vertical, "Vertical");
         });
     }
+
+    fn shader_code(&self) -> std::borrow::Cow<str> {
+        include_str!("../shaders/stripes.wgsl").into()
+    }
+
+    fn config(&self) -> Config {
+        Config {
+            common: self.common,
+            thickness: self.thickness,
+            count: self.count,
+            mode: match self.orientation {
+                Orientation::Horizontal => 0,
+                Orientation::Vertical => 1,
+            },
+            ..Default::default()
+        }
+    }
 }
 
-impl Default for StripesConfig {
+impl Default for Stripes {
     fn default() -> Self {
         Self {
             common: Default::default(),
@@ -82,17 +59,8 @@ pub enum Orientation {
     Vertical,
 }
 
-impl From<&StripesConfig> for Config {
-    fn from(config: &StripesConfig) -> Self {
-        Config {
-            common: config.common,
-            thickness: config.thickness,
-            count: config.count,
-            mode: match config.orientation {
-                Orientation::Horizontal => 0,
-                Orientation::Vertical => 1,
-            },
-            ..Default::default()
-        }
+impl From<Stripes> for Animation {
+    fn from(config: Stripes) -> Self {
+        Animation::Stripes(config)
     }
 }

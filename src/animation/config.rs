@@ -1,6 +1,7 @@
 use egui::Ui;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug)]
 pub struct Config {
     pub center: (f32, f32),
     pub thickness: f32,

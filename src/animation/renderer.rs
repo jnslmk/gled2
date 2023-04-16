@@ -1,7 +1,6 @@
 //! Renders to a texture
-use crate::{constants::TEXTURE_SIZE, wgpu_render_state};
-
 use super::{config::Config, state::State, ColorPalette};
+use crate::{constants::TEXTURE_SIZE, wgpu_render_state};
 use std::num::NonZeroU64;
 use wgpu::{util::DeviceExt, *};
 
@@ -139,6 +138,7 @@ impl AnimationRenderer {
             &mut contents[State::size() + ColorPalette::size()
                 ..State::size() + ColorPalette::size() + Config::size()],
         );
+        dbg!(config);
         queue.write_buffer(&self.uniform, 0, &contents);
     }
 

@@ -1,7 +1,6 @@
 use crate::{
     animation::{
-        Color, ColorPalette, CommonConfig, Direction, Gradient, GradientConfig, GradientType,
-        State, Stripes, StripesConfig,
+        Color, ColorPalette, CommonConfig, Direction, Gradient, GradientType, State, Stripes,
     },
     artnet_clear::ArtnetClear,
     artnet_sender::{ArtnetSender, GpuReadyReceiver},
@@ -54,12 +53,12 @@ impl Pipeline {
             let palette = ColorPalette {
                 colors: vec![Color::new(1., 0., 0.), Color::new(0., 0., 0.)],
             };
-            let gradient = Gradient::new(GradientConfig {
+            let gradient = Gradient {
                 gradient: GradientType::Radial {
                     center: (0.25, 0.5),
                 },
                 ..Default::default()
-            });
+            };
             let mut scene = Scene::new(gradient.into(), palette, "allFull".to_owned());
             scene.artnet_extraction = i == 0;
             pipeline.add_scene(scene);
@@ -67,12 +66,12 @@ impl Pipeline {
             let palette = ColorPalette {
                 colors: vec![Color::new(0., 0., 1.), Color::new(0., 0., 0.)],
             };
-            let gradient = Gradient::new(GradientConfig {
+            let gradient = Gradient {
                 gradient: GradientType::LinearHorizontal,
                 common: CommonConfig {
                     ..Default::default()
                 },
-            });
+            };
             let mut scene = Scene::new(gradient.into(), palette, "innerFull".to_owned());
             scene.artnet_extraction = i == 0;
             pipeline.add_scene(scene);
@@ -80,13 +79,13 @@ impl Pipeline {
             let palette = ColorPalette {
                 colors: vec![Color::new(1., 1., 0.)],
             };
-            let stripes = Stripes::new(StripesConfig {
+            let stripes = Stripes {
                 count: 2,
                 common: CommonConfig {
                     direction: Direction::Backward,
                 },
                 ..Default::default()
-            });
+            };
             let mut scene = Scene::new(stripes.into(), palette, "innerEdge".to_owned());
             scene.kind = SceneKind::Foreground;
             scene.artnet_extraction = i == 0;

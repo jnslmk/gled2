@@ -1,5 +1,5 @@
 use crate::{
-    animation::{Animation, ColorPalette, State},
+    animation::{Animation, AnimationConfig, AnimationRenderer, ColorPalette, State},
     app::positions,
     artnet_mix::ArtnetMix,
     constants::GPU_NOT_INIT,
@@ -33,6 +33,8 @@ pub struct Scene {
     was_ever_rendered: bool,
     #[serde(skip)]
     artnet_mix: Option<ArtnetMix>,
+    #[serde(skip)]
+    renderer: Option<AnimationRenderer>,
 }
 
 impl Clone for Scene {
@@ -68,16 +70,21 @@ impl Scene {
 
     pub fn init_gpu(&mut self) {
         self.artnet_mix.get_or_insert_with(ArtnetMix::new);
-        self.animation.init_gpu();
-        self.texture_to_artnet
-            .get_or_insert_with(|| TextureToArtnet::init(self.animation.renderer().texture()));
+        self.renderer.get_or_insert_with(|| {
+            let config = self.animation.config();
+            let animation_shader = self.animation.shader_code();
+            AnimationRenderer::new(&animation_shader, &config)
+        });
+        self.texture_to_artnet.get_or_insert_with(|| {
+            TextureToArtnet::init(self.renderer.as_ref().expect(GPU_NOT_INIT).texture())
+        });
         self.texture_id.get_or_insert_with(|| {
             wgpu_render_state()
                 .renderer
                 .write()
                 .register_native_texture(
                     &wgpu_render_state().device,
-                    self.animation.renderer().view(),
+                    self.renderer.as_ref().expect(GPU_NOT_INIT).view(),
                     wgpu::FilterMode::Nearest,
                 )
         });
@@ -119,7 +126,12 @@ impl Scene {
                 self.sent_group = Some(self.group.clone());
             }
 
-            self.animation.set_buffers(queue, &state, &self.palette);
+            self.renderer.as_ref().expect(GPU_NOT_INIT).set_buffers(
+                queue,
+                &state,
+                &self.palette,
+                &self.animation.config(),
+            );
 
             if (!self.artnet_extraction || blackout) && self.artnet_dirty {
                 self.texture_to_artnet
@@ -133,7 +145,7 @@ impl Scene {
 
     pub fn render(&mut self, encoder: &mut CommandEncoder, blackout: bool, always_render: bool) {
         if always_render || self.artnet_extraction || !self.was_ever_rendered {
-            self.animation.renderer().render(encoder);
+            self.renderer.as_ref().expect(GPU_NOT_INIT).render(encoder);
             if self.artnet_extraction && !blackout {
                 self.texture_to_artnet
                     .as_ref()
@@ -156,7 +168,7 @@ impl Scene {
     }
 
     pub fn config_ui(&mut self, ui: &mut egui::Ui) {
-        self.animation.config_ui(ui);
+        self.animation.ui(ui);
     }
 }
 

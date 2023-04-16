@@ -21,7 +21,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
             return err.write_errors().into();
         }
     };
-    let renderer = animation
+    let config = animation
         .data
         .as_ref()
         .take_enum()
@@ -30,19 +30,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         .map(|child| {
             let ident = child.ident.to_owned();
             quote!(
-                Self::#ident(animation) => animation.renderer.as_ref().expect(crate::constants::GPU_NOT_INIT),
-            )
-        });
-    let init_gpu = animation
-        .data
-        .as_ref()
-        .take_enum()
-        .expect("Should never be a struct")
-        .into_iter()
-        .map(|child| {
-            let ident = child.ident.to_owned();
-            quote!(
-                Self::#ident(animation) => animation.init_gpu(),
+                Self::#ident(animation) => animation.config(),
             )
         });
     let config_ui = animation
@@ -54,10 +42,10 @@ pub fn derive(input: TokenStream) -> TokenStream {
         .map(|child| {
             let ident = child.ident.to_owned();
             quote!(
-                Self::#ident(animation) => animation.config.ui(ui),
+                Self::#ident(animation) => animation.ui(ui),
             )
         });
-    let set_buffers = animation
+    let shader_code = animation
         .data
         .as_ref()
         .take_enum()
@@ -66,38 +54,27 @@ pub fn derive(input: TokenStream) -> TokenStream {
         .map(|child| {
             let ident = child.ident.to_owned();
             quote!(
-                Self::#ident(animation) => animation.renderer.as_ref().expect(crate::constants::GPU_NOT_INIT).set_buffers(queue, state, palette, &(&animation.config).into()),
+                Self::#ident(animation) => animation.shader_code(),
             )
         });
 
     quote!(
-        impl Animation {
-            pub fn renderer(&mut self) -> &AnimationRenderer {
-                match self {
-                    #(#renderer)*
-                }
-            }
-
-            pub fn init_gpu(&mut self) {
-                match self {
-                    #(#init_gpu)*
-                }
-            }
-
-            pub fn config_ui(&mut self, ui: &mut egui::Ui) {
+        impl AnimationConfig for Animation {
+            fn ui(&mut self, ui: &mut egui::Ui) {
                 match self {
                     #(#config_ui)*
                 }
             }
 
-            pub fn set_buffers(
-                &self,
-                queue: &wgpu::Queue,
-                state: &State,
-                palette: &ColorPalette
-            ) {
+            fn shader_code(&self) -> std::borrow::Cow<str> {
                 match self {
-                    #(#set_buffers)*
+                    #(#shader_code)*
+                }
+            }
+
+            fn config(&self) -> Config {
+                match self {
+                    #(#config)*
                 }
             }
         }
