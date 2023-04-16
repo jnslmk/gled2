@@ -19,10 +19,7 @@ pub use state::State;
 pub use stripes::Stripes;
 
 pub trait AnimationConfig: Into<Animation> + Default + Debug + Clone {
-    fn ui(&mut self, ui: &mut egui::Ui, _texture_id: egui::TextureId) {
-        ui.label("TODO");
-    }
-
+    fn ui(&mut self, ui: &mut egui::Ui, _texture_id: egui::TextureId);
     fn shader_code(&self) -> std::borrow::Cow<str>;
     fn config(&self) -> Config;
 }
