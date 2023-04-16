@@ -18,7 +18,7 @@ impl Default for Gradient {
         Self {
             common: Default::default(),
             gradient: Default::default(),
-            center: (1.0, 1.0),
+            center: (0.5, 0.5),
         }
     }
 }
