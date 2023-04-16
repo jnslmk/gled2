@@ -14,9 +14,10 @@ struct Uniforms {
     // config: 32 bytes
     center_coord: vec2<f32>,
     thickness: f32,
-    count: i32,
-    direction: u32
-    // padding: 24 bytes
+    count: u32,
+    direction: u32,
+    mode: u32,
+    // padding: 16 bytes
 };
 
 @group(0) @binding(0)

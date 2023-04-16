@@ -1,11 +1,10 @@
-use egui::Ui;
-use serde::{Deserialize, Serialize};
-
 use super::{
     config::{CommonConfig, Config},
     renderer::AnimationRenderer,
     Animation,
 };
+use egui::Ui;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Stripes {
@@ -50,13 +49,18 @@ impl From<Stripes> for Animation {
 pub struct StripesConfig {
     pub common: CommonConfig,
     pub thickness: f32,
-    pub count: i32,
+    pub count: u32,
+    pub orientation: Orientation,
 }
 
 impl StripesConfig {
     pub fn ui(&mut self, ui: &mut Ui) {
         self.common.ui(ui);
         ui.label("Todo: stripes");
+        ui.horizontal(|ui| {
+            ui.radio_value(&mut self.orientation, Orientation::Horizontal, "Horizontal");
+            ui.radio_value(&mut self.orientation, Orientation::Vertical, "Vertical");
+        });
     }
 }
 
@@ -66,8 +70,16 @@ impl Default for StripesConfig {
             common: Default::default(),
             thickness: 0.1,
             count: 5,
+            orientation: Default::default(),
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq)]
+pub enum Orientation {
+    #[default]
+    Horizontal,
+    Vertical,
 }
 
 impl From<&StripesConfig> for Config {
@@ -76,6 +88,10 @@ impl From<&StripesConfig> for Config {
             common: config.common,
             thickness: config.thickness,
             count: config.count,
+            mode: match config.orientation {
+                Orientation::Horizontal => 0,
+                Orientation::Vertical => 1,
+            },
             ..Default::default()
         }
     }

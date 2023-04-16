@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub center: (f32, f32),
     pub thickness: f32,
-    pub count: i32,
+    pub count: u32,
     pub common: CommonConfig,
+    pub mode: u32,
 }
 
 impl Default for Config {
@@ -15,6 +16,7 @@ impl Default for Config {
             thickness: Default::default(),
             count: Default::default(),
             common: Default::default(),
+            mode: Default::default(),
         }
     }
 }
@@ -30,6 +32,7 @@ impl Config {
             Direction::Forward => 0x00,
             Direction::Backward => 0x01,
         };
+        data[20..24].copy_from_slice(&self.mode.to_le_bytes());
     }
 
     /// must be a multiple of 16

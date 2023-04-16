@@ -34,17 +34,7 @@ impl Gradient {
 
     pub fn init_gpu(&mut self) {
         self.renderer.get_or_insert_with(|| {
-            let mut animation_shader = include_str!("../shaders/gradient_common.wgsl").to_owned();
-            animation_shader.push_str(match self.config.gradient {
-                GradientType::Radial { .. } => include_str!("../shaders/gradient_radial.wgsl"),
-                GradientType::LinearHorizontal => {
-                    include_str!("../shaders/gradient_linear_horizontal.wgsl")
-                }
-                GradientType::LinearVertical => {
-                    include_str!("../shaders/gradient_linear_vertical.wgsl")
-                }
-            });
-
+            let animation_shader = include_str!("../shaders/gradient.wgsl").to_owned();
             AnimationRenderer::new(&animation_shader, &(&self.config).into())
         });
     }
@@ -87,6 +77,11 @@ impl From<&GradientConfig> for Config {
     fn from(config: &GradientConfig) -> Self {
         Config {
             common: config.common,
+            mode: match config.gradient {
+                GradientType::LinearHorizontal => 0,
+                GradientType::LinearVertical => 1,
+                GradientType::Radial { .. } => 2,
+            },
             center: match config.gradient {
                 GradientType::Radial { center } => center,
                 _ => Default::default(),
