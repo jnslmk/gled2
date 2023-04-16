@@ -15,7 +15,6 @@ mod preview;
 mod preview_indices;
 mod project;
 mod scene;
-mod shader_widget;
 mod svg;
 mod texture_to_artnet;
 
