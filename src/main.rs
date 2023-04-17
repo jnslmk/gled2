@@ -17,6 +17,7 @@ mod project;
 mod scene;
 mod svg;
 mod texture_to_artnet;
+mod transition;
 
 use app::App;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration};

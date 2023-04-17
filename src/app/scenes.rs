@@ -2,9 +2,10 @@ use super::App;
 use crate::{
     animation::ColorPalette,
     scene::{Scene, SceneKind},
+    transition::{Transition, TransitionGoal},
 };
 use egui::{
-    Align, Button, Checkbox, Color32, Context, DragValue, Image, Layout, Margin, Rect, RichText,
+    Align, Button, Checkbox, Color32, Context, Image, Layout, Margin, Modifiers, Rect, RichText,
     Rounding, Sense, Shape, Slider, Stroke, TextureId, Ui, Vec2, Widget,
 };
 use egui_extras::{Size, StripBuilder};
@@ -46,7 +47,7 @@ impl App {
                                 .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
                                 .show(ui, |ui| {
                                     self.scenes_header(ui, kind);
-                                    self.scenes_grid(ui, kind, svg)
+                                    self.scenes_grid(ctx, ui, kind, svg)
                                 });
                         });
                     }
@@ -58,8 +59,8 @@ impl App {
         ui.horizontal(|ui| {
             ui.label(
                 RichText::new(match kind {
-                    SceneKind::Background => "Foreground",
-                    SceneKind::Foreground => "Background",
+                    SceneKind::Background => "Background",
+                    SceneKind::Foreground => "Foreground",
                 })
                 .heading(),
             );
@@ -107,7 +108,7 @@ impl App {
         });
     }
 
-    fn scenes_grid(&mut self, ui: &mut Ui, kind: SceneKind, svg: Option<TextureId>) {
+    fn scenes_grid(&mut self, ctx: &Context, ui: &mut Ui, kind: SceneKind, svg: Option<TextureId>) {
         let scenes = match kind {
             SceneKind::Background => &self.persistant_state.background,
             SceneKind::Foreground => &self.persistant_state.foreground,
@@ -120,13 +121,14 @@ impl App {
             .show(ui, |ui| {
                 ui.set_max_width(ui.available_width() - 30.0);
                 ui.horizontal_wrapped(|ui| {
+                    let mut changed = None;
                     for (index, scene) in self
                         .pipeline
                         .scenes()
                         .into_iter()
                         .filter(|(_index, scene)| scene.kind == kind)
                     {
-                        ui.add_sized(
+                        let response = ui.add_sized(
                             Vec2::new(scenes.size + 40.0, scenes.size + 60.0),
                             SceneWidget {
                                 selected_scene: &mut self.selected_scene,
@@ -141,6 +143,43 @@ impl App {
                                 },
                             },
                         );
+                        if response.changed()
+                            || scene
+                                .key
+                                .as_ref()
+                                .map(|key| ctx.input_mut(|i| i.consume_key(Modifiers::NONE, *key)))
+                                .unwrap_or_default()
+                        {
+                            changed = Some(index);
+                        }
+                    }
+
+                    if let Some(changed_index) = changed {
+                        if let Some(scene) = self.pipeline.scene(changed_index) {
+                            scene.set_transition(Transition::new(
+                                if scene.active {
+                                    TransitionGoal::TurnOff
+                                } else {
+                                    TransitionGoal::TurnOn
+                                },
+                                self.timing.beat_duration(),
+                            ));
+                        }
+
+                        if kind == SceneKind::Foreground {
+                            for (_index, scene) in
+                                self.pipeline.scenes().into_iter().filter(|(index, scene)| {
+                                    scene.kind == SceneKind::Foreground
+                                        && *index != changed_index
+                                        && scene.on()
+                                })
+                            {
+                                scene.set_transition(Transition::new(
+                                    TransitionGoal::TurnOff,
+                                    self.timing.beat_duration(),
+                                ));
+                            }
+                        }
                     }
                 });
             });
@@ -161,9 +200,8 @@ impl<'a> Widget for SceneWidget<'a> {
     fn ui(self, ui: &mut Ui) -> egui::Response {
         let mut slider_rect = None;
         let mut checkbox_rect = None;
-        let mut beat_progression_offset_rect = None;
 
-        let response = egui::Frame::none()
+        let mut response = egui::Frame::none()
             .fill(if *self.selected_scene == self.index {
                 Color32::GREEN
             } else {
@@ -173,8 +211,17 @@ impl<'a> Widget for SceneWidget<'a> {
             .rounding(Rounding::from(4.0))
             .show(ui, |ui| {
                 egui::Frame::none()
-                    .fill(if self.scene.artnet_extraction {
-                        self.live_color
+                    .fill(if self.scene.active {
+                        let off = Color32::DARK_GRAY.to_srgba_unmultiplied();
+                        let on = self.live_color.to_srgba_unmultiplied();
+                        let factor = self.scene.transition_factor();
+
+                        Color32::from_rgba_unmultiplied(
+                            (off[0] as f32 * (1.0 - factor) + on[0] as f32 * factor) as u8,
+                            (off[1] as f32 * (1.0 - factor) + on[1] as f32 * factor) as u8,
+                            (off[2] as f32 * (1.0 - factor) + on[2] as f32 * factor) as u8,
+                            (off[3] as f32 * (1.0 - factor) + on[3] as f32 * factor) as u8,
+                        )
                     } else {
                         Color32::DARK_GRAY
                     })
@@ -190,19 +237,13 @@ impl<'a> Widget for SceneWidget<'a> {
                                             .sense(Sense::hover()),
                                     );
                                 }
+                                if let Some(key) =
+                                    self.scene.key.as_ref().map(|key| format!("{key:?}"))
+                                {
+                                    ui.add_enabled(false, Button::new(key));
+                                }
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     checkbox_rect = Some(ui.checkbox(&mut false, "").rect);
-                                    beat_progression_offset_rect = Some(
-                                        ui.add(
-                                            DragValue::new(&mut self.scene.beat_progression_offset)
-                                                .speed(0.01)
-                                                .clamp_range(0.0..=1.0)
-                                                .custom_formatter(|n, _| {
-                                                    format!("{:.0} %", n * 100.0)
-                                                }),
-                                        )
-                                        .rect,
-                                    );
                                     color_band(ui, &mut self.scene.palette);
                                 });
                             });
@@ -256,23 +297,16 @@ impl<'a> Widget for SceneWidget<'a> {
         }
 
         if let Some(checkbox_rect) = checkbox_rect {
-            ui.put(
-                checkbox_rect,
-                Checkbox::new(&mut self.scene.artnet_extraction, ""),
-            )
-            .on_hover_text("Enable Scene");
-        }
-
-        if let Some(beat_progression_offset_rect) = beat_progression_offset_rect {
-            ui.put(
-                beat_progression_offset_rect,
-                DragValue::new(&mut self.scene.beat_progression_offset)
-                    .speed(0.01)
-                    .clamp_range(0.0..=1.0)
-                    .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
-                    .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
-            )
-            .on_hover_text("Beat Progression Offset");
+            ui.add_enabled_ui(!self.scene.has_transition(), |ui| {
+                let mut active = self.scene.active;
+                if ui
+                    .put(checkbox_rect, Checkbox::new(&mut active, ""))
+                    .on_hover_text("Enable Scene")
+                    .changed()
+                {
+                    response.mark_changed();
+                }
+            });
         }
 
         response

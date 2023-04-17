@@ -1,6 +1,6 @@
 use egui::{text::LayoutJob, Button, Color32, Key, Modifiers, Stroke, TextFormat, Ui, Vec2};
 use log::debug;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 pub struct Timing {
     pub beats_per_minute: f32,
@@ -57,13 +57,21 @@ impl Timing {
     fn progress_beat(&mut self) {
         if !self.freeze {
             let now = Instant::now();
-            let beat_duration_nanoseconds = 60e+9f64 / self.beats_per_minute as f64;
             self.beat_progression = (self.beat_progression
                 + (now.duration_since(self.last_beat_time).as_nanos() as f64
-                    / beat_duration_nanoseconds) as f32)
+                    / self.beat_duration_nanoseconds()) as f32)
                 % 1.;
             self.last_beat_time = now;
         }
+    }
+
+    #[inline]
+    fn beat_duration_nanoseconds(&self) -> f64 {
+        60e+9f64 / self.beats_per_minute as f64
+    }
+
+    pub fn beat_duration(&self) -> Duration {
+        Duration::from_nanos(self.beat_duration_nanoseconds().round() as u64)
     }
 
     fn calculate_avg_fps(&mut self) {

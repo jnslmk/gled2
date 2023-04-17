@@ -4,9 +4,10 @@ use crate::{
     artnet_mix::ArtnetMix,
     constants::GPU_NOT_INIT,
     texture_to_artnet::TextureToArtnet,
+    transition::Transition,
     wgpu_render_state,
 };
-use egui::TextureId;
+use egui::{Key, TextureId};
 use serde::{Deserialize, Serialize};
 use wgpu::{Buffer, CommandEncoder, Queue};
 
@@ -16,11 +17,14 @@ pub struct Scene {
     pub kind: SceneKind,
     pub palette: ColorPalette,
     pub opacity: f32,
-    pub artnet_extraction: bool,
+    pub active: bool,
     pub beat_progression_offset: f32,
     pub group: String,
     pub animation: Animation,
+    pub key: Option<Key>,
 
+    #[serde(skip)]
+    transition: Option<Transition>,
     #[serde(skip)]
     sent_group: Option<String>,
     #[serde(skip)]
@@ -41,12 +45,14 @@ impl Default for Scene {
     fn default() -> Self {
         Self {
             opacity: 1.0,
+            key: Default::default(),
             kind: Default::default(),
             palette: Default::default(),
-            artnet_extraction: Default::default(),
+            active: Default::default(),
             beat_progression_offset: Default::default(),
             group: Default::default(),
             animation: Default::default(),
+            transition: Default::default(),
             sent_group: Default::default(),
             texture_to_artnet: Default::default(),
             texture_id: Default::default(),
@@ -65,7 +71,7 @@ impl Clone for Scene {
             animation: self.animation.clone(),
             palette: self.palette.clone(),
             opacity: self.opacity,
-            artnet_extraction: self.artnet_extraction,
+            active: self.active,
             beat_progression_offset: self.beat_progression_offset,
             group: self.group.clone(),
             ..Default::default()
@@ -83,7 +89,7 @@ impl Scene {
             animation,
             palette,
             opacity: 1.0,
-            artnet_extraction: true,
+            active: true,
             group,
             ..Default::default()
         }
@@ -145,8 +151,23 @@ impl Scene {
         // make sure we have a texture id (fixes a deadlock).
         self.texture_id();
 
-        if always_render || self.artnet_extraction || !self.was_ever_rendered {
-            state.opacity = self.opacity * main_dimmer;
+        let mut opacity_factor = 1.0;
+        if let Some(transition) = self.transition.as_ref() {
+            match transition.opacity_factor() {
+                Some(factor) => opacity_factor = factor,
+                None => {
+                    if transition.goal().turning_off() {
+                        self.active = false;
+                        self.was_ever_rendered = false;
+                    }
+                    self.transition.take();
+                }
+            }
+        }
+
+        if always_render || self.active || !self.was_ever_rendered {
+            state.opacity = self.opacity * main_dimmer * opacity_factor;
+
             state.beat_progression = (state.beat_progression + self.beat_progression_offset) % 1.0;
 
             if self.sent_group.as_ref() != Some(&self.group) {
@@ -165,7 +186,7 @@ impl Scene {
                 &self.animation.config(),
             );
 
-            if (!self.artnet_extraction || blackout) && self.artnet_dirty {
+            if (!self.active || blackout) && self.artnet_dirty {
                 self.texture_to_artnet
                     .as_ref()
                     .expect(GPU_NOT_INIT)
@@ -176,9 +197,9 @@ impl Scene {
     }
 
     pub fn render(&mut self, encoder: &mut CommandEncoder, blackout: bool, always_render: bool) {
-        if always_render || self.artnet_extraction || !self.was_ever_rendered {
+        if always_render || self.active || !self.was_ever_rendered {
             self.renderer.as_ref().expect(GPU_NOT_INIT).render(encoder);
-            if self.artnet_extraction && !blackout {
+            if self.active && !blackout {
                 self.texture_to_artnet
                     .as_ref()
                     .expect(GPU_NOT_INIT)
@@ -201,6 +222,31 @@ impl Scene {
 
     pub fn config_ui(&mut self, ui: &mut egui::Ui) {
         self.animation.ui(ui, self.texture_id());
+    }
+
+    pub fn set_transition(&mut self, transition: Transition) {
+        self.active = true;
+        self.transition = Some(transition);
+    }
+
+    pub fn has_transition(&self) -> bool {
+        self.transition.is_some()
+    }
+
+    /// whether the scene is (turning) on
+    pub fn on(&self) -> bool {
+        self.active
+            && match self.transition.as_ref() {
+                None => true,
+                Some(transition) => transition.goal().turning_on(),
+            }
+    }
+
+    pub fn transition_factor(&self) -> f32 {
+        self.transition
+            .as_ref()
+            .and_then(|transition| transition.opacity_factor())
+            .unwrap_or(1.0)
     }
 }
 

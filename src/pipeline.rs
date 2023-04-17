@@ -58,7 +58,7 @@ impl Pipeline {
                 ..Default::default()
             };
             let mut scene = Scene::new(gradient.into(), palette, "allFull".to_owned());
-            scene.artnet_extraction = i == 0;
+            scene.active = i == 0;
             pipeline.add_scene(scene);
 
             let palette = ColorPalette {
@@ -72,7 +72,7 @@ impl Pipeline {
                 ..Default::default()
             };
             let mut scene = Scene::new(gradient.into(), palette, "innerFull".to_owned());
-            scene.artnet_extraction = i == 0;
+            scene.active = i == 0;
             pipeline.add_scene(scene);
 
             let palette = ColorPalette {
@@ -87,7 +87,7 @@ impl Pipeline {
             };
             let mut scene = Scene::new(stripes.into(), palette, "innerEdge".to_owned());
             scene.kind = SceneKind::Foreground;
-            scene.artnet_extraction = i == 0;
+            scene.active = i == 0;
             pipeline.add_scene(scene);
         }
 
@@ -160,9 +160,9 @@ impl Pipeline {
         }
     }
 
-    pub fn set_artnet_extraction(&mut self, index: usize, artnet_extraction: bool) {
+    pub fn set_active(&mut self, index: usize, active: bool) {
         if let Some(scene) = self.scene(index) {
-            scene.artnet_extraction = artnet_extraction;
+            scene.active = active;
         }
     }
 

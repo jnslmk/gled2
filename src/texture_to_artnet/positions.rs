@@ -14,10 +14,9 @@ impl Positions {
             .flat_map(|universe| universe.lamps.iter())
             .fold(None, |uv, lamp| match (uv, lamp) {
                 (uv, Lamp::None) => uv,
-                (None, Lamp::Position { x, y }) => Some(Rect::from_min_max(
-                    Pos2::new(*x, *y),
-                    Pos2::new(*x, 1. - *y),
-                )),
+                (None, Lamp::Position { x, y }) => {
+                    Some(Rect::from_min_max(Pos2::new(*x, *y), Pos2::new(*x, *y)))
+                }
                 (Some(mut uv), Lamp::Position { x, y }) => {
                     if uv.min.x > *x {
                         uv.min.x = *x;
