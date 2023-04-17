@@ -68,12 +68,13 @@ impl Clone for Scene {
     fn clone(&self) -> Self {
         Self {
             kind: self.kind,
-            animation: self.animation.clone(),
             palette: self.palette.clone(),
             opacity: self.opacity,
             active: self.active,
             beat_progression_offset: self.beat_progression_offset,
             group: self.group.clone(),
+            animation: self.animation.clone(),
+            key: self.key,
             ..Default::default()
         }
     }
