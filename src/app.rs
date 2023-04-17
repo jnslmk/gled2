@@ -7,11 +7,10 @@ mod scenes;
 mod svg;
 mod timing;
 
-use std::path::PathBuf;
-
 use crate::{
     artnet_sender::{self, ArtnetSender, GpuReadyReceiver},
     extract_artnet::ExtractArtnet,
+    hotkey::Gamepad,
     logo::logo_image,
     pipeline::{Pipeline, RenderDeactivatedScenes},
     project::Project,
@@ -19,6 +18,7 @@ use crate::{
 use egui::Modifiers;
 use egui_extras::RetainedImage;
 use persistant_state::PersistantState;
+use std::path::PathBuf;
 use timing::Timing;
 
 pub use svg::{positions, preview_positions, Svg};
@@ -32,6 +32,7 @@ pub struct App {
     persistant_state: PersistantState,
     project_path: Option<PathBuf>,
     pipeline: Pipeline,
+    gamepad: Gamepad,
 
     artnet_ip_input: String,
     blackout: bool,
@@ -44,6 +45,7 @@ pub struct App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.timing.tick(self.persistant_state.fps_limit);
+        self.gamepad.tick();
 
         egui::gui_zoom::zoom_with_keyboard_shortcuts(ctx, frame.info().native_pixels_per_point);
         if ctx.input_mut(|i| i.consume_key(Modifiers::ALT, egui::Key::Enter)) {
@@ -120,6 +122,7 @@ impl App {
             selected_scene: 0,
             hovered_scene: 0,
             pipeline: Pipeline::default(),
+            gamepad: Gamepad::new(),
         };
 
         app.load_project();

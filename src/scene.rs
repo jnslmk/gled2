@@ -3,11 +3,12 @@ use crate::{
     app::positions,
     artnet_mix::ArtnetMix,
     constants::GPU_NOT_INIT,
+    hotkey::Hotkey,
     texture_to_artnet::TextureToArtnet,
     transition::Transition,
     wgpu_render_state,
 };
-use egui::{Key, TextureId};
+use egui::TextureId;
 use serde::{Deserialize, Serialize};
 use wgpu::{Buffer, CommandEncoder, Queue};
 
@@ -21,7 +22,7 @@ pub struct Scene {
     pub beat_progression_offset: f32,
     pub group: String,
     pub animation: Animation,
-    pub key: Option<Key>,
+    pub hotkey: Option<Hotkey>,
 
     #[serde(skip)]
     transition: Option<Transition>,
@@ -45,7 +46,7 @@ impl Default for Scene {
     fn default() -> Self {
         Self {
             opacity: 1.0,
-            key: Default::default(),
+            hotkey: Default::default(),
             kind: Default::default(),
             palette: Default::default(),
             active: Default::default(),
@@ -74,7 +75,7 @@ impl Clone for Scene {
             beat_progression_offset: self.beat_progression_offset,
             group: self.group.clone(),
             animation: self.animation.clone(),
-            key: self.key,
+            hotkey: self.hotkey,
             ..Default::default()
         }
     }

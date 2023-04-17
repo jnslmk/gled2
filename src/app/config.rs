@@ -2,8 +2,11 @@ mod color;
 pub mod group;
 
 use super::App;
-use crate::animation::{Animation, Color};
-use egui::{Button, Checkbox, Color32, Context, Key, Layout, Modifiers, RichText, Slider};
+use crate::{
+    animation::{Animation, Color},
+    hotkey::Hotkey,
+};
+use egui::{Button, Checkbox, Color32, Context, Layout, Modifiers, RichText, Slider};
 use std::collections::BTreeSet;
 use strum::IntoEnumIterator;
 
@@ -29,18 +32,14 @@ impl App {
                         ui.vertical_centered_justified(|ui| {
                             ui.style_mut().spacing.interact_size.y = 40.0;
                             ui.menu_button(
-                                match scene.key {
-                                    Some(key) => format!("{:?}", key),
+                                match scene.hotkey {
+                                    Some(hotkey) => format!("{hotkey}"),
                                     None => "Assign".to_string(),
                                 },
                                 |ui| {
                                     ui.label("Please press a key!");
-                                    let keys: Vec<Key> =
-                                        ctx.input_mut(|i| i.keys_down.drain().collect());
-                                    let len = keys.len();
-                                    if let Some(key) = keys.into_iter().next().filter(|_| len == 1)
-                                    {
-                                        scene.key = Some(key);
+                                    if let Some(hotkey) = Hotkey::get(ctx, &self.gamepad) {
+                                        scene.hotkey = Some(hotkey);
                                         ui.close_menu();
                                     }
                                 },

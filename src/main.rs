@@ -7,6 +7,7 @@ mod artnet_mix;
 mod artnet_sender;
 mod constants;
 mod extract_artnet;
+mod hotkey;
 mod logging;
 mod logo;
 mod opts;

@@ -5,8 +5,8 @@ use crate::{
     transition::{Transition, TransitionGoal},
 };
 use egui::{
-    Align, Button, Checkbox, Color32, Context, Image, Layout, Margin, Modifiers, Rect, RichText,
-    Rounding, Sense, Shape, Slider, Stroke, TextureId, Ui, Vec2, Widget,
+    Align, Button, Checkbox, Color32, Context, Image, Layout, Margin, Rect, RichText, Rounding,
+    Sense, Shape, Slider, Stroke, TextureId, Ui, Vec2, Widget,
 };
 use egui_extras::{Size, StripBuilder};
 use serde::{Deserialize, Serialize};
@@ -145,9 +145,9 @@ impl App {
                         );
                         if response.changed()
                             || scene
-                                .key
+                                .hotkey
                                 .as_ref()
-                                .map(|key| ctx.input_mut(|i| i.consume_key(Modifiers::NONE, *key)))
+                                .map(|hotkey| hotkey.pressed(ctx, &self.gamepad))
                                 .unwrap_or_default()
                         {
                             changed = Some(index);
@@ -237,10 +237,10 @@ impl<'a> Widget for SceneWidget<'a> {
                                             .sense(Sense::hover()),
                                     );
                                 }
-                                if let Some(key) =
-                                    self.scene.key.as_ref().map(|key| format!("{key:?}"))
+                                if let Some(hotkey) =
+                                    self.scene.hotkey.as_ref().map(|key| format!("{key}"))
                                 {
-                                    ui.add_enabled(false, Button::new(key));
+                                    ui.add_enabled(false, Button::new(hotkey));
                                 }
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     checkbox_rect = Some(ui.checkbox(&mut false, "").rect);
