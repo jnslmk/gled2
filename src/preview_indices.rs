@@ -4,7 +4,10 @@
 //!  * index of artnet buffer where the color triplet starts.
 use crate::{
     app::preview_positions,
-    constants::{LAMPS, POSITIONS_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, TEXTURE_SIZE},
+    constants::{
+        LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, TEXTURE_SIZE,
+        UNIVERSES,
+    },
     wgpu_render_state,
 };
 use log::debug;
@@ -189,7 +192,7 @@ impl PreviewIndices {
         });
         index_compute_pass.set_pipeline(&self.index_pipeline);
         index_compute_pass.set_bind_group(0, &self.index_bind_group, &[]);
-        index_compute_pass.dispatch_workgroups(LAMPS as u32, 1, 1);
+        index_compute_pass.dispatch_workgroups(UNIVERSES as u32, LAMPS_PER_UNIVERSE as u32, 1);
     }
 
     pub fn send_positions(&mut self) {

@@ -17,13 +17,16 @@ fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
 
 	let i: u32 = y * (TEXTURE_SIZE_U / 2u) + x / 2u;
 	let index = indices[i];
+	var universe: u32 = 0u;
 	var lamp: u32 = 0u;
 	if (x % 2u == 0u) {
-		lamp = (index & 0xffff0000u) >> 16u;
+		universe = (index & 0xff000000u) >> 24u;
+		lamp = (index & 0x00ff0000u) >> 16u;
 	} else {
-		lamp = index & 0x0000ffffu;
+		universe = (index & 0x0000ff00u) >> 8u;
+		lamp = index & 0x000000ffu;
 	}
-	if (lamp == 0x0000ffffu) {
+	if (universe == 0x000000ffu && lamp == 0x000000ffu) {
 		return vec4<f32>(0.);
 	} else {
 		var red = 0u;
@@ -31,7 +34,7 @@ fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
 		var blue = 0u;
 
 		let start_byte = lamp * 3u;
-		let start_index = start_byte / 4u;
+		let start_index = universe * 128u + start_byte / 4u;
 		switch start_byte % 4u {
 			case 0u: {
 				red = artnet[start_index] & 0x000000ffu;
