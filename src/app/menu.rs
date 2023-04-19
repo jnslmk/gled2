@@ -34,6 +34,7 @@ impl App {
                     .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::S));
                 let mut open_svg_file = ctx
                     .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::O));
+                let mut save_svg_file = false;
 
                 ui.menu_button("File", |ui| {
                     ui.set_min_width(300.0);
@@ -43,6 +44,7 @@ impl App {
                         .clicked()
                     {
                         create_new_project = true;
+                        ui.close_menu();
                     }
 
                     if ui
@@ -50,6 +52,7 @@ impl App {
                         .clicked()
                     {
                         open_project = true;
+                        ui.close_menu();
                     }
 
                     if ui
@@ -57,6 +60,7 @@ impl App {
                         .clicked()
                     {
                         save_project = true;
+                        ui.close_menu();
                     }
 
                     if ui
@@ -64,6 +68,7 @@ impl App {
                         .clicked()
                     {
                         save_project_as = true;
+                        ui.close_menu();
                     }
 
                     if ui
@@ -71,6 +76,15 @@ impl App {
                         .clicked()
                     {
                         open_svg_file = true;
+                        ui.close_menu();
+                    }
+
+                    if ui
+                        .add_enabled(self.svg.is_some(), Button::new("Save SVG file"))
+                        .clicked()
+                    {
+                        save_svg_file = true;
+                        ui.close_menu();
                     }
                 });
 
@@ -129,6 +143,24 @@ impl App {
                             Err(err) => {
                                 error!("Could not load svg file \"{}\": {err:?}", path.display());
                                 None
+                            }
+                        };
+                    }
+                }
+                if save_svg_file {
+                    if let (Some(svg), Some(path)) = (
+                        self.svg.as_ref(),
+                        rfd::FileDialog::new()
+                            .set_title("Save SVG file")
+                            .add_filter("svg", &["svg"])
+                            .save_file(),
+                    ) {
+                        match svg.save(&path) {
+                            Ok(_) => {
+                                debug!("Saved svg file \"{}\"", path.display());
+                            }
+                            Err(err) => {
+                                error!("Could not save svg file \"{}\": {err:?}", path.display());
                             }
                         };
                     }

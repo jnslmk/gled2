@@ -38,6 +38,12 @@ impl Svg {
         })
     }
 
+    pub fn save(&self, path: &Path) -> Result<()> {
+        std::fs::write(path, &self.svg_contents)?;
+
+        Ok(())
+    }
+
     pub fn image(&mut self, pipeline: &mut Pipeline) -> Option<&RetainedImage> {
         if self.image.is_none() {
             self.image = {
