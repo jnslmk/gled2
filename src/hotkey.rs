@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use egui::{Context, Key, Modifiers};
 use gilrs::{Axis, Button, Event, Gilrs};
 use log::debug;
@@ -6,7 +8,8 @@ use strum::Display;
 
 pub struct Gamepad {
     gilrs: Gilrs,
-    event: Option<GamepadEvent>,
+    events: HashSet<GamepadEvent>,
+    new_events: HashSet<GamepadEvent>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -18,18 +21,23 @@ pub enum Hotkey {
 impl Hotkey {
     pub fn get(ctx: &Context, gamepad: &Gamepad) -> Option<Self> {
         let keys: Vec<Key> = ctx.input_mut(|i| i.keys_down.drain().collect());
-        let len = keys.len();
-        if let Some(key) = keys.into_iter().next().filter(|_| len == 1) {
+        let keys_ = keys.len();
+        if let Some(key) = keys.into_iter().next().filter(|_| keys_ == 1) {
             return Some(Self::Key(key));
         }
 
-        gamepad.event().map(Self::GamepadEvent)
+        let events = gamepad.new_events();
+        if events.len() == 1 {
+            events.into_iter().next().map(Self::GamepadEvent)
+        } else {
+            None
+        }
     }
 
     pub fn pressed(&self, ctx: &Context, gamepad: &Gamepad) -> bool {
         match self {
             Hotkey::Key(key) => ctx.input_mut(|i| i.consume_key(Modifiers::NONE, *key)),
-            Hotkey::GamepadEvent(event) => gamepad.event() == Some(*event),
+            Hotkey::GamepadEvent(event) => gamepad.new_events().contains(event),
         }
     }
 }
@@ -43,7 +51,7 @@ impl std::fmt::Display for Hotkey {
     }
 }
 
-#[derive(Serialize, Deserialize, Display, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GamepadEvent {
     South(usize),
     East(usize),
@@ -86,38 +94,49 @@ pub enum GamepadEvent {
 impl Gamepad {
     pub fn new() -> Self {
         let gilrs = Gilrs::new().expect("Could not initialize gilrs");
-        Self { gilrs, event: None }
+        Self {
+            gilrs,
+            events: HashSet::new(),
+            new_events: HashSet::new(),
+        }
     }
 
     pub fn tick(&mut self) {
-        self.event = match self.gilrs.next_event() {
-            Some(Event { id, event, time }) => {
+        self.new_events.clear();
+        let mut still_active = HashSet::new();
+
+        while let Some(event) = self
+            .gilrs
+            .next_event()
+            .and_then(|Event { id, event, time }| {
                 let gamepad_id: usize = id.into();
 
                 debug!("{:?} New event from {}: {:?}", time, id, event);
                 match event {
-                    gilrs::EventType::ButtonChanged(button, _value, _) => Some(match button {
-                        Button::South => GamepadEvent::South(gamepad_id),
-                        Button::East => GamepadEvent::East(gamepad_id),
-                        Button::North => GamepadEvent::North(gamepad_id),
-                        Button::West => GamepadEvent::West(gamepad_id),
-                        Button::C => GamepadEvent::C(gamepad_id),
-                        Button::Z => GamepadEvent::Z(gamepad_id),
-                        Button::LeftTrigger => GamepadEvent::LeftTrigger(gamepad_id),
-                        Button::LeftTrigger2 => GamepadEvent::LeftTrigger2(gamepad_id),
-                        Button::RightTrigger => GamepadEvent::RightTrigger(gamepad_id),
-                        Button::RightTrigger2 => GamepadEvent::RightTrigger2(gamepad_id),
-                        Button::Select => GamepadEvent::Select(gamepad_id),
-                        Button::Start => GamepadEvent::Start(gamepad_id),
-                        Button::Mode => GamepadEvent::Mode(gamepad_id),
-                        Button::LeftThumb => GamepadEvent::LeftThumb(gamepad_id),
-                        Button::RightThumb => GamepadEvent::RightThumb(gamepad_id),
-                        Button::DPadUp => GamepadEvent::DPadUp(gamepad_id),
-                        Button::DPadDown => GamepadEvent::DPadDown(gamepad_id),
-                        Button::DPadLeft => GamepadEvent::DPadLeft(gamepad_id),
-                        Button::DPadRight => GamepadEvent::DPadRight(gamepad_id),
-                        Button::Unknown => GamepadEvent::Unknown(gamepad_id),
-                    }),
+                    gilrs::EventType::ButtonChanged(button, value, _) if value > 0.5 => {
+                        Some(match button {
+                            Button::South => GamepadEvent::South(gamepad_id),
+                            Button::East => GamepadEvent::East(gamepad_id),
+                            Button::North => GamepadEvent::North(gamepad_id),
+                            Button::West => GamepadEvent::West(gamepad_id),
+                            Button::C => GamepadEvent::C(gamepad_id),
+                            Button::Z => GamepadEvent::Z(gamepad_id),
+                            Button::LeftTrigger => GamepadEvent::LeftTrigger(gamepad_id),
+                            Button::LeftTrigger2 => GamepadEvent::LeftTrigger2(gamepad_id),
+                            Button::RightTrigger => GamepadEvent::RightTrigger(gamepad_id),
+                            Button::RightTrigger2 => GamepadEvent::RightTrigger2(gamepad_id),
+                            Button::Select => GamepadEvent::Select(gamepad_id),
+                            Button::Start => GamepadEvent::Start(gamepad_id),
+                            Button::Mode => GamepadEvent::Mode(gamepad_id),
+                            Button::LeftThumb => GamepadEvent::LeftThumb(gamepad_id),
+                            Button::RightThumb => GamepadEvent::RightThumb(gamepad_id),
+                            Button::DPadUp => GamepadEvent::DPadUp(gamepad_id),
+                            Button::DPadDown => GamepadEvent::DPadDown(gamepad_id),
+                            Button::DPadLeft => GamepadEvent::DPadLeft(gamepad_id),
+                            Button::DPadRight => GamepadEvent::DPadRight(gamepad_id),
+                            Button::Unknown => GamepadEvent::Unknown(gamepad_id),
+                        })
+                    }
                     gilrs::EventType::AxisChanged(axis, value, _) => {
                         // * 300.0 as some gamepads do not reach 1.0
                         let value = (value * 300.0).clamp(-255.0, 255.0) as i16;
@@ -163,12 +182,24 @@ impl Gamepad {
                     }
                     _ => None,
                 }
+            })
+        {
+            if self.events.insert(event) {
+                self.new_events.insert(event);
+            } else {
+                still_active.insert(event);
             }
-            None => None,
         }
+
+        self.events = self
+            .new_events
+            .iter()
+            .chain(still_active.iter())
+            .copied()
+            .collect();
     }
 
-    pub fn event(&self) -> Option<GamepadEvent> {
-        self.event
+    pub fn new_events(&self) -> HashSet<GamepadEvent> {
+        self.new_events.clone()
     }
 }
