@@ -1,7 +1,7 @@
 mod color;
 pub mod group;
 
-use super::App;
+use super::{timing::FadeMode, App};
 use crate::{
     animation::{Animation, Color},
     hotkey::Hotkey,
@@ -148,15 +148,37 @@ impl App {
                             }
                         });
 
-                        if let Some(framerate) = self
-                            .timing
-                            .framerate()
-                            .filter(|_| self.persistant_state.fullscreen)
-                        {
-                            ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
+                        ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
+                            if let Some(framerate) = self.timing.framerate() {
                                 ui.label(format!("{framerate:.01} fps"));
+                            }
+
+                            ui.separator();
+
+                            ui.horizontal(|ui| {
+                                ui.radio_value(
+                                    &mut self.timing.fade_mode,
+                                    FadeMode::Instant,
+                                    "Instant",
+                                );
+                                ui.radio_value(
+                                    &mut self.timing.fade_mode,
+                                    FadeMode::Beat,
+                                    "1 Beat",
+                                );
+                                ui.radio_value(
+                                    &mut self.timing.fade_mode,
+                                    FadeMode::Beats4,
+                                    "4 Beats",
+                                );
+                                ui.radio_value(
+                                    &mut self.timing.fade_mode,
+                                    FadeMode::Beats16,
+                                    "16 Beats",
+                                );
                             });
-                        }
+                            ui.label(RichText::new("Fade Mode").heading());
+                        });
                     }
                     None => {
                         ui.label("There's no Scene to configure.");

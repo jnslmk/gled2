@@ -170,7 +170,7 @@ impl App {
                                 } else {
                                     TransitionGoal::TurnOn
                                 },
-                                self.timing.beat_duration(),
+                                self.timing.fade_duration(),
                             ));
                         }
 
@@ -184,7 +184,7 @@ impl App {
                             {
                                 scene.set_transition(Transition::new(
                                     TransitionGoal::TurnOff,
-                                    self.timing.beat_duration(),
+                                    self.timing.fade_duration(),
                                 ));
                             }
                         }
