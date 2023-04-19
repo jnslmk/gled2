@@ -1,39 +1,8 @@
-use egui::{Pos2, Rect};
-
 use crate::constants::{LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, TEXTURE_SIZE, UNIVERSES};
 
 #[derive(Debug, Clone, Default)]
 pub struct Positions {
     pub universes: [Universe; UNIVERSES as usize],
-}
-
-impl Positions {
-    pub fn uv(&self) -> Option<Rect> {
-        self.universes
-            .iter()
-            .flat_map(|universe| universe.lamps.iter())
-            .fold(None, |uv, lamp| match (uv, lamp) {
-                (uv, Lamp::None) => uv,
-                (None, Lamp::Position { x, y }) => {
-                    Some(Rect::from_min_max(Pos2::new(*x, *y), Pos2::new(*x, *y)))
-                }
-                (Some(mut uv), Lamp::Position { x, y }) => {
-                    if uv.min.x > *x {
-                        uv.min.x = *x;
-                    }
-                    if uv.min.y > *y {
-                        uv.min.y = *y;
-                    }
-                    if uv.max.x < *x {
-                        uv.max.x = *x;
-                    }
-                    if uv.max.y < *y {
-                        uv.max.y = *y;
-                    }
-                    Some(uv)
-                }
-            })
-    }
 }
 
 #[derive(Debug, Clone)]

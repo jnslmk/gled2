@@ -1,17 +1,10 @@
 use super::App;
-use crate::app::preview_positions;
+use crate::app::preview_uv;
 use egui::{Align, Color32, Context, Image, Layout, RichText, Vec2};
-
-const BORDER: f32 = 0.03;
 
 impl App {
     pub fn preview(&mut self, ctx: &Context) {
-        if let Some(mut uv) = preview_positions().uv() {
-            uv.min.y = (uv.min.y - BORDER).max(0.0);
-            uv.min.x = (uv.min.x - BORDER).max(0.0);
-            uv.max.x = (uv.max.x + BORDER).min(1.0);
-            uv.max.y = (uv.max.y + BORDER).min(1.0);
-
+        if let Some(uv) = preview_uv() {
             let preview_rect = egui::TopBottomPanel::top("preview")
                 .default_height(self.persistant_state.preview_height)
                 .min_height(50.0)

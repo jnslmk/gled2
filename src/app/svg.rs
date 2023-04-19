@@ -1,5 +1,6 @@
 use crate::{pipeline::Pipeline, svg::MeasurementPoints, texture_to_artnet::Positions};
 use anyhow::Result;
+use egui::Rect;
 use egui_extras::RetainedImage;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -81,4 +82,11 @@ pub fn preview_positions() -> Positions {
         .read()
         .expect("MEASUREMENT_POINTS is poisoned")
         .preview_positions()
+}
+
+pub fn preview_uv() -> Option<Rect> {
+    MEASUREMENT_POINTS
+        .write()
+        .expect("MEASUREMENT_POINTS is poisoned")
+        .preview_uv()
 }

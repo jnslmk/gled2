@@ -2,13 +2,13 @@
 // 2 bytes per pixel. Resolution: 1024*1024.
 // Each row has 1024*2 = 2048 bytes.
 // As it is indexed as u32, each row has 512 entries in the array
-var<storage> indices: array<u32, 524288>; 
+var<storage> indices: array<u32, 2097152>; 
 
 @group(0) @binding(1)
 var<storage> artnet: array<u32, 4096>;
 
-const TEXTURE_SIZE_U: u32 = 1024u;
-const TEXTURE_SIZE_F: f32 = 1024.0;
+const TEXTURE_SIZE_U: u32 = 2048u;
+const TEXTURE_SIZE_F: f32 = 2048.0;
 
 @fragment
 fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {

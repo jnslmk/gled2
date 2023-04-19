@@ -1,6 +1,6 @@
 //! Render preview circles.
 use crate::{
-    constants::{ARTNET_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, TEXTURE_SIZE},
+    constants::{ARTNET_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, PREVIEW_TEXTURE_SIZE},
     wgpu_render_state,
 };
 use egui::TextureId;
@@ -21,8 +21,8 @@ impl Preview {
     pub fn new() -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
-                width: TEXTURE_SIZE as u32,
-                height: TEXTURE_SIZE as u32,
+                width: PREVIEW_TEXTURE_SIZE as u32,
+                height: PREVIEW_TEXTURE_SIZE as u32,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,

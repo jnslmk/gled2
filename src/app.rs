@@ -21,7 +21,7 @@ use persistant_state::PersistantState;
 use std::path::PathBuf;
 use timing::Timing;
 
-pub use svg::{positions, preview_positions, Svg};
+pub use svg::{positions, preview_positions, preview_uv, Svg};
 
 pub struct App {
     artnet_sender: ArtnetSender,

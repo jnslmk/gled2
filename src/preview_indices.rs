@@ -5,8 +5,8 @@
 use crate::{
     app::preview_positions,
     constants::{
-        LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, TEXTURE_SIZE,
-        UNIVERSES,
+        LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE,
+        PREVIEW_TEXTURE_SIZE, UNIVERSES,
     },
     wgpu_render_state,
 };
@@ -184,7 +184,11 @@ impl PreviewIndices {
             });
             clear_compute_pass.set_pipeline(&self.clear_pipeline);
             clear_compute_pass.set_bind_group(0, &self.clear_bind_group, &[]);
-            clear_compute_pass.dispatch_workgroups(TEXTURE_SIZE as u32 / 2, TEXTURE_SIZE as u32, 1);
+            clear_compute_pass.dispatch_workgroups(
+                PREVIEW_TEXTURE_SIZE as u32 / 2,
+                PREVIEW_TEXTURE_SIZE as u32,
+                1,
+            );
         }
 
         let mut index_compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {

@@ -5,6 +5,7 @@ use crate::{
     constants::UNIVERSES,
     texture_to_artnet::{Lamp, Positions, Universe},
 };
+use egui::{Pos2, Rect};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -21,6 +22,7 @@ pub struct MeasurementPoints {
     points: BTreeMap<String, Vec<MeasurementPoint>>,
     /// Positions of each individual led
     preview_positions: Positions,
+    uv: Option<Option<Rect>>,
 }
 
 impl MeasurementPoints {
@@ -74,6 +76,46 @@ impl MeasurementPoints {
 
     pub fn preview_positions(&self) -> Positions {
         self.preview_positions.clone()
+    }
+
+    pub fn preview_uv(&mut self) -> Option<Rect> {
+        *self.uv.get_or_insert_with(|| {
+            self.preview_positions
+                .universes
+                .iter()
+                .flat_map(|universe| universe.lamps.iter())
+                .fold(None, |uv, lamp| match (uv, lamp) {
+                    (uv, Lamp::None) => uv,
+                    (None, Lamp::Position { x, y }) => {
+                        Some(Rect::from_min_max(Pos2::new(*x, *y), Pos2::new(*x, *y)))
+                    }
+                    (Some(mut uv), Lamp::Position { x, y }) => {
+                        if uv.min.x > *x {
+                            uv.min.x = *x;
+                        }
+                        if uv.min.y > *y {
+                            uv.min.y = *y;
+                        }
+                        if uv.max.x < *x {
+                            uv.max.x = *x;
+                        }
+                        if uv.max.y < *y {
+                            uv.max.y = *y;
+                        }
+                        Some(uv)
+                    }
+                })
+                .map(|mut uv| {
+                    const BORDER: f32 = 0.03;
+
+                    uv.min.y = (uv.min.y - BORDER).max(0.0);
+                    uv.min.x = (uv.min.x - BORDER).max(0.0);
+                    uv.max.x = (uv.max.x + BORDER).min(1.0);
+                    uv.max.y = (uv.max.y + BORDER).min(1.0);
+
+                    uv
+                })
+        })
     }
 
     pub fn groups(&self) -> Vec<String> {
@@ -133,6 +175,7 @@ impl From<&ParsedSvg> for MeasurementPoints {
         let mut measurement_points = MeasurementPoints {
             points,
             preview_positions: Positions::default(),
+            uv: None,
         };
         let universes: BTreeMap<u16, usize> = measurement_points
             .universes()

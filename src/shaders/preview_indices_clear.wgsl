@@ -2,9 +2,9 @@
 // 2 bytes per pixel. Resolution: 1024*1024.
 // Each row has 1024*2 = 2048 bytes.
 // As it is indexed as u32, each row has 512 entries in the array
-var<storage, read_write> indices: array<u32, 524288>; 
+var<storage, read_write> indices: array<u32, 2097152>; 
 
-const TEXTURE_SIZE_U: u32 = 1024u;
+const TEXTURE_SIZE_U: u32 = 2048u;
 
 @compute
 @workgroup_size(1)

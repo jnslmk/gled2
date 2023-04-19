@@ -6,11 +6,11 @@ var<storage> positions: array<f32, 10880>;
 // 2 bytes per pixel. Resolution: 1024*1024.
 // Each row has 1024*2 = 2048 bytes.
 // As it is indexed as u32, each row has 512 entries in the array
-var<storage, read_write> indices: array<u32, 524288>; 
+var<storage, read_write> indices: array<u32, 2097152>; 
 
 const LAMPS_PER_UNIVERSE: u32 = 170u;
-const TEXTURE_SIZE_U: u32 = 1024u;
-const TEXTURE_SIZE_F: f32 = 1024.0;
+const TEXTURE_SIZE_U: u32 = 2048u;
+const TEXTURE_SIZE_F: f32 = 2048.0;
 const SQUARE_SIZE: u32 = 2u;
 
 @compute
