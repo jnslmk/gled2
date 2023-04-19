@@ -1,4 +1,4 @@
-use super::App;
+use super::{preview_uv, App};
 use crate::{
     animation::ColorPalette,
     scene::{Scene, SceneKind},
@@ -35,7 +35,7 @@ impl App {
             .as_mut()
             .and_then(|svg| svg.image(&mut self.pipeline))
             .map(|image| image.texture_id(ctx));
-
+        let uv = preview_uv();
         egui::CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
                 .sizes(Size::relative(0.5), 2)
@@ -47,7 +47,7 @@ impl App {
                                 .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
                                 .show(ui, |ui| {
                                     self.scenes_header(ui, kind);
-                                    self.scenes_grid(ctx, ui, kind, svg)
+                                    self.scenes_grid(ctx, ui, kind, svg, uv)
                                 });
                         });
                     }
@@ -108,7 +108,14 @@ impl App {
         });
     }
 
-    fn scenes_grid(&mut self, ctx: &Context, ui: &mut Ui, kind: SceneKind, svg: Option<TextureId>) {
+    fn scenes_grid(
+        &mut self,
+        ctx: &Context,
+        ui: &mut Ui,
+        kind: SceneKind,
+        svg: Option<TextureId>,
+        uv: Option<Rect>,
+    ) {
         let scenes = match kind {
             SceneKind::Background => &self.persistant_state.background,
             SceneKind::Foreground => &self.persistant_state.foreground,
@@ -141,6 +148,7 @@ impl App {
                                     SceneKind::Background => Color32::DARK_BLUE,
                                     SceneKind::Foreground => Color32::DARK_RED,
                                 },
+                                uv,
                             },
                         );
                         if response.changed()
@@ -194,6 +202,7 @@ struct SceneWidget<'a> {
     svg: Option<TextureId>,
     scene_size: f32,
     live_color: Color32,
+    uv: Option<Rect>,
 }
 
 impl<'a> Widget for SceneWidget<'a> {
@@ -227,7 +236,27 @@ impl<'a> Widget for SceneWidget<'a> {
                     })
                     .inner_margin(Margin::from(10.0))
                     .show(ui, |ui| {
-                        let size = Vec2::splat(self.scene_size);
+                        let uv = self.uv;
+                        let size = match uv {
+                            Some(uv) => {
+                                if uv.max.x > uv.max.y {
+                                    Vec2::new(
+                                        ui.available_width()
+                                            .min(ui.available_height() * uv.max.x / uv.max.y),
+                                        ui.available_height()
+                                            .min(ui.available_width() * uv.max.y / uv.max.x),
+                                    )
+                                } else {
+                                    Vec2::new(
+                                        ui.available_width()
+                                            .min(ui.available_height() * uv.max.y / uv.max.x),
+                                        ui.available_height()
+                                            .min(ui.available_width() * uv.max.x / uv.max.y),
+                                    )
+                                }
+                            }
+                            None => Vec2::splat(self.scene_size),
+                        };
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
                                 ui.set_max_width(size.x + 28.0);
@@ -247,10 +276,23 @@ impl<'a> Widget for SceneWidget<'a> {
                                     color_band(ui, &mut self.scene.palette);
                                 });
                             });
+
                             ui.horizontal(|ui| {
-                                let res = ui.image(self.scene.texture_id(), size);
+                                let res = ui.add({
+                                    let mut image = Image::new(self.scene.texture_id(), size);
+                                    if let Some(uv) = uv {
+                                        image = image.uv(uv);
+                                    }
+                                    image
+                                });
                                 if let Some(svg_texture_id) = self.svg {
-                                    ui.put(res.rect, Image::new(svg_texture_id, size));
+                                    ui.put(res.rect, {
+                                        let mut image = Image::new(svg_texture_id, size);
+                                        if let Some(uv) = uv {
+                                            image = image.uv(uv);
+                                        }
+                                        image
+                                    });
                                 }
                                 slider_rect = Some(
                                     ui.allocate_rect(

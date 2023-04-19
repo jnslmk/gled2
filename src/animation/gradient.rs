@@ -61,6 +61,7 @@ impl AnimationConfig for Gradient {
 
         ui.vertical_centered_justified(|ui| {
             if matches!(self.gradient, GradientType::Radial) {
+                ui.style_mut().spacing.interact_size.y = 40.0;
                 ui.menu_button("Select center of radial gradient", |ui| {
                     let size = 300.0;
                     let res =
