@@ -144,7 +144,7 @@ impl App {
                                 index,
                                 scene,
                                 svg: svg.filter(|_| scenes.show_svg),
-                                scene_size: scenes.size,
+                                scenes_size: scenes.size,
                                 live_color: match kind {
                                     SceneKind::Background => Color32::DARK_BLUE,
                                     SceneKind::Foreground => Color32::DARK_RED,
@@ -214,7 +214,7 @@ struct SceneWidget<'a> {
     index: usize,
     scene: &'a mut Scene,
     svg: Option<TextureId>,
-    scene_size: f32,
+    scenes_size: f32,
     live_color: Color32,
     uv: Option<Rect>,
 }
@@ -271,7 +271,7 @@ impl<'a> Widget for SceneWidget<'a> {
                                     )
                                 }
                             }
-                            None => Vec2::splat(self.scene_size),
+                            None => Vec2::splat(self.scenes_size),
                         };
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
