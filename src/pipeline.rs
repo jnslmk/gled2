@@ -2,10 +2,10 @@ use crate::{
     animation::{
         Color, ColorPalette, CommonConfig, Direction, Gradient, GradientType, State, Stripes,
     },
-    artnet_clear::ArtnetClear,
-    artnet_sender::{ArtnetSender, GpuReadyReceiver},
-    constants::{ARTNET_BUFFER_SIZE, GPU_NOT_INIT},
-    extract_artnet::ExtractArtnet,
+    constants::{GPU_NOT_INIT, OUTPUT_BUFFER_SIZE},
+    extract_output::ExtractOutput,
+    output_clear::OutputClear,
+    output_sender::{GpuReadyReceiver, OutputSender},
     preview::Preview,
     preview_indices::PreviewIndices,
     scene::{Scene, SceneKind},
@@ -24,15 +24,15 @@ pub struct Pipeline {
     #[serde(skip)]
     start: Option<Instant>,
     #[serde(skip)]
-    extract: Option<ExtractArtnet>,
+    extract: Option<ExtractOutput>,
     #[serde(skip)]
     preview_indices: Option<PreviewIndices>,
     #[serde(skip)]
     preview: Option<Preview>,
     #[serde(skip)]
-    artnet: Option<Buffer>,
+    output: Option<Buffer>,
     #[serde(skip)]
-    artnet_clear: Option<ArtnetClear>,
+    output_clear: Option<OutputClear>,
 }
 
 impl Clone for Pipeline {
@@ -94,17 +94,17 @@ impl Pipeline {
         pipeline
     }
 
-    pub fn set_extract_artnet(&mut self, extract_artnet: ExtractArtnet) {
-        self.extract = Some(extract_artnet);
+    pub fn set_extract_output(&mut self, extract_output: ExtractOutput) {
+        self.extract = Some(extract_output);
     }
 
     pub fn init_gpu(&mut self) {
-        self.artnet_clear.get_or_insert_with(ArtnetClear::init);
-        self.artnet.get_or_insert_with(|| {
+        self.output_clear.get_or_insert_with(OutputClear::init);
+        self.output.get_or_insert_with(|| {
             wgpu_render_state().device.create_buffer(&BufferDescriptor {
-                size: ARTNET_BUFFER_SIZE,
+                size: OUTPUT_BUFFER_SIZE,
                 usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-                label: Some("Artnet buffer"),
+                label: Some("Output buffer"),
                 mapped_at_creation: false,
             })
         });
@@ -140,18 +140,18 @@ impl Pipeline {
 
     pub fn set_buffers(&mut self) {
         for scene in self.scenes.iter_mut() {
-            scene.set_buffers(self.artnet.as_ref().expect(GPU_NOT_INIT))
+            scene.set_buffers(self.output.as_ref().expect(GPU_NOT_INIT))
         }
 
         self.preview.as_mut().expect(GPU_NOT_INIT).set_buffers(
             self.preview_indices.as_ref().expect(GPU_NOT_INIT).indices(),
-            self.artnet.as_ref().expect(GPU_NOT_INIT),
+            self.output.as_ref().expect(GPU_NOT_INIT),
         );
 
-        self.artnet_clear
+        self.output_clear
             .as_mut()
             .expect(GPU_NOT_INIT)
-            .set_buffers(self.artnet.as_ref().expect(GPU_NOT_INIT))
+            .set_buffers(self.output.as_ref().expect(GPU_NOT_INIT))
     }
 
     pub fn set_opacity(&mut self, index: usize, opacity: f32) {
@@ -195,7 +195,7 @@ impl Pipeline {
     #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self,
-        artnet_sender: &mut ArtnetSender,
+        output_sender: &mut OutputSender,
         gpu_ready_receiver: &mut GpuReadyReceiver,
         beat_progression: f32,
         beats_per_minute: f32,
@@ -243,7 +243,7 @@ impl Pipeline {
             label: Some("Render animations"),
         });
 
-        self.artnet_clear
+        self.output_clear
             .as_ref()
             .expect(GPU_NOT_INIT)
             .run(&mut encoder);
@@ -266,7 +266,7 @@ impl Pipeline {
         self.extract
             .as_mut()
             .expect(GPU_NOT_INIT)
-            .run(&mut encoder, self.artnet.as_ref().expect(GPU_NOT_INIT));
+            .run(&mut encoder, self.output.as_ref().expect(GPU_NOT_INIT));
         self.preview_indices
             .as_mut()
             .expect(GPU_NOT_INIT)
@@ -277,9 +277,9 @@ impl Pipeline {
         gpu_ready_receiver.recv().ok();
         queue.submit(std::iter::once(encoder.finish()));
 
-        artnet_sender
+        output_sender
             .send(())
-            .expect("Artnet sender closed its channel");
+            .expect("Output sender closed its channel");
     }
 }
 

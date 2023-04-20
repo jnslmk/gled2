@@ -1,7 +1,7 @@
 //! Calculate preview indices from preview positions.
 //! Each pixel position gets a u16 which is:
 //!  * 0xffffffff if it should stay black.
-//!  * index of artnet buffer where the color triplet starts.
+//!  * index of output buffer where the color triplet starts.
 use crate::{
     app::preview_positions,
     constants::{

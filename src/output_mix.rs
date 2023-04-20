@@ -1,26 +1,26 @@
-//! Combine two artnet buffers into one artnet buffer.
-use crate::{constants::ARTNET_BUFFER_SIZE, wgpu_render_state};
+//! Combine two output buffers into one output buffer.
+use crate::{constants::OUTPUT_BUFFER_SIZE, wgpu_render_state};
 use std::num::NonZeroU64;
 use wgpu::*;
 
 #[derive(Debug)]
-pub struct ArtnetMix {
+pub struct OutputMix {
     pipeline: ComputePipeline,
     bind_group_layout: BindGroupLayout,
     bind_group: Option<BindGroup>,
 }
 
-impl ArtnetMix {
+impl OutputMix {
     pub fn new() -> Self {
         let device = wgpu_render_state().device;
 
         let module = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("ArtnetMix shader"),
-            source: ShaderSource::Wgsl(include_str!("./shaders/artnet_mix.wgsl").into()),
+            label: Some("OutputMix shader"),
+            source: ShaderSource::Wgsl(include_str!("./shaders/output_mix.wgsl").into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("ArtnetMix bind group layout"),
+            label: Some("OutputMix bind group layout"),
             entries: &[
                 BindGroupLayoutEntry {
                     binding: 0,
@@ -28,7 +28,7 @@ impl ArtnetMix {
                     ty: BindingType::Buffer {
                         ty: BufferBindingType::Storage { read_only: false },
                         has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(ARTNET_BUFFER_SIZE),
+                        min_binding_size: NonZeroU64::new(OUTPUT_BUFFER_SIZE),
                     },
                     count: None,
                 },
@@ -38,7 +38,7 @@ impl ArtnetMix {
                     ty: BindingType::Buffer {
                         ty: BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(ARTNET_BUFFER_SIZE),
+                        min_binding_size: NonZeroU64::new(OUTPUT_BUFFER_SIZE),
                     },
                     count: None,
                 },
@@ -46,13 +46,13 @@ impl ArtnetMix {
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("ArtnetMix pipeline layout"),
+            label: Some("OutputMix pipeline layout"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
 
         let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            label: Some("ArtnetMix pipeline"),
+            label: Some("OutputMix pipeline"),
             layout: Some(&pipeline_layout),
             module: &module,
             entry_point: "main",
@@ -68,7 +68,7 @@ impl ArtnetMix {
     pub fn set_buffers(&mut self, main: &Buffer, other: &Buffer) {
         let device = wgpu_render_state().device;
         self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
-            label: Some("ArtnetMix bind group"),
+            label: Some("OutputMix bind group"),
             layout: &self.bind_group_layout,
             entries: &[
                 BindGroupEntry {
@@ -85,11 +85,11 @@ impl ArtnetMix {
     pub fn run(&self, encoder: &mut CommandEncoder) {
         if let Some(bind_group) = self.bind_group.as_ref() {
             let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("ArtnetMix compute pass"),
+                label: Some("OutputMix compute pass"),
             });
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, bind_group, &[]);
-            compute_pass.dispatch_workgroups(ARTNET_BUFFER_SIZE as u32 / 4, 1, 1);
+            compute_pass.dispatch_workgroups(OUTPUT_BUFFER_SIZE as u32 / 4, 1, 1);
         }
     }
 }

@@ -1,10 +1,10 @@
 use crate::{
     animation::{Animation, AnimationConfig, AnimationRenderer, ColorPalette, State},
     app::positions,
-    artnet_mix::ArtnetMix,
     constants::GPU_NOT_INIT,
     hotkey::Hotkey,
-    texture_to_artnet::TextureToArtnet,
+    output_mix::OutputMix,
+    texture_to_output::TextureToOutput,
     transition::Transition,
     wgpu_render_state,
 };
@@ -29,15 +29,15 @@ pub struct Scene {
     #[serde(skip)]
     sent_group: Option<String>,
     #[serde(skip)]
-    texture_to_artnet: Option<TextureToArtnet>,
+    texture_to_output: Option<TextureToOutput>,
     #[serde(skip)]
     texture_id: Option<OwnedTextureId>,
     #[serde(skip)]
-    artnet_dirty: bool,
+    output_is_dirty: bool,
     #[serde(skip)]
     was_ever_rendered: bool,
     #[serde(skip)]
-    artnet_mix: Option<ArtnetMix>,
+    output_mix: Option<OutputMix>,
     #[serde(skip)]
     renderer: Option<AnimationRenderer>,
 }
@@ -55,11 +55,11 @@ impl Default for Scene {
             animation: Default::default(),
             transition: Default::default(),
             sent_group: Default::default(),
-            texture_to_artnet: Default::default(),
+            texture_to_output: Default::default(),
             texture_id: Default::default(),
-            artnet_dirty: Default::default(),
+            output_is_dirty: Default::default(),
             was_ever_rendered: Default::default(),
-            artnet_mix: Default::default(),
+            output_mix: Default::default(),
             renderer: Default::default(),
         }
     }
@@ -98,14 +98,14 @@ impl Scene {
     }
 
     pub fn init_gpu(&mut self) {
-        self.artnet_mix.get_or_insert_with(ArtnetMix::new);
+        self.output_mix.get_or_insert_with(OutputMix::new);
         self.renderer.get_or_insert_with(|| {
             let config = self.animation.config();
             let animation_shader = self.animation.shader_code();
             AnimationRenderer::new(&animation_shader, &config)
         });
-        self.texture_to_artnet.get_or_insert_with(|| {
-            TextureToArtnet::init(self.renderer.as_ref().expect(GPU_NOT_INIT).texture())
+        self.texture_to_output.get_or_insert_with(|| {
+            TextureToOutput::init(self.renderer.as_ref().expect(GPU_NOT_INIT).texture())
         });
         self.texture_id.get_or_insert_with(|| {
             OwnedTextureId(
@@ -124,19 +124,19 @@ impl Scene {
     pub fn reset_gpu_state(&mut self) {
         self.sent_group.take();
         self.texture_id.take();
-        self.texture_to_artnet.take();
+        self.texture_to_output.take();
         self.renderer.take();
-        self.artnet_mix.take();
+        self.output_mix.take();
         self.init_gpu();
     }
 
     pub fn set_buffers(&mut self, main: &Buffer) {
         let other = self
-            .texture_to_artnet
+            .texture_to_output
             .as_ref()
             .expect(GPU_NOT_INIT)
-            .artnet_buffer();
-        self.artnet_mix
+            .output_buffer();
+        self.output_mix
             .as_mut()
             .expect(GPU_NOT_INIT)
             .set_buffers(main, other);
@@ -174,7 +174,7 @@ impl Scene {
 
             if self.sent_group.as_ref() != Some(&self.group) {
                 let positions = positions(&self.group);
-                self.texture_to_artnet
+                self.texture_to_output
                     .as_ref()
                     .expect(GPU_NOT_INIT)
                     .set_positions(queue, positions);
@@ -188,12 +188,12 @@ impl Scene {
                 &self.animation.config(),
             );
 
-            if (!self.active || blackout) && self.artnet_dirty {
-                self.texture_to_artnet
+            if (!self.active || blackout) && self.output_is_dirty {
+                self.texture_to_output
                     .as_ref()
                     .expect(GPU_NOT_INIT)
-                    .clear_artnet(queue);
-                self.artnet_dirty = false;
+                    .clear_output(queue);
+                self.output_is_dirty = false;
             }
         }
     }
@@ -202,12 +202,12 @@ impl Scene {
         if always_render || self.active || !self.was_ever_rendered {
             self.renderer.as_ref().expect(GPU_NOT_INIT).render(encoder);
             if self.active && !blackout {
-                self.texture_to_artnet
+                self.texture_to_output
                     .as_ref()
                     .expect(GPU_NOT_INIT)
                     .run(encoder);
-                self.artnet_dirty = true;
-                self.artnet_mix.as_ref().expect(GPU_NOT_INIT).run(encoder);
+                self.output_is_dirty = true;
+                self.output_mix.as_ref().expect(GPU_NOT_INIT).run(encoder);
             }
             self.was_ever_rendered = true;
         }

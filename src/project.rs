@@ -1,12 +1,18 @@
+mod output;
+
 use crate::{app::Svg, pipeline::Pipeline};
 use log::{error, info};
+pub use output::{Output, UniverseOutput};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 #[derive(Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct Project {
     pub pipeline: Pipeline,
     pub svg: Option<Svg>,
+    pub default_output: Output,
+    pub universe_outputs: HashMap<u16, UniverseOutput>,
 }
 
 impl Project {
@@ -27,7 +33,7 @@ impl Project {
                 info!("Loaded demo project");
                 Project {
                     pipeline: Pipeline::demo(),
-                    svg: None,
+                    ..Default::default()
                 }
             }
             Some(project) => {

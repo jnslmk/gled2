@@ -125,6 +125,8 @@ impl App {
                         Project {
                             svg: self.svg.clone(),
                             pipeline: self.pipeline.clone(),
+                            default_output: self.default_output.clone(),
+                            universe_outputs: self.universe_outputs.clone(),
                         }
                         .store(&project_path);
                     }
@@ -183,6 +185,7 @@ impl App {
 
                     ui.separator();
 
+                    /* TODO: support outputs
                     ui.label(RichText::new("Artnet IP").heading());
                     if ui
                         .add(TextEdit::singleline(&mut self.artnet_ip_input))
@@ -194,6 +197,7 @@ impl App {
                         self.persistant_state.dirty = true;
                         self.persistant_state.set_artnet_ip();
                     }
+                    */
 
                     ui.separator();
 

@@ -1,9 +1,9 @@
-//! Extract colors out of a texture into artnet buffers
+//! Extract colors out of a texture into output buffers
 
 mod positions;
 
 use crate::{
-    constants::{ARTNET_BUFFER_SIZE, POSITIONS_BUFFER_SIZE, UNIVERSES},
+    constants::{OUTPUT_BUFFER_SIZE, POSITIONS_BUFFER_SIZE, UNIVERSES},
     wgpu_render_state,
 };
 use log::debug;
@@ -16,21 +16,21 @@ use wgpu::{
 pub use positions::{Lamp, Positions, Universe};
 
 #[derive(Debug)]
-pub struct TextureToArtnet {
+pub struct TextureToOutput {
     pipeline: ComputePipeline,
     bind_group: BindGroup,
     positions: Buffer,
-    artnet: Buffer,
+    output: Buffer,
 }
 
-impl TextureToArtnet {
+impl TextureToOutput {
     pub fn init(texture: &Texture) -> Self {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
 
         let module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("TextureToArtnet shader"),
-            source: ShaderSource::Wgsl(include_str!("./shaders/texture_to_artnet.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("./shaders/texture_to_output.wgsl").into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -68,7 +68,7 @@ impl TextureToArtnet {
                     ty: BindingType::Buffer {
                         ty: BufferBindingType::Storage { read_only: false },
                         has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(ARTNET_BUFFER_SIZE),
+                        min_binding_size: NonZeroU64::new(OUTPUT_BUFFER_SIZE),
                     },
                     count: None,
                 },
@@ -100,8 +100,8 @@ impl TextureToArtnet {
             ..Default::default()
         });
 
-        let artnet = device.create_buffer(&BufferDescriptor {
-            size: ARTNET_BUFFER_SIZE,
+        let output = device.create_buffer(&BufferDescriptor {
+            size: OUTPUT_BUFFER_SIZE,
             usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
             label: Some("TextureToArtnet output buffer gpu"),
             mapped_at_creation: false,
@@ -130,7 +130,7 @@ impl TextureToArtnet {
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: artnet.as_entire_binding(),
+                    resource: output.as_entire_binding(),
                 },
             ],
         });
@@ -139,7 +139,7 @@ impl TextureToArtnet {
             pipeline,
             bind_group,
             positions,
-            artnet,
+            output,
         }
     }
 
@@ -149,9 +149,9 @@ impl TextureToArtnet {
         queue.write_buffer(&self.positions, 0, &positions_contents);
     }
 
-    pub fn clear_artnet(&self, queue: &Queue) {
-        debug!("Clearing artnet buffer");
-        queue.write_buffer(&self.artnet, 0, &[0u8; ARTNET_BUFFER_SIZE as usize]);
+    pub fn clear_output(&self, queue: &Queue) {
+        debug!("Clearing output buffer");
+        queue.write_buffer(&self.output, 0, &[0u8; OUTPUT_BUFFER_SIZE as usize]);
     }
 
     pub fn run(&self, encoder: &mut CommandEncoder) {
@@ -163,7 +163,7 @@ impl TextureToArtnet {
         compute_pass.dispatch_workgroups(UNIVERSES as u32, 43, 1);
     }
 
-    pub fn artnet_buffer(&self) -> &Buffer {
-        &self.artnet
+    pub fn output_buffer(&self) -> &Buffer {
+        &self.output
     }
 }

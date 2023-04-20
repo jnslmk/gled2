@@ -1,4 +1,4 @@
-use crate::{pipeline::Pipeline, svg::MeasurementPoints, texture_to_artnet::Positions};
+use crate::{pipeline::Pipeline, svg::MeasurementPoints, texture_to_output::Positions};
 use anyhow::Result;
 use egui::Rect;
 use egui_extras::RetainedImage;

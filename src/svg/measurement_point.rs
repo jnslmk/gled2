@@ -3,7 +3,7 @@
 use super::{Led, Parameter, ParsedSvg};
 use crate::{
     constants::UNIVERSES,
-    texture_to_artnet::{Lamp, Positions, Universe},
+    texture_to_output::{Lamp, Positions, Universe},
 };
 use egui::{Pos2, Rect};
 use log::debug;

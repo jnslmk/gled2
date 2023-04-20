@@ -8,33 +8,35 @@ mod svg;
 mod timing;
 
 use crate::{
-    artnet_sender::{self, ArtnetSender, GpuReadyReceiver},
-    extract_artnet::ExtractArtnet,
+    extract_output::ExtractOutput,
     hotkey::Gamepad,
     logo::logo_image,
+    output_sender::{self, GpuReadyReceiver, OutputSender},
     pipeline::{Pipeline, RenderDeactivatedScenes},
-    project::Project,
+    project::{Output, Project, UniverseOutput},
 };
 use egui::Modifiers;
 use egui_extras::RetainedImage;
 use persistant_state::PersistantState;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use timing::Timing;
 
 pub use svg::{positions, preview_positions, preview_uv, Svg};
 
 pub struct App {
-    artnet_sender: ArtnetSender,
+    output_sender: OutputSender,
     gpu_ready_receiver: GpuReadyReceiver,
     logo_image: RetainedImage,
-    extract_artnet: ExtractArtnet,
+    extract_output: ExtractOutput,
     timing: Timing,
     persistant_state: PersistantState,
     project_path: Option<PathBuf>,
     pipeline: Pipeline,
     gamepad: Gamepad,
+    default_output: Output,
+    universe_outputs: HashMap<u16, UniverseOutput>,
 
-    artnet_ip_input: String,
     blackout: bool,
     svg: Option<Svg>,
     about_window_open: bool,
@@ -67,7 +69,7 @@ impl eframe::App for App {
         ));
 
         self.pipeline.render(
-            &mut self.artnet_sender,
+            &mut self.output_sender,
             &mut self.gpu_ready_receiver,
             self.timing.beat_progression(),
             self.timing.beats_per_minute,
@@ -100,21 +102,18 @@ impl eframe::App for App {
 impl App {
     pub fn new() -> Option<Self> {
         let persistant_state = PersistantState::load();
-        persistant_state.set_artnet_ip();
-
-        let extract_artnet = ExtractArtnet::new();
-        let (artnet_sender, gpu_ready_receiver) =
-            artnet_sender::start(extract_artnet.clone()).expect("Could not start artnet sender");
+        let extract_output = ExtractOutput::new();
+        let (output_sender, gpu_ready_receiver) =
+            output_sender::start(extract_output.clone()).expect("Could not start output sender");
         let logo_image = logo_image();
 
         let mut app = Self {
-            artnet_sender,
+            output_sender,
             gpu_ready_receiver,
             logo_image,
-            extract_artnet,
+            extract_output,
             svg: None,
             project_path: crate::opts::OPTS.project_path.clone(),
-            artnet_ip_input: persistant_state.artnet_ip.clone(),
             persistant_state,
             timing: Timing::default(),
             blackout: false,
@@ -123,6 +122,8 @@ impl App {
             hovered_scene: 0,
             pipeline: Pipeline::default(),
             gamepad: Gamepad::new(),
+            default_output: Output::default(),
+            universe_outputs: HashMap::new(),
         };
 
         app.load_project();
@@ -138,8 +139,10 @@ impl App {
     pub fn use_project(&mut self, project: Project) {
         self.pipeline = project.pipeline;
         self.pipeline
-            .set_extract_artnet(self.extract_artnet.clone());
+            .set_extract_output(self.extract_output.clone());
         self.pipeline.init_gpu();
+        self.default_output = project.default_output;
+        self.universe_outputs = project.universe_outputs;
 
         svg::reset();
         self.svg = project.svg;

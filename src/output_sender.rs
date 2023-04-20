@@ -1,5 +1,6 @@
 //! Send data via Art-Net udp protocol.
 use anyhow::{Context, Result};
+use artnet_protocol::{ArtCommand, Output, PaddedData, PortAddress};
 use log::{debug, error};
 use std::{
     net::{IpAddr, Ipv4Addr, ToSocketAddrs, UdpSocket},
@@ -10,25 +11,22 @@ use std::{
     thread,
 };
 
-use crate::extract_artnet::ExtractArtnet;
-pub type ArtnetSender = Sender<()>;
+use crate::{
+    constants::{UNIVERSES, UNIVERSE_BUFFER_SIZE},
+    extract_output::ExtractOutput,
+};
+pub type OutputSender = Sender<()>;
 pub type GpuReadyReceiver = Receiver<()>;
 
-static ARTNET_IP: RwLock<IpAddr> = RwLock::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
-
-pub fn set_artnet_ip(artnet_ip: IpAddr) {
-    *ARTNET_IP.write().expect("ARTNET_HOST is poisoned") = artnet_ip;
-}
-
-/// Start artnet thread
-pub fn start(mut extract_artnet: ExtractArtnet) -> Result<(ArtnetSender, GpuReadyReceiver)> {
-    debug!("Spawning artnet thread");
-    let (artnet_sender, artnet_receiver) = std::sync::mpsc::channel::<()>();
+/// Start output thread
+pub fn start(mut extract_output: ExtractOutput) -> Result<(OutputSender, GpuReadyReceiver)> {
+    debug!("Spawning output thread");
+    let (output_sender, output_receiver) = std::sync::mpsc::channel::<()>();
     let (gpu_ready_sender, gpu_ready_receiver) = std::sync::mpsc::channel::<()>();
     gpu_ready_sender.send(()).ok();
 
     thread::Builder::new()
-        .name("gled:artnet:tx".to_owned())
+        .name("gled:output:tx".to_owned())
         .spawn(move || {
             let socket = { 6000..7000 }
                 .filter_map(|port| UdpSocket::bind(("0.0.0.0", port)).ok())
@@ -43,8 +41,26 @@ pub fn start(mut extract_artnet: ExtractArtnet) -> Result<(ArtnetSender, GpuRead
                 Err(e) => debug!("Could not activate non-blocking mode: {}", e),
             };
 
-            for _ in artnet_receiver.iter() {
-                let commands = extract_artnet.poll_artnet_buffer();
+            for _ in output_receiver.iter() {
+                let output_data = extract_output.poll_output_buffer();
+
+                let commands: Vec<_> = extract_output
+                    .universes()
+                    .iter()
+                    .take(UNIVERSES as usize)
+                    .zip(output_data.chunks(UNIVERSE_BUFFER_SIZE as usize))
+                    .filter_map(|(universe, data)| {
+                        log::debug!("Preparing artnet command for universe {universe}");
+                        let output = Output {
+                            data: PaddedData::from(data.to_vec()),
+                            port_address: PortAddress::try_from(*universe).ok()?,
+                            ..Default::default()
+                        };
+
+                        Some(ArtCommand::Output(output))
+                    })
+                    .collect();
+
                 gpu_ready_sender.send(()).ok();
 
                 for command in commands {
@@ -55,6 +71,7 @@ pub fn start(mut extract_artnet: ExtractArtnet) -> Result<(ArtnetSender, GpuRead
                         continue;
                     };
 
+                    /* TODO: Support outputs
                     let Some(addr) = ARTNET_IP
                     .read()
                     .ok()
@@ -68,10 +85,11 @@ pub fn start(mut extract_artnet: ExtractArtnet) -> Result<(ArtnetSender, GpuRead
                     if let Err(err) = socket.send_to(&bytes, addr) {
                         error!("Could not send data: {:?}", err)
                     };
+                    */
                 }
             }
         })
         .context("Could not spawn artnet thread")?;
 
-    Ok((artnet_sender, gpu_ready_receiver))
+    Ok((output_sender, gpu_ready_receiver))
 }

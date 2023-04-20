@@ -2,22 +2,22 @@
 
 mod animation;
 mod app;
-mod artnet_clear;
-mod artnet_mix;
-mod artnet_sender;
 mod constants;
-mod extract_artnet;
+mod extract_output;
 mod hotkey;
 mod logging;
 mod logo;
 mod opts;
+mod output_clear;
+mod output_mix;
+mod output_sender;
 mod pipeline;
 mod preview;
 mod preview_indices;
 mod project;
 mod scene;
 mod svg;
-mod texture_to_artnet;
+mod texture_to_output;
 mod transition;
 
 use app::App;

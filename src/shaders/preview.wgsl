@@ -5,7 +5,7 @@
 var<storage> indices: array<u32, 2097152>; 
 
 @group(0) @binding(1)
-var<storage> artnet: array<u32, 4096>;
+var<storage> output: array<u32, 4096>;
 
 const TEXTURE_SIZE_U: u32 = 2048u;
 const TEXTURE_SIZE_F: f32 = 2048.0;
@@ -37,24 +37,24 @@ fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
 		let start_index = universe * 128u + start_byte / 4u;
 		switch start_byte % 4u {
 			case 0u: {
-				red = artnet[start_index] & 0x000000ffu;
-				green = (artnet[start_index] & 0x0000ff00u) >> 8u;
-				blue = (artnet[start_index] & 0x00ff0000u) >> 16u;
+				red = output[start_index] & 0x000000ffu;
+				green = (output[start_index] & 0x0000ff00u) >> 8u;
+				blue = (output[start_index] & 0x00ff0000u) >> 16u;
 			}
 			case 1u: {
-				red = (artnet[start_index] & 0x0000ff00u) >> 8u;
-				green = (artnet[start_index] & 0x00ff0000u) >> 16u;
-				blue = (artnet[start_index] & 0xff000000u) >> 24u;
+				red = (output[start_index] & 0x0000ff00u) >> 8u;
+				green = (output[start_index] & 0x00ff0000u) >> 16u;
+				blue = (output[start_index] & 0xff000000u) >> 24u;
 			}
 			case 2u: {
-				red = (artnet[start_index] & 0x00ff0000u) >> 16u;
-				green = (artnet[start_index] & 0xff000000u) >> 24u;
-				blue = artnet[start_index + 1u] & 0x000000ffu;
+				red = (output[start_index] & 0x00ff0000u) >> 16u;
+				green = (output[start_index] & 0xff000000u) >> 24u;
+				blue = output[start_index + 1u] & 0x000000ffu;
 			}
 			case default: {
-				red = (artnet[start_index] & 0xff000000u) >> 24u;
-				green = artnet[start_index + 1u] & 0x000000ffu;
-				blue = (artnet[start_index + 1u] & 0x0000ff00u) >> 8u;
+				red = (output[start_index] & 0xff000000u) >> 24u;
+				green = output[start_index + 1u] & 0x000000ffu;
+				blue = (output[start_index + 1u] & 0x0000ff00u) >> 8u;
 			}
 		}
 

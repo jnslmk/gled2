@@ -1,12 +1,10 @@
 use super::scenes::Scenes;
-use crate::artnet_sender;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PersistantState {
-    pub artnet_ip: String,
     pub show_preview_svg: bool,
     pub main_dimmer: f32,
     pub fullscreen: bool,
@@ -21,7 +19,6 @@ pub struct PersistantState {
 impl Default for PersistantState {
     fn default() -> Self {
         Self {
-            artnet_ip: "127.0.0.1".to_string(),
             show_preview_svg: true,
             main_dimmer: 1.0,
             fullscreen: Default::default(),
@@ -65,12 +62,6 @@ impl PersistantState {
 
             info!("Saved persistant state");
         });
-    }
-
-    pub fn set_artnet_ip(&self) {
-        if let Ok(ip) = self.artnet_ip.parse() {
-            artnet_sender::set_artnet_ip(ip);
-        }
     }
 
     fn path() -> Option<PathBuf> {
