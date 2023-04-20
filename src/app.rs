@@ -13,13 +13,12 @@ use crate::{
     logo::logo_image,
     output_sender::{self, GpuReadyReceiver, OutputSender},
     pipeline::{Pipeline, RenderDeactivatedScenes},
-    project::{Output, Project, UniverseOutput},
+    project::Project,
 };
 use egui::Modifiers;
 use egui_extras::RetainedImage;
 use persistant_state::PersistantState;
-use std::collections::HashMap;
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 use timing::Timing;
 
 pub use svg::{positions, preview_positions, preview_uv, Svg};
@@ -34,8 +33,7 @@ pub struct App {
     project_path: Option<PathBuf>,
     pipeline: Pipeline,
     gamepad: Gamepad,
-    default_output: Output,
-    universe_outputs: HashMap<u16, UniverseOutput>,
+    inputs: HashMap<String, String>,
 
     blackout: bool,
     svg: Option<Svg>,
@@ -122,8 +120,7 @@ impl App {
             hovered_scene: 0,
             pipeline: Pipeline::default(),
             gamepad: Gamepad::new(),
-            default_output: Output::default(),
-            universe_outputs: HashMap::new(),
+            inputs: HashMap::new(),
         };
 
         app.load_project();
@@ -141,8 +138,12 @@ impl App {
         self.pipeline
             .set_extract_output(self.extract_output.clone());
         self.pipeline.init_gpu();
-        self.default_output = project.default_output;
-        self.universe_outputs = project.universe_outputs;
+
+        *self
+            .extract_output
+            .outputs
+            .write()
+            .expect("outputs is poisoned") = project.outputs;
 
         svg::reset();
         self.svg = project.svg;

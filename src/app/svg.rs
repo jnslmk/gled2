@@ -5,6 +5,7 @@ use egui_extras::RetainedImage;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeSet,
     path::Path,
     sync::{Arc, RwLock},
 };
@@ -95,4 +96,11 @@ pub fn preview_uv() -> Option<Rect> {
         .write()
         .expect("MEASUREMENT_POINTS is poisoned")
         .preview_uv()
+}
+
+pub fn universes() -> BTreeSet<u16> {
+    MEASUREMENT_POINTS
+        .read()
+        .expect("MEASUREMENT_POINTS is poisoned")
+        .universes()
 }

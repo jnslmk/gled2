@@ -2,6 +2,7 @@
 
 use crate::{
     constants::{OUTPUT_BUFFER_SIZE, UNIVERSES, UNIVERSE_BUFFER_SIZE},
+    project::Outputs,
     svg::Universes,
     wgpu_render_state,
 };
@@ -15,6 +16,7 @@ use wgpu::*;
 pub struct ExtractOutput {
     output_cpu: Arc<Buffer>,
     universes: Arc<RwLock<Universes>>,
+    pub outputs: Arc<RwLock<Outputs>>,
 }
 
 impl ExtractOutput {
@@ -29,6 +31,7 @@ impl ExtractOutput {
         Self {
             output_cpu: Arc::new(output_cpu),
             universes: Arc::new(RwLock::new(BTreeSet::new())),
+            outputs: Arc::new(RwLock::new(Outputs::default())),
         }
     }
 

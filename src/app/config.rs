@@ -139,10 +139,18 @@ impl App {
                                         .shortcut_text("Del"),
                                 )
                                 .clicked()
-                                || ctx.input_mut(|i| {
-                                    i.consume_key(Modifiers::default(), egui::Key::Backspace)
-                                        || i.consume_key(Modifiers::default(), egui::Key::Delete)
-                                })
+                                || {
+                                    !ctx.wants_keyboard_input()
+                                        && ctx.input_mut(|i| {
+                                            i.consume_key(
+                                                Modifiers::default(),
+                                                egui::Key::Backspace,
+                                            ) || i.consume_key(
+                                                Modifiers::default(),
+                                                egui::Key::Delete,
+                                            )
+                                        })
+                                }
                             {
                                 action = Action::Delete;
                             }

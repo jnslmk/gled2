@@ -2,17 +2,17 @@ mod output;
 
 use crate::{app::Svg, pipeline::Pipeline};
 use log::{error, info};
-pub use output::{Output, UniverseOutput};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
+
+pub use output::{Output, OutputKind, Outputs, UniverseOutput};
 
 #[derive(Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Project {
     pub pipeline: Pipeline,
     pub svg: Option<Svg>,
-    pub default_output: Output,
-    pub universe_outputs: HashMap<u16, UniverseOutput>,
+    pub outputs: Outputs,
 }
 
 impl Project {

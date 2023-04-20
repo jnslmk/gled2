@@ -1,9 +1,12 @@
-use super::{svg::Svg, App};
-use crate::project::Project;
+use super::{
+    svg::{universes, Svg},
+    App,
+};
+use crate::project::{Output, OutputKind, Project, UniverseOutput};
 use eframe::Frame;
 use egui::{
-    text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers, RichText, Slider,
-    Stroke, TextEdit, TextFormat, Vec2,
+    text::LayoutJob, Button, Color32, Context, ImageButton, Key, Layout, Modifiers, RichText,
+    Slider, Stroke, TextEdit, TextFormat, Vec2,
 };
 use log::{debug, error};
 use std::net::IpAddr;
@@ -125,8 +128,12 @@ impl App {
                         Project {
                             svg: self.svg.clone(),
                             pipeline: self.pipeline.clone(),
-                            default_output: self.default_output.clone(),
-                            universe_outputs: self.universe_outputs.clone(),
+                            outputs: self
+                                .extract_output
+                                .outputs
+                                .read()
+                                .expect("outputs is poisoned")
+                                .clone(),
                         }
                         .store(&project_path);
                     }
@@ -185,19 +192,329 @@ impl App {
 
                     ui.separator();
 
-                    /* TODO: support outputs
-                    ui.label(RichText::new("Artnet IP").heading());
-                    if ui
-                        .add(TextEdit::singleline(&mut self.artnet_ip_input))
-                        .changed()
-                        && self.artnet_ip_input.parse::<IpAddr>().is_ok()
-                        && self.artnet_ip_input != self.persistant_state.artnet_ip
-                    {
-                        self.persistant_state.artnet_ip = self.artnet_ip_input.clone();
-                        self.persistant_state.dirty = true;
-                        self.persistant_state.set_artnet_ip();
-                    }
-                    */
+                    ui.menu_button(RichText::new("Outputs").heading(), |ui| {
+                        ui.set_min_width(400.0);
+
+                        egui::ScrollArea::vertical()
+                            .id_source("output_scroll")
+                            .show(ui, |ui| {
+                                ui.with_layout(
+                                    Layout::top_down_justified(egui::Align::Min),
+                                    |ui| {
+                                        let mut new_outputs = None;
+                                        {
+                                            let outputs = self
+                                                .extract_output
+                                                .outputs
+                                                .read()
+                                                .expect("outputs is poisoned");
+
+                                            let mut default_output_kind =
+                                                outputs.default_output().kind();
+                                            ui.label(RichText::new("Default Output").heading());
+                                            ui.horizontal(|ui| {
+                                                if ui
+                                                    .radio_value(
+                                                        &mut default_output_kind,
+                                                        OutputKind::Artnet,
+                                                        "Artnet",
+                                                    )
+                                                    .changed()
+                                                {
+                                                    let mut outputs = outputs.clone();
+                                                    *outputs.default_output_mut() =
+                                                        Output::Artnet {
+                                                            ip: "127.0.0.1".parse().expect(
+                                                                "Could not parse 127.0.0.1",
+                                                            ),
+                                                        };
+                                                    new_outputs = Some(outputs);
+                                                };
+                                                if ui
+                                                    .radio_value(
+                                                        &mut default_output_kind,
+                                                        OutputKind::WledDRGB,
+                                                        "Wled DRGB",
+                                                    )
+                                                    .changed()
+                                                {
+                                                    let mut outputs = outputs.clone();
+                                                    *outputs.default_output_mut() =
+                                                        Output::WledDRGB {
+                                                            ip: "127.0.0.1".parse().expect(
+                                                                "Could not parse 127.0.0.1",
+                                                            ),
+                                                            port: 21324,
+                                                        };
+                                                    new_outputs = Some(outputs);
+                                                };
+                                            });
+                                            match outputs.default_output() {
+                                                Output::Artnet { ip } => {
+                                                    ui.label("Artnet IP");
+                                                    let ip = self
+                                                        .inputs
+                                                        .entry("default_artnet_ip".to_string())
+                                                        .or_insert_with(|| ip.to_string());
+                                                    if ui.add(TextEdit::singleline(ip)).changed()
+                                                        && ip.parse::<IpAddr>().is_ok()
+                                                    {
+                                                        let mut outputs = outputs.clone();
+                                                        *outputs.default_output_mut() =
+                                                            Output::Artnet {
+                                                                ip: ip
+                                                                    .parse()
+                                                                    .expect("Should never happen"),
+                                                            };
+                                                        new_outputs = Some(outputs);
+                                                    }
+                                                }
+                                                Output::WledDRGB { ip, port } => {
+                                                    {
+                                                        ui.label("Wled DRGB IP");
+                                                        let ip = self
+                                                            .inputs
+                                                            .entry("default_wledrgb_ip".to_string())
+                                                            .or_insert_with(|| ip.to_string());
+                                                        if ui
+                                                            .add(TextEdit::singleline(ip))
+                                                            .changed()
+                                                            && ip.parse::<IpAddr>().is_ok()
+                                                        {
+                                                            let mut outputs = outputs.clone();
+                                                            *outputs.default_output_mut() =
+                                                                Output::WledDRGB {
+                                                                    ip: ip.parse().expect(
+                                                                        "Should never happen",
+                                                                    ),
+                                                                    port: *port,
+                                                                };
+                                                            new_outputs = Some(outputs);
+                                                        }
+                                                    }
+
+                                                    {
+                                                        ui.label("Wled DRGB Port");
+                                                        let port = self
+                                                            .inputs
+                                                            .entry(
+                                                                "default_wledrgb_port".to_string(),
+                                                            )
+                                                            .or_insert_with(|| port.to_string());
+                                                        if ui
+                                                            .add(TextEdit::singleline(port))
+                                                            .changed()
+                                                            && port.parse::<u16>().is_ok()
+                                                        {
+                                                            let mut outputs = outputs.clone();
+                                                            *outputs.default_output_mut() =
+                                                                Output::WledDRGB {
+                                                                    ip: *ip,
+                                                                    port: port.parse().expect(
+                                                                        "Should never happen",
+                                                                    ),
+                                                                };
+                                                            new_outputs = Some(outputs);
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            for universe in universes() {
+                                                ui.separator();
+                                                ui.label(
+                                                    RichText::new(format!("Universe: {universe}"))
+                                                        .heading(),
+                                                );
+                                                let universe_output =
+                                                    outputs.universe_output(universe);
+                                                let mut universe_output_kind =
+                                                    universe_output.kind();
+                                                ui.horizontal(|ui| {
+                                                    if ui
+                                                        .radio_value(
+                                                            &mut universe_output_kind,
+                                                            OutputKind::Default,
+                                                            "Default",
+                                                        )
+                                                        .changed()
+                                                    {
+                                                        let mut outputs = outputs.clone();
+                                                        *outputs.universe_output_mut(universe) =
+                                                            UniverseOutput::Default;
+                                                        new_outputs = Some(outputs);
+                                                    }
+                                                    if ui
+                                                        .radio_value(
+                                                            &mut universe_output_kind,
+                                                            OutputKind::Artnet,
+                                                            "Artnet",
+                                                        )
+                                                        .changed()
+                                                    {
+                                                        let mut outputs = outputs.clone();
+                                                        *outputs.universe_output_mut(universe) =
+                                                            UniverseOutput::Artnet {
+                                                                ip: "127.0.0.1".parse().expect(
+                                                                    "Could not parse 127.0.0.1",
+                                                                ),
+                                                                universe,
+                                                            };
+                                                        new_outputs = Some(outputs);
+                                                    }
+                                                    if ui
+                                                        .radio_value(
+                                                            &mut universe_output_kind,
+                                                            OutputKind::WledDRGB,
+                                                            "Wled DRGB",
+                                                        )
+                                                        .changed()
+                                                    {
+                                                        let mut outputs = outputs.clone();
+                                                        *outputs.universe_output_mut(universe) =
+                                                            UniverseOutput::WledDRGB {
+                                                                ip: "127.0.0.1".parse().expect(
+                                                                    "Could not parse 127.0.0.1",
+                                                                ),
+                                                                port: 21324,
+                                                            };
+                                                        new_outputs = Some(outputs);
+                                                    }
+                                                });
+
+                                                match universe_output {
+                                                    UniverseOutput::Default => (),
+                                                    UniverseOutput::Artnet { ip, universe } => {
+                                                        {
+                                                            ui.label("Artnet IP");
+                                                            let ip = self
+                                                                .inputs
+                                                                .entry(format!(
+                                                                    "artnet_ip_{universe}"
+                                                                ))
+                                                                .or_insert_with(|| ip.to_string());
+                                                            if ui
+                                                                .add(TextEdit::singleline(ip))
+                                                                .changed()
+                                                                && ip.parse::<IpAddr>().is_ok()
+                                                            {
+                                                                let mut outputs = outputs.clone();
+                                                                *outputs.universe_output_mut(
+                                                                    universe,
+                                                                ) = UniverseOutput::Artnet {
+                                                                    ip: ip.parse().expect(
+                                                                        "Should never happen",
+                                                                    ),
+                                                                    universe,
+                                                                };
+                                                                new_outputs = Some(outputs);
+                                                            }
+                                                        }
+
+                                                        {
+                                                            ui.label("Artnet Universe");
+                                                            let universe_str = self
+                                                                .inputs
+                                                                .entry(format!(
+                                                                    "artnet_universe_{universe}"
+                                                                ))
+                                                                .or_insert_with(|| {
+                                                                    universe.to_string()
+                                                                });
+                                                            if ui
+                                                                .add(TextEdit::singleline(
+                                                                    universe_str,
+                                                                ))
+                                                                .changed()
+                                                                && universe_str
+                                                                    .parse::<u16>()
+                                                                    .is_ok()
+                                                            {
+                                                                let mut outputs = outputs.clone();
+                                                                *outputs.universe_output_mut(
+                                                                    universe,
+                                                                ) = UniverseOutput::Artnet {
+                                                                    ip,
+                                                                    universe: universe_str
+                                                                        .parse()
+                                                                        .expect(
+                                                                            "Should never happen",
+                                                                        ),
+                                                                };
+                                                                new_outputs = Some(outputs);
+                                                            }
+                                                        }
+                                                    }
+                                                    UniverseOutput::WledDRGB { ip, port } => {
+                                                        {
+                                                            ui.label("Wled DRGB IP");
+                                                            let ip = self
+                                                                .inputs
+                                                                .entry(format!(
+                                                                    "wledrgb_ip_{universe}"
+                                                                ))
+                                                                .or_insert_with(|| ip.to_string());
+                                                            if ui
+                                                                .add(TextEdit::singleline(ip))
+                                                                .changed()
+                                                                && ip.parse::<IpAddr>().is_ok()
+                                                            {
+                                                                let mut outputs = outputs.clone();
+                                                                *outputs.universe_output_mut(
+                                                                    universe,
+                                                                ) = UniverseOutput::WledDRGB {
+                                                                    ip: ip.parse().expect(
+                                                                        "Should never happen",
+                                                                    ),
+                                                                    port,
+                                                                };
+                                                                new_outputs = Some(outputs);
+                                                            }
+                                                        }
+
+                                                        {
+                                                            ui.label("Wled DRGB Port");
+                                                            let port = self
+                                                                .inputs
+                                                                .entry(format!(
+                                                                    "wledrgb_port_{universe}"
+                                                                ))
+                                                                .or_insert_with(|| {
+                                                                    port.to_string()
+                                                                });
+                                                            if ui
+                                                                .add(TextEdit::singleline(port))
+                                                                .changed()
+                                                                && port.parse::<u16>().is_ok()
+                                                            {
+                                                                let mut outputs = outputs.clone();
+                                                                *outputs.universe_output_mut(
+                                                                    universe,
+                                                                ) = UniverseOutput::WledDRGB {
+                                                                    ip,
+                                                                    port: port.parse().expect(
+                                                                        "Should never happen",
+                                                                    ),
+                                                                };
+                                                                new_outputs = Some(outputs);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        if let Some(outputs) = new_outputs {
+                                            *self
+                                                .extract_output
+                                                .outputs
+                                                .write()
+                                                .expect("outputs is poisoned") = outputs;
+                                        }
+                                    },
+                                );
+                            });
+                    });
 
                     ui.separator();
 

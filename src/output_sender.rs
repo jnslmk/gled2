@@ -1,19 +1,16 @@
 //! Send data via Art-Net udp protocol.
 use anyhow::{Context, Result};
-use artnet_protocol::{ArtCommand, Output, PaddedData, PortAddress};
 use log::{debug, error};
 use std::{
-    net::{IpAddr, Ipv4Addr, ToSocketAddrs, UdpSocket},
-    sync::{
-        mpsc::{Receiver, Sender},
-        RwLock,
-    },
+    net::{SocketAddr, ToSocketAddrs, UdpSocket},
+    sync::mpsc::{Receiver, Sender},
     thread,
 };
 
 use crate::{
     constants::{UNIVERSES, UNIVERSE_BUFFER_SIZE},
     extract_output::ExtractOutput,
+    project::UniverseOutput,
 };
 pub type OutputSender = Sender<()>;
 pub type GpuReadyReceiver = Receiver<()>;
@@ -42,50 +39,68 @@ pub fn start(mut extract_output: ExtractOutput) -> Result<(OutputSender, GpuRead
             };
 
             for _ in output_receiver.iter() {
-                let output_data = extract_output.poll_output_buffer();
+                let packages: Vec<(SocketAddr, Vec<u8>)> = {
+                    let output_data = extract_output.poll_output_buffer();
+                    gpu_ready_sender.send(()).ok();
 
-                let commands: Vec<_> = extract_output
-                    .universes()
-                    .iter()
-                    .take(UNIVERSES as usize)
-                    .zip(output_data.chunks(UNIVERSE_BUFFER_SIZE as usize))
-                    .filter_map(|(universe, data)| {
-                        log::debug!("Preparing artnet command for universe {universe}");
-                        let output = Output {
-                            data: PaddedData::from(data.to_vec()),
-                            port_address: PortAddress::try_from(*universe).ok()?,
-                            ..Default::default()
-                        };
+                    let outputs = extract_output.outputs.read().expect("outputs is poisoned");
 
-                        Some(ArtCommand::Output(output))
-                    })
-                    .collect();
+                    extract_output
+                        .universes()
+                        .iter()
+                        .take(UNIVERSES as usize)
+                        .zip(output_data.chunks(UNIVERSE_BUFFER_SIZE as usize))
+                        .filter_map(|(universe, data)| {
+                            let universe_output = outputs.universe_output_normalized(*universe);
 
-                gpu_ready_sender.send(()).ok();
+                            match universe_output {
+                                UniverseOutput::Default => unreachable!(),
+                                UniverseOutput::Artnet { ip, universe } => {
+                                    log::debug!("Preparing artnet command for universe {universe}");
+                                    let output = artnet_protocol::Output {
+                                        data: artnet_protocol::PaddedData::from(data.to_vec()),
+                                        port_address: artnet_protocol::PortAddress::try_from(
+                                            universe,
+                                        )
+                                        .ok()?,
+                                        ..Default::default()
+                                    };
 
-                for command in commands {
-                    let Ok(bytes) = command
-                    .write_to_buffer()
-                    .map_err(|e| error!("Could not convert command into buffer: {:?}", e))
-                    else {
-                        continue;
-                    };
+                                    (ip, 6454)
+                                        .to_socket_addrs()
+                                        .ok()
+                                        .and_then(|mut addrs| addrs.next())
+                                        .and_then(|addr| {
+                                            artnet_protocol::ArtCommand::Output(output)
+                                                .write_to_buffer()
+                                                .ok()
+                                                .map(|data| (addr, data))
+                                        })
+                                }
+                                UniverseOutput::WledDRGB { ip, port } => {
+                                    log::debug!("Preparing wled drgb data for universe {universe}");
+                                    let mut wled_data = Vec::with_capacity(514);
+                                    wled_data.push(2); // DRGB
+                                    wled_data.push(255); // Seconds of no signal after which to switch to auto. 255 is infinite.
+                                    wled_data.extend(data);
 
-                    /* TODO: Support outputs
-                    let Some(addr) = ARTNET_IP
-                    .read()
-                    .ok()
-                    .and_then(|ip| (*ip, 6454).to_socket_addrs().ok())
-                    .and_then(|mut addr| addr.next()) else {
-                        continue;
-                    };
+                                    (ip, port)
+                                        .to_socket_addrs()
+                                        .ok()
+                                        .and_then(|mut addrs| addrs.next())
+                                        .map(|addr| (addr, wled_data))
+                                }
+                            }
+                        })
+                        .collect()
+                };
 
-                    log::debug!("Sending artnet command to {addr}");
-                    log::trace!("Artnet data: {bytes:02x?}");
-                    if let Err(err) = socket.send_to(&bytes, addr) {
+                for (addr, data) in packages {
+                    log::debug!("Sending package to {addr}");
+                    log::trace!("Package data: {data:02x?}");
+                    if let Err(err) = socket.send_to(&data, addr) {
                         error!("Could not send data: {:?}", err)
                     };
-                    */
                 }
             }
         })

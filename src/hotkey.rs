@@ -36,7 +36,10 @@ impl Hotkey {
 
     pub fn pressed(&self, ctx: &Context, gamepad: &Gamepad) -> bool {
         match self {
-            Hotkey::Key(key) => ctx.input_mut(|i| i.consume_key(Modifiers::NONE, *key)),
+            Hotkey::Key(key) => {
+                !ctx.wants_keyboard_input()
+                    && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, *key))
+            }
             Hotkey::GamepadEvent(event) => gamepad.new_events().contains(event),
         }
     }
