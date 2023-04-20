@@ -10,17 +10,32 @@ use crate::{
     preview_indices::PreviewIndices,
     scene::{Scene, SceneKind},
     svg::Universes,
+    transition::{Transition, TransitionGoal},
     wgpu_render_state,
 };
 use egui::TextureId;
+use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
-use std::time::Instant;
+use std::{
+    collections::HashSet,
+    time::{Duration, Instant},
+};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Pipeline {
     scenes: Vec<Scene>,
+    pub background_auto_mode_active: bool,
+    pub background_auto_mode_seconds: u64,
+    pub background_auto_mode_max_scenes: usize,
+    pub foreground_auto_mode_active: bool,
+    pub foreground_auto_mode_seconds: u64,
+
+    #[serde(skip)]
+    background_auto_mode_last_change: Option<Instant>,
+    #[serde(skip)]
+    foreground_auto_mode_last_change: Option<Instant>,
     #[serde(skip)]
     start: Option<Instant>,
     #[serde(skip)]
@@ -33,6 +48,27 @@ pub struct Pipeline {
     output: Option<Buffer>,
     #[serde(skip)]
     output_clear: Option<OutputClear>,
+}
+
+impl Default for Pipeline {
+    fn default() -> Self {
+        Self {
+            scenes: Default::default(),
+            background_auto_mode_last_change: Default::default(),
+            background_auto_mode_active: false,
+            background_auto_mode_seconds: 45,
+            background_auto_mode_max_scenes: 3,
+            foreground_auto_mode_last_change: Default::default(),
+            foreground_auto_mode_active: false,
+            foreground_auto_mode_seconds: 30,
+            start: Default::default(),
+            extract: Default::default(),
+            preview_indices: Default::default(),
+            preview: Default::default(),
+            output: Default::default(),
+            output_clear: Default::default(),
+        }
+    }
 }
 
 impl Clone for Pipeline {
@@ -204,6 +240,7 @@ impl Pipeline {
         main_dimmer: f32,
         render_deactivated_background_scenes: RenderDeactivatedScenes,
         render_deactivated_foreground_scenes: RenderDeactivatedScenes,
+        fade_duration: Duration,
     ) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
@@ -217,6 +254,95 @@ impl Pipeline {
             framerate,
             ..Default::default()
         };
+
+        if self.background_auto_mode_active {
+            if self
+                .background_auto_mode_last_change
+                .get_or_insert_with(Instant::now)
+                .elapsed()
+                .as_secs()
+                > self.background_auto_mode_seconds
+            {
+                let background_auto_mode_max_scenes = self.background_auto_mode_max_scenes;
+                let mut prev = HashSet::new();
+                {
+                    let mut indices = self
+                        .scenes()
+                        .into_iter()
+                        .filter(|(_index, scene)| {
+                            scene.kind == SceneKind::Background && scene.active
+                        })
+                        .map(|(index, _scene)| index)
+                        .collect::<Vec<_>>();
+
+                    let mut disable_count =
+                        (indices.len() + 1).saturating_sub(background_auto_mode_max_scenes);
+                    while disable_count > 0 {
+                        if let Some(index) = indices.choose_mut(&mut rand::thread_rng()).copied() {
+                            if prev.insert(index) {
+                                disable_count -= 1;
+                                if let Some(scene) = self.scene(index) {
+                                    scene.set_transition(Transition::new(
+                                        TransitionGoal::TurnOff,
+                                        fade_duration,
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let mut scenes = self
+                    .scenes()
+                    .into_iter()
+                    .filter(|(index, scene)| {
+                        scene.kind == SceneKind::Background && !prev.contains(index)
+                    })
+                    .collect::<Vec<_>>();
+                if let Some((_index, scene)) = scenes.choose_mut(&mut rand::thread_rng()) {
+                    scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
+                }
+
+                self.background_auto_mode_last_change.take();
+            }
+        } else {
+            self.background_auto_mode_last_change.take();
+        }
+        if self.foreground_auto_mode_active {
+            if self
+                .foreground_auto_mode_last_change
+                .get_or_insert_with(Instant::now)
+                .elapsed()
+                .as_secs()
+                > self.foreground_auto_mode_seconds
+            {
+                let mut prev = Vec::new();
+                for (index, active_scene) in self
+                    .scenes()
+                    .into_iter()
+                    .filter(|(_index, scene)| scene.kind == SceneKind::Foreground && scene.active)
+                {
+                    prev.push(index);
+                    active_scene
+                        .set_transition(Transition::new(TransitionGoal::TurnOff, fade_duration));
+                }
+
+                let mut scenes = self
+                    .scenes()
+                    .into_iter()
+                    .filter(|(index, scene)| {
+                        scene.kind == SceneKind::Foreground && !prev.contains(index)
+                    })
+                    .collect::<Vec<_>>();
+                if let Some((_index, scene)) = scenes.choose_mut(&mut rand::thread_rng()) {
+                    scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
+                }
+
+                self.foreground_auto_mode_last_change.take();
+            }
+        } else {
+            self.foreground_auto_mode_last_change.take();
+        }
 
         for (index, scene) in self.scenes() {
             scene.prepare(

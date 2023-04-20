@@ -84,6 +84,7 @@ impl eframe::App for App {
             } else {
                 RenderDeactivatedScenes::Some(self.selected_scene, self.hovered_scene)
             },
+            self.timing.fade_duration(),
         );
 
         self.about_window(ctx);

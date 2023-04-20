@@ -31,6 +31,7 @@ tiny-skia = { version = "0.8", default-features = false, features = [
 ] }
 usvg = "0.31"
 wgpu = "0.15"
+rand = "0.8"
 
 [build-dependencies]
 winresource = "0.1"
