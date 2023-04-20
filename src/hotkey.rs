@@ -43,6 +43,13 @@ impl Hotkey {
             Hotkey::GamepadEvent(event) => gamepad.new_events().contains(event),
         }
     }
+
+    pub fn live(&self, ctx: &Context, gamepad: &Gamepad) -> bool {
+        match self {
+            Hotkey::Key(key) => !ctx.wants_keyboard_input() && ctx.input(|i| i.key_down(*key)),
+            Hotkey::GamepadEvent(event) => gamepad.events().contains(event),
+        }
+    }
 }
 
 impl std::fmt::Display for Hotkey {
@@ -204,5 +211,9 @@ impl Gamepad {
 
     pub fn new_events(&self) -> HashSet<GamepadEvent> {
         self.new_events.clone()
+    }
+
+    pub fn events(&self) -> HashSet<GamepadEvent> {
+        self.events.clone()
     }
 }

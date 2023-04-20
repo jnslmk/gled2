@@ -129,6 +129,7 @@ impl App {
                 ui.set_max_width(ui.available_width() - 30.0);
                 ui.horizontal_wrapped(|ui| {
                     let mut changed = None;
+                    let mut flashed = Vec::new();
                     for (index, scene) in self
                         .pipeline
                         .scenes()
@@ -160,6 +161,15 @@ impl App {
                         {
                             changed = Some(index);
                         }
+
+                        if scene
+                            .flash_hotkey
+                            .as_ref()
+                            .map(|hotkey| hotkey.live(ctx, &self.gamepad))
+                            .unwrap_or_default()
+                        {
+                            flashed.push(index);
+                        }
                     }
 
                     if let Some(changed_index) = changed {
@@ -188,6 +198,10 @@ impl App {
                                 ));
                             }
                         }
+                    }
+
+                    for (index, scene) in self.pipeline.scenes() {
+                        scene.set_flash(flashed.contains(&index));
                     }
                 });
             });
@@ -220,7 +234,9 @@ impl<'a> Widget for SceneWidget<'a> {
             .rounding(Rounding::from(4.0))
             .show(ui, |ui| {
                 egui::Frame::none()
-                    .fill(if self.scene.active {
+                    .fill(if self.scene.flash {
+                        Color32::WHITE
+                    } else if self.scene.active {
                         let off = Color32::DARK_GRAY.to_srgba_unmultiplied();
                         let on = self.live_color.to_srgba_unmultiplied();
                         let factor = self.scene.transition_factor();

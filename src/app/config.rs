@@ -48,6 +48,25 @@ impl App {
 
                         ui.separator();
 
+                        ui.label(RichText::new("Flash Hotkey").heading());
+                        ui.vertical_centered_justified(|ui| {
+                            ui.style_mut().spacing.interact_size.y = 40.0;
+                            ui.menu_button(
+                                match scene.flash_hotkey {
+                                    Some(hotkey) => format!("{hotkey}"),
+                                    None => "Assign".to_string(),
+                                },
+                                |ui| {
+                                    ui.label("Please press a key!");
+                                    if let Some(hotkey) = Hotkey::get(ctx, &self.gamepad) {
+                                        scene.flash_hotkey = Some(hotkey);
+                                        ui.close_menu();
+                                    }
+                                },
+                            );
+                        });
+                        ui.separator();
+
                         ui.label(RichText::new("Colors").heading());
                         color::selection(ui, &mut scene.palette, all_colors);
 

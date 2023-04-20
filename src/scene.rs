@@ -23,6 +23,8 @@ pub struct Scene {
     pub group: String,
     pub animation: Animation,
     pub hotkey: Option<Hotkey>,
+    pub flash_hotkey: Option<Hotkey>,
+    pub flash: bool,
 
     #[serde(skip)]
     transition: Option<Transition>,
@@ -46,6 +48,7 @@ impl Default for Scene {
     fn default() -> Self {
         Self {
             opacity: 1.0,
+            flash_hotkey: Default::default(),
             hotkey: Default::default(),
             kind: Default::default(),
             palette: Default::default(),
@@ -61,6 +64,7 @@ impl Default for Scene {
             was_ever_rendered: Default::default(),
             output_mix: Default::default(),
             renderer: Default::default(),
+            flash: false,
         }
     }
 }
@@ -76,6 +80,7 @@ impl Clone for Scene {
             group: self.group.clone(),
             animation: self.animation.clone(),
             hotkey: self.hotkey,
+            flash_hotkey: self.flash_hotkey,
             ..Default::default()
         }
     }
@@ -167,7 +172,7 @@ impl Scene {
             }
         }
 
-        if always_render || self.active || !self.was_ever_rendered {
+        if always_render || self.active || !self.was_ever_rendered || self.flash {
             state.opacity = self.opacity * main_dimmer * opacity_factor;
 
             state.beat_progression = (state.beat_progression + self.beat_progression_offset) % 1.0;
@@ -199,9 +204,9 @@ impl Scene {
     }
 
     pub fn render(&mut self, encoder: &mut CommandEncoder, blackout: bool, always_render: bool) {
-        if always_render || self.active || !self.was_ever_rendered {
+        if always_render || self.active || !self.was_ever_rendered || self.flash {
             self.renderer.as_ref().expect(GPU_NOT_INIT).render(encoder);
-            if self.active && !blackout {
+            if (self.active && !blackout) || self.flash {
                 self.texture_to_output
                     .as_ref()
                     .expect(GPU_NOT_INIT)
@@ -249,6 +254,10 @@ impl Scene {
             .as_ref()
             .and_then(|transition| transition.opacity_factor())
             .unwrap_or(1.0)
+    }
+
+    pub fn set_flash(&mut self, flash: bool) {
+        self.flash = flash;
     }
 }
 
