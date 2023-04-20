@@ -200,8 +200,13 @@ impl App {
                         }
                     }
 
-                    for (index, scene) in self.pipeline.scenes() {
-                        scene.set_flash(flashed.contains(&index));
+                    for (index, scene) in self
+                        .pipeline
+                        .scenes()
+                        .iter_mut()
+                        .filter(|(_index, scene)| scene.kind == kind)
+                    {
+                        scene.set_flash(flashed.contains(index));
                     }
                 });
             });
@@ -226,7 +231,7 @@ impl<'a> Widget for SceneWidget<'a> {
 
         let mut response = egui::Frame::none()
             .fill(if *self.selected_scene == self.index {
-                Color32::GREEN
+                Color32::DARK_GREEN
             } else {
                 Color32::TRANSPARENT
             })
