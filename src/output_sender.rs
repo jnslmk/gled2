@@ -91,7 +91,9 @@ pub fn start(mut extract_output: ExtractOutput) -> Result<(OutputSender, GpuRead
                                         .map(|addr| (addr, wled_data))
                                 }
                                 UniverseOutput::WledDNRGB { ip, port, start } => {
-                                    log::debug!("Preparing wled drgb data for universe {universe}");
+                                    log::debug!(
+                                        "Preparing wled dnrgb data for universe {universe}"
+                                    );
                                     let mut wled_data = Vec::with_capacity(514);
                                     wled_data.push(4); // DNRGB
                                     wled_data.push(255); // Seconds of no signal after which to switch to auto. 255 is infinite.
