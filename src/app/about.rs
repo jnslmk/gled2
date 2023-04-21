@@ -7,6 +7,7 @@ impl App {
             egui::Window::new("About")
                 .collapsible(false)
                 .resizable(false)
+                .default_pos(ctx.available_rect().center())
                 .open(&mut self.about_window_open)
                 .show(ctx, |ui| {
                     ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {

@@ -24,6 +24,6 @@ impl State {
 
     /// must be a multiple of 16
     pub const fn size() -> usize {
-        32
+        16 * 2
     }
 }

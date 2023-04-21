@@ -68,7 +68,7 @@ impl App {
                         ui.separator();
 
                         ui.label(RichText::new("Colors").heading());
-                        color::selection(ui, &mut scene.palette, all_colors);
+                        color::color_selection(ui, &mut scene.palette, all_colors);
 
                         ui.separator();
 

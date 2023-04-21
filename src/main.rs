@@ -24,6 +24,7 @@ use app::App;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration};
 use egui::Vec2;
 use once_cell::sync::OnceCell;
+use wgpu::PowerPreference;
 
 pub static WGPU_RENDER_STATE: OnceCell<RenderState> = OnceCell::new();
 
@@ -38,6 +39,7 @@ fn main() {
         vsync: false,
         wgpu_options: WgpuConfiguration {
             present_mode: eframe::wgpu::PresentMode::Immediate,
+            power_preference: PowerPreference::HighPerformance,
             ..Default::default()
         },
         follow_system_theme: false,

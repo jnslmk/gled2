@@ -1,5 +1,4 @@
 //! A LED with all properties to send data to an actual lamp.
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]

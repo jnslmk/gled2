@@ -38,6 +38,7 @@ pub struct App {
     blackout: bool,
     svg: Option<Svg>,
     about_window_open: bool,
+    config_output_window_open: bool,
     selected_scene: usize,
     hovered_scene: usize,
 }
@@ -88,6 +89,7 @@ impl eframe::App for App {
         );
 
         self.about_window(ctx);
+        self.config_output_window(ctx);
         self.menu(ctx, frame);
         self.config(ctx);
         self.preview(ctx);
@@ -117,6 +119,7 @@ impl App {
             timing: Timing::default(),
             blackout: false,
             about_window_open: false,
+            config_output_window_open: false,
             selected_scene: 0,
             hovered_scene: 0,
             pipeline: Pipeline::default(),

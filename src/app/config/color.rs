@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use crate::animation::{Color, ColorPalette};
 use egui::{Button, Rect, Ui};
 
-pub fn selection(ui: &mut Ui, palette: &mut ColorPalette, all_colors: BTreeSet<Color>) {
+pub fn color_selection(ui: &mut Ui, palette: &mut ColorPalette, all_colors: BTreeSet<Color>) {
     ui.scope(|ui| {
         ui.style_mut().spacing.interact_size.y = 40.0;
 
@@ -36,8 +36,7 @@ pub fn selection(ui: &mut Ui, palette: &mut ColorPalette, all_colors: BTreeSet<C
                 let below = egui::AboveOrBelow::Below;
                 egui::popup::popup_above_or_below_widget(ui, popup_id, &response, below, |ui| {
                     ui.style_mut().spacing.interact_size.y = 40.0;
-                    ui.set_min_width(200.0);
-                    ui.set_max_width(200.0);
+                    ui.set_width_range(200.0..=200.0);
 
                     ui.horizontal_wrapped(|ui| {
                         for mut color in all_colors {

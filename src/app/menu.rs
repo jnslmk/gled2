@@ -190,11 +190,10 @@ impl App {
 
                     ui.separator();
 
-                    ui.menu_button(RichText::new("Outputs").heading(), |ui| {
-                        ui.set_min_width(400.0);
-
-                        self.config_output(ui);
-                    });
+                    if ui.button(RichText::new("Outputs").heading()).clicked() {
+                        self.config_output_window_open = true;
+                        ui.close_menu();
+                    }
 
                     ui.separator();
 
