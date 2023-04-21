@@ -35,6 +35,9 @@ impl Outputs {
             Some(UniverseOutput::Default) | None => match self.default_output {
                 Output::Artnet { ip } => UniverseOutput::Artnet { ip, universe },
                 Output::WledDRGB { ip, port } => UniverseOutput::WledDRGB { ip, port },
+                Output::WledDNRGB { ip, port, start } => {
+                    UniverseOutput::WledDNRGB { ip, port, start }
+                }
             },
             Some(universe_output) => universe_output.clone(),
         }
@@ -45,6 +48,7 @@ impl Outputs {
 pub enum Output {
     Artnet { ip: IpAddr },
     WledDRGB { ip: IpAddr, port: u16 },
+    WledDNRGB { ip: IpAddr, port: u16, start: u16 },
 }
 
 impl Default for Output {
@@ -67,6 +71,11 @@ pub enum UniverseOutput {
         ip: IpAddr,
         port: u16,
     },
+    WledDNRGB {
+        ip: IpAddr,
+        port: u16,
+        start: u16,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -74,6 +83,7 @@ pub enum OutputKind {
     Default,
     Artnet,
     WledDRGB,
+    WledDNRGB,
 }
 
 impl Output {
@@ -81,6 +91,7 @@ impl Output {
         match self {
             Output::Artnet { .. } => OutputKind::Artnet,
             Output::WledDRGB { .. } => OutputKind::WledDRGB,
+            Output::WledDNRGB { .. } => OutputKind::WledDNRGB,
         }
     }
 }
@@ -91,6 +102,7 @@ impl UniverseOutput {
             UniverseOutput::Default => OutputKind::Default,
             UniverseOutput::Artnet { .. } => OutputKind::Artnet,
             UniverseOutput::WledDRGB { .. } => OutputKind::WledDRGB,
+            UniverseOutput::WledDNRGB { .. } => OutputKind::WledDNRGB,
         }
     }
 }

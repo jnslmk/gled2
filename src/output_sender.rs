@@ -79,9 +79,24 @@ pub fn start(mut extract_output: ExtractOutput) -> Result<(OutputSender, GpuRead
                                 }
                                 UniverseOutput::WledDRGB { ip, port } => {
                                     log::debug!("Preparing wled drgb data for universe {universe}");
-                                    let mut wled_data = Vec::with_capacity(511);
+                                    let mut wled_data = Vec::with_capacity(512);
                                     wled_data.push(2); // DRGB
                                     wled_data.push(255); // Seconds of no signal after which to switch to auto. 255 is infinite.
+                                    wled_data.extend(&data[..510]);
+
+                                    (ip, port)
+                                        .to_socket_addrs()
+                                        .ok()
+                                        .and_then(|mut addrs| addrs.next())
+                                        .map(|addr| (addr, wled_data))
+                                }
+                                UniverseOutput::WledDNRGB { ip, port, start } => {
+                                    log::debug!("Preparing wled drgb data for universe {universe}");
+                                    let mut wled_data = Vec::with_capacity(514);
+                                    wled_data.push(4); // DRGB
+                                    wled_data.push(255); // Seconds of no signal after which to switch to auto. 255 is infinite.
+                                    wled_data.push(start.to_be_bytes()[0]);
+                                    wled_data.push(start.to_be_bytes()[1]);
                                     wled_data.extend(&data[..510]);
 
                                     (ip, port)

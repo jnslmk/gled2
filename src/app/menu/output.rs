@@ -62,6 +62,24 @@ impl App {
                                             };
                                             new_outputs = Some(outputs);
                                         };
+                                        if ui
+                                            .radio_value(
+                                                &mut default_output_kind,
+                                                OutputKind::WledDNRGB,
+                                                "Wled DNRGB",
+                                            )
+                                            .changed()
+                                        {
+                                            let mut outputs = outputs.clone();
+                                            *outputs.default_output_mut() = Output::WledDNRGB {
+                                                ip: "127.0.0.1"
+                                                    .parse()
+                                                    .expect("Could not parse 127.0.0.1"),
+                                                port: 21324,
+                                                start: 0,
+                                            };
+                                            new_outputs = Some(outputs);
+                                        };
                                     });
                                     match outputs.default_output() {
                                         Output::Artnet { ip } => {
@@ -116,6 +134,73 @@ impl App {
                                                         Output::WledDRGB {
                                                             ip: *ip,
                                                             port: port
+                                                                .parse()
+                                                                .expect("Should never happen"),
+                                                        };
+                                                    new_outputs = Some(outputs);
+                                                }
+                                            }
+                                        }
+                                        Output::WledDNRGB { ip, port, start } => {
+                                            {
+                                                ui.label("Wled DNRGB IP");
+                                                let ip = self
+                                                    .inputs
+                                                    .entry("default_wlednrgb_ip".to_string())
+                                                    .or_insert_with(|| ip.to_string());
+                                                if ui.add(TextEdit::singleline(ip)).changed()
+                                                    && ip.parse::<IpAddr>().is_ok()
+                                                {
+                                                    let mut outputs = outputs.clone();
+                                                    *outputs.default_output_mut() =
+                                                        Output::WledDNRGB {
+                                                            ip: ip
+                                                                .parse()
+                                                                .expect("Should never happen"),
+                                                            port: *port,
+                                                            start: *start,
+                                                        };
+                                                    new_outputs = Some(outputs);
+                                                }
+                                            }
+
+                                            {
+                                                ui.label("Wled DNRGB Port");
+                                                let port = self
+                                                    .inputs
+                                                    .entry("default_wlednrgb_port".to_string())
+                                                    .or_insert_with(|| port.to_string());
+                                                if ui.add(TextEdit::singleline(port)).changed()
+                                                    && port.parse::<u16>().is_ok()
+                                                {
+                                                    let mut outputs = outputs.clone();
+                                                    *outputs.default_output_mut() =
+                                                        Output::WledDNRGB {
+                                                            ip: *ip,
+                                                            port: port
+                                                                .parse()
+                                                                .expect("Should never happen"),
+                                                            start: *start,
+                                                        };
+                                                    new_outputs = Some(outputs);
+                                                }
+                                            }
+
+                                            {
+                                                ui.label("Wled DNRGB Start");
+                                                let start = self
+                                                    .inputs
+                                                    .entry("default_wlednrgb_start".to_string())
+                                                    .or_insert_with(|| start.to_string());
+                                                if ui.add(TextEdit::singleline(start)).changed()
+                                                    && start.parse::<u16>().is_ok()
+                                                {
+                                                    let mut outputs = outputs.clone();
+                                                    *outputs.default_output_mut() =
+                                                        Output::WledDNRGB {
+                                                            ip: *ip,
+                                                            port: *port,
+                                                            start: start
                                                                 .parse()
                                                                 .expect("Should never happen"),
                                                         };
@@ -180,6 +265,25 @@ impl App {
                                                             .parse()
                                                             .expect("Could not parse 127.0.0.1"),
                                                         port: 21324,
+                                                    };
+                                                new_outputs = Some(outputs);
+                                            }
+                                            if ui
+                                                .radio_value(
+                                                    &mut universe_output_kind,
+                                                    OutputKind::WledDNRGB,
+                                                    "Wled DNRGB",
+                                                )
+                                                .changed()
+                                            {
+                                                let mut outputs = outputs.clone();
+                                                *outputs.universe_output_mut(universe) =
+                                                    UniverseOutput::WledDNRGB {
+                                                        ip: "127.0.0.1"
+                                                            .parse()
+                                                            .expect("Could not parse 127.0.0.1"),
+                                                        port: 21324,
+                                                        start: 0,
                                                     };
                                                 new_outputs = Some(outputs);
                                             }
@@ -270,6 +374,73 @@ impl App {
                                                             UniverseOutput::WledDRGB {
                                                                 ip,
                                                                 port: port
+                                                                    .parse()
+                                                                    .expect("Should never happen"),
+                                                            };
+                                                        new_outputs = Some(outputs);
+                                                    }
+                                                }
+                                            }
+                                            UniverseOutput::WledDNRGB { ip, port, start } => {
+                                                {
+                                                    ui.label("Wled DNRGB IP");
+                                                    let ip = self
+                                                        .inputs
+                                                        .entry(format!("wlednrgb_ip_{universe}"))
+                                                        .or_insert_with(|| ip.to_string());
+                                                    if ui.add(TextEdit::singleline(ip)).changed()
+                                                        && ip.parse::<IpAddr>().is_ok()
+                                                    {
+                                                        let mut outputs = outputs.clone();
+                                                        *outputs.universe_output_mut(universe) =
+                                                            UniverseOutput::WledDNRGB {
+                                                                ip: ip
+                                                                    .parse()
+                                                                    .expect("Should never happen"),
+                                                                port,
+                                                                start,
+                                                            };
+                                                        new_outputs = Some(outputs);
+                                                    }
+                                                }
+
+                                                {
+                                                    ui.label("Wled DNRGB Port");
+                                                    let port = self
+                                                        .inputs
+                                                        .entry(format!("wlednrgb_port_{universe}"))
+                                                        .or_insert_with(|| port.to_string());
+                                                    if ui.add(TextEdit::singleline(port)).changed()
+                                                        && port.parse::<u16>().is_ok()
+                                                    {
+                                                        let mut outputs = outputs.clone();
+                                                        *outputs.universe_output_mut(universe) =
+                                                            UniverseOutput::WledDNRGB {
+                                                                ip,
+                                                                port: port
+                                                                    .parse()
+                                                                    .expect("Should never happen"),
+                                                                start,
+                                                            };
+                                                        new_outputs = Some(outputs);
+                                                    }
+                                                }
+
+                                                {
+                                                    ui.label("Wled DNRGB Start");
+                                                    let start = self
+                                                        .inputs
+                                                        .entry(format!("wlednrgb_start_{universe}"))
+                                                        .or_insert_with(|| start.to_string());
+                                                    if ui.add(TextEdit::singleline(start)).changed()
+                                                        && start.parse::<u16>().is_ok()
+                                                    {
+                                                        let mut outputs = outputs.clone();
+                                                        *outputs.universe_output_mut(universe) =
+                                                            UniverseOutput::WledDNRGB {
+                                                                ip,
+                                                                port,
+                                                                start: start
                                                                     .parse()
                                                                     .expect("Should never happen"),
                                                             };
