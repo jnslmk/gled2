@@ -68,10 +68,8 @@ impl Timing {
     fn progress_beat(&mut self) {
         if !self.freeze {
             let now = Instant::now();
-            self.beat_progression = (self.beat_progression
-                + (now.duration_since(self.last_beat_time).as_nanos() as f64
-                    / self.beat_duration_nanoseconds()) as f32)
-                % 1.;
+            self.beat_progression += (now.duration_since(self.last_beat_time).as_nanos() as f64
+                / self.beat_duration_nanoseconds()) as f32;
             self.last_beat_time = now;
         }
     }
@@ -118,7 +116,7 @@ impl Timing {
     }
 
     pub fn beat_button(&mut self, ctx: &egui::Context, ui: &mut Ui, menu_button_size: Vec2) {
-        let beat_progression = self.beat_progression();
+        let beat_progression = self.beat_progression() % 1.0;
         let mut alpha = None;
         if beat_progression < 0.10 {
             alpha = Some(30.0);

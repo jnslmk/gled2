@@ -6,7 +6,7 @@ const PI: f32 = 3.14159265359;
 
 fn animation(coord: vec2<f32>, beat_progression: f32) -> vec3<f32> {
     let pos: vec2<f32> = uniforms.center_coord - (1.0 + coord) / 2.0;
-    let time = uniforms.time * PI * 2.;
+    let time = uniforms.beat_progression * PI * 2.;
 
 	var v: f32 = roundLookingBlob(pos, vec2<f32>(sin(time) * 0.4, cos(time) * 0.4), 7.);
 	v = v + (roundLookingBlob(pos, vec2<f32>(sin(time * 0.6) * 0.2, cos(time) * 0.3), 6.));

@@ -1,14 +1,12 @@
 struct Uniforms {
-    // state: 32 bytes
-    time: f32,
+    // state: 16 bytes
     beat_progression: f32,
     beats_per_minute: f32,
     frame_rate: f32,
     opacity: f32,
-    // padding: 24 bytes
 
     // colors: 272 bytes
-    @align(16) colors_count: i32,
+    colors_count: i32,
     colors: array<vec3<f32>, 16>,
 
     // config: 32 bytes
@@ -25,7 +23,7 @@ var<uniform> uniforms: Uniforms;
 
 @fragment
 fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
-    var beat_progression = uniforms.beat_progression;
+    var beat_progression = uniforms.beat_progression % 1.0;
     if (uniforms.direction != 0u) {
         beat_progression = 1.0 - beat_progression;
     }

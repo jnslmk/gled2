@@ -246,9 +246,7 @@ impl Pipeline {
         let device = wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
 
-        let time = self.start().elapsed().as_secs_f32();
         let state = State {
-            time,
             beat_progression,
             beats_per_minute,
             framerate,
