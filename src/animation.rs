@@ -4,6 +4,7 @@ mod colors;
 mod config;
 mod gradient;
 mod renderer;
+mod spiral;
 mod state;
 mod stripes;
 
@@ -16,6 +17,7 @@ pub use colors::{Color, ColorPalette};
 pub use config::{CommonConfig, Config, Direction};
 pub use gradient::{Gradient, GradientType};
 pub use renderer::AnimationRenderer;
+pub use spiral::Spiral;
 pub use state::State;
 pub use stripes::Stripes;
 
@@ -29,6 +31,7 @@ pub trait AnimationConfig: Into<Animation> + Default + Debug + Clone {
 pub enum Animation {
     Gradient(gradient::Gradient),
     Stripes(stripes::Stripes),
+    Spiral(spiral::Spiral),
 }
 
 impl Default for Animation {
