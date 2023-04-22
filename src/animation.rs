@@ -4,6 +4,7 @@ mod blob;
 mod colors;
 mod config;
 mod gradient;
+mod random_circles;
 mod renderer;
 mod spiral;
 mod state;
@@ -18,6 +19,7 @@ pub use blob::Blob;
 pub use colors::{Color, ColorPalette};
 pub use config::{CommonConfig, Config, Direction};
 pub use gradient::{Gradient, GradientType};
+pub use random_circles::RandomCircles;
 pub use renderer::AnimationRenderer;
 pub use spiral::Spiral;
 pub use state::State;
@@ -31,10 +33,11 @@ pub trait AnimationConfig: Into<Animation> + Default + Debug + Clone {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Animation, EnumIter, Display, PartialEq, Eq)]
 pub enum Animation {
-    Blob(blob::Blob),
-    Gradient(gradient::Gradient),
-    Stripes(stripes::Stripes),
-    Spiral(spiral::Spiral),
+    Blob(Blob),
+    Gradient(Gradient),
+    RandomCircles(RandomCircles),
+    Stripes(Stripes),
+    Spiral(Spiral),
 }
 
 impl Default for Animation {

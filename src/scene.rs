@@ -174,8 +174,7 @@ impl Scene {
 
         if always_render || self.active || !self.was_ever_rendered || self.flash {
             state.opacity = self.opacity * main_dimmer * opacity_factor;
-
-            state.beat_progression = (state.beat_progression + self.beat_progression_offset) % 1.0;
+            state.beat_progression += self.beat_progression_offset;
 
             if self.sent_group.as_ref() != Some(&self.group) {
                 let positions = positions(&self.group);
