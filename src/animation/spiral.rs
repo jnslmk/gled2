@@ -50,7 +50,7 @@ impl AnimationConfig for Spiral {
 
         ui.vertical_centered_justified(|ui| {
             ui.style_mut().spacing.interact_size.y = 40.0;
-            ui.menu_button("Select center of radial gradient", |ui| {
+            ui.menu_button("Select center of spiral", |ui| {
                 let size = 300.0;
                 let res = ui.add(Image::new(texture_id, Vec2::splat(size)).sense(Sense::click()));
                 if let Some(pos) = res
