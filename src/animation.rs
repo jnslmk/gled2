@@ -1,5 +1,6 @@
 //! Renders to a texture
 
+mod blob;
 mod colors;
 mod config;
 mod gradient;
@@ -13,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use strum::{Display, EnumIter};
 
+pub use blob::Blob;
 pub use colors::{Color, ColorPalette};
 pub use config::{CommonConfig, Config, Direction};
 pub use gradient::{Gradient, GradientType};
@@ -29,6 +31,7 @@ pub trait AnimationConfig: Into<Animation> + Default + Debug + Clone {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Animation, EnumIter, Display, PartialEq, Eq)]
 pub enum Animation {
+    Blob(blob::Blob),
     Gradient(gradient::Gradient),
     Stripes(stripes::Stripes),
     Spiral(spiral::Spiral),
