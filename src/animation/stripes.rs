@@ -50,7 +50,7 @@ impl AnimationConfig for Stripes {
     }
 
     fn uses_multiple_colors(&self) -> bool {
-        false
+        true
     }
 }
 

@@ -12,7 +12,7 @@ fn animation(coord: vec2<f32>, beat_progression: f32) -> vec3<f32> {
     }
 
     if ((beat_progression + pos) % (empty + uniforms.thickness) < uniforms.thickness) {
-        return uniforms.colors[0];
+        return uniforms.colors[i32((beat_progression + pos) / (empty + uniforms.thickness)) % uniforms.colors_count];
     } else {
         return vec3<f32>(0.);
     }
