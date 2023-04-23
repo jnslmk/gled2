@@ -13,8 +13,10 @@ use strum::IntoEnumIterator;
 impl App {
     pub fn config(&mut self, ctx: &Context) {
         egui::SidePanel::left("left")
-            .resizable(false)
-            .default_width(200.0)
+            .resizable(true)
+            .default_width(280.0)
+            .min_width(280.0)
+            .max_width(ctx.used_rect().width() - 950.0)
             .show(ctx, |ui| {
                 let all_colors: BTreeSet<Color> = std::iter::once(Color::default())
                     .chain(
