@@ -42,7 +42,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         .map(|child| {
             let ident = child.ident.to_owned();
             quote!(
-                Self::#ident(animation) => animation.ui(ui, texture_id),
+                Self::#ident(animation) => animation.ui(ui, rendered, svg),
             )
         });
     let shader_code = animation
@@ -72,7 +72,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
     quote!(
         impl AnimationConfig for Animation {
-            fn ui(&mut self, ui: &mut egui::Ui, texture_id: egui::TextureId) {
+            fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId, svg: Option<egui::TextureId>) {
                 match self {
                     #(#ui)*
                 }

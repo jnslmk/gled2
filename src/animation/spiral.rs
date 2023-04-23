@@ -1,8 +1,9 @@
 use super::{
     config::{CommonConfig, Config},
+    set_center::set_center_button,
     Animation, AnimationConfig,
 };
-use egui::{CursorIcon, Image, Sense, Slider, Vec2};
+use egui::Slider;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -42,30 +43,12 @@ impl AnimationConfig for Spiral {
         }
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, texture_id: egui::TextureId) {
+    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId, svg: Option<egui::TextureId>) {
         self.common.ui(ui);
 
         ui.checkbox(&mut self.sharp, "Sharp");
         ui.add(Slider::new(&mut self.count, 1..=100).text("Count"));
-
-        ui.vertical_centered_justified(|ui| {
-            ui.style_mut().spacing.interact_size.y = 40.0;
-            ui.menu_button("Select center of spiral", |ui| {
-                let size = 300.0;
-                let res = ui.add(Image::new(texture_id, Vec2::splat(size)).sense(Sense::click()));
-                if let Some(pos) = res
-                    .hover_pos()
-                    .map(|pos| pos - res.rect.min)
-                    .filter(|pos| pos.x > 0.0 || pos.y > 0.0 || pos.x < size || pos.y < size)
-                {
-                    ui.output_mut(|o| o.cursor_icon = CursorIcon::Crosshair);
-                    self.center = (pos.x / size, 1.0 - pos.y / size);
-                }
-                if res.clicked() {
-                    ui.close_menu();
-                }
-            });
-        });
+        set_center_button(ui, &mut self.center, rendered, svg);
     }
 
     fn uses_multiple_colors(&self) -> bool {

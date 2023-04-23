@@ -6,6 +6,7 @@ mod config;
 mod gradient;
 mod random_circles;
 mod renderer;
+mod set_center;
 mod spiral;
 mod state;
 mod stripes;
@@ -26,7 +27,7 @@ pub use state::State;
 pub use stripes::Stripes;
 
 pub trait AnimationConfig: Into<Animation> + Default + Debug + Clone {
-    fn ui(&mut self, ui: &mut egui::Ui, _texture_id: egui::TextureId);
+    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId, svg: Option<egui::TextureId>);
     fn shader_code(&self) -> std::borrow::Cow<str>;
     fn config(&self) -> Config;
     fn uses_multiple_colors(&self) -> bool;

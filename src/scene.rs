@@ -226,8 +226,8 @@ impl Scene {
         self.texture_id.as_ref().expect(GPU_NOT_INIT).0
     }
 
-    pub fn config_ui(&mut self, ui: &mut egui::Ui) {
-        self.animation.ui(ui, self.texture_id());
+    pub fn config_ui(&mut self, ui: &mut egui::Ui, svg: Option<TextureId>) {
+        self.animation.ui(ui, self.texture_id(), svg);
     }
 
     pub fn set_transition(&mut self, transition: Transition) {
