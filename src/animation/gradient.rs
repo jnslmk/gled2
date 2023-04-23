@@ -81,6 +81,10 @@ impl AnimationConfig for Gradient {
             }
         });
     }
+
+    fn uses_multiple_colors(&self) -> bool {
+        true
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

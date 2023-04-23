@@ -3,7 +3,12 @@ use std::collections::BTreeSet;
 use crate::animation::{Color, ColorPalette};
 use egui::{Button, Rect, Ui};
 
-pub fn color_selection(ui: &mut Ui, palette: &mut ColorPalette, all_colors: BTreeSet<Color>) {
+pub fn color_selection(
+    ui: &mut Ui,
+    palette: &mut ColorPalette,
+    all_colors: BTreeSet<Color>,
+    uses_multiple_colors: bool,
+) {
     ui.scope(|ui| {
         ui.style_mut().spacing.interact_size.y = 40.0;
 
@@ -26,7 +31,7 @@ pub fn color_selection(ui: &mut Ui, palette: &mut ColorPalette, all_colors: BTre
             }
         });
 
-        if palette.colors.len() < 16 {
+        if palette.colors.is_empty() || (uses_multiple_colors && palette.colors.len() < 16) {
             ui.vertical_centered_justified(|ui| {
                 let response = ui.button("Add Color");
                 let popup_id = ui.make_persistent_id("color_selection");

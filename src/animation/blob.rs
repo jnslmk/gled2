@@ -58,6 +58,10 @@ impl AnimationConfig for Blob {
             });
         });
     }
+
+    fn uses_multiple_colors(&self) -> bool {
+        false
+    }
 }
 
 impl From<Blob> for Animation {

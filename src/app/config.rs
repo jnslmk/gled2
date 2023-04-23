@@ -3,7 +3,7 @@ pub mod group;
 
 use super::{timing::FadeMode, App};
 use crate::{
-    animation::{Animation, Color},
+    animation::{Animation, AnimationConfig, Color},
     hotkey::Hotkey,
 };
 use egui::{Button, Checkbox, Color32, Context, Layout, Modifiers, RichText, Slider};
@@ -68,7 +68,12 @@ impl App {
                         ui.separator();
 
                         ui.label(RichText::new("Colors").heading());
-                        color::color_selection(ui, &mut scene.palette, all_colors);
+                        color::color_selection(
+                            ui,
+                            &mut scene.palette,
+                            all_colors,
+                            scene.animation.uses_multiple_colors(),
+                        );
 
                         ui.separator();
 

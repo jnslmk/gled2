@@ -31,6 +31,10 @@ impl AnimationConfig for RandomCircles {
             ..Default::default()
         }
     }
+
+    fn uses_multiple_colors(&self) -> bool {
+        true
+    }
 }
 
 impl Default for RandomCircles {

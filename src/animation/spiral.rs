@@ -67,6 +67,10 @@ impl AnimationConfig for Spiral {
             });
         });
     }
+
+    fn uses_multiple_colors(&self) -> bool {
+        false
+    }
 }
 
 impl From<Spiral> for Animation {

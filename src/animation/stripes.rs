@@ -48,6 +48,10 @@ impl AnimationConfig for Stripes {
             ..Default::default()
         }
     }
+
+    fn uses_multiple_colors(&self) -> bool {
+        false
+    }
 }
 
 impl Default for Stripes {

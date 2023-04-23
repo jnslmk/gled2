@@ -57,6 +57,18 @@ pub fn derive(input: TokenStream) -> TokenStream {
                 Self::#ident(animation) => animation.shader_code(),
             )
         });
+    let uses_multiple_colors = animation
+        .data
+        .as_ref()
+        .take_enum()
+        .expect("Should never be a struct")
+        .into_iter()
+        .map(|child| {
+            let ident = child.ident.to_owned();
+            quote!(
+                Self::#ident(animation) => animation.uses_multiple_colors(),
+            )
+        });
 
     quote!(
         impl AnimationConfig for Animation {
@@ -75,6 +87,12 @@ pub fn derive(input: TokenStream) -> TokenStream {
             fn config(&self) -> Config {
                 match self {
                     #(#config)*
+                }
+            }
+
+            fn uses_multiple_colors(&self) -> bool {
+                match self {
+                    #(#uses_multiple_colors)*
                 }
             }
         }
