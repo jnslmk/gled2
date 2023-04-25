@@ -113,100 +113,118 @@ impl Gamepad {
 
     pub fn tick(&mut self) {
         self.new_events.clear();
-        let mut still_active = HashSet::new();
+        while let Some(action) = self.gilrs.next_event().map(|Event { id, event, time }| {
+            let gamepad_id: usize = id.into();
 
-        while let Some(event) = self
-            .gilrs
-            .next_event()
-            .and_then(|Event { id, event, time }| {
-                let gamepad_id: usize = id.into();
-
-                debug!("{:?} New event from {}: {:?}", time, id, event);
-                match event {
-                    gilrs::EventType::ButtonChanged(button, value, _) if value > 0.5 => {
-                        Some(match button {
-                            Button::South => GamepadEvent::South(gamepad_id),
-                            Button::East => GamepadEvent::East(gamepad_id),
-                            Button::North => GamepadEvent::North(gamepad_id),
-                            Button::West => GamepadEvent::West(gamepad_id),
-                            Button::C => GamepadEvent::C(gamepad_id),
-                            Button::Z => GamepadEvent::Z(gamepad_id),
-                            Button::LeftTrigger => GamepadEvent::LeftTrigger(gamepad_id),
-                            Button::LeftTrigger2 => GamepadEvent::LeftTrigger2(gamepad_id),
-                            Button::RightTrigger => GamepadEvent::RightTrigger(gamepad_id),
-                            Button::RightTrigger2 => GamepadEvent::RightTrigger2(gamepad_id),
-                            Button::Select => GamepadEvent::Select(gamepad_id),
-                            Button::Start => GamepadEvent::Start(gamepad_id),
-                            Button::Mode => GamepadEvent::Mode(gamepad_id),
-                            Button::LeftThumb => GamepadEvent::LeftThumb(gamepad_id),
-                            Button::RightThumb => GamepadEvent::RightThumb(gamepad_id),
-                            Button::DPadUp => GamepadEvent::DPadUp(gamepad_id),
-                            Button::DPadDown => GamepadEvent::DPadDown(gamepad_id),
-                            Button::DPadLeft => GamepadEvent::DPadLeft(gamepad_id),
-                            Button::DPadRight => GamepadEvent::DPadRight(gamepad_id),
-                            Button::Unknown => GamepadEvent::Unknown(gamepad_id),
-                        })
+            debug!("{:?} New event from {}: {:?}", time, id, event);
+            match event {
+                gilrs::EventType::ButtonChanged(button, value, _) => {
+                    let button = match button {
+                        Button::South => GamepadEvent::South(gamepad_id),
+                        Button::East => GamepadEvent::East(gamepad_id),
+                        Button::North => GamepadEvent::North(gamepad_id),
+                        Button::West => GamepadEvent::West(gamepad_id),
+                        Button::C => GamepadEvent::C(gamepad_id),
+                        Button::Z => GamepadEvent::Z(gamepad_id),
+                        Button::LeftTrigger => GamepadEvent::LeftTrigger(gamepad_id),
+                        Button::LeftTrigger2 => GamepadEvent::LeftTrigger2(gamepad_id),
+                        Button::RightTrigger => GamepadEvent::RightTrigger(gamepad_id),
+                        Button::RightTrigger2 => GamepadEvent::RightTrigger2(gamepad_id),
+                        Button::Select => GamepadEvent::Select(gamepad_id),
+                        Button::Start => GamepadEvent::Start(gamepad_id),
+                        Button::Mode => GamepadEvent::Mode(gamepad_id),
+                        Button::LeftThumb => GamepadEvent::LeftThumb(gamepad_id),
+                        Button::RightThumb => GamepadEvent::RightThumb(gamepad_id),
+                        Button::DPadUp => GamepadEvent::DPadUp(gamepad_id),
+                        Button::DPadDown => GamepadEvent::DPadDown(gamepad_id),
+                        Button::DPadLeft => GamepadEvent::DPadLeft(gamepad_id),
+                        Button::DPadRight => GamepadEvent::DPadRight(gamepad_id),
+                        Button::Unknown => GamepadEvent::Unknown(gamepad_id),
+                    };
+                    if value > 0.5 {
+                        Action::Press(button)
+                    } else {
+                        Action::Release(button)
                     }
-                    gilrs::EventType::AxisChanged(axis, value, _) => {
-                        // * 300.0 as some gamepads do not reach 1.0
-                        let value = (value * 300.0).clamp(-255.0, 255.0) as i16;
-                        match axis {
-                            Axis::LeftStickX if value < -200 => {
-                                Some(GamepadEvent::LeftStickXMin(gamepad_id))
-                            }
-                            Axis::LeftStickX if value > 200 => {
-                                Some(GamepadEvent::LeftStickXMax(gamepad_id))
-                            }
-                            Axis::LeftStickY if value < -200 => {
-                                Some(GamepadEvent::LeftStickYMin(gamepad_id))
-                            }
-                            Axis::LeftStickY if value > 200 => {
-                                Some(GamepadEvent::LeftStickYMax(gamepad_id))
-                            }
-                            Axis::LeftZ if value < -200 => Some(GamepadEvent::LeftZMin(gamepad_id)),
-                            Axis::LeftZ if value > 200 => Some(GamepadEvent::LeftZMax(gamepad_id)),
-                            Axis::RightStickX if value < -200 => {
-                                Some(GamepadEvent::RightStickXMin(gamepad_id))
-                            }
-                            Axis::RightStickX if value > 200 => {
-                                Some(GamepadEvent::RightStickXMax(gamepad_id))
-                            }
-                            Axis::RightStickY if value < -200 => {
-                                Some(GamepadEvent::RightStickYMin(gamepad_id))
-                            }
-                            Axis::RightStickY if value > 200 => {
-                                Some(GamepadEvent::RightStickYMax(gamepad_id))
-                            }
-                            Axis::RightZ if value < -200 => {
-                                Some(GamepadEvent::RightZMin(gamepad_id))
-                            }
-                            Axis::RightZ if value > 200 => {
-                                Some(GamepadEvent::RightZMax(gamepad_id))
-                            }
-                            Axis::DPadX if value < -200 => Some(GamepadEvent::DPadXMin(gamepad_id)),
-                            Axis::DPadX if value > 200 => Some(GamepadEvent::DPadXMax(gamepad_id)),
-                            Axis::DPadY if value < -200 => Some(GamepadEvent::DPadYMin(gamepad_id)),
-                            Axis::DPadY if value > 200 => Some(GamepadEvent::DPadYMax(gamepad_id)),
-                            _ => None,
-                        }
-                    }
-                    _ => None,
                 }
-            })
-        {
-            if self.events.insert(event) {
-                self.new_events.insert(event);
-            } else {
-                still_active.insert(event);
+                gilrs::EventType::AxisChanged(axis, value, _) => {
+                    // * 300.0 as some gamepads do not reach 1.0
+                    let value = (value * 300.0).clamp(-255.0, 255.0) as i16;
+                    let (button_1, button_2) = match axis {
+                        Axis::LeftStickX => (
+                            GamepadEvent::LeftStickXMin(gamepad_id),
+                            GamepadEvent::LeftStickXMax(gamepad_id),
+                        ),
+                        Axis::LeftStickY => (
+                            GamepadEvent::LeftStickYMin(gamepad_id),
+                            GamepadEvent::LeftStickYMax(gamepad_id),
+                        ),
+                        Axis::LeftZ => (
+                            GamepadEvent::LeftZMin(gamepad_id),
+                            GamepadEvent::LeftZMax(gamepad_id),
+                        ),
+                        Axis::RightStickX => (
+                            GamepadEvent::RightStickXMin(gamepad_id),
+                            GamepadEvent::RightStickXMax(gamepad_id),
+                        ),
+                        Axis::RightStickY => (
+                            GamepadEvent::RightStickYMin(gamepad_id),
+                            GamepadEvent::RightStickYMax(gamepad_id),
+                        ),
+                        Axis::RightZ => (
+                            GamepadEvent::RightZMin(gamepad_id),
+                            GamepadEvent::RightZMax(gamepad_id),
+                        ),
+                        Axis::DPadX => (
+                            GamepadEvent::DPadXMin(gamepad_id),
+                            GamepadEvent::DPadXMax(gamepad_id),
+                        ),
+                        Axis::DPadY => (
+                            GamepadEvent::DPadYMin(gamepad_id),
+                            GamepadEvent::DPadYMax(gamepad_id),
+                        ),
+                        _ => {
+                            return Action::None;
+                        }
+                    };
+
+                    if value < -200 {
+                        Action::PressRelease {
+                            press: button_1,
+                            release: button_2,
+                        }
+                    } else if value > 200 {
+                        Action::PressRelease {
+                            press: button_2,
+                            release: button_1,
+                        }
+                    } else {
+                        Action::Release2(button_1, button_2)
+                    }
+                }
+                _ => Action::None,
+            }
+        }) {
+            match action {
+                Action::None => (),
+                Action::Press(event) => {
+                    self.events.insert(event);
+                    self.new_events.insert(event);
+                }
+                Action::Release(event) => {
+                    self.events.remove(&event);
+                }
+                Action::PressRelease { press, release } => {
+                    self.events.insert(press);
+                    self.new_events.insert(press);
+                    self.events.remove(&release);
+                }
+                Action::Release2(button_1, button_2) => {
+                    self.events.remove(&button_1);
+                    self.events.remove(&button_2);
+                }
             }
         }
-
-        self.events = self
-            .new_events
-            .iter()
-            .chain(still_active.iter())
-            .copied()
-            .collect();
     }
 
     pub fn new_events(&self) -> HashSet<GamepadEvent> {
@@ -216,4 +234,15 @@ impl Gamepad {
     pub fn events(&self) -> HashSet<GamepadEvent> {
         self.events.clone()
     }
+}
+
+enum Action {
+    None,
+    Press(GamepadEvent),
+    Release(GamepadEvent),
+    PressRelease {
+        press: GamepadEvent,
+        release: GamepadEvent,
+    },
+    Release2(GamepadEvent, GamepadEvent),
 }
