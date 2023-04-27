@@ -1,10 +1,9 @@
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
-
 use crate::{animation::ColorPalette, scene::Scene};
 use egui::{
     Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding, Sense, Shape, Slider,
     TextureId, Ui, Vec2, Widget,
 };
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct SceneWidget<'a> {
     pub selected_scene: &'a mut usize,
