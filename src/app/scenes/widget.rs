@@ -1,3 +1,5 @@
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
+
 use crate::{animation::ColorPalette, scene::Scene};
 use egui::{
     Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding, Sense, Shape, Slider,
@@ -22,7 +24,16 @@ impl<'a> Widget for SceneWidget<'a> {
 
         let mut response = egui::Frame::none()
             .fill(if *self.selected_scene == self.index {
-                Color32::DARK_GREEN
+                Color32::GOLD.linear_multiply(
+                    ((SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("Could not get time")
+                        .subsec_millis()
+                        / 100) as f32
+                        / 5.0
+                        - 1.0)
+                        .abs(),
+                )
             } else {
                 Color32::TRANSPARENT
             })
@@ -33,7 +44,7 @@ impl<'a> Widget for SceneWidget<'a> {
                     .fill(if self.scene.flash {
                         Color32::WHITE
                     } else if self.scene.active {
-                        let off = Color32::DARK_GRAY.to_srgba_unmultiplied();
+                        let off = Color32::BLACK.to_srgba_unmultiplied();
                         let on = self.live_color.to_srgba_unmultiplied();
                         let factor = self.scene.transition_factor();
 
@@ -44,7 +55,7 @@ impl<'a> Widget for SceneWidget<'a> {
                             (off[3] as f32 * (1.0 - factor) + on[3] as f32 * factor) as u8,
                         )
                     } else {
-                        Color32::DARK_GRAY
+                        Color32::BLACK
                     })
                     .inner_margin(Margin::from(10.0))
                     .show(ui, |ui| {

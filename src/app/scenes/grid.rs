@@ -44,8 +44,8 @@ impl App {
                                 svg: svg.filter(|_| scenes.show_svg),
                                 scenes_size: scenes.size,
                                 live_color: match kind {
-                                    SceneKind::Background => Color32::DARK_BLUE,
-                                    SceneKind::Foreground => Color32::DARK_RED,
+                                    SceneKind::Background => Color32::GREEN,
+                                    SceneKind::Foreground => Color32::RED,
                                 },
                                 uv,
                             },
