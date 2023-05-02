@@ -48,7 +48,11 @@ impl MeasurementPoints {
 
                 for led in point.leds.iter() {
                     if led.start % 3 != 1 {
-                        panic!("Unsupported led alignment: {:?}. supported: 1", led);
+                        panic!(
+                            "Unsupported led alignment: {} ({:?}). supported: 1",
+                            led.start % 3,
+                            led
+                        );
                     }
                     let i = led.start / 3;
 
@@ -195,7 +199,11 @@ impl From<&ParsedSvg> for MeasurementPoints {
                     .get(0)
                     .expect("Could not find first led");
                 if led.start % 3 != 1 {
-                    panic!("Unsupported led alignment: {:?}. supported: 1", led);
+                    panic!(
+                        "Unsupported led alignment: {} ({:?}). supported: 1",
+                        led.start % 3,
+                        led
+                    );
                 }
                 let i = led.start / 3;
                 if let Some(universe_index) = universes.get(&led.universe) {
