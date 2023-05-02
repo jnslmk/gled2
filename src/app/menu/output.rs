@@ -291,7 +291,10 @@ impl App {
 
                                         match universe_output {
                                             UniverseOutput::Default => (),
-                                            UniverseOutput::Artnet { ip, universe } => {
+                                            UniverseOutput::Artnet {
+                                                ip,
+                                                universe: universe_changed,
+                                            } => {
                                                 {
                                                     ui.label("Artnet IP");
                                                     let ip = self
@@ -307,7 +310,7 @@ impl App {
                                                                 ip: ip
                                                                     .parse()
                                                                     .expect("Should never happen"),
-                                                                universe,
+                                                                universe: universe_changed,
                                                             };
                                                         new_outputs = Some(outputs);
                                                     }
@@ -320,7 +323,9 @@ impl App {
                                                         .entry(format!(
                                                             "artnet_universe_{universe}"
                                                         ))
-                                                        .or_insert_with(|| universe.to_string());
+                                                        .or_insert_with(|| {
+                                                            universe_changed.to_string()
+                                                        });
                                                     if ui
                                                         .add(TextEdit::singleline(universe_str))
                                                         .changed()
