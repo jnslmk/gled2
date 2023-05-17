@@ -3,6 +3,7 @@
 
 mod animation;
 mod app;
+mod artnet_receiver;
 mod constants;
 mod extract_output;
 mod hotkey;
@@ -31,6 +32,7 @@ pub static WGPU_RENDER_STATE: OnceCell<RenderState> = OnceCell::new();
 
 fn main() {
     logging::init();
+    let receiver = artnet_receiver::start_thread();
 
     let options = eframe::NativeOptions {
         drag_and_drop_support: true,
@@ -59,7 +61,7 @@ fn main() {
                 )
                 .map_err(|_err| ())
                 .expect("Could not set wgpu render state");
-            Box::new(App::new().expect("Could not create new App"))
+            Box::new(App::new(receiver).expect("Could not create new App"))
         }),
     )
     .expect("Could not run native");

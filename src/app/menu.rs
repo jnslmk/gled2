@@ -1,3 +1,4 @@
+mod artnet_input;
 mod output;
 
 use super::{svg::Svg, App};
@@ -192,6 +193,13 @@ impl App {
 
                     if ui.button(RichText::new("Outputs").heading()).clicked() {
                         self.config_output_window_open = true;
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui.button(RichText::new("Artnet Input").heading()).clicked() {
+                        self.artnet_input_window_open = true;
                         ui.close_menu();
                     }
 

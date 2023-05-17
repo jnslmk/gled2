@@ -1,21 +1,23 @@
-use std::collections::HashSet;
-
+use crate::artnet_receiver::ArtnetEvent;
 use egui::{Context, Key, Modifiers};
 use gilrs::{Axis, Button, Event, Gilrs};
 use log::debug;
 use serde::{Deserialize, Serialize};
+use std::{collections::HashSet, sync::mpsc::Receiver};
 use strum::Display;
 
 pub struct Gamepad {
     gilrs: Gilrs,
     events: HashSet<GamepadEvent>,
     new_events: HashSet<GamepadEvent>,
+    artnet_events: HashSet<u8>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum Hotkey {
     Key(Key),
-    GamepadEvent(GamepadEvent),
+    Gamepad(GamepadEvent),
+    Artnet(u8),
 }
 
 impl Hotkey {
@@ -28,10 +30,19 @@ impl Hotkey {
 
         let events = gamepad.new_events();
         if events.len() == 1 {
-            events.into_iter().next().map(Self::GamepadEvent)
-        } else {
-            None
+            return events.into_iter().next().map(Self::Gamepad);
         }
+
+        if gamepad.artnet_events.len() == 1 {
+            return gamepad
+                .artnet_events
+                .iter()
+                .next()
+                .copied()
+                .map(Self::Artnet);
+        }
+
+        None
     }
 
     pub fn pressed(&self, ctx: &Context, gamepad: &Gamepad) -> bool {
@@ -40,14 +51,16 @@ impl Hotkey {
                 !ctx.wants_keyboard_input()
                     && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, *key))
             }
-            Hotkey::GamepadEvent(event) => gamepad.new_events().contains(event),
+            Hotkey::Gamepad(event) => gamepad.new_events().contains(event),
+            Hotkey::Artnet(channel) => gamepad.artnet_events.contains(channel),
         }
     }
 
     pub fn live(&self, ctx: &Context, gamepad: &Gamepad) -> bool {
         match self {
             Hotkey::Key(key) => !ctx.wants_keyboard_input() && ctx.input(|i| i.key_down(*key)),
-            Hotkey::GamepadEvent(event) => gamepad.events().contains(event),
+            Hotkey::Gamepad(event) => gamepad.events().contains(event),
+            Hotkey::Artnet(channel) => gamepad.artnet_events.contains(channel),
         }
     }
 }
@@ -56,7 +69,8 @@ impl std::fmt::Display for Hotkey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&match self {
             Hotkey::Key(key) => format!("{key:?}"),
-            Hotkey::GamepadEvent(event) => format!("{event}"),
+            Hotkey::Gamepad(event) => format!("{event}"),
+            Hotkey::Artnet(channel) => format!("ch {channel}"),
         })
     }
 }
@@ -108,10 +122,22 @@ impl Gamepad {
             gilrs,
             events: HashSet::new(),
             new_events: HashSet::new(),
+            artnet_events: HashSet::new(),
         }
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, receiver: &mut Receiver<ArtnetEvent>) {
+        while let Ok(event) = receiver.try_recv() {
+            match event {
+                ArtnetEvent::On { channel } => {
+                    self.artnet_events.insert(channel);
+                }
+                ArtnetEvent::Off { channel } => {
+                    self.artnet_events.remove(&channel);
+                }
+            }
+        }
+
         self.new_events.clear();
         while let Some(action) = self.gilrs.next_event().map(|Event { id, event, time }| {
             let gamepad_id: usize = id.into();

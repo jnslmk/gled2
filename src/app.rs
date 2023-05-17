@@ -8,6 +8,7 @@ mod svg;
 mod timing;
 
 use crate::{
+    artnet_receiver::ArtnetEvent,
     extract_output::ExtractOutput,
     hotkey::Gamepad,
     logo::logo_image,
@@ -18,12 +19,14 @@ use crate::{
 use egui::Modifiers;
 use egui_extras::RetainedImage;
 use persistant_state::PersistantState;
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, sync::mpsc::Receiver};
 use timing::Timing;
 
 pub use svg::{positions, preview_positions, preview_uv, Svg};
 
 pub struct App {
+    receiver: Receiver<ArtnetEvent>,
+
     output_sender: OutputSender,
     gpu_ready_receiver: GpuReadyReceiver,
     logo_image: RetainedImage,
@@ -39,6 +42,7 @@ pub struct App {
     svg: Option<Svg>,
     about_window_open: bool,
     config_output_window_open: bool,
+    artnet_input_window_open: bool,
     selected_scene: usize,
     hovered_scene: usize,
 }
@@ -46,7 +50,7 @@ pub struct App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.timing.tick(self.persistant_state.fps_limit);
-        self.gamepad.tick();
+        self.gamepad.tick(&mut self.receiver);
 
         egui::gui_zoom::zoom_with_keyboard_shortcuts(ctx, frame.info().native_pixels_per_point);
         if ctx.input_mut(|i| i.consume_key(Modifiers::ALT, egui::Key::Enter)) {
@@ -90,6 +94,7 @@ impl eframe::App for App {
 
         self.about_window(ctx);
         self.config_output_window(ctx);
+        self.config_artnet_input_window(ctx);
         self.menu(ctx, frame);
         self.config(ctx);
         self.preview(ctx);
@@ -101,7 +106,7 @@ impl eframe::App for App {
 }
 
 impl App {
-    pub fn new() -> Option<Self> {
+    pub fn new(receiver: Receiver<ArtnetEvent>) -> Option<Self> {
         let persistant_state = PersistantState::load();
         let extract_output = ExtractOutput::new();
         let (output_sender, gpu_ready_receiver) =
@@ -109,6 +114,7 @@ impl App {
         let logo_image = logo_image();
 
         let mut app = Self {
+            receiver,
             output_sender,
             gpu_ready_receiver,
             logo_image,
@@ -120,6 +126,7 @@ impl App {
             blackout: false,
             about_window_open: false,
             config_output_window_open: false,
+            artnet_input_window_open: false,
             selected_scene: 0,
             hovered_scene: 0,
             pipeline: Pipeline::default(),
