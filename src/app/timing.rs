@@ -108,7 +108,7 @@ impl Timing {
         if self
             .taps
             .last()
-            .map(|tap| Instant::now().duration_since(*tap).as_millis() > 1000)
+            .map(|tap| Instant::now().duration_since(*tap).as_secs() > 3)
             .unwrap_or_default()
         {
             self.taps.clear();
