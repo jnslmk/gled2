@@ -7,6 +7,7 @@ use std::{
         Mutex,
     },
     thread,
+    time::Duration,
 };
 
 pub enum ArtnetEvent {
@@ -48,30 +49,25 @@ pub fn start_thread() -> Receiver<ArtnetEvent> {
 
 fn thread(sender: Sender<ArtnetEvent>) {
     let socket = UdpSocket::bind(("0.0.0.0", 6454)).unwrap();
-    match socket.set_broadcast(true) {
-        Ok(_) => info!("Activated sending to broadcast"),
-        Err(e) => info!("Could not activate sending to broadcast: {}", e),
-    }
-    match socket.set_nonblocking(true) {
-        Ok(_) => info!("Activated non-blocking mode"),
-        Err(e) => info!("Could not activate non-blocking mode: {}", e),
-    };
-
     let mut buf = [0; 4096];
     let mut previous = vec![0; 512];
     loop {
         let Ok((size, _src)) = socket.recv_from(&mut buf) else {
+            debug!("Could not receive on artnet");
+            std::thread::sleep(Duration::from_millis(10));
             continue;
         };
 
-        //let command = ArtCommand::from_buffer(&buf[..size]);
-        let Ok(ArtCommand::Output(output)) =ArtCommand::from_buffer(&buf[..size]) else {
+        let Ok(ArtCommand::Output(output)) = ArtCommand::from_buffer(&buf[..size]) else {
+            debug!("Could not parse artnet");
+            std::thread::sleep(Duration::from_millis(10));
             continue;
         };
 
         let config = ARTNET_CONFIG.lock().expect("ARTNET_CONFIG is poisoned");
         if output.port_address != config.port_address() {
             debug!("Ignoring universe {:?}", output.port_address);
+            std::thread::sleep(Duration::from_millis(10));
             continue;
         }
 
