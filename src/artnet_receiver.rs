@@ -1,7 +1,7 @@
-use artnet_protocol::{ArtCommand, PortAddress};
-use log::{debug, info};
+use artnet_protocol::{ArtCommand, PollReply, PortAddress};
+use log::{debug, info, trace, warn};
 use std::{
-    net::UdpSocket,
+    net::{Ipv4Addr, UdpSocket},
     sync::{
         mpsc::{Receiver, Sender},
         Mutex,
@@ -9,6 +9,8 @@ use std::{
     thread,
     time::Duration,
 };
+
+static ARTNET_PORT: u16 = 6454;
 
 pub enum ArtnetEvent {
     On { channel: u8 },
@@ -48,21 +50,84 @@ pub fn start_thread() -> Receiver<ArtnetEvent> {
 }
 
 fn thread(sender: Sender<ArtnetEvent>) {
-    let socket = UdpSocket::bind(("0.0.0.0", 6454)).unwrap();
+    trace!("Opening udp socket on artnet port");
+    let socket = UdpSocket::bind(("0.0.0.0", ARTNET_PORT)).expect("Could not bind on artnet port");
+    trace!("Setting broadcast");
+    socket.set_broadcast(true).expect("Could not set broadcast");
     let mut buf = [0; 4096];
     let mut previous = vec![0; 512];
     loop {
-        let Ok((size, _src)) = socket.recv_from(&mut buf) else {
+        trace!("Receiving artnet package");
+        let Ok((size, src)) = socket.recv_from(&mut buf) else {
             debug!("Could not receive on artnet");
             std::thread::sleep(Duration::from_millis(10));
             continue;
         };
+        trace!("received on artnet");
 
-        let Ok(ArtCommand::Output(output)) = ArtCommand::from_buffer(&buf[..size]) else {
-            debug!("Could not parse artnet");
-            std::thread::sleep(Duration::from_millis(10));
-            continue;
+        let output = match ArtCommand::from_buffer(&buf[..size]) {
+            Err(err) => {
+                warn!("Could not parse artnet package: {err:?}");
+                continue;
+            }
+            Ok(ArtCommand::Output(output)) => output,
+            Ok(ArtCommand::Poll(_poll)) => {
+                debug!("Artnet poll from {src:?}");
+                let poll_reply = PollReply {
+                    address: Ipv4Addr::new(10, 0, 40, 30), // TODO
+                    port: ARTNET_PORT,
+                    version: [0, 0],
+                    port_address: [0, 0],
+                    oem: [0, 0],
+                    ubea_version: 0,
+                    status_1: 210,
+                    esta_code: 31344,
+                    short_name: {
+                        let mut bytes = [0; 18];
+                        bytes[..5].clone_from_slice("Gled2".as_bytes());
+                        bytes
+                    },
+                    long_name: {
+                        let mut bytes = [0; 64];
+                        bytes[..18].clone_from_slice("Gled2 Artnet Input".as_bytes());
+                        bytes
+                    },
+                    node_report: [0; 64],
+                    num_ports: [0, 4],
+                    port_types: [192; 4],
+                    good_input: [0, 8, 8, 8],
+                    good_output: [0, 0, 0, 0],
+                    swin: [0; 4],
+                    swout: [0; 4],
+                    sw_video: 0,
+                    sw_macro: 0,
+                    sw_remote: 0,
+                    spare: [0; 3],
+                    style: 0,
+                    mac: [0; 6],
+                    bind_ip: [10, 40, 0, 30], // TODO
+                    bind_index: 0,
+                    status_2: 0,
+                    filler: [0; 26],
+                };
+
+                let Ok(data) = ArtCommand::PollReply(Box::new(poll_reply)).write_to_buffer() else {
+                    warn!("Could not create poll reply");
+                    continue;
+                };
+
+                if let Err(err) = socket.send_to(&data, src) {
+                    warn!("Could not send PollReply: {err:?}");
+                }
+
+                continue;
+            }
+            Ok(artnet) => {
+                debug!("Unhandeled ArtCommand: {artnet:?}");
+                continue;
+            }
         };
+        trace!("parsed artnet");
 
         let config = ARTNET_CONFIG.lock().expect("ARTNET_CONFIG is poisoned");
         if output.port_address != config.port_address() {
@@ -70,6 +135,7 @@ fn thread(sender: Sender<ArtnetEvent>) {
             std::thread::sleep(Duration::from_millis(10));
             continue;
         }
+        trace!("data on correct universe");
 
         let data = output.data.as_ref();
 
