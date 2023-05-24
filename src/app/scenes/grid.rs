@@ -3,7 +3,7 @@ use crate::{
     scene::SceneKind,
     transition::{Transition, TransitionGoal},
 };
-use egui::{Color32, Context, Rect, TextureId, Ui, Vec2};
+use egui::{scroll_area::ScrollBarVisibility, Color32, Context, Rect, TextureId, Ui, Vec2};
 
 impl App {
     pub fn scenes_grid(
@@ -22,7 +22,7 @@ impl App {
         egui::ScrollArea::vertical()
             .id_source(format!("{kind:?}_scroll"))
             .auto_shrink([false, false])
-            .always_show_scroll(true)
+            .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
             .show(ui, |ui| {
                 ui.set_max_width(ui.available_width() - 30.0);
                 ui.horizontal_wrapped(|ui| {
