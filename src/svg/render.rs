@@ -12,7 +12,7 @@ impl ParsedSvg {
                 .context("Could not create pixmap for svg")?;
         let tree = resvg::Tree::from_usvg(&self.tree);
         let max_side = tree.size.width().max(tree.size.height());
-        let scale = f32::from(PREVIEW_TEXTURE_SIZE) / max_side as f32;
+        let scale = f32::from(PREVIEW_TEXTURE_SIZE) / max_side;
 
         resvg::Tree::render(
             &tree,
