@@ -1,5 +1,6 @@
 #![windows_subsystem = "windows"]
 #![allow(dead_code)]
+#![allow(deprecated)]
 
 mod animation;
 mod app;
