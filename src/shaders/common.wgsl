@@ -15,7 +15,8 @@ struct Uniforms {
     count: u32,
     direction: u32,
     mode: u32,
-    // padding: 16 bytes
+    speed: f32,
+    // padding: 8 bytes
 };
 
 @group(0) @binding(0)
@@ -23,7 +24,7 @@ var<uniform> uniforms: Uniforms;
 
 @fragment
 fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
-    var beat_progression = uniforms.beat_progression % 1.0;
+    var beat_progression = (uniforms.beat_progression * uniforms.speed) % 1.0;
     if (uniforms.direction != 0u) {
         beat_progression = 1.0 - beat_progression;
     }

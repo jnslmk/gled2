@@ -118,6 +118,7 @@ impl Pipeline {
                 count: 2,
                 common: CommonConfig {
                     direction: Direction::Backward,
+                    ..Default::default()
                 },
                 ..Default::default()
             };

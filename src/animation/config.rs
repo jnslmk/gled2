@@ -1,4 +1,4 @@
-use egui::{RichText, Ui};
+use egui::{RichText, Slider, Ui};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -6,8 +6,8 @@ pub struct Config {
     pub center: (f32, f32),
     pub thickness: f32,
     pub count: u32,
-    pub common: CommonConfig,
     pub mode: u32,
+    pub common: CommonConfig,
 }
 
 impl Default for Config {
@@ -34,6 +34,7 @@ impl Config {
             Direction::Backward => 0x01,
         };
         data[20..24].copy_from_slice(&self.mode.to_le_bytes());
+        data[24..28].copy_from_slice(&self.common.speed.to_le_bytes());
     }
 
     /// must be a multiple of 16
@@ -49,10 +50,22 @@ pub enum Direction {
     Backward,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 #[serde(default)]
 pub struct CommonConfig {
     pub direction: Direction,
+
+    /// in multiple of bpm
+    pub speed: f32,
+}
+
+impl Default for CommonConfig {
+    fn default() -> Self {
+        Self {
+            direction: Default::default(),
+            speed: 1.0,
+        }
+    }
 }
 
 impl CommonConfig {
@@ -61,6 +74,11 @@ impl CommonConfig {
             ui.radio_value(&mut self.direction, Direction::Forward, "Forward");
             ui.radio_value(&mut self.direction, Direction::Backward, "Backward");
         });
+        ui.add(
+            Slider::new(&mut self.speed, 0.0..=10.0)
+                .custom_formatter(|n, _| format!("{:.1}x", n))
+                .text("Speed"),
+        );
         ui.separator();
 
         ui.label(RichText::new("Settings").heading());

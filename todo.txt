@@ -1,6 +1,5 @@
 Autoupdate: https://docs.rs/self-replace/latest/self_replace/
 
-Effektgeschwindigkeit auf Vielfachem/Bruchteil der BPM
 Effekte:
  * gradient größer wieder kleiner
  * entgegendlaufende linien
