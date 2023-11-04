@@ -78,7 +78,7 @@ impl CommonConfig {
             ui.radio_value(&mut self.direction, Direction::Alternating, "Alternating");
         });
         ui.add(
-            Slider::new(&mut self.speed, 0.0..=10.0)
+            Slider::new(&mut self.speed, 0.0..=8.0)
                 .custom_formatter(|n, _| format!("{:.1}x", n))
                 .text("Speed"),
         );
