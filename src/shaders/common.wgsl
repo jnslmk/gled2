@@ -25,7 +25,7 @@ var<uniform> uniforms: Uniforms;
 @fragment
 fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
     var beat_progression = (uniforms.beat_progression * uniforms.speed) % 1.0;
-    if (uniforms.direction == 1u || (uniforms.direction == 2u && (uniforms.beat_progression * uniforms.speed) % 2.0 > 1.0)) {
+    if (uniforms.direction == 1u || (uniforms.direction == 2u && (uniforms.beat_progression * uniforms.speed) % 2.0 >= 1.0)) {
         beat_progression = 1.0 - beat_progression;
     }
 
