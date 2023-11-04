@@ -8,7 +8,7 @@ cp -r assets/Gled.app /tmp/gled/
 lipo -create -output /tmp/gled/Gled.app/Contents/MacOS/gled target/aarch64-apple-darwin/release/gled target/x86_64-apple-darwin/release/gled
 /opt/homebrew/bin/brew install create-dmg
 rm -f rw.Gled.dmg Gled.dmg
-create-dmg \
+/opt/homebrew/bin/create-dmg \
     --volname "Gled Installer" \
     --volicon "assets/Gled.app/Contents/Resources/icon.icns" \
     --window-pos 200 120 \
