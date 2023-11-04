@@ -1,7 +1,6 @@
 Autoupdate: https://docs.rs/self-replace/latest/self_replace/
 
 Effekte:
- * gradient größer wieder kleiner
  * entgegendlaufende linien
 
 Effektegruppen

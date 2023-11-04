@@ -32,6 +32,7 @@ impl Config {
         data[16] = match self.common.direction {
             Direction::Forward => 0x00,
             Direction::Backward => 0x01,
+            Direction::Alternating => 0x02,
         };
         data[20..24].copy_from_slice(&self.mode.to_le_bytes());
         data[24..28].copy_from_slice(&self.common.speed.to_le_bytes());
@@ -48,6 +49,7 @@ pub enum Direction {
     #[default]
     Forward,
     Backward,
+    Alternating,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
@@ -73,6 +75,7 @@ impl CommonConfig {
         ui.horizontal(|ui| {
             ui.radio_value(&mut self.direction, Direction::Forward, "Forward");
             ui.radio_value(&mut self.direction, Direction::Backward, "Backward");
+            ui.radio_value(&mut self.direction, Direction::Alternating, "Alternating");
         });
         ui.add(
             Slider::new(&mut self.speed, 0.0..=10.0)
