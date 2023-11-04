@@ -95,10 +95,10 @@ fn traverse_node(
                 let leds = parameter.leds();
                 parents.iter().for_each(|parent_id| {
                     if let Some(parameter) = parameters.get_mut(parent_id) {
-                        parameter.leds.extend(leds.clone().into_iter())
+                        parameter.leds.extend(leds.clone())
                     }
                 });
-                parameter.leds.extend(leds.into_iter());
+                parameter.leds.extend(leds);
                 parameters.insert(node.id().clone(), parameter);
             }
 

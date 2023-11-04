@@ -1,5 +1,5 @@
 use super::App;
-use egui::{Context, Layout, RichText, Vec2};
+use egui::{load::SizedTexture, Context, Layout, RichText, Vec2};
 
 impl App {
     pub fn about_window(&mut self, ctx: &Context) {
@@ -11,7 +11,10 @@ impl App {
                 .open(&mut self.about_window_open)
                 .show(ctx, |ui| {
                     ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
-                        ui.image(self.logo_image.texture_id(ctx), Vec2::splat(500.0));
+                        ui.image(SizedTexture::new(
+                            self.logo_image.texture_id(ctx),
+                            Vec2::splat(500.0),
+                        ));
                         ui.label(RichText::new("gled").text_style(egui::TextStyle::Heading));
                         ui.spacing();
                         ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));

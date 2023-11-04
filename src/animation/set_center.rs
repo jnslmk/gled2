@@ -1,4 +1,4 @@
-use egui::{CursorIcon, Image, Sense, TextureId, Ui, Vec2};
+use egui::{load::SizedTexture, CursorIcon, Image, Sense, TextureId, Ui, Vec2};
 
 pub fn set_center_button(
     ui: &mut Ui,
@@ -10,9 +10,14 @@ pub fn set_center_button(
         ui.style_mut().spacing.interact_size.y = 40.0;
         ui.menu_button("Select center of animation", |ui| {
             let size = 300.0;
-            let res = ui.add(Image::new(rendered, Vec2::splat(size)).sense(Sense::click()));
+            let res = ui.add(
+                Image::new(SizedTexture::new(rendered, Vec2::splat(size))).sense(Sense::click()),
+            );
             if let Some(svg) = svg {
-                ui.put(res.rect, Image::new(svg, Vec2::splat(size)));
+                ui.put(
+                    res.rect,
+                    Image::new(SizedTexture::new(svg, Vec2::splat(size))),
+                );
             }
             if let Some(pos) = res
                 .hover_pos()

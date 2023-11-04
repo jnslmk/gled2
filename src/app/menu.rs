@@ -5,8 +5,8 @@ use super::{svg::Svg, App};
 use crate::project::Project;
 use eframe::Frame;
 use egui::{
-    text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers, RichText, Slider,
-    Stroke, TextFormat, Vec2,
+    load::SizedTexture, text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers,
+    RichText, Slider, Stroke, TextFormat, Vec2,
 };
 use log::{debug, error};
 
@@ -18,10 +18,10 @@ impl App {
                 let menu_button_size = Vec2::new(100.0, ui.available_height());
 
                 if ui
-                    .add(ImageButton::new(
+                    .add(ImageButton::new(SizedTexture::new(
                         self.logo_image.texture_id(ctx),
                         Vec2::splat(ui.available_height()),
-                    ))
+                    )))
                     .clicked()
                 {
                     self.about_window_open = true;

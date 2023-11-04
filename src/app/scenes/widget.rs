@@ -1,7 +1,7 @@
 use crate::{animation::ColorPalette, scene::Scene};
 use egui::{
-    Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding, Sense, Shape, Slider,
-    TextureId, Ui, Vec2, Widget,
+    load::SizedTexture, Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding,
+    Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -109,7 +109,10 @@ impl<'a> Widget for SceneWidget<'a> {
 
                             ui.horizontal(|ui| {
                                 let res = ui.add({
-                                    let mut image = Image::new(self.scene.texture_id(), size);
+                                    let mut image = Image::new(SizedTexture::new(
+                                        self.scene.texture_id(),
+                                        size,
+                                    ));
                                     if let Some(uv) = uv {
                                         image = image.uv(uv);
                                     }
@@ -117,7 +120,8 @@ impl<'a> Widget for SceneWidget<'a> {
                                 });
                                 if let Some(svg_texture_id) = self.svg {
                                     ui.put(res.rect, {
-                                        let mut image = Image::new(svg_texture_id, size);
+                                        let mut image =
+                                            Image::new(SizedTexture::new(svg_texture_id, size));
                                         if let Some(uv) = uv {
                                             image = image.uv(uv);
                                         }
@@ -203,7 +207,7 @@ fn color_band(ui: &mut Ui, palette: &mut ColorPalette) {
                     pos
                 },
             ),
-            Rounding::none(),
+            Rounding::ZERO,
             Color32::BLACK,
         ))
         .chain(colors.iter().enumerate().map(|(i, color)| {
@@ -222,7 +226,7 @@ fn color_band(ui: &mut Ui, palette: &mut ColorPalette) {
                         pos
                     },
                 ),
-                Rounding::none(),
+                Rounding::ZERO,
                 color,
             )
         }))
