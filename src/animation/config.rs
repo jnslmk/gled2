@@ -79,7 +79,7 @@ impl CommonConfig {
         });
         ui.add(
             Slider::new(&mut self.speed, 0.0..=8.0)
-                .custom_formatter(|n, _| format!("{:.1}x", n))
+                .custom_formatter(|n, _| format!("{:.2} x", n))
                 .text("Speed"),
         );
         ui.separator();
