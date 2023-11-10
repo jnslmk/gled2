@@ -88,6 +88,7 @@ impl App {
                         ui.label(RichText::new("Animation").heading());
                         let animation_changed = egui::ComboBox::from_label("Animation")
                             .selected_text(format!("{}", scene.animation))
+                            .width(150.0)
                             .show_ui(ui, |ui| {
                                 let mut changed = false;
                                 for animation in Animation::iter() {
