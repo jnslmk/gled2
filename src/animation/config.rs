@@ -7,6 +7,7 @@ pub struct Config {
     pub thickness: f32,
     pub count: u32,
     pub mode: u32,
+    pub size: f32,
     pub common: CommonConfig,
 }
 
@@ -16,6 +17,7 @@ impl Default for Config {
             center: (0.5, 0.5),
             thickness: Default::default(),
             count: Default::default(),
+            size: Default::default(),
             common: Default::default(),
             mode: Default::default(),
         }
@@ -36,6 +38,7 @@ impl Config {
         };
         data[20..24].copy_from_slice(&self.mode.to_le_bytes());
         data[24..28].copy_from_slice(&self.common.speed.to_le_bytes());
+        data[28..32].copy_from_slice(&self.size.to_le_bytes());
     }
 
     /// must be a multiple of 16

@@ -7,6 +7,7 @@ mod gradient;
 mod opposing_lines;
 mod random_circles;
 mod renderer;
+mod rotating_square;
 mod set_center;
 mod spiral;
 mod state;
@@ -24,6 +25,7 @@ pub use gradient::{Gradient, GradientType};
 pub use opposing_lines::OpposingLines;
 pub use random_circles::RandomCircles;
 pub use renderer::AnimationRenderer;
+pub use rotating_square::RotatingSquare;
 pub use spiral::Spiral;
 pub use state::State;
 pub use stripes::Stripes;
@@ -41,6 +43,7 @@ pub enum Animation {
     Gradient(Gradient),
     OpposingLines(OpposingLines),
     RandomCircles(RandomCircles),
+    RotatingSquare(RotatingSquare),
     Stripes(Stripes),
     Spiral(Spiral),
 }

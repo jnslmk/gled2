@@ -16,7 +16,7 @@ struct Uniforms {
     direction: u32,
     mode: u32,
     speed: f32,
-    // padding: 8 bytes
+    size: f32,
 };
 
 @group(0) @binding(0)
