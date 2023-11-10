@@ -4,6 +4,7 @@ mod blob;
 mod colors;
 mod config;
 mod gradient;
+mod opposing_lines;
 mod random_circles;
 mod renderer;
 mod set_center;
@@ -20,6 +21,7 @@ pub use blob::Blob;
 pub use colors::{Color, ColorPalette};
 pub use config::{CommonConfig, Config, Direction};
 pub use gradient::{Gradient, GradientType};
+pub use opposing_lines::OpposingLines;
 pub use random_circles::RandomCircles;
 pub use renderer::AnimationRenderer;
 pub use spiral::Spiral;
@@ -37,6 +39,7 @@ pub trait AnimationConfig: Into<Animation> + Default + Debug + Clone {
 pub enum Animation {
     Blob(Blob),
     Gradient(Gradient),
+    OpposingLines(OpposingLines),
     RandomCircles(RandomCircles),
     Stripes(Stripes),
     Spiral(Spiral),
