@@ -1,9 +1,3 @@
 Autoupdate: https://docs.rs/self-replace/latest/self_replace/
 
-Effekte:
- * entgegendlaufende linien
-
-Effektegruppen
- * export/import
-
-Pausemodus (fest 20bpm oder so) auf tastendruck.
+Pausemodus (fest 20bpm oder so) auf tastendruck. Blackout?
