@@ -3,7 +3,6 @@ mod output;
 
 use super::{svg::Svg, App};
 use crate::project::Project;
-use eframe::Frame;
 use egui::{
     load::SizedTexture, text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers,
     RichText, Slider, Stroke, TextFormat, Vec2,
@@ -11,7 +10,7 @@ use egui::{
 use log::{debug, error};
 
 impl App {
-    pub fn menu(&mut self, ctx: &Context, frame: &Frame) {
+    pub fn menu(&mut self, ctx: &Context) {
         egui::TopBottomPanel::top("menu").show(ctx, |ui| {
             ui.style_mut().spacing.interact_size.y = 50.0;
             egui::menu::bar(ui, |ui| {
@@ -220,7 +219,7 @@ impl App {
                     ui.separator();
 
                     ui.label(RichText::new("UI Zoom").heading());
-                    egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
+                    egui::gui_zoom::zoom_menu_buttons(ui);
                 });
                 ui.separator();
 

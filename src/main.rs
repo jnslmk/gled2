@@ -25,7 +25,7 @@ mod transition;
 
 use app::App;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration};
-use egui::Vec2;
+use egui::ViewportBuilder;
 use once_cell::sync::OnceCell;
 use wgpu::PowerPreference;
 
@@ -36,10 +36,12 @@ fn main() {
     let receiver = artnet_receiver::start_thread();
 
     let options = eframe::NativeOptions {
-        drag_and_drop_support: true,
-        initial_window_size: Some([1300.0, 1024.0].into()),
+        viewport: ViewportBuilder::default()
+            .with_inner_size([1300.0, 1024.0])
+            .with_drag_and_drop(true)
+            .with_min_inner_size([800.0, 600.0])
+            .with_icon(logo::icon()),
         renderer: eframe::Renderer::Wgpu,
-        icon_data: Some(logo::icon()),
         vsync: false,
         wgpu_options: WgpuConfiguration {
             present_mode: eframe::wgpu::PresentMode::Immediate,
@@ -47,7 +49,6 @@ fn main() {
             ..Default::default()
         },
         follow_system_theme: false,
-        min_window_size: Some(Vec2::new(800.0, 600.0)),
         ..Default::default()
     };
     eframe::run_native(

@@ -157,6 +157,7 @@ impl TextureToOutput {
     pub fn run(&self, encoder: &mut CommandEncoder) {
         let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
             label: Some("TextureToArtnet compute pass"),
+            timestamp_writes: None,
         });
         compute_pass.set_pipeline(&self.pipeline);
         compute_pass.set_bind_group(0, &self.bind_group, &[]);

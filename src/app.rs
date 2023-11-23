@@ -48,18 +48,19 @@ pub struct App {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.timing.tick(self.persistant_state.fps_limit);
         self.gamepad.tick(&mut self.receiver);
 
-        egui::gui_zoom::zoom_with_keyboard_shortcuts(ctx, frame.info().native_pixels_per_point);
         if ctx.input_mut(|i| i.consume_key(Modifiers::ALT, egui::Key::Enter)) {
             self.persistant_state.fullscreen = !self.persistant_state.fullscreen;
             self.persistant_state.dirty = true;
-            frame.set_fullscreen(self.persistant_state.fullscreen);
+            ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(
+                self.persistant_state.fullscreen,
+            ));
         }
 
-        frame.set_window_title(&format!(
+        ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
             "gled - {} {}",
             match self.project_path.as_ref() {
                 None => "demo project".to_string(),
@@ -69,7 +70,7 @@ impl eframe::App for App {
                 Some(fps) => format!("({fps:.1} fps)"),
                 None => String::new(),
             }
-        ));
+        )));
 
         self.pipeline.render(
             &mut self.output_sender,
@@ -95,7 +96,7 @@ impl eframe::App for App {
         self.about_window(ctx);
         self.config_output_window(ctx);
         self.config_artnet_input_window(ctx);
-        self.menu(ctx, frame);
+        self.menu(ctx);
         self.config(ctx);
         self.preview(ctx);
         self.scenes(ctx);

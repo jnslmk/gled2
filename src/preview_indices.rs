@@ -181,6 +181,7 @@ impl PreviewIndices {
         {
             let mut clear_compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("Preview indices clear compute pass"),
+                timestamp_writes: None,
             });
             clear_compute_pass.set_pipeline(&self.clear_pipeline);
             clear_compute_pass.set_bind_group(0, &self.clear_bind_group, &[]);
@@ -193,6 +194,7 @@ impl PreviewIndices {
 
         let mut index_compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
             label: Some("Preview indices index compute pass"),
+            timestamp_writes: None,
         });
         index_compute_pass.set_pipeline(&self.index_pipeline);
         index_compute_pass.set_bind_group(0, &self.index_bind_group, &[]);

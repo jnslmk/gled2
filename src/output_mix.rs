@@ -86,6 +86,7 @@ impl OutputMix {
         if let Some(bind_group) = self.bind_group.as_ref() {
             let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("OutputMix compute pass"),
+                timestamp_writes: None,
             });
             compute_pass.set_pipeline(&self.pipeline);
             compute_pass.set_bind_group(0, bind_group, &[]);
