@@ -46,5 +46,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (idx < 42u) {
         output[index + 1u] = colors[4] | colors[5] << 8u | colors[6] << 16u  | colors[7] << 24u;
         output[index + 2u] = colors[8] | colors[9] << 8u | colors[10] << 16u | colors[11] << 24u;
+    } else {
+        output[index + 1u] = colors[4] | colors[5] << 8u;
     }
 }
