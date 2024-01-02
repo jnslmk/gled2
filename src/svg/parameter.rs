@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct Parameter {
-    pub start: Option<u32>,
+    pub start: u32,
+    pub universe: u16,
     #[serde(alias = "render_groups")]
     pub groups: Vec<String>,
     pub count: u32,
@@ -16,23 +17,24 @@ pub struct Parameter {
 
 impl Parameter {
     pub fn leds(&self) -> Vec<Led> {
-        self.start
-            .map(|start| {
-                { 0..self.count }
-                    .map(|led| {
-                        let full_address = start + led * 3;
-                        let mut universe: u16 = (full_address / 1000) as u16;
-                        let mut start: usize = full_address as usize - universe as usize * 1000;
-                        while start > 510 {
-                            universe += 1;
-                            start -= 510;
-                        }
+        { 0..self.count }
+            .map(|led| {
+                let full_address = self.start + led * 3;
+                let mut universe: u16 = self.universe;
+                let mut start: usize = full_address as usize;
+                dbg!("bla");
+                dbg!(start);
+                dbg!(universe);
+                while start > 510 {
+                    universe += 1;
+                    start -= 510;
+                }
+                dbg!(start);
+                dbg!(universe);
 
-                        Led { universe, start }
-                    })
-                    .collect()
+                Led { universe, start }
             })
-            .unwrap_or_default()
+            .collect()
     }
 }
 
@@ -40,7 +42,8 @@ impl Default for Parameter {
     fn default() -> Self {
         Self {
             groups: vec![],
-            start: None,
+            start: 0,
+            universe: 0,
             count: 1,
             leds: vec![],
         }

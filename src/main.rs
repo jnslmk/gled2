@@ -39,12 +39,12 @@ fn main() {
         viewport: ViewportBuilder::default()
             .with_inner_size([1300.0, 1024.0])
             .with_drag_and_drop(true)
-            .with_min_inner_size([800.0, 600.0])
+            .with_min_inner_size([300.0, 200.0])
             .with_icon(logo::icon()),
         renderer: eframe::Renderer::Wgpu,
         vsync: false,
         wgpu_options: WgpuConfiguration {
-            present_mode: eframe::wgpu::PresentMode::Immediate,
+            present_mode: eframe::wgpu::PresentMode::Mailbox,
             power_preference: PowerPreference::HighPerformance,
             ..Default::default()
         },

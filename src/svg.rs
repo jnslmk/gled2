@@ -12,7 +12,7 @@ use svgdom::{Document, ElementId, FilterSvg, Node};
 use usvg::{Tree, TreeParsing};
 
 pub use led::Led;
-pub use measurement_point::{MeasurementPoint, MeasurementPoints, Universes};
+pub use measurement_point::{MeasurementPoints, Universes};
 pub use parameter::Parameter;
 
 pub struct ParsedSvg {
@@ -35,7 +35,7 @@ impl ParsedSvg {
         let doc = Document::from_str(svg_contents).context("Could not parse svg file")?;
 
         let mut parameters = HashMap::new();
-        traverse_node(&mut parameters, &doc.root(), 0, &HashSet::new());
+        traverse_node(&mut parameters, &doc.root(), 0, 0, &HashSet::new());
 
         let tree = Tree::from_str(svg_contents, &Default::default()).unwrap();
         debug!(
@@ -52,6 +52,7 @@ fn traverse_node(
     parameters: &mut HashMap<String, Parameter>,
     node: &Node,
     start: u32,
+    universe: u16,
     parents: &HashSet<String>,
 ) {
     node.children()
@@ -65,6 +66,8 @@ fn traverse_node(
         })
         .for_each(|node| {
             let mut start = start;
+            let mut universe = universe;
+
             let mut parents = parents.clone();
             if let Some(mut parameter) = node
                 .children()
@@ -84,12 +87,11 @@ fn traverse_node(
                         .ok()
                 })
             {
-                if let Some(parameter_start) = parameter.start.as_mut() {
-                    *parameter_start += start;
-                }
-                if let Some(parameter_start) = parameter.start {
-                    start = parameter_start;
-                }
+                parameter.start += start;
+                parameter.universe += universe;
+
+                start = parameter.start;
+                universe = parameter.universe;
 
                 parents.insert(node.id().clone());
                 let leds = parameter.leds();
@@ -102,6 +104,6 @@ fn traverse_node(
                 parameters.insert(node.id().clone(), parameter);
             }
 
-            traverse_node(parameters, &node, start, &parents);
+            traverse_node(parameters, &node, start, universe, &parents);
         });
 }

@@ -199,7 +199,7 @@ impl From<&ParsedSvg> for MeasurementPoints {
             if measurement_point.leds.len() == 1 {
                 let led = measurement_point
                     .leds
-                    .get(0)
+                    .first()
                     .expect("Could not find first led");
                 if led.start % 3 != 1 {
                     panic!(
