@@ -22,15 +22,10 @@ impl Parameter {
                 let full_address = self.start + led * 3;
                 let mut universe: u16 = self.universe;
                 let mut start: usize = full_address as usize;
-                dbg!("bla");
-                dbg!(start);
-                dbg!(universe);
                 while start > 510 {
                     universe += 1;
                     start -= 510;
                 }
-                dbg!(start);
-                dbg!(universe);
 
                 Led { universe, start }
             })
