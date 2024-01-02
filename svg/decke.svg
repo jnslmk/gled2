@@ -7,7 +7,7 @@
    width="1290.24"
    height="967.67999"
    viewBox="0 0 1290.24 967.67999"
-   sodipodi:docname="bla.svg"
+   sodipodi:docname="decke.svg"
    inkscape:version="1.3.2 (091e20ef0f, 2023-11-25)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -26,15 +26,15 @@
       inkscape:deskcolor="#505050"
       showgrid="false"
       showguides="false"
-      inkscape:zoom="0.28927132"
-      inkscape:cx="19.013292"
-      inkscape:cy="585.95508"
+      inkscape:zoom="0.35271614"
+      inkscape:cx="637.90673"
+      inkscape:cy="335.96421"
       inkscape:window-width="1128"
       inkscape:window-height="696"
       inkscape:window-x="0"
       inkscape:window-y="19"
       inkscape:window-maximized="1"
-      inkscape:current-layer="g70" />
+      inkscape:current-layer="g1" />
    <g
       inkscape:groupmode="layer"
       inkscape:label="Image"
@@ -51,24 +51,24 @@
             <g
                id="g64">
                <desc
-                  id="desc64">{&quot;groups&quot;:[&quot;left&quot;],&quot;start&quot;:0}</desc>
+                  id="desc64">{&quot;groups&quot;:[&quot;left&quot;]}</desc>
                <g
                   id="g54">
                   <desc
-                     id="desc54">{&quot;groups&quot;:[&quot;triangle&quot;],&quot;start&quot;:0}</desc>
+                     id="desc54">{&quot;groups&quot;:[&quot;triangle&quot;]}</desc>
                   <g
                      id="g2"
                      transform="translate(-240.28874,2.7574742)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc2">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc2">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path1">
                         <desc
                            id="desc1">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -83,7 +83,7 @@
                         id="path4">
                         <desc
                            id="desc4">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
@@ -96,14 +96,14 @@
                      transform="translate(0.51506931,0.31689505)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc5">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc5">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path6">
                         <desc
                            id="desc6">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -118,7 +118,7 @@
                         id="path8">
                         <desc
                            id="desc8">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
@@ -130,7 +130,7 @@
                <g
                   id="g56">
                   <desc
-                     id="desc56">{&quot;groups&quot;:[&quot;triangle&quot;],&quot;start&quot;:0}</desc>
+                     id="desc56">{&quot;groups&quot;:[&quot;triangle&quot;]}</desc>
                   <g
                      id="g10"
                      transform="rotate(118.68886,643.94761,484.03668)"
@@ -143,7 +143,7 @@
                         id="path10">
                         <desc
                            id="desc10">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -151,14 +151,14 @@
                      transform="translate(239.69183,2.7574742)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc13">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc13">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path14">
                         <desc
                            id="desc14">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
@@ -178,7 +178,7 @@
                         id="path12">
                         <desc
                            id="desc12">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -186,14 +186,14 @@
                      transform="translate(478.86859,4.384527)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc15">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc15">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path16">
                         <desc
                            id="desc16">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
@@ -203,7 +203,7 @@
             id="g70"
             inkscape:label="1. Reihe">
             <desc
-               id="desc70">{&quot;groups&quot;:[&quot;row&quot;],&quot;start&quot;:0}</desc>
+               id="desc70">{&quot;groups&quot;:[&quot;row&quot;]}</desc>
             <g
                id="g63"
                inkscape:label="rechts">
@@ -212,20 +212,20 @@
                <g
                   id="g51">
                   <desc
-                     id="desc51">{&quot;groups&quot;:[&quot;triangle&quot;],&quot;start&quot;:0}</desc>
+                     id="desc51">{&quot;groups&quot;:[&quot;triangle&quot;]}</desc>
                   <g
                      id="g18"
                      transform="translate(358.46669,-210.38644)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc17">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc17">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path18">
                         <desc
                            id="desc18">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -240,7 +240,7 @@
                         id="path20">
                         <desc
                            id="desc20">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
@@ -249,11 +249,11 @@
                id="g62"
                inkscape:label="links">
                <desc
-                  id="desc62">{&quot;groups&quot;:[&quot;left&quot;],&quot;start&quot;:0}</desc>
+                  id="desc62">{&quot;groups&quot;:[&quot;left&quot;]}</desc>
                <g
                   id="g50">
                   <desc
-                     id="desc50">{&quot;groups&quot;:[&quot;triangle&quot;],&quot;start&quot;:0}</desc>
+                     id="desc50">{&quot;groups&quot;:[&quot;triangle&quot;]}</desc>
                   <g
                      id="g22"
                      transform="rotate(118.68886,527.30951,268.14502)"
@@ -266,7 +266,7 @@
                         id="path22">
                         <desc
                            id="desc22">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -274,14 +274,14 @@
                      transform="translate(-118.25978,-207.94586)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc23">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc23">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path24">
                         <desc
                            id="desc24">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
@@ -295,24 +295,24 @@
             <g
                id="g66">
                <desc
-                  id="desc66">{&quot;groups&quot;:[&quot;left&quot;],&quot;start&quot;:0}</desc>
+                  id="desc66">{&quot;groups&quot;:[&quot;left&quot;]}</desc>
                <g
                   id="g58">
                   <desc
-                     id="desc58">{&quot;groups&quot;:[&quot;triangle&quot;],&quot;start&quot;:0}</desc>
+                     id="desc58">{&quot;groups&quot;:[&quot;triangle&quot;]}</desc>
                   <g
                      id="g26"
                      transform="rotate(118.68886,283.79991,406.34029)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc25">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc25">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path26">
                         <desc
                            id="desc26">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -327,7 +327,7 @@
                         id="path28">
                         <desc
                            id="desc28">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
@@ -340,14 +340,14 @@
                      transform="rotate(118.68886,402.03199,481.36435)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc29">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc29">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path30">
                         <desc
                            id="desc30">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -362,7 +362,7 @@
                         id="path32">
                         <desc
                            id="desc32">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
@@ -374,20 +374,20 @@
                <g
                   id="g60">
                   <desc
-                     id="desc60">{&quot;groups&quot;:[&quot;triangle&quot;],&quot;start&quot;:0}</desc>
+                     id="desc60">{&quot;groups&quot;:[&quot;triangle&quot;]}</desc>
                   <g
                      id="g34"
                      transform="rotate(118.68886,521.21361,552.00427)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc33">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc33">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path34">
                         <desc
                            id="desc34">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -402,7 +402,7 @@
                         id="path36">
                         <desc
                            id="desc36">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
@@ -415,14 +415,14 @@
                      transform="rotate(118.68886,642.0977,622.55394)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc37">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc37">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path38">
                         <desc
                            id="desc38">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -437,7 +437,7 @@
                         id="path40">
                         <desc
                            id="desc40">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
@@ -451,24 +451,24 @@
             <g
                id="g68">
                <desc
-                  id="desc68">{&quot;groups&quot;:[&quot;left&quot;],&quot;start&quot;:0}</desc>
+                  id="desc68">{&quot;groups&quot;:[&quot;left&quot;]}</desc>
                <g
                   id="g52">
                   <desc
-                     id="desc52">{&quot;groups&quot;:[&quot;triangle&quot;],&quot;start&quot;:0}</desc>
+                     id="desc52">{&quot;groups&quot;:[&quot;triangle&quot;]}</desc>
                   <g
                      id="g42"
                      transform="rotate(118.68886,280.60853,551.7577)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc41">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc41">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path42">
                         <desc
                            id="desc42">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -483,7 +483,7 @@
                         id="path44">
                         <desc
                            id="desc44">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
@@ -495,20 +495,20 @@
                <g
                   id="g53">
                   <desc
-                     id="desc53">{&quot;groups&quot;:[&quot;triangle&quot;],&quot;start&quot;:0}</desc>
+                     id="desc53">{&quot;groups&quot;:[&quot;triangle&quot;]}</desc>
                   <g
                      id="g46"
                      transform="rotate(118.68886,518.41416,694.90568)"
                      style="stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1">
                      <desc
-                        id="desc45">{&quot;groups&quot;:[&quot;full&quot;],&quot;start&quot;:0}</desc>
+                        id="desc45">{&quot;groups&quot;:[&quot;full&quot;]}</desc>
                      <path
                         style="fill:#000000;stroke:#000000;stroke-width:7.42677;stroke-dasharray:none;stroke-opacity:1"
                         d="M 409.26947,470.32805 522.09511,278.30324"
                         id="path46">
                         <desc
                            id="desc46">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                   <g
@@ -523,12 +523,52 @@
                         id="path48">
                         <desc
                            id="desc48">
-                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60,&quot;start&quot;:0}</desc>
+                           {&quot;groups&quot;:[&quot;all&quot;],&quot;count&quot;:60}</desc>
                      </path>
                   </g>
                </g>
             </g>
          </g>
+      </g>
+      <g
+         id="g5">
+         <desc
+            id="desc74">{&quot;groups&quot;:[&quot;line&quot;,&quot;full&quot;]}</desc>
+         <path
+            style="fill:#000000;stroke:#000000;stroke-width:13.0407;stroke-dasharray:none;stroke-opacity:1"
+            d="m 283.38098,272.51615 723.63532,-1.14396"
+            id="path79">
+            <desc
+               id="desc79">
+               {&quot;groups&quot;:[&quot;all&quot;,
+               &quot;lines&quot;],&quot;start&quot;:781,&quot;universe&quot;:100,&quot;count&quot;:200}</desc>
+         </path>
+      </g>
+      <g
+         id="g75">
+         <desc
+            id="desc76">{&quot;groups&quot;:[&quot;line&quot;,&quot;full&quot;]}</desc>
+         <path
+            style="fill:#000000;stroke:#000000;stroke-width:13.0407;stroke-dasharray:none;stroke-opacity:1"
+            d="m 282.20134,689.86841 723.63536,-1.14396"
+            id="path82">
+            <desc
+               id="desc82">
+               {&quot;groups&quot;:[&quot;lines&quot;,&quot;all&quot;],&quot;start&quot;:1381,&quot;universe&quot;:100,&quot;count&quot;:201}</desc>
+         </path>
+      </g>
+      <g
+         id="g74">
+         <desc
+            id="desc75">{&quot;groups&quot;:[&quot;line&quot;,&quot;full&quot;]}</desc>
+         <path
+            style="fill:#000000;stroke:#000000;stroke-width:14.8818;stroke-dasharray:none;stroke-opacity:1"
+            d="M 166.33893,485.90913 1126.7169,484.7866"
+            id="path84">
+            <desc
+               id="desc84">
+               {&quot;groups&quot;:[&quot;lines&quot;,&quot;all&quot;],&quot;start&quot;:1,&quot;universe&quot;:100,&quot;count&quot;:260}</desc>
+         </path>
       </g>
    </g>
 </svg>
