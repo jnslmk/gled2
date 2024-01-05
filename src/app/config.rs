@@ -38,7 +38,6 @@ impl App {
                     Some(scene) => {
                         ui.label(RichText::new("Hotkey").heading());
                         ui.vertical_centered_justified(|ui| {
-                            ui.style_mut().spacing.interact_size.y = 40.0;
                             ui.menu_button(
                                 match scene.hotkey {
                                     Some(hotkey) => format!("{hotkey}"),
@@ -58,7 +57,6 @@ impl App {
 
                         ui.label(RichText::new("Flash Hotkey").heading());
                         ui.vertical_centered_justified(|ui| {
-                            ui.style_mut().spacing.interact_size.y = 40.0;
                             ui.menu_button(
                                 match scene.flash_hotkey {
                                     Some(hotkey) => format!("{hotkey}"),
@@ -133,8 +131,6 @@ impl App {
                         ui.separator();
 
                         ui.vertical_centered_justified(|ui| {
-                            ui.style_mut().spacing.interact_size.y = 40.0;
-
                             if ui
                                 .add(Button::new("🗐 Duplicate Scene").fill(Color32::DARK_BLUE))
                                 .clicked()
@@ -143,8 +139,6 @@ impl App {
                             }
                         });
                         ui.vertical_centered_justified(|ui| {
-                            ui.style_mut().spacing.interact_size.y = 40.0;
-
                             if ui
                                 .add(
                                     Button::new(match scene.kind {
@@ -163,8 +157,6 @@ impl App {
                             }
                         });
                         ui.vertical_centered_justified(|ui| {
-                            ui.style_mut().spacing.interact_size.y = 40.0;
-
                             if ui
                                 .add(
                                     Button::new("🗑 Remove Scene")

@@ -3,7 +3,6 @@ use egui::{Button, Color32, RichText, Stroke, Ui};
 
 pub fn selection(ui: &mut Ui, selected_group: &mut String) {
     ui.scope(|ui| {
-        ui.style_mut().spacing.interact_size.y = 30.0;
         ui.horizontal_wrapped(|ui| {
             for group in groups() {
                 if ui.add(button(&group, selected_group == &group)).clicked() {

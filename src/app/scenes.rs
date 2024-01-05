@@ -19,7 +19,7 @@ pub struct Scenes {
 impl Default for Scenes {
     fn default() -> Self {
         Self {
-            size: 200.0,
+            size: 100.0,
             show_svg: true,
             always_render: false,
         }

@@ -12,7 +12,6 @@ use log::{debug, error};
 impl App {
     pub fn menu(&mut self, ctx: &Context) {
         egui::TopBottomPanel::top("menu").show(ctx, |ui| {
-            ui.style_mut().spacing.interact_size.y = 50.0;
             egui::menu::bar(ui, |ui| {
                 let menu_button_size = Vec2::new(100.0, ui.available_height());
 

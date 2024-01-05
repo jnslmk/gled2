@@ -7,7 +7,6 @@ pub fn set_center_button(
     svg: Option<TextureId>,
 ) {
     ui.vertical_centered_justified(|ui| {
-        ui.style_mut().spacing.interact_size.y = 40.0;
         ui.menu_button("Select center of animation", |ui| {
             let size = 300.0;
             let res = ui.add(

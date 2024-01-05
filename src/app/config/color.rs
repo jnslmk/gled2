@@ -10,8 +10,6 @@ pub fn color_selection(
     uses_multiple_colors: bool,
 ) {
     ui.scope(|ui| {
-        ui.style_mut().spacing.interact_size.y = 40.0;
-
         ui.horizontal_wrapped(|ui| {
             let rects = palette
                 .colors()
@@ -40,7 +38,6 @@ pub fn color_selection(
                 }
                 let below = egui::AboveOrBelow::Below;
                 egui::popup::popup_above_or_below_widget(ui, popup_id, &response, below, |ui| {
-                    ui.style_mut().spacing.interact_size.y = 40.0;
                     ui.set_width_range(200.0..=200.0);
 
                     ui.horizontal_wrapped(|ui| {

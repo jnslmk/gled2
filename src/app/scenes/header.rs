@@ -26,7 +26,7 @@ impl App {
                 if ui
                     .add_enabled(
                         self.svg.is_some(),
-                        Checkbox::new(&mut scenes.show_svg, RichText::new("SVG").heading()),
+                        Checkbox::new(&mut scenes.show_svg, RichText::new("SVG")),
                     )
                     .changed()
                 {
@@ -34,19 +34,16 @@ impl App {
                 };
 
                 if ui
-                    .checkbox(
-                        &mut scenes.always_render,
-                        RichText::new("Render all").heading(),
-                    )
+                    .checkbox(&mut scenes.always_render, RichText::new("Render all"))
                     .changed()
                 {
                     self.persistant_state.dirty = true;
                 };
                 if ui
                     .add(
-                        Slider::new(&mut scenes.size, 170.0..=500.0)
+                        Slider::new(&mut scenes.size, 90.0..=500.0)
                             .show_value(false)
-                            .text(RichText::new("Size").heading()),
+                            .text(RichText::new("Size")),
                     )
                     .changed()
                 {
