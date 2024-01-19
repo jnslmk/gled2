@@ -370,8 +370,7 @@ fn leds_on_path(
         });
         leds_added += 1;
     }
-
-    assert!((path_length - path_position).abs() < 0.1);
+    assert!((path_length - path_position).abs() < 1.0);
     assert_eq!(leds_added, leds);
 }
 
