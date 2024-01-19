@@ -17,6 +17,10 @@ pub struct Parameter {
 
 impl Parameter {
     pub fn leds(&self) -> Vec<Led> {
+        if self.start == 0 {
+            return vec![];
+        }
+
         { 0..self.count }
             .map(|led| {
                 let full_address = self.start + led * 3;

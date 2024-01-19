@@ -37,6 +37,7 @@ impl MeasurementPoints {
     pub fn positions(&self, group: &str) -> Positions {
         let mut positions = Positions::default();
 
+        dbg!(group);
         if let Some(points) = self.points.get(group) {
             let mut universes = BTreeMap::new();
             for point in points.iter() {
@@ -45,6 +46,7 @@ impl MeasurementPoints {
                     y: point.y,
                 };
 
+                dbg!(&point.leds);
                 for led in point.leds.iter() {
                     if led.start % 3 != 1 {
                         panic!(
