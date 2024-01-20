@@ -25,6 +25,7 @@ pub struct Scene {
     pub hotkey: Option<Hotkey>,
     pub flash_hotkey: Option<Hotkey>,
     pub flash: bool,
+    pub hotkey_dimmer: f32,
 
     #[serde(skip)]
     transition: Option<Transition>,
@@ -48,6 +49,7 @@ impl Default for Scene {
     fn default() -> Self {
         Self {
             opacity: 1.0,
+            hotkey_dimmer: 1.0,
             flash_hotkey: Default::default(),
             hotkey: Default::default(),
             kind: Default::default(),
@@ -173,7 +175,7 @@ impl Scene {
         }
 
         if always_render || self.active || !self.was_ever_rendered || self.flash {
-            state.opacity = self.opacity * main_dimmer * opacity_factor;
+            state.opacity = self.opacity * main_dimmer * opacity_factor * self.hotkey_dimmer;
             state.beat_progression += self.beat_progression_offset;
 
             if self.sent_group.as_ref() != Some(&self.group) {
@@ -257,6 +259,10 @@ impl Scene {
 
     pub fn set_flash(&mut self, flash: bool) {
         self.flash = flash;
+    }
+
+    pub fn set_hotkey_dimmer(&mut self, hotkey_dimmer: f32) {
+        self.hotkey_dimmer = hotkey_dimmer;
     }
 }
 

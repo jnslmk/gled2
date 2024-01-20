@@ -60,13 +60,12 @@ impl App {
                             changed = Some(index);
                         }
 
-                        if scene
-                            .flash_hotkey
-                            .as_ref()
-                            .map(|hotkey| hotkey.live(ctx, &self.gamepad))
-                            .unwrap_or_default()
-                        {
-                            flashed.push(index);
+                        if let Some(hotkey) = scene.flash_hotkey.as_ref() {
+                            if hotkey.live(ctx, &self.gamepad) {
+                                flashed.push(index);
+                            }
+
+                            scene.set_hotkey_dimmer(hotkey.dimmer(&self.gamepad));
                         }
                     }
 

@@ -3,14 +3,17 @@ use egui::{Context, Key, Modifiers};
 use gilrs::{Axis, Button, Event, Gilrs};
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, sync::mpsc::Receiver};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::mpsc::Receiver,
+};
 use strum::Display;
 
 pub struct Gamepad {
     gilrs: Gilrs,
     events: HashSet<GamepadEvent>,
     new_events: HashSet<GamepadEvent>,
-    artnet_events: HashSet<u8>,
+    artnet_events: HashMap<u8, u8>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -36,7 +39,7 @@ impl Hotkey {
         if gamepad.artnet_events.len() == 1 {
             return gamepad
                 .artnet_events
-                .iter()
+                .keys()
                 .next()
                 .copied()
                 .map(Self::Artnet);
@@ -45,6 +48,7 @@ impl Hotkey {
         None
     }
 
+    /// Does ignore artnet events
     pub fn pressed(&self, ctx: &Context, gamepad: &Gamepad) -> bool {
         match self {
             Hotkey::Key(key) => {
@@ -52,7 +56,7 @@ impl Hotkey {
                     && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, *key))
             }
             Hotkey::Gamepad(event) => gamepad.new_events().contains(event),
-            Hotkey::Artnet(channel) => gamepad.artnet_events.contains(channel),
+            Hotkey::Artnet(_channel) => false,
         }
     }
 
@@ -60,7 +64,19 @@ impl Hotkey {
         match self {
             Hotkey::Key(key) => !ctx.wants_keyboard_input() && ctx.input(|i| i.key_down(*key)),
             Hotkey::Gamepad(event) => gamepad.events().contains(event),
-            Hotkey::Artnet(channel) => gamepad.artnet_events.contains(channel),
+            Hotkey::Artnet(channel) => gamepad.artnet_events.contains_key(channel),
+        }
+    }
+
+    /// get dimmer value of hotkey (only supported on artnet)
+    pub fn dimmer(&self, gamepad: &Gamepad) -> f32 {
+        match self {
+            Hotkey::Artnet(channel) => gamepad
+                .artnet_events
+                .get(channel)
+                .map(|value| f32::from(*value) / 255.0)
+                .unwrap_or(1.0),
+            _ => 1.0,
         }
     }
 }
@@ -122,19 +138,16 @@ impl Gamepad {
             gilrs,
             events: HashSet::new(),
             new_events: HashSet::new(),
-            artnet_events: HashSet::new(),
+            artnet_events: HashMap::new(),
         }
     }
 
     pub fn tick(&mut self, receiver: &mut Receiver<ArtnetEvent>) {
         while let Ok(event) = receiver.try_recv() {
-            match event {
-                ArtnetEvent::On { channel } => {
-                    self.artnet_events.insert(channel);
-                }
-                ArtnetEvent::Off { channel } => {
-                    self.artnet_events.remove(&channel);
-                }
+            if event.value == 0 {
+                self.artnet_events.remove(&event.channel);
+            } else {
+                self.artnet_events.insert(event.channel, event.value);
             }
         }
 

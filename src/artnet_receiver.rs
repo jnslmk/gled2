@@ -12,9 +12,10 @@ use std::{
 
 static ARTNET_PORT: u16 = 6454;
 
-pub enum ArtnetEvent {
-    On { channel: u8 },
-    Off { channel: u8 },
+#[derive(Debug)]
+pub struct ArtnetEvent {
+    pub channel: u8,
+    pub value: u8,
 }
 
 pub static ARTNET_CONFIG: Mutex<ArtnetConfig> = Mutex::new(ArtnetConfig {
@@ -143,10 +144,9 @@ fn thread(sender: Sender<ArtnetEvent>) {
             let channel = config.start as usize + i - 1;
             if previous[channel] != data[channel] {
                 sender
-                    .send(if data[channel] > 127 {
-                        ArtnetEvent::On { channel: i as u8 }
-                    } else {
-                        ArtnetEvent::Off { channel: i as u8 }
+                    .send(ArtnetEvent {
+                        channel: i as u8,
+                        value: data[channel],
                     })
                     .expect("Could not send event");
             }
