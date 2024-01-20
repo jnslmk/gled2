@@ -58,9 +58,11 @@ pub enum Direction {
 #[derive(Serialize, Deserialize, Default, Clone, Copy, Debug, PartialEq)]
 #[serde(default)]
 pub struct CommonConfig {
+    #[serde(default)]
     pub direction: Direction,
 
     /// in 2^n of bpm
+    #[serde(default)]
     pub speed_exponent: i32,
 }
 
