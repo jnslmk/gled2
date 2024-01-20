@@ -37,7 +37,7 @@ impl Config {
             Direction::Alternating => 0x02,
         };
         data[20..24].copy_from_slice(&self.mode.to_le_bytes());
-        data[24..28].copy_from_slice(&self.common.speed.to_le_bytes());
+        data[24..28].copy_from_slice(&2f32.powi(self.common.speed_exponent).to_le_bytes());
         data[28..32].copy_from_slice(&self.size.to_le_bytes());
     }
 
@@ -55,22 +55,13 @@ pub enum Direction {
     Alternating,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy, Debug, PartialEq)]
 #[serde(default)]
 pub struct CommonConfig {
     pub direction: Direction,
 
-    /// in multiple of bpm
-    pub speed: f32,
-}
-
-impl Default for CommonConfig {
-    fn default() -> Self {
-        Self {
-            direction: Default::default(),
-            speed: 1.0,
-        }
-    }
+    /// in 2^n of bpm
+    pub speed_exponent: i32,
 }
 
 impl CommonConfig {
@@ -81,8 +72,32 @@ impl CommonConfig {
             ui.radio_value(&mut self.direction, Direction::Alternating, "Alternating");
         });
         ui.add(
-            Slider::new(&mut self.speed, 0.0..=8.0)
-                .custom_formatter(|n, _| format!("{:.2} x", n))
+            Slider::new(&mut self.speed_exponent, -8..=8)
+                .step_by(1.0)
+                .custom_formatter(|n, _| {
+                    format!(
+                        "{} x",
+                        if n > 0.0 {
+                            2i32.pow(n as u32).to_string()
+                        } else if n > -0.1 {
+                            "1".to_string()
+                        } else {
+                            format!("1/{}", 2i32.pow((-n) as u32))
+                        }
+                    )
+                })
+                .custom_parser(|s| {
+                    let s = s.split(' ').next().unwrap_or(s);
+                    let s = s.strip_suffix('x').unwrap_or(s);
+                    let n =
+                        if let Some(n) = s.strip_prefix("1/").and_then(|s| s.parse::<f32>().ok()) {
+                            1f32 / n
+                        } else {
+                            s.parse::<f32>().ok()?
+                        };
+
+                    Some(n.log2() as f64)
+                })
                 .text("Speed"),
         );
         ui.separator();
