@@ -19,9 +19,9 @@ pub struct ArtnetEvent {
 }
 
 pub static ARTNET_CONFIG: Mutex<ArtnetConfig> = Mutex::new(ArtnetConfig {
-    universe: 0,
+    universe: 18,
     start: 1,
-    channels: 10,
+    channels: 100,
 });
 
 pub struct ArtnetConfig {
