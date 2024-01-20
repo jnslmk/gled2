@@ -5,7 +5,6 @@ mod widget;
 use super::{preview_uv, App};
 use crate::scene::SceneKind;
 use egui::{Color32, Context, Margin, Stroke};
-use egui_extras::{Size, StripBuilder};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -35,20 +34,12 @@ impl App {
             .map(|image| image.texture_id(ctx));
         let uv = preview_uv();
         egui::CentralPanel::default().show(ctx, |ui| {
-            StripBuilder::new(ui)
-                .sizes(Size::relative(0.5), 2)
-                .horizontal(|mut strip| {
-                    for kind in [SceneKind::Background, SceneKind::Foreground] {
-                        strip.cell(|ui| {
-                            egui::Frame::none()
-                                .inner_margin(Margin::from(6.0))
-                                .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
-                                .show(ui, |ui| {
-                                    self.scenes_header(ui, kind);
-                                    self.scenes_grid(ctx, ui, kind, svg, uv)
-                                });
-                        });
-                    }
+            egui::Frame::none()
+                .inner_margin(Margin::from(6.0))
+                .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
+                .show(ui, |ui| {
+                    self.scenes_header(ui, SceneKind::Background);
+                    self.scenes_grid(ctx, ui, SceneKind::Background, svg, uv)
                 });
         });
     }
