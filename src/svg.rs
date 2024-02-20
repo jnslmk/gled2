@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 use log::{debug, info};
 use std::collections::{HashMap, HashSet};
 use svgdom::{Document, ElementId, FilterSvg, Node};
-use usvg::{Tree, TreeParsing};
+use usvg::Tree;
 
 pub use led::Led;
 pub use measurement_point::{MeasurementPoints, Universes};
@@ -37,7 +37,12 @@ impl ParsedSvg {
         let mut parameters = HashMap::new();
         traverse_node(&mut parameters, &doc.root(), 0, 0, &HashSet::new());
 
-        let tree = Tree::from_str(svg_contents, &Default::default()).unwrap();
+        let tree = Tree::from_str(
+            svg_contents,
+            &Default::default(),
+            &usvg::fontdb::Database::default(),
+        )
+        .unwrap();
         debug!(
             "Done parsing svg. Found {} parameter sets",
             parameters.len()

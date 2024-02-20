@@ -11,7 +11,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use tiny_skia::{Path, PathSegment, Point};
-use usvg::{NodeExt, NodeKind};
+use usvg::{Group, Node};
 
 pub type Universes = BTreeSet<u16>;
 
@@ -133,35 +133,49 @@ pub struct MeasurementPoint {
     y: f32,
 }
 
+fn traverse_nodes(group: &Group) -> Vec<&Node> {
+    let mut nodes = vec![];
+    for child in group.children() {
+        nodes.push(child);
+        if let Node::Group(group) = child {
+            nodes.extend(traverse_nodes(group));
+        }
+    }
+    nodes
+}
+
 impl From<&ParsedSvg> for MeasurementPoints {
     fn from(svg: &ParsedSvg) -> Self {
         debug!("find measurement points");
 
-        let max = svg.tree.size.width().max(svg.tree.size.height());
+        let size = svg.tree.size();
+        let max = size.width().max(size.height());
         let mut points = BTreeMap::new();
-        svg.tree.root.descendants().for_each(|node| {
-            if let Some(parameter) = svg.parameters.get(&node.borrow().id().to_owned()) {
-                parameter.groups.iter().for_each(|group| {
-                    let measurement_points =
-                        points.entry(group.to_owned()).or_insert_with(Vec::new);
-                    match &*node.borrow() {
-                        NodeKind::Path(path) if parameter.count > 1 => {
-                            let path_data = path
-                                .data
-                                .as_ref()
-                                .clone()
-                                .transform(node.abs_transform())
-                                .unwrap_or_else(|| path.data.as_ref().clone());
-                            leds_on_path(
-                                max,
-                                parameter.count as usize,
-                                path_data,
-                                parameter,
-                                measurement_points,
-                            );
-                        }
-                        _ => {
-                            if let Some(rect) = &node.calculate_bbox() {
+
+        traverse_nodes(svg.tree.root())
+            .into_iter()
+            .for_each(|node| {
+                if let Some(parameter) = svg.parameters.get(&node.id().to_owned()) {
+                    parameter.groups.iter().for_each(|group| {
+                        let measurement_points =
+                            points.entry(group.to_owned()).or_insert_with(Vec::new);
+                        match node {
+                            Node::Path(path) if parameter.count > 1 => {
+                                let path_data = path
+                                    .data()
+                                    .clone()
+                                    .transform(node.abs_transform())
+                                    .unwrap_or_else(|| path.data().clone());
+                                leds_on_path(
+                                    max,
+                                    parameter.count as usize,
+                                    path_data,
+                                    parameter,
+                                    measurement_points,
+                                );
+                            }
+                            _ => {
+                                let rect = &node.abs_bounding_box();
                                 let x = (rect.x() + rect.width() / 2.0) / max;
                                 let y = (rect.y() + rect.height() / 2.0) / max;
                                 measurement_points.push(MeasurementPoint {
@@ -171,10 +185,9 @@ impl From<&ParsedSvg> for MeasurementPoints {
                                 });
                             }
                         }
-                    }
-                });
-            }
-        });
+                    });
+                }
+            });
 
         debug!("Done finding measurement points");
         debug!("Determining preview positions");
