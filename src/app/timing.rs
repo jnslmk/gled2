@@ -1,4 +1,6 @@
-use egui::{text::LayoutJob, Button, Color32, Key, Modifiers, Stroke, TextFormat, Ui, Vec2};
+use egui::{
+    text::LayoutJob, Button, Color32, Key, Modifiers, Rounding, Stroke, TextFormat, Ui, Vec2,
+};
 use log::debug;
 use std::time::{Duration, Instant};
 
@@ -105,27 +107,26 @@ impl Timing {
     }
 
     fn remove_old_taps(&mut self) {
-        if self
-            .taps
-            .last()
-            .map(|tap| Instant::now().duration_since(*tap).as_secs() > 3)
-            .unwrap_or_default()
-        {
+        let Some(last) = self.taps.last() else {
+            return;
+        };
+        let max_age = if self.taps.len() < 2 {
+            None
+        } else {
+            self.taps
+                .get(self.taps.len() - 2)
+                .map(|tap| last.duration_since(*tap).as_secs_f32())
+        }
+        .unwrap_or(1.5)
+        .min(1.5)
+            * 2.0;
+
+        if Instant::now().duration_since(*last).as_secs_f32() > max_age {
             self.taps.clear();
         }
     }
 
     pub fn beat_button(&mut self, ctx: &egui::Context, ui: &mut Ui, menu_button_size: Vec2) {
-        let beat_progression = self.beat_progression() % 1.0;
-        let mut alpha = None;
-        if beat_progression < 0.10 {
-            alpha = Some(30.0);
-        } else if beat_progression < 0.20 {
-            alpha = Some(20.0 - ((beat_progression - 0.1) * 200.0));
-        } else if beat_progression > 0.9 {
-            alpha = Some((beat_progression - 0.9) * 200.0);
-        }
-
         let underlined = TextFormat {
             underline: Stroke::new(1.0, Color32::GRAY),
             ..Default::default()
@@ -137,12 +138,59 @@ impl Timing {
             0.0,
             TextFormat::default(),
         );
-        let mut tap = Button::new(tap_text);
+        let response = ui.add_sized(menu_button_size, Button::new(tap_text));
+
+        let beat_progression = self.beat_progression % 4.0;
+        let mut alpha = None;
+        if (beat_progression % 1.0) < 0.10 {
+            alpha = Some(30.0);
+        } else if (beat_progression % 1.0) < 0.20 {
+            alpha = Some(20.0 - (((beat_progression % 1.0) - 0.1) * 200.0));
+        } else if (beat_progression % 1.0) > 0.9 {
+            alpha = Some(((beat_progression % 1.0) - 0.9) * 200.0);
+        }
         if let Some(alpha) = alpha {
-            tap = tap.fill(Color32::from_white_alpha(alpha as u8));
+            ui.painter().rect_filled(
+                if (0.5..=1.5).contains(&beat_progression) {
+                    // top right
+                    response
+                        .rect
+                        .split_left_right_at_fraction(0.5)
+                        .1
+                        .split_top_bottom_at_fraction(0.5)
+                        .0
+                } else if (1.5..=2.5).contains(&beat_progression) {
+                    // bottom left
+                    response
+                        .rect
+                        .split_left_right_at_fraction(0.5)
+                        .0
+                        .split_top_bottom_at_fraction(0.5)
+                        .1
+                } else if (2.5..=3.5).contains(&beat_progression) {
+                    // bottom right
+                    response
+                        .rect
+                        .split_left_right_at_fraction(0.5)
+                        .1
+                        .split_top_bottom_at_fraction(0.5)
+                        .1
+                } else {
+                    // top left
+                    response
+                        .rect
+                        .split_left_right_at_fraction(0.5)
+                        .0
+                        .split_top_bottom_at_fraction(0.5)
+                        .0
+                }
+                .shrink(1.0),
+                Rounding::default(),
+                Color32::from_white_alpha(alpha as u8),
+            );
         }
 
-        let tapped = ui.add_sized(menu_button_size, tap).clicked()
+        let tapped = response.clicked()
             || !ctx.wants_keyboard_input()
                 && ctx.input_mut(|i| {
                     i.consume_key(Modifiers::NONE, Key::Space)
@@ -161,6 +209,11 @@ impl Timing {
                         / (self.taps.len() as u128 - 1);
 
                     self.beats_per_minute = (60e+9f64 / f64::from(avg_beat_time as u32)) as f32;
+
+                    // adjust beat progression timing to last tap
+                    let offset = self.beat_progression % 4.0;
+                    let goal_offset = (self.taps.len() - 1) as f32 % 4.0;
+                    self.beat_progression += goal_offset - offset;
                 }
             }
         }
