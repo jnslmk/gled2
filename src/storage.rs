@@ -5,8 +5,6 @@ use git2::{
 };
 use std::path::{Path, PathBuf};
 
-// TODO: List branches, add Branch
-
 struct Storage {
     url: String,
     folder: PathBuf,
@@ -30,6 +28,54 @@ impl Storage {
 
     pub fn folder(&self) -> &Path {
         &self.folder
+    }
+
+    pub fn branches(&self) -> Result<Vec<String>, Error> {
+        let repository = self
+            .repository
+            .as_ref()
+            .ok_or(Error::from_str("No repository set"))?;
+
+        repository
+            .branches(Some(git2::BranchType::Remote))?
+            .map(|branch| {
+                Ok(branch?
+                    .0
+                    .name()?
+                    .and_then(|name| name.strip_prefix("origin/"))
+                    .map(|name| name.to_owned()))
+            })
+            .filter_map(|name| name.transpose())
+            .collect()
+    }
+
+    pub fn switch_branch(&self, name: &str) -> Result<(), Error> {
+        let repository = self
+            .repository
+            .as_ref()
+            .ok_or(Error::from_str("No repository set"))?;
+
+        if repository
+            .find_branch(name, git2::BranchType::Local)
+            .is_err()
+        {
+            let remote_branch =
+                repository.find_branch(&format!("origin/{name}"), git2::BranchType::Remote)?;
+            let commit = remote_branch.into_reference().peel_to_commit()?;
+            repository.branch(name, &commit, false)?;
+        }
+
+        let (object, reference) = repository.revparse_ext(name)?;
+        repository.checkout_tree(&object, None)?;
+
+        repository.set_head(
+            reference
+                .ok_or_else(|| Error::from_str("Reference is empty"))?
+                .name()
+                .ok_or_else(|| Error::from_str("Can not parse string"))?,
+        )?;
+
+        Ok(())
     }
 
     pub fn commit_and_push(&self, file: &Path, message: &str) -> Result<(), Error> {
@@ -96,7 +142,7 @@ impl Storage {
 
         let remote = &mut repository.find_remote("origin")?;
 
-        remote.fetch(&[&branch], Some(&mut fetch_options), None)?;
+        remote.fetch::<&str>(&[], Some(&mut fetch_options), None)?;
 
         let fetch_head = repository.find_reference("FETCH_HEAD")?;
         let fetch_commit = repository.reference_to_annotated_commit(&fetch_head)?;
