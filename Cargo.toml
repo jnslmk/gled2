@@ -15,7 +15,7 @@ fern = { version = "0.6", features = ["colored"] }
 gilrs = "0.10"
 gled_proc_macros = { path = "proc_macros" }
 home = "0.5"
-image = { version = "0.24", default-features = false, features = ["png"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
 kurbo = "0.11"
 log = "0.4"
 once_cell = "1.17"
