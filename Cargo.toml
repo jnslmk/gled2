@@ -33,6 +33,9 @@ usvg = "0.40"
 wgpu = "0.19"
 rand = "0.8"
 network-interface = "1.1"
+directories = "5.0"
+git2 = "0.18"
+whoami = "1.5"
 
 [build-dependencies]
 winresource = "0.1"

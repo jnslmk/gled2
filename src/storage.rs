@@ -1,0 +1,243 @@
+use directories::BaseDirs;
+use git2::{
+    build::RepoBuilder, Cred, Error, ErrorCode, FetchOptions, PushOptions, Reference,
+    RemoteCallbacks, Repository, Signature,
+};
+use std::path::{Path, PathBuf};
+
+// TODO: List branches, add Branch
+
+struct Storage {
+    url: String,
+    folder: PathBuf,
+    repository: Option<Repository>,
+}
+
+impl Storage {
+    pub fn open(url: String) -> Result<Self, Error> {
+        let folder = BaseDirs::new()
+            .expect("Could not get base dirs")
+            .data_dir()
+            .join("gled2");
+        let mut db = Self {
+            url,
+            folder,
+            repository: None,
+        };
+        db.update()?;
+        Ok(db)
+    }
+
+    pub fn folder(&self) -> &Path {
+        &self.folder
+    }
+
+    pub fn commit_and_push(&self, file: &Path, message: &str) -> Result<(), Error> {
+        self.commit(file, message)?;
+        self.push()?;
+
+        Ok(())
+    }
+
+    fn push_options(&self) -> PushOptions<'static> {
+        let mut push_options = PushOptions::new();
+        push_options.remote_callbacks(self.remote_callbacks());
+        push_options
+    }
+
+    fn fetch_options(&self) -> FetchOptions<'static> {
+        let mut fetch_options = FetchOptions::new();
+        fetch_options.remote_callbacks(self.remote_callbacks());
+        fetch_options
+    }
+
+    fn remote_callbacks(&self) -> RemoteCallbacks<'static> {
+        let mut callbacks = RemoteCallbacks::new();
+        callbacks.credentials(move |_url, username_from_url, _allowed_types| {
+            Cred::ssh_key_from_agent(username_from_url.unwrap_or(&whoami::username()))
+        });
+        callbacks
+    }
+
+    fn branch_reference(&self) -> Option<Reference> {
+        self.repository
+            .as_ref()
+            .and_then(|repository| repository.head().ok())
+    }
+
+    fn branch_name(&self) -> String {
+        self.branch_reference()
+            .and_then(|h| h.name().map(|name| name.to_owned()))
+            .unwrap_or_else(|| "main".to_owned())
+    }
+
+    fn branch_shorthand(&self) -> String {
+        self.branch_reference()
+            .and_then(|h| h.shorthand().map(|name| name.to_owned()))
+            .unwrap_or_else(|| "main".to_owned())
+    }
+
+    fn update(&mut self) -> Result<(), Error> {
+        self.pull().or_else(|err| {
+            dbg!(err);
+            self.clone()
+        })
+    }
+
+    fn pull(&mut self) -> Result<(), Error> {
+        self.repository = Some(Repository::open(&self.folder)?);
+        let branch = self.branch_shorthand();
+
+        let mut fetch_options = self.fetch_options();
+        let repository = self
+            .repository
+            .as_mut()
+            .ok_or_else(|| Error::from_str("no repository set"))?;
+
+        let remote = &mut repository.find_remote("origin")?;
+
+        remote.fetch(&[&branch], Some(&mut fetch_options), None)?;
+
+        let fetch_head = repository.find_reference("FETCH_HEAD")?;
+        let fetch_commit = repository.reference_to_annotated_commit(&fetch_head)?;
+
+        let analysis = repository.merge_analysis(&[&fetch_commit])?;
+        if analysis.0.is_fast_forward() {
+            let refname = format!("refs/heads/{branch}");
+
+            match repository.find_reference(&refname) {
+                Ok(mut r) => {
+                    let name = match r.name() {
+                        Some(s) => s.to_string(),
+                        None => String::from_utf8_lossy(r.name_bytes()).to_string(),
+                    };
+                    let msg = format!(
+                        "Fast-Forward: Setting {} to id: {}",
+                        name,
+                        fetch_commit.id()
+                    );
+                    r.set_target(fetch_commit.id(), &msg)?;
+                    repository.set_head(&name)?;
+                    repository
+                        .checkout_head(Some(git2::build::CheckoutBuilder::default().force()))?;
+                }
+                Err(_) => {
+                    repository.reference(
+                        &refname,
+                        fetch_commit.id(),
+                        true,
+                        &format!("Setting {branch} to {}", fetch_commit.id()),
+                    )?;
+                    repository.set_head(&refname)?;
+                    repository.checkout_head(Some(
+                        git2::build::CheckoutBuilder::default()
+                            .allow_conflicts(true)
+                            .conflict_style_merge(true)
+                            .force(),
+                    ))?;
+                }
+            };
+        } else if analysis.0.is_normal() {
+            let head_commit = repository.reference_to_annotated_commit(&repository.head()?)?;
+
+            let local_tree = repository.find_commit(head_commit.id())?.tree()?;
+            let remote_tree = repository.find_commit(fetch_commit.id())?.tree()?;
+            let ancestor = repository
+                .find_commit(repository.merge_base(head_commit.id(), fetch_commit.id())?)?
+                .tree()?;
+            let mut idx = repository.merge_trees(&ancestor, &local_tree, &remote_tree, None)?;
+
+            if idx.has_conflicts() {
+                println!("Merge conflicts detected...");
+                repository.checkout_index(Some(&mut idx), None)?;
+                return Ok(());
+            }
+            let result_tree = repository.find_tree(idx.write_tree_to(repository)?)?;
+            // now create the merge commit
+            let msg = format!("Merge: {} into {}", fetch_commit.id(), head_commit.id());
+            let sig = repository.signature()?;
+            let local_commit = repository.find_commit(head_commit.id())?;
+            let remote_commit = repository.find_commit(fetch_commit.id())?;
+            // Do our merge commit and set current branch head to that commit.
+            let _merge_commit = repository.commit(
+                Some("HEAD"),
+                &sig,
+                &sig,
+                &msg,
+                &result_tree,
+                &[&local_commit, &remote_commit],
+            )?;
+            repository.checkout_head(None)?;
+        }
+
+        Ok(())
+    }
+
+    fn clone(&mut self) -> Result<(), Error> {
+        let _ = std::fs::remove_dir_all(&self.folder);
+
+        self.repository = Some(
+            RepoBuilder::new()
+                .fetch_options(self.fetch_options())
+                .clone(&self.url, &self.folder)?,
+        );
+
+        Ok(())
+    }
+
+    fn commit(&self, file: &Path, msg: &str) -> Result<(), Error> {
+        let repository = self
+            .repository
+            .as_ref()
+            .ok_or(Error::from_str("No repository set"))?;
+
+        let config = git2::Config::open_default()?;
+        let name = config.get_string("user.name")?;
+        let email = config.get_string("user.email")?;
+
+        let mut index = repository.index()?;
+        index.add_path(file.strip_prefix(&self.folder).map_err(|err| {
+            Error::from_str(&format!("Could not make file path relative: {err:?}"))
+        })?)?;
+        let tree_oid = index.write_tree()?;
+        let tree = repository.find_tree(tree_oid)?;
+
+        let parent_commit = match repository.revparse_single("HEAD") {
+            Ok(obj) => Some(obj.into_commit().unwrap()),
+            // First commit so no parent commit
+            Err(e) if e.code() == ErrorCode::NotFound => None,
+            Err(e) => return Err(e),
+        };
+
+        let mut parents = Vec::new();
+        if let Some(parent_commit) = parent_commit.as_ref() {
+            parents.push(parent_commit);
+        }
+
+        let signature = Signature::now(&name, &email)?;
+        repository.commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            msg,
+            &tree,
+            &parents[..],
+        )?;
+
+        Ok(())
+    }
+
+    fn push(&self) -> Result<(), Error> {
+        let name = self.branch_name();
+        let repository = self
+            .repository
+            .as_ref()
+            .ok_or(Error::from_str("No repository set"))?;
+
+        let remote = &mut repository.find_remote("origin")?;
+
+        remote.push(&[name], Some(&mut self.push_options()))?;
+
+        Ok(())
+    }
+}
