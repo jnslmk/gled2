@@ -5,6 +5,7 @@
 mod animation;
 mod app;
 mod artnet_receiver;
+mod assets;
 mod constants;
 mod extract_output;
 mod hotkey;
@@ -19,7 +20,6 @@ mod preview;
 mod preview_indices;
 mod project;
 mod scene;
-mod storage;
 mod svg;
 mod texture_to_output;
 mod transition;

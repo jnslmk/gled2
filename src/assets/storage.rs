@@ -5,7 +5,7 @@ use git2::{
 };
 use std::path::{Path, PathBuf};
 
-struct Storage {
+pub struct Storage {
     url: String,
     folder: PathBuf,
     repository: Option<Repository>,
@@ -47,6 +47,10 @@ impl Storage {
             })
             .filter_map(|name| name.transpose())
             .collect()
+    }
+
+    pub fn current_branch(&self) -> Result<String, Error> {
+        Ok(self.branch_name())
     }
 
     pub fn switch_branch(&self, name: &str) -> Result<(), Error> {
@@ -123,7 +127,7 @@ impl Storage {
             .unwrap_or_else(|| "main".to_owned())
     }
 
-    fn update(&mut self) -> Result<(), Error> {
+    pub fn update(&mut self) -> Result<(), Error> {
         self.pull().or_else(|err| {
             dbg!(err);
             self.clone()
