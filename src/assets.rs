@@ -128,6 +128,11 @@ pub fn start_thread() {
                         contents,
                         message,
                     } => {
+                        let Ok(path) = path.strip_prefix(&folder) else {
+                            continue;
+                        };
+                        for component in path.components() {}
+
                         //TODO: Mkdirp, save, saveandPush and also save in state
                     }
                 }
