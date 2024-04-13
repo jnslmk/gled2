@@ -1565,6 +1565,7 @@ dependencies = [
  "image 0.25.1",
  "kurbo",
  "log",
+ "mkdirp",
  "network-interface",
  "once_cell",
  "rand",
@@ -2147,6 +2148,12 @@ dependencies = [
  "adler",
  "simd-adler32",
 ]
+
+[[package]]
+name = "mkdirp"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "864e1de64c29b386d2dc7822aea156a7e4d45d4393ac748878dc21c9c41037f0"
 
 [[package]]
 name = "naga"

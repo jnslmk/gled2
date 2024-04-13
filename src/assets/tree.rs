@@ -1,29 +1,31 @@
-use crate::{effect::Effect, scene::Scene};
-
-use super::Action;
+use crate::{animation::ColorPalette, effect::Effect, scene::Scene};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{collections::HashMap, fmt::Debug, path::PathBuf};
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    path::{Path, PathBuf},
+};
 
 pub trait AssetTrait: Serialize + Send + DeserializeOwned + Debug {}
 
 impl AssetTrait for Effect {}
 impl AssetTrait for Scene {}
+impl AssetTrait for ColorPalette {}
 
 #[derive(Debug, Clone)]
 pub struct Tree<T: AssetTrait> {
-    path: PathBuf,
+    pub path: PathBuf,
     pub assets: HashMap<String, Asset<T>>,
     pub children: HashMap<String, Tree<T>>,
 }
 
-///TODO: All paths must be relative to root!
 impl<T: AssetTrait> Tree<T> {
-    pub fn load(path: PathBuf) -> Self {
+    pub fn load(path: PathBuf, root: &Path) -> Self {
         let mut children = HashMap::new();
         let mut assets = HashMap::new();
 
-        let Ok(paths) = path.read_dir() else {
+        let Ok(paths) = root.join(&path).read_dir() else {
             return Self {
                 path,
                 assets,
@@ -42,22 +44,21 @@ impl<T: AssetTrait> Tree<T> {
                 let entry = entry.ok()?;
                 let file_name = entry.file_name().into_string().ok()?;
                 let file_type = entry.file_type().ok()?;
+                let path = entry.path();
+                let path = path
+                    .strip_prefix(root)
+                    .expect("entry.path does not have root prefix")
+                    .to_path_buf();
 
                 if file_type.is_dir() {
-                    return Some((file_name, Entry::Directory(Tree::load(entry.path()))));
+                    return Some((file_name, Entry::Directory(Tree::load(path, root))));
                 }
 
                 if file_type.is_file() {
                     let file = std::fs::File::open(entry.path()).ok()?;
                     let data = serde_json::from_reader(file).ok()?;
 
-                    return Some((
-                        file_name,
-                        Entry::Asset(Asset {
-                            path: entry.path(),
-                            data,
-                        }),
-                    ));
+                    return Some((file_name, Entry::Asset(Asset { path, data })));
                 }
 
                 None
@@ -82,6 +83,10 @@ impl<T: AssetTrait> Tree<T> {
         }
     }
 
+    pub fn reload(&mut self, root: &Path) {
+        *self = Self::load(self.path.clone(), root);
+    }
+
     /// find all assets in the tree
     pub fn all_assets(&self) -> Vec<&Asset<T>> {
         self.assets
@@ -97,19 +102,6 @@ impl<T: AssetTrait> Tree<T> {
 
 #[derive(Debug, Clone)]
 pub struct Asset<T: AssetTrait> {
-    path: PathBuf,
+    pub path: PathBuf,
     pub data: T,
-}
-
-impl<T: AssetTrait> Asset<T> {
-    pub fn update(&self, data: T) {
-        let contents = serde_json::to_vec_pretty(&data).expect("Could not serialize data");
-
-        Action::SaveFile {
-            path: self.path.clone(),
-            contents,
-            message: format!("Update asset {}", self.path.display()),
-        }
-        .send();
-    }
 }

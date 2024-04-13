@@ -3,9 +3,12 @@ use git2::{
     build::RepoBuilder, Cred, Error, ErrorCode, FetchOptions, PushOptions, Reference,
     RemoteCallbacks, Repository, Signature,
 };
+use mkdirp::mkdirp;
+use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 pub struct Storage {
+    synced: bool,
     url: String,
     folder: PathBuf,
     repository: Option<Repository>,
@@ -21,8 +24,9 @@ impl Storage {
             url,
             folder,
             repository: None,
+            synced: false,
         };
-        db.update()?;
+        db.update();
         Ok(db)
     }
 
@@ -82,10 +86,10 @@ impl Storage {
         Ok(())
     }
 
-    pub fn commit_and_push(&self, file: &Path, message: &str) -> Result<(), Error> {
+    pub fn commit_and_push(&mut self, file: &Path, message: &str) -> Result<(), Error> {
         self.commit(file, message)?;
-        self.push()?;
 
+        self.synced = self.push().is_ok();
         Ok(())
     }
 
@@ -117,7 +121,7 @@ impl Storage {
 
     fn branch_name(&self) -> String {
         self.branch_reference()
-            .and_then(|h| h.name().map(|name| name.to_owned()))
+            .and_then(|h| h.shorthand().map(|name| name.to_owned()))
             .unwrap_or_else(|| "main".to_owned())
     }
 
@@ -127,11 +131,15 @@ impl Storage {
             .unwrap_or_else(|| "main".to_owned())
     }
 
-    pub fn update(&mut self) -> Result<(), Error> {
-        self.pull().or_else(|err| {
-            dbg!(err);
-            self.clone()
-        })
+    pub fn update(&mut self) {
+        if self
+            .pull()
+            .or_else(|_err| self.clone())
+            .and_then(|_| self.push())
+            .is_ok()
+        {
+            self.synced = true;
+        }
     }
 
     fn pull(&mut self) -> Result<(), Error> {
@@ -287,6 +295,41 @@ impl Storage {
         let remote = &mut repository.find_remote("origin")?;
 
         remote.push(&[name], Some(&mut self.push_options()))?;
+
+        Ok(())
+    }
+
+    pub fn synced(&self) -> bool {
+        self.synced
+    }
+
+    pub fn write_file<T: Serialize>(
+        &mut self,
+        path: &Path,
+        folder: &Path,
+        value: &T,
+        message: &str,
+    ) -> Result<(), ()> {
+        let Some(parent) = path.parent() else {
+            log::error!("Could not get parent of file: {}", path.display());
+            return Err(());
+        };
+        if let Err(err) = mkdirp(folder.join(parent)) {
+            log::error!("Could not create basedir of {}: {err:?}", path.display());
+            return Err(());
+        }
+        let Ok(file) = std::fs::File::create(folder.join(path)) else {
+            log::error!("Could not open file: {}", path.display());
+            return Err(());
+        };
+        if let Err(err) = serde_json::to_writer_pretty(file, value) {
+            log::error!("Could not write file: {err:?}");
+            return Err(());
+        }
+        if let Err(err) = self.commit_and_push(path, message) {
+            log::error!("Could not commit file: {err:?}");
+            return Err(());
+        }
 
         Ok(())
     }
