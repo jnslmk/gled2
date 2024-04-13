@@ -54,7 +54,7 @@ impl Storage {
     }
 
     pub fn current_branch(&self) -> Result<String, Error> {
-        Ok(self.branch_name())
+        Ok(self.branch_shorthand())
     }
 
     pub fn switch_branch(&self, name: &str) -> Result<(), Error> {
@@ -89,7 +89,14 @@ impl Storage {
     pub fn commit_and_push(&mut self, file: &Path, message: &str) -> Result<(), Error> {
         self.commit(file, message)?;
 
-        self.synced = self.push().is_ok();
+        match self.push() {
+            Ok(_) => self.synced = true,
+            Err(err) => {
+                log::warn!("Could not push changes: {err:?}");
+                self.synced = false;
+            }
+        }
+
         Ok(())
     }
 
@@ -121,7 +128,7 @@ impl Storage {
 
     fn branch_name(&self) -> String {
         self.branch_reference()
-            .and_then(|h| h.shorthand().map(|name| name.to_owned()))
+            .and_then(|h| h.name().map(|name| name.to_owned()))
             .unwrap_or_else(|| "main".to_owned())
     }
 
@@ -244,6 +251,8 @@ impl Storage {
     }
 
     fn commit(&self, file: &Path, msg: &str) -> Result<(), Error> {
+        log::info!("Committing file: {}", file.display());
+
         let repository = self
             .repository
             .as_ref()
