@@ -7,6 +7,7 @@ mod app;
 mod artnet_receiver;
 mod assets;
 mod constants;
+mod effect;
 mod extract_output;
 mod hotkey;
 mod logging;
@@ -34,6 +35,7 @@ pub static WGPU_RENDER_STATE: OnceCell<RenderState> = OnceCell::new();
 
 fn main() {
     logging::init();
+    assets::start_thread();
     let receiver = artnet_receiver::start_thread();
 
     let options = eframe::NativeOptions {

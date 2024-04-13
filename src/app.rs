@@ -1,9 +1,9 @@
 mod about;
 mod config;
+mod effects;
 mod menu;
 mod persistant_state;
 mod preview;
-mod scenes;
 mod svg;
 mod timing;
 
@@ -13,7 +13,7 @@ use crate::{
     hotkey::Gamepad,
     logo::logo_image,
     output_sender::{self, GpuReadyReceiver, OutputSender},
-    pipeline::{Pipeline, RenderDeactivatedScenes},
+    pipeline::{Pipeline, RenderDeactivatedEffects},
     project::Project,
 };
 use egui::Modifiers;
@@ -43,8 +43,8 @@ pub struct App {
     about_window_open: bool,
     config_output_window_open: bool,
     artnet_input_window_open: bool,
-    selected_scene: usize,
-    hovered_scene: usize,
+    selected_effect: usize,
+    hovered_effect: usize,
 }
 
 impl eframe::App for App {
@@ -80,15 +80,10 @@ impl eframe::App for App {
             self.timing.framerate().unwrap_or_default(),
             self.blackout,
             self.persistant_state.main_dimmer,
-            if self.persistant_state.background.always_render {
-                RenderDeactivatedScenes::Always
+            if self.persistant_state.effects.always_render {
+                RenderDeactivatedEffects::Always
             } else {
-                RenderDeactivatedScenes::Some(self.selected_scene, self.hovered_scene)
-            },
-            if self.persistant_state.foreground.always_render {
-                RenderDeactivatedScenes::Always
-            } else {
-                RenderDeactivatedScenes::Some(self.selected_scene, self.hovered_scene)
+                RenderDeactivatedEffects::Some(self.selected_effect, self.hovered_effect)
             },
             self.timing.fade_duration(),
         );
@@ -99,7 +94,7 @@ impl eframe::App for App {
         self.menu(ctx);
         self.config(ctx);
         self.preview(ctx);
-        self.scenes(ctx);
+        self.effects(ctx);
 
         ctx.request_repaint();
         self.persistant_state.store();
@@ -128,8 +123,8 @@ impl App {
             about_window_open: false,
             config_output_window_open: false,
             artnet_input_window_open: false,
-            selected_scene: 0,
-            hovered_scene: 0,
+            selected_effect: 0,
+            hovered_effect: 0,
             pipeline: Pipeline::default(),
             gamepad: Gamepad::new(),
             inputs: HashMap::new(),

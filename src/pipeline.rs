@@ -3,12 +3,12 @@ use crate::{
         Color, ColorPalette, CommonConfig, Direction, Gradient, GradientType, State, Stripes,
     },
     constants::{GPU_NOT_INIT, OUTPUT_BUFFER_SIZE},
+    effect::Effect,
     extract_output::ExtractOutput,
     output_clear::OutputClear,
     output_sender::{GpuReadyReceiver, OutputSender},
     preview::Preview,
     preview_indices::PreviewIndices,
-    scene::{Scene, SceneKind},
     svg::Universes,
     transition::{Transition, TransitionGoal},
     wgpu_render_state,
@@ -25,17 +25,13 @@ use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Pipeline {
-    scenes: Vec<Scene>,
-    pub background_auto_mode_active: bool,
-    pub background_auto_mode_seconds: u64,
-    pub background_auto_mode_max_scenes: usize,
-    pub foreground_auto_mode_active: bool,
-    pub foreground_auto_mode_seconds: u64,
+    effects: Vec<Effect>,
+    pub auto_mode_active: bool,
+    pub auto_mode_seconds: u64,
+    pub auto_mode_max_effects: usize,
 
     #[serde(skip)]
-    background_auto_mode_last_change: Option<Instant>,
-    #[serde(skip)]
-    foreground_auto_mode_last_change: Option<Instant>,
+    auto_mode_last_change: Option<Instant>,
     #[serde(skip)]
     start: Option<Instant>,
     #[serde(skip)]
@@ -53,14 +49,11 @@ pub struct Pipeline {
 impl Default for Pipeline {
     fn default() -> Self {
         Self {
-            scenes: Default::default(),
-            background_auto_mode_last_change: Default::default(),
-            background_auto_mode_active: false,
-            background_auto_mode_seconds: 45,
-            background_auto_mode_max_scenes: 3,
-            foreground_auto_mode_last_change: Default::default(),
-            foreground_auto_mode_active: false,
-            foreground_auto_mode_seconds: 30,
+            effects: Default::default(),
+            auto_mode_last_change: Default::default(),
+            auto_mode_active: false,
+            auto_mode_seconds: 45,
+            auto_mode_max_effects: 3,
             start: Default::default(),
             extract: Default::default(),
             preview_indices: Default::default(),
@@ -74,7 +67,7 @@ impl Default for Pipeline {
 impl Clone for Pipeline {
     fn clone(&self) -> Self {
         Self {
-            scenes: self.scenes.clone(),
+            effects: self.effects.clone(),
             ..Default::default()
         }
     }
@@ -93,9 +86,9 @@ impl Pipeline {
                 center: (0.25, 0.5),
                 ..Default::default()
             };
-            let mut scene = Scene::new(gradient.into(), palette, "allFull".to_owned());
-            scene.active = i == 0;
-            pipeline.add_scene(scene);
+            let mut effect = Effect::new(gradient.into(), palette, "allFull".to_owned());
+            effect.active = i == 0;
+            pipeline.add_effect(effect);
 
             let palette = ColorPalette {
                 colors: vec![Color::new(0., 0., 1.), Color::new(0., 0., 0.)],
@@ -107,9 +100,9 @@ impl Pipeline {
                 },
                 ..Default::default()
             };
-            let mut scene = Scene::new(gradient.into(), palette, "innerFull".to_owned());
-            scene.active = i == 0;
-            pipeline.add_scene(scene);
+            let mut effect = Effect::new(gradient.into(), palette, "innerFull".to_owned());
+            effect.active = i == 0;
+            pipeline.add_effect(effect);
 
             let palette = ColorPalette {
                 colors: vec![Color::new(1., 1., 0.)],
@@ -122,10 +115,9 @@ impl Pipeline {
                 },
                 ..Default::default()
             };
-            let mut scene = Scene::new(stripes.into(), palette, "innerEdge".to_owned());
-            scene.kind = SceneKind::Foreground;
-            scene.active = i == 0;
-            pipeline.add_scene(scene);
+            let mut effect = Effect::new(stripes.into(), palette, "innerEdge".to_owned());
+            effect.active = i == 0;
+            pipeline.add_effect(effect);
         }
 
         pipeline
@@ -147,8 +139,8 @@ impl Pipeline {
         });
         self.preview_indices.get_or_insert_with(PreviewIndices::new);
         self.preview.get_or_insert_with(Preview::new);
-        for scene in self.scenes.iter_mut() {
-            scene.init_gpu();
+        for effect in self.effects.iter_mut() {
+            effect.init_gpu();
         }
         self.set_buffers();
     }
@@ -157,27 +149,27 @@ impl Pipeline {
         *self.start.get_or_insert_with(Instant::now)
     }
 
-    pub fn add_scene(&mut self, scene: Scene) -> usize {
-        self.scenes.push(scene);
+    pub fn add_effect(&mut self, effect: Effect) -> usize {
+        self.effects.push(effect);
         self.init_gpu();
 
-        self.scenes.len() - 1
+        self.effects.len() - 1
     }
 
-    pub fn remove_scene(&mut self, index: usize) -> Option<Scene> {
-        let mut scene = None;
+    pub fn remove_effect(&mut self, index: usize) -> Option<Effect> {
+        let mut effect = None;
 
-        if self.scenes.len() > index {
-            scene = Some(self.scenes.remove(index));
+        if self.effects.len() > index {
+            effect = Some(self.effects.remove(index));
             self.init_gpu();
         }
 
-        scene
+        effect
     }
 
     pub fn set_buffers(&mut self) {
-        for scene in self.scenes.iter_mut() {
-            scene.set_buffers(self.output.as_ref().expect(GPU_NOT_INIT))
+        for effect in self.effects.iter_mut() {
+            effect.set_buffers(self.output.as_ref().expect(GPU_NOT_INIT))
         }
 
         self.preview.as_mut().expect(GPU_NOT_INIT).set_buffers(
@@ -192,28 +184,28 @@ impl Pipeline {
     }
 
     pub fn set_opacity(&mut self, index: usize, opacity: f32) {
-        if let Some(scene) = self.scene(index) {
-            scene.opacity = opacity;
+        if let Some(effect) = self.effect(index) {
+            effect.opacity = opacity;
         }
     }
 
     pub fn set_active(&mut self, index: usize, active: bool) {
-        if let Some(scene) = self.scene(index) {
-            scene.active = active;
+        if let Some(effect) = self.effect(index) {
+            effect.active = active;
         }
     }
 
-    pub fn scenes(&mut self) -> Vec<(usize, &mut Scene)> {
-        self.scenes.iter_mut().enumerate().collect()
+    pub fn effects(&mut self) -> Vec<(usize, &mut Effect)> {
+        self.effects.iter_mut().enumerate().collect()
     }
 
-    pub fn scene(&mut self, index: usize) -> Option<&mut Scene> {
-        self.scenes.get_mut(index)
+    pub fn effect(&mut self, index: usize) -> Option<&mut Effect> {
+        self.effects.get_mut(index)
     }
 
     pub fn svg_or_groups_changed(&mut self, universes: Universes) {
-        for scene in self.scenes.iter_mut() {
-            scene.send_positions();
+        for effect in self.effects.iter_mut() {
+            effect.send_positions();
         }
         self.preview_indices
             .as_mut()
@@ -239,8 +231,7 @@ impl Pipeline {
         framerate: f32,
         blackout: bool,
         main_dimmer: f32,
-        render_deactivated_background_scenes: RenderDeactivatedScenes,
-        render_deactivated_foreground_scenes: RenderDeactivatedScenes,
+        render_deactivated_effects: RenderDeactivatedEffects,
         fade_duration: Duration,
     ) {
         let wgpu_render_state = wgpu_render_state();
@@ -254,34 +245,32 @@ impl Pipeline {
             ..Default::default()
         };
 
-        if self.background_auto_mode_active {
+        if self.auto_mode_active {
             if self
-                .background_auto_mode_last_change
+                .auto_mode_last_change
                 .get_or_insert_with(Instant::now)
                 .elapsed()
                 .as_secs()
-                > self.background_auto_mode_seconds
+                > self.auto_mode_seconds
             {
-                let background_auto_mode_max_scenes = self.background_auto_mode_max_scenes;
+                let auto_mode_max_effects = self.auto_mode_max_effects;
                 let mut prev = HashSet::new();
                 {
                     let mut indices = self
-                        .scenes()
+                        .effects()
                         .into_iter()
-                        .filter(|(_index, scene)| {
-                            scene.kind == SceneKind::Background && scene.active
-                        })
-                        .map(|(index, _scene)| index)
+                        .filter(|(_index, effect)| effect.active)
+                        .map(|(index, _effect)| index)
                         .collect::<Vec<_>>();
 
                     let mut disable_count =
-                        (indices.len() + 1).saturating_sub(background_auto_mode_max_scenes);
+                        (indices.len() + 1).saturating_sub(auto_mode_max_effects);
                     while disable_count > 0 {
                         if let Some(index) = indices.choose_mut(&mut rand::thread_rng()).copied() {
                             if prev.insert(index) {
                                 disable_count -= 1;
-                                if let Some(scene) = self.scene(index) {
-                                    scene.set_transition(Transition::new(
+                                if let Some(effect) = self.effect(index) {
+                                    effect.set_transition(Transition::new(
                                         TransitionGoal::TurnOff,
                                         fade_duration,
                                     ));
@@ -291,72 +280,28 @@ impl Pipeline {
                     }
                 }
 
-                let mut scenes = self
-                    .scenes()
+                let mut effects = self
+                    .effects()
                     .into_iter()
-                    .filter(|(index, scene)| {
-                        scene.kind == SceneKind::Background && !prev.contains(index)
-                    })
+                    .filter(|(index, _effect)| !prev.contains(index))
                     .collect::<Vec<_>>();
-                if let Some((_index, scene)) = scenes.choose_mut(&mut rand::thread_rng()) {
-                    scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
+                if let Some((_index, effect)) = effects.choose_mut(&mut rand::thread_rng()) {
+                    effect.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
                 }
 
-                self.background_auto_mode_last_change.take();
+                self.auto_mode_last_change.take();
             }
         } else {
-            self.background_auto_mode_last_change.take();
-        }
-        if self.foreground_auto_mode_active {
-            if self
-                .foreground_auto_mode_last_change
-                .get_or_insert_with(Instant::now)
-                .elapsed()
-                .as_secs()
-                > self.foreground_auto_mode_seconds
-            {
-                let mut prev = Vec::new();
-                for (index, active_scene) in self
-                    .scenes()
-                    .into_iter()
-                    .filter(|(_index, scene)| scene.kind == SceneKind::Foreground && scene.active)
-                {
-                    prev.push(index);
-                    active_scene
-                        .set_transition(Transition::new(TransitionGoal::TurnOff, fade_duration));
-                }
-
-                let mut scenes = self
-                    .scenes()
-                    .into_iter()
-                    .filter(|(index, scene)| {
-                        scene.kind == SceneKind::Foreground && !prev.contains(index)
-                    })
-                    .collect::<Vec<_>>();
-                if let Some((_index, scene)) = scenes.choose_mut(&mut rand::thread_rng()) {
-                    scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
-                }
-
-                self.foreground_auto_mode_last_change.take();
-            }
-        } else {
-            self.foreground_auto_mode_last_change.take();
+            self.auto_mode_last_change.take();
         }
 
-        for (index, scene) in self.scenes() {
-            scene.prepare(
+        for (index, effect) in self.effects() {
+            effect.prepare(
                 queue,
                 state,
                 blackout,
                 main_dimmer,
-                match scene.kind {
-                    crate::scene::SceneKind::Background => {
-                        render_deactivated_background_scenes.should_render(index)
-                    }
-                    crate::scene::SceneKind::Foreground => {
-                        render_deactivated_foreground_scenes.should_render(index)
-                    }
-                },
+                render_deactivated_effects.should_render(index),
             );
         }
         self.preview_indices
@@ -373,18 +318,11 @@ impl Pipeline {
             .expect(GPU_NOT_INIT)
             .run(&mut encoder);
 
-        for (index, scene) in self.scenes() {
-            scene.render(
+        for (index, effect) in self.effects() {
+            effect.render(
                 &mut encoder,
                 blackout,
-                match scene.kind {
-                    crate::scene::SceneKind::Background => {
-                        render_deactivated_background_scenes.should_render(index)
-                    }
-                    crate::scene::SceneKind::Foreground => {
-                        render_deactivated_foreground_scenes.should_render(index)
-                    }
-                },
+                render_deactivated_effects.should_render(index),
             );
         }
 
@@ -408,16 +346,16 @@ impl Pipeline {
     }
 }
 
-pub enum RenderDeactivatedScenes {
+pub enum RenderDeactivatedEffects {
     Always,
     Some(usize, usize),
 }
 
-impl RenderDeactivatedScenes {
+impl RenderDeactivatedEffects {
     pub fn should_render(&self, index: usize) -> bool {
         match self {
-            RenderDeactivatedScenes::Always => true,
-            RenderDeactivatedScenes::Some(selected, hovered) => {
+            RenderDeactivatedEffects::Always => true,
+            RenderDeactivatedEffects::Some(selected, hovered) => {
                 *selected == index || *hovered == index
             }
         }

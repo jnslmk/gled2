@@ -1,28 +1,28 @@
-use crate::{animation::ColorPalette, scene::Scene};
+use crate::{animation::ColorPalette, effect::Effect};
 use egui::{
     load::SizedTexture, Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding,
     Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub struct SceneWidget<'a> {
-    pub selected_scene: &'a mut usize,
-    pub hovered_scene: &'a mut usize,
+pub struct EffectWidget<'a> {
+    pub selected_effect: &'a mut usize,
+    pub hovered_effect: &'a mut usize,
     pub index: usize,
-    pub scene: &'a mut Scene,
+    pub effect: &'a mut Effect,
     pub svg: Option<TextureId>,
-    pub scenes_size: f32,
+    pub effects_size: f32,
     pub live_color: Color32,
     pub uv: Option<Rect>,
 }
 
-impl<'a> Widget for SceneWidget<'a> {
+impl<'a> Widget for EffectWidget<'a> {
     fn ui(self, ui: &mut Ui) -> egui::Response {
         let mut slider_rect = None;
         let mut checkbox_rect = None;
 
         let mut response = egui::Frame::none()
-            .fill(if *self.selected_scene == self.index {
+            .fill(if *self.selected_effect == self.index {
                 Color32::GOLD.linear_multiply(
                     ((SystemTime::now()
                         .duration_since(UNIX_EPOCH)
@@ -40,12 +40,12 @@ impl<'a> Widget for SceneWidget<'a> {
             .rounding(Rounding::from(4.0))
             .show(ui, |ui| {
                 egui::Frame::none()
-                    .fill(if self.scene.flash {
+                    .fill(if self.effect.flash {
                         Color32::WHITE
-                    } else if self.scene.active {
+                    } else if self.effect.active {
                         let off = Color32::BLACK.to_srgba_unmultiplied();
                         let on = self.live_color.to_srgba_unmultiplied();
-                        let factor = self.scene.transition_factor();
+                        let factor = self.effect.transition_factor();
 
                         Color32::from_rgba_unmultiplied(
                             (off[0] as f32 * (1.0 - factor) + on[0] as f32 * factor) as u8,
@@ -77,24 +77,30 @@ impl<'a> Widget for SceneWidget<'a> {
                                     )
                                 }
                             }
-                            None => Vec2::splat(self.scenes_size),
+                            None => Vec2::splat(self.effects_size),
                         };
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
                                 ui.set_max_width(size.x + 28.0);
-                                if !self.scene.group.is_empty() {
+                                if !self.effect.group.is_empty() {
                                     ui.add(
-                                        crate::app::config::group::button(&self.scene.group, false)
-                                            .sense(Sense::hover()),
+                                        crate::app::config::group::button(
+                                            &self.effect.group,
+                                            false,
+                                        )
+                                        .sense(Sense::hover()),
                                     );
                                 }
                                 if let Some(hotkey) =
-                                    self.scene.hotkey.as_ref().map(|key| format!("{key}"))
+                                    self.effect.hotkey.as_ref().map(|key| format!("{key}"))
                                 {
                                     ui.add_enabled(false, Button::new(hotkey));
                                 }
-                                if let Some(flash_hotkey) =
-                                    self.scene.flash_hotkey.as_ref().map(|key| format!("{key}"))
+                                if let Some(flash_hotkey) = self
+                                    .effect
+                                    .flash_hotkey
+                                    .as_ref()
+                                    .map(|key| format!("{key}"))
                                 {
                                     ui.add_enabled(
                                         false,
@@ -103,14 +109,14 @@ impl<'a> Widget for SceneWidget<'a> {
                                 }
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     checkbox_rect = Some(ui.checkbox(&mut false, "").rect);
-                                    color_band(ui, &mut self.scene.palette);
+                                    color_band(ui, &mut self.effect.palette);
                                 });
                             });
 
                             ui.horizontal(|ui| {
                                 let res = ui.add({
                                     let mut image = Image::new(SizedTexture::new(
-                                        self.scene.texture_id(),
+                                        self.effect.texture_id(),
                                         size,
                                     ));
                                     if let Some(uv) = uv {
@@ -155,29 +161,29 @@ impl<'a> Widget for SceneWidget<'a> {
 
         let res = ui.put(response.rect, Button::new("").fill(Color32::TRANSPARENT));
         if res.clicked() {
-            *self.selected_scene = self.index;
+            *self.selected_effect = self.index;
         }
         if res.hovered() {
-            *self.hovered_scene = self.index;
+            *self.hovered_effect = self.index;
         }
 
         if let Some(slider_rect) = slider_rect {
             ui.spacing_mut().slider_width = slider_rect.height();
             ui.put(
                 slider_rect,
-                Slider::new(&mut self.scene.opacity, 0.0..=1.0)
+                Slider::new(&mut self.effect.opacity, 0.0..=1.0)
                     .vertical()
                     .show_value(false),
             )
-            .on_hover_text("Scene Dimmer");
+            .on_hover_text("Effect Dimmer");
         }
 
         if let Some(checkbox_rect) = checkbox_rect {
-            ui.add_enabled_ui(!self.scene.has_transition(), |ui| {
-                let mut active = self.scene.active;
+            ui.add_enabled_ui(!self.effect.has_transition(), |ui| {
+                let mut active = self.effect.active;
                 if ui
                     .put(checkbox_rect, Checkbox::new(&mut active, ""))
-                    .on_hover_text("Enable Scene")
+                    .on_hover_text("Enable Effect")
                     .changed()
                 {
                     response.mark_changed();

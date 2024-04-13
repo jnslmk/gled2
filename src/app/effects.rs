@@ -3,19 +3,18 @@ mod header;
 mod widget;
 
 use super::{preview_uv, App};
-use crate::scene::SceneKind;
 use egui::{Color32, Context, Margin, Stroke};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default)]
-pub struct Scenes {
+pub struct Effects {
     pub size: f32,
     pub show_svg: bool,
     pub always_render: bool,
 }
 
-impl Default for Scenes {
+impl Default for Effects {
     fn default() -> Self {
         Self {
             size: 100.0,
@@ -26,7 +25,7 @@ impl Default for Scenes {
 }
 
 impl App {
-    pub fn scenes(&mut self, ctx: &Context) {
+    pub fn effects(&mut self, ctx: &Context) {
         let svg = self
             .svg
             .as_mut()
@@ -38,8 +37,8 @@ impl App {
                 .inner_margin(Margin::from(6.0))
                 .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
                 .show(ui, |ui| {
-                    self.scenes_header(ui, SceneKind::Background);
-                    self.scenes_grid(ctx, ui, SceneKind::Background, svg, uv)
+                    self.effects_header(ui);
+                    self.effects_grid(ctx, ui, svg, uv)
                 });
         });
     }

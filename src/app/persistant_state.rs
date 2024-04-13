@@ -1,4 +1,4 @@
-use super::scenes::Scenes;
+use super::effects::Effects;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -8,8 +8,7 @@ pub struct PersistantState {
     pub show_preview_svg: bool,
     pub main_dimmer: f32,
     pub fullscreen: bool,
-    pub foreground: Scenes,
-    pub background: Scenes,
+    pub effects: Effects,
     pub fps_limit: f32,
     pub preview_height: f32,
     #[serde(skip)]
@@ -22,8 +21,7 @@ impl Default for PersistantState {
             show_preview_svg: true,
             main_dimmer: 1.0,
             fullscreen: Default::default(),
-            foreground: Default::default(),
-            background: Default::default(),
+            effects: Default::default(),
             fps_limit: 120.0,
             preview_height: 300.0,
             dirty: true,
