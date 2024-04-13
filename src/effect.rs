@@ -1,6 +1,9 @@
+use std::path::PathBuf;
+
 use crate::{
-    animation::{Animation, AnimationConfig, AnimationRenderer, ColorPalette, State},
+    animation::{Animation, AnimationConfig, AnimationRenderer, State},
     app::positions,
+    assets::find_palette,
     constants::GPU_NOT_INIT,
     hotkey::Hotkey,
     output_mix::OutputMix,
@@ -15,7 +18,7 @@ use wgpu::{Buffer, CommandEncoder, Queue};
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Effect {
-    pub palette: ColorPalette,
+    pub palette: PathBuf,
     pub opacity: f32,
     pub active: bool,
     pub beat_progression_offset: f32,
@@ -43,6 +46,23 @@ pub struct Effect {
     #[serde(skip)]
     renderer: Option<AnimationRenderer>,
 }
+
+impl PartialEq for Effect {
+    fn eq(&self, other: &Self) -> bool {
+        self.palette == other.palette
+            && self.opacity == other.opacity
+            && self.active == other.active
+            && self.beat_progression_offset == other.beat_progression_offset
+            && self.group == other.group
+            && self.animation == other.animation
+            && self.hotkey == other.hotkey
+            && self.flash_hotkey == other.flash_hotkey
+            && self.flash == other.flash
+            && self.hotkey_dimmer == other.hotkey_dimmer
+    }
+}
+
+impl Eq for Effect {}
 
 impl Default for Effect {
     fn default() -> Self {
@@ -90,7 +110,7 @@ fn default_send_positions() -> bool {
 }
 
 impl Effect {
-    pub fn new(animation: Animation, palette: ColorPalette, group: String) -> Self {
+    pub fn new(animation: Animation, palette: PathBuf, group: String) -> Self {
         Self {
             animation,
             palette,
@@ -187,7 +207,7 @@ impl Effect {
             self.renderer.as_ref().expect(GPU_NOT_INIT).set_buffers(
                 queue,
                 &state,
-                &self.palette,
+                &find_palette(&self.palette),
                 &self.animation.config(),
             );
 

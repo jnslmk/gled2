@@ -1,4 +1,4 @@
-use crate::{animation::ColorPalette, effect::Effect};
+use crate::{animation::ColorPalette, assets::find_palette, effect::Effect};
 use egui::{
     load::SizedTexture, Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding,
     Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
@@ -109,7 +109,7 @@ impl<'a> Widget for EffectWidget<'a> {
                                 }
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     checkbox_rect = Some(ui.checkbox(&mut false, "").rect);
-                                    color_band(ui, &mut self.effect.palette);
+                                    color_band(ui, &find_palette(&self.effect.palette));
                                 });
                             });
 
@@ -195,7 +195,7 @@ impl<'a> Widget for EffectWidget<'a> {
     }
 }
 
-fn color_band(ui: &mut Ui, palette: &mut ColorPalette) {
+fn color_band(ui: &mut Ui, palette: &ColorPalette) {
     let colors = palette.colors();
     let width_per_color = (ui.available_width() - 2.0) / colors.len() as f32;
     ui.painter().add(Shape::Vec(

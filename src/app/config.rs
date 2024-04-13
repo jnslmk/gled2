@@ -4,6 +4,7 @@ pub mod group;
 use super::{timing::FadeMode, App};
 use crate::{
     animation::{Animation, AnimationConfig, Color},
+    assets::find_palette,
     hotkey::Hotkey,
 };
 use egui::{Button, Checkbox, Color32, Context, Layout, Modifiers, RichText, Slider};
@@ -23,7 +24,9 @@ impl App {
                         self.pipeline
                             .effects()
                             .into_iter()
-                            .flat_map(|(_index, effect)| effect.palette.colors.iter().copied()),
+                            .flat_map(|(_index, effect)| {
+                                find_palette(&effect.palette).colors.clone().into_iter()
+                            }),
                     )
                     .collect();
 
@@ -76,7 +79,7 @@ impl App {
                         ui.label(RichText::new("Colors").heading());
                         color::color_selection(
                             ui,
-                            &mut effect.palette,
+                            &effect.palette,
                             all_colors,
                             effect.animation.uses_multiple_colors(),
                         );

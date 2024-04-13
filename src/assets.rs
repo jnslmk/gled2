@@ -6,12 +6,12 @@ use crate::{animation::ColorPalette, effect::Effect, scene::Scene};
 use once_cell::sync::OnceCell;
 use std::{
     fmt::Debug,
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
-    sync::{mpsc::Sender, RwLock},
+    sync::{mpsc::Sender, Arc, RwLock},
 };
 
-pub static STATE: RwLock<State> = RwLock::new(State::Loading(0.0));
+static STATE: RwLock<State> = RwLock::new(State::Loading(0.0));
 static ACTION_SENDER: OnceCell<Sender<Action>> = OnceCell::new();
 
 #[derive(Debug)]
@@ -35,15 +35,15 @@ pub enum Action {
     SwitchBranch(String),
     SavePalette {
         path: PathBuf,
-        palette: ColorPalette,
+        palette: Arc<ColorPalette>,
     },
     SaveEffect {
         path: PathBuf,
-        effect: Effect,
+        effect: Arc<Effect>,
     },
     SaveScene {
         path: PathBuf,
-        scene: Scene,
+        scene: Arc<Scene>,
     },
 }
 
@@ -132,11 +132,9 @@ pub fn start_thread() {
                 scenes,
             };
 
-            dbg!(STATE.read());
+            //TODO: Loader before main window which turns into main window once we are here
 
             while let Ok(action) = rx.recv() {
-                *STATE.write().unwrap() = State::Loading(0.0);
-
                 match action {
                     Action::Update => break,
                     Action::SwitchBranch(branch) => match storage.switch_branch(&branch) {
@@ -151,6 +149,11 @@ pub fn start_thread() {
                         }
                     },
                     Action::SavePalette { path, palette } => {
+                        if find_palette(&path) != palette {
+                            log::info!("Skipping save as a new version is already in cache");
+                            continue;
+                        }
+
                         if storage
                             .write_file(
                                 &path,
@@ -160,19 +163,21 @@ pub fn start_thread() {
                             )
                             .is_err()
                         {
+                            log::error!("Could not save color palette {}", path.display());
                             continue;
                         }
 
                         let state: &mut State = &mut STATE.write().unwrap();
-                        if let State::Opened {
-                            palettes, synced, ..
-                        } = state
-                        {
+                        if let State::Opened { synced, .. } = state {
                             *synced = storage.synced();
-                            palettes.reload(&folder);
                         }
                     }
                     Action::SaveEffect { path, effect } => {
+                        if find_effect(&path) != effect {
+                            log::info!("Skipping save as a new version is already in cache");
+                            continue;
+                        }
+
                         if storage
                             .write_file(
                                 &path,
@@ -182,19 +187,21 @@ pub fn start_thread() {
                             )
                             .is_err()
                         {
+                            log::error!("Could not save effect {}", path.display());
                             continue;
                         }
 
                         let state: &mut State = &mut STATE.write().unwrap();
-                        if let State::Opened {
-                            effects, synced, ..
-                        } = state
-                        {
+                        if let State::Opened { synced, .. } = state {
                             *synced = storage.synced();
-                            effects.reload(&folder);
                         }
                     }
                     Action::SaveScene { path, scene } => {
+                        if find_scene(&path) != scene {
+                            log::info!("Skipping save as a new version is already in cache");
+                            continue;
+                        }
+
                         if storage
                             .write_file(
                                 &path,
@@ -204,17 +211,94 @@ pub fn start_thread() {
                             )
                             .is_err()
                         {
+                            log::error!("Could not save scene {}", path.display());
                             continue;
                         }
 
                         let state: &mut State = &mut STATE.write().unwrap();
-                        if let State::Opened { scenes, synced, .. } = state {
+                        if let State::Opened { synced, .. } = state {
                             *synced = storage.synced();
-                            scenes.reload(&folder);
                         }
                     }
                 }
             }
         }
     });
+}
+
+pub fn find_palette(path: &Path) -> Arc<ColorPalette> {
+    let state: &State = &STATE.read().unwrap();
+    if let State::Opened { palettes, .. } = state {
+        if let Some(asset) = palettes.find(path) {
+            return asset.data.clone();
+        }
+    }
+
+    Arc::new(ColorPalette::default())
+}
+
+pub fn set_palette_in_cache(path: PathBuf, palette: Arc<ColorPalette>) {
+    let path = path
+        .strip_prefix("palettes")
+        .expect("Palette in wrong directory")
+        .to_path_buf();
+
+    log::info!("Setting palette in cache: {}", path.display());
+    let state: &mut State = &mut STATE.write().unwrap();
+    if let State::Opened { palettes, .. } = state {
+        palettes.set_cache(path.clone(), palette);
+    }
+    log::info!("Set palette in cache: {}", path.display());
+}
+
+pub fn find_effect(path: &Path) -> Arc<Effect> {
+    let state: &State = &STATE.read().unwrap();
+    if let State::Opened { effects, .. } = state {
+        if let Some(asset) = effects.find(path) {
+            return asset.data.clone();
+        }
+    } else {
+        dbg!(state);
+    }
+
+    Arc::new(Effect::default())
+}
+
+pub fn set_effect_in_cache(path: PathBuf, effect: Arc<Effect>) {
+    let path = path
+        .strip_prefix("effects")
+        .expect("Effect in wrong directory")
+        .to_path_buf();
+
+    log::info!("Setting effect in cache: {}", path.display());
+    let state: &mut State = &mut STATE.write().unwrap();
+    if let State::Opened { effects, .. } = state {
+        effects.set_cache(path.clone(), effect);
+    }
+    log::info!("Set effect in cache: {}", path.display());
+}
+
+pub fn find_scene(path: &Path) -> Arc<Scene> {
+    let state: &State = &STATE.read().unwrap();
+    if let State::Opened { scenes, .. } = state {
+        if let Some(asset) = scenes.find(path) {
+            return asset.data.clone();
+        }
+    }
+
+    Arc::new(Scene::default())
+}
+
+pub fn set_scene_in_cache(path: PathBuf, scene: Arc<Scene>) {
+    let path = path
+        .strip_prefix("scenes")
+        .expect("Scene in wrong directory")
+        .to_path_buf();
+
+    log::info!("Setting scene in cache: {}", path.display());
+    let state: &mut State = &mut STATE.write().unwrap();
+    if let State::Opened { scenes, .. } = state {
+        scenes.set_cache(path.clone(), scene);
+    }
+    log::info!("Set scene in cache: {}", path.display());
 }

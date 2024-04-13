@@ -1,7 +1,9 @@
+use crate::assets::{set_palette_in_cache, Action};
 use egui::Color32;
 use serde::{Deserialize, Serialize};
+use std::{path::PathBuf, sync::Arc};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ColorPalette {
     /// Max: 16 colors
     pub colors: Vec<Color>,
@@ -29,8 +31,8 @@ impl ColorPalette {
         272
     }
 
-    pub fn colors(&mut self) -> &mut Vec<Color> {
-        &mut self.colors
+    pub fn colors(&self) -> &Vec<Color> {
+        &self.colors
     }
 
     pub fn add_color(&mut self, color: Color) {
@@ -39,6 +41,13 @@ impl ColorPalette {
 
     pub fn remove_color(&mut self, index: usize) {
         self.colors.remove(index);
+    }
+
+    pub fn save(self, path: PathBuf) {
+        let palette = Arc::new(self);
+        set_palette_in_cache(path.clone(), palette.clone());
+
+        Action::SavePalette { path, palette }.send();
     }
 }
 

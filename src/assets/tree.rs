@@ -5,9 +5,10 @@ use std::{
     collections::HashMap,
     fmt::Debug,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
-pub trait AssetTrait: Serialize + Send + DeserializeOwned + Debug {}
+pub trait AssetTrait: Serialize + DeserializeOwned + Debug + Send + Sync {}
 
 impl AssetTrait for Effect {}
 impl AssetTrait for Scene {}
@@ -83,10 +84,6 @@ impl<T: AssetTrait> Tree<T> {
         }
     }
 
-    pub fn reload(&mut self, root: &Path) {
-        *self = Self::load(self.path.clone(), root);
-    }
-
     /// find all assets in the tree
     pub fn all_assets(&self) -> Vec<&Asset<T>> {
         self.assets
@@ -98,10 +95,56 @@ impl<T: AssetTrait> Tree<T> {
             )
             .collect()
     }
+
+    pub fn find(&self, path: &Path) -> Option<&Asset<T>> {
+        let mut position = self;
+        for component in path.components() {
+            let name = component.as_os_str().to_str()?;
+            if let Some(child) = position.children.get(name) {
+                position = child;
+                continue;
+            }
+            if let Some(asset) = position.assets.get(name) {
+                return Some(asset);
+            }
+        }
+
+        None
+    }
+
+    /// Overwrite asset in memory cache
+    pub fn set_cache(&mut self, path: PathBuf, data: Arc<T>) {
+        let mut tree = self;
+        let Some(parent) = path.parent() else {
+            log::error!("Could not get parent of path: {}", path.display());
+            return;
+        };
+        for component in parent.components() {
+            let Some(name) = component.as_os_str().to_str() else {
+                log::error!("Could not convert path component to string: {component:?}");
+                return;
+            };
+
+            tree = tree
+                .children
+                .entry(name.to_owned())
+                .or_insert_with(|| Tree {
+                    path: tree.path.join(name),
+                    assets: HashMap::new(),
+                    children: HashMap::new(),
+                });
+        }
+        let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+            log::error!("Could not get file name of path: {}", path.display());
+            return;
+        };
+        tree.assets
+            .insert(file_name.to_owned(), Asset { path, data });
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Asset<T: AssetTrait> {
     pub path: PathBuf,
-    pub data: T,
+    pub data: Arc<T>,
 }

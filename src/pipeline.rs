@@ -1,7 +1,5 @@
 use crate::{
-    animation::{
-        Color, ColorPalette, CommonConfig, Direction, Gradient, GradientType, State, Stripes,
-    },
+    animation::{CommonConfig, Direction, Gradient, GradientType, State, Stripes},
     constants::{GPU_NOT_INIT, OUTPUT_BUFFER_SIZE},
     effect::Effect,
     extract_output::ExtractOutput,
@@ -18,6 +16,8 @@ use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
+    path::PathBuf,
+    str::FromStr,
     time::{Duration, Instant},
 };
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
@@ -78,21 +78,19 @@ impl Pipeline {
         let mut pipeline = Self::default();
 
         for i in 0..10 {
-            let palette = ColorPalette {
-                colors: vec![Color::new(1., 0., 0.), Color::new(0., 0., 0.)],
-            };
             let gradient = Gradient {
                 gradient: GradientType::Radial,
                 center: (0.25, 0.5),
                 ..Default::default()
             };
-            let mut effect = Effect::new(gradient.into(), palette, "allFull".to_owned());
+            let mut effect = Effect::new(
+                gradient.into(),
+                PathBuf::from_str("palettes/red").unwrap(),
+                "allFull".to_owned(),
+            );
             effect.active = i == 0;
             pipeline.add_effect(effect);
 
-            let palette = ColorPalette {
-                colors: vec![Color::new(0., 0., 1.), Color::new(0., 0., 0.)],
-            };
             let gradient = Gradient {
                 gradient: GradientType::LinearHorizontal,
                 common: CommonConfig {
@@ -100,13 +98,14 @@ impl Pipeline {
                 },
                 ..Default::default()
             };
-            let mut effect = Effect::new(gradient.into(), palette, "innerFull".to_owned());
+            let mut effect = Effect::new(
+                gradient.into(),
+                PathBuf::from_str("palettes/green").unwrap(),
+                "innerFull".to_owned(),
+            );
             effect.active = i == 0;
             pipeline.add_effect(effect);
 
-            let palette = ColorPalette {
-                colors: vec![Color::new(1., 1., 0.)],
-            };
             let stripes = Stripes {
                 count: 2,
                 common: CommonConfig {
@@ -115,7 +114,11 @@ impl Pipeline {
                 },
                 ..Default::default()
             };
-            let mut effect = Effect::new(stripes.into(), palette, "innerEdge".to_owned());
+            let mut effect = Effect::new(
+                stripes.into(),
+                PathBuf::from_str("palettes/blue").unwrap(),
+                "innerEdge".to_owned(),
+            );
             effect.active = i == 0;
             pipeline.add_effect(effect);
         }

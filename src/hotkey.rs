@@ -16,7 +16,7 @@ pub struct Gamepad {
     artnet_events: HashMap<u8, u8>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Hotkey {
     Key(Key),
     Gamepad(GamepadEvent),

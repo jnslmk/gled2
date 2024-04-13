@@ -254,9 +254,7 @@ impl Storage {
         let email = config.get_string("user.email")?;
 
         let mut index = repository.index()?;
-        index.add_path(file.strip_prefix(&self.folder).map_err(|err| {
-            Error::from_str(&format!("Could not make file path relative: {err:?}"))
-        })?)?;
+        index.add_path(file)?;
         let tree_oid = index.write_tree()?;
         let tree = repository.find_tree(tree_oid)?;
 
