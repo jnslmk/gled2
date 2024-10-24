@@ -43,18 +43,25 @@ pub fn color_selection(
                     ui.memory_mut(|mem| mem.toggle_popup(popup_id));
                 }
                 let below = egui::AboveOrBelow::Below;
-                egui::popup::popup_above_or_below_widget(ui, popup_id, &response, below, |ui| {
-                    ui.set_width_range(200.0..=200.0);
+                egui::popup::popup_above_or_below_widget(
+                    ui,
+                    popup_id,
+                    &response,
+                    below,
+                    egui::PopupCloseBehavior::CloseOnClickOutside,
+                    |ui| {
+                        ui.set_width_range(200.0..=200.0);
 
-                    ui.horizontal_wrapped(|ui| {
-                        for mut color in all_colors {
-                            if ui.color_edit_button_rgb(color.rgb_mut()).clicked() {
-                                palette.add_color(color);
-                                changed = true;
+                        ui.horizontal_wrapped(|ui| {
+                            for mut color in all_colors {
+                                if ui.color_edit_button_rgb(color.rgb_mut()).clicked() {
+                                    palette.add_color(color);
+                                    changed = true;
+                                }
                             }
-                        }
-                    });
-                });
+                        });
+                    },
+                );
             });
         }
     });

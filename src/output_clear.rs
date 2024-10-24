@@ -40,10 +40,12 @@ impl OutputClear {
         });
 
         let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            cache: None, //TODO: Cache
             label: Some("OutputClear pipeline"),
             layout: Some(&pipeline_layout),
             module: &module,
             entry_point: "main",
+            compilation_options: Default::default(),
         });
 
         Self {

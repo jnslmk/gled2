@@ -82,10 +82,12 @@ impl TextureToOutput {
         });
 
         let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            cache: None, //TODO: Cache
             label: Some("TextureToArtnet pipeline"),
             layout: Some(&pipeline_layout),
             module: &module,
             entry_point: "main",
+            compilation_options: Default::default(),
         });
 
         let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = Positions::default().into();

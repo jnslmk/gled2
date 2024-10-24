@@ -51,7 +51,6 @@ fn main() {
             power_preference: PowerPreference::HighPerformance,
             ..Default::default()
         },
-        follow_system_theme: false,
         ..Default::default()
     };
     eframe::run_native(
@@ -66,7 +65,9 @@ fn main() {
                 )
                 .map_err(|_err| ())
                 .expect("Could not set wgpu render state");
-            Box::new(App::new(receiver).expect("Could not create new App"))
+            Ok(Box::new(
+                App::new(receiver).expect("Could not create new App"),
+            ))
         }),
     )
     .expect("Could not run native");

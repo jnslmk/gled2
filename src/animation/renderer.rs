@@ -76,17 +76,20 @@ impl AnimationRenderer {
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+            cache: None, //TODO: Cache
             label: Some("animation pipeline"),
             layout: Some(&pipeline_layout),
             vertex: VertexState {
                 module: &vertex_shader,
                 entry_point: "vs_main",
                 buffers: &[],
+                compilation_options: PipelineCompilationOptions::default(),
             },
             fragment: Some(FragmentState {
                 module: &fragment_shader,
                 entry_point: "fs_main",
                 targets: &[Some(TextureFormat::Bgra8Unorm.into())],
+                compilation_options: PipelineCompilationOptions::default(),
             }),
             primitive: PrimitiveState::default(),
             depth_stencil: None,

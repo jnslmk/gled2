@@ -75,10 +75,12 @@ impl PreviewIndices {
         });
 
         let clear_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            cache: None, //TODO: Cache
             label: Some("preview clear indices pipeline"),
             layout: Some(&clear_pipeline_layout),
             module: &module,
             entry_point: "main",
+            compilation_options: Default::default(),
         });
 
         let clear_bind_group = device.create_bind_group(&BindGroupDescriptor {
@@ -128,10 +130,12 @@ impl PreviewIndices {
         });
 
         let index_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            cache: None, //TODO: Cache
             label: Some("preview index indices pipeline"),
             layout: Some(&index_pipeline_layout),
             module: &module,
             entry_point: "main",
+            compilation_options: Default::default(),
         });
 
         let index_bind_group = device.create_bind_group(&BindGroupDescriptor {

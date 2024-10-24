@@ -155,7 +155,7 @@ impl From<&ParsedSvg> for MeasurementPoints {
         traverse_nodes(svg.tree.root())
             .into_iter()
             .for_each(|node| {
-                if let Some(parameter) = svg.parameters.get(&node.id().to_owned()) {
+                if let Some(parameter) = svg.parameters.get(node.id()) {
                     parameter.groups.iter().for_each(|group| {
                         let measurement_points =
                             points.entry(group.to_owned()).or_insert_with(Vec::new);

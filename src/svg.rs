@@ -37,12 +37,7 @@ impl ParsedSvg {
         let mut parameters = HashMap::new();
         traverse_node(&mut parameters, &doc.root(), 0, 0, &HashSet::new());
 
-        let tree = Tree::from_str(
-            svg_contents,
-            &Default::default(),
-            &usvg::fontdb::Database::default(),
-        )
-        .unwrap();
+        let tree = Tree::from_str(svg_contents, &Default::default()).unwrap();
         debug!(
             "Done parsing svg. Found {} parameter sets",
             parameters.len()

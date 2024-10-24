@@ -4,12 +4,11 @@ use child::Child;
 use darling::{ast, FromDeriveInput};
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Ident};
+use syn::{parse_macro_input, DeriveInput};
 
 #[derive(FromDeriveInput, Debug)]
 #[darling(supports(enum_any))]
 pub struct Animation {
-    pub ident: Ident,
     pub data: ast::Data<Child, ()>,
 }
 
