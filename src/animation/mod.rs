@@ -1,7 +1,6 @@
 //! Renders to a texture
 
 mod blob;
-mod colors;
 mod config;
 mod gradient;
 mod opposing_lines;
@@ -19,7 +18,6 @@ use std::fmt::Debug;
 use strum::{Display, EnumIter};
 
 pub use blob::Blob;
-pub use colors::{Color, ColorPalette};
 pub use config::{CommonConfig, Config, Direction};
 pub use gradient::{Gradient, GradientType};
 pub use opposing_lines::OpposingLines;

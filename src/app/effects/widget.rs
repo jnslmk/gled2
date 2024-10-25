@@ -1,4 +1,7 @@
-use crate::{animation::ColorPalette, assets::find_palette, effect::Effect};
+use crate::{
+    effect::Effect,
+    storage::{AssetPath, AssetTrait, Palette},
+};
 use egui::{
     load::SizedTexture, Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding,
     Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
@@ -109,7 +112,7 @@ impl<'a> Widget for EffectWidget<'a> {
                                 }
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     checkbox_rect = Some(ui.checkbox(&mut false, "").rect);
-                                    color_band(ui, &find_palette(&self.effect.palette));
+                                    color_band(ui, &self.effect.palette);
                                 });
                             });
 
@@ -195,9 +198,15 @@ impl<'a> Widget for EffectWidget<'a> {
     }
 }
 
-fn color_band(ui: &mut Ui, palette: &ColorPalette) {
-    let colors = palette.colors();
-    let width_per_color = (ui.available_width() - 2.0) / colors.len() as f32;
+fn color_band(ui: &mut Ui, path: &Option<AssetPath>) {
+    let Some(path) = path.as_ref() else {
+        return;
+    };
+
+    //TODO: Add primary and secondary color
+    let colors = Palette::find(path).data.gradient;
+    let width_per_color = (ui.available_width() - 2.0) / 16.0;
+
     ui.painter().add(Shape::Vec(
         std::iter::once(Shape::rect_filled(
             Rect::from_min_max(
@@ -216,7 +225,7 @@ fn color_band(ui: &mut Ui, palette: &ColorPalette) {
             Rounding::ZERO,
             Color32::BLACK,
         ))
-        .chain(colors.iter().enumerate().map(|(i, color)| {
+        .chain(colors.iter().rev().enumerate().map(|(i, color)| {
             Shape::rect_filled(
                 Rect::from_min_max(
                     {

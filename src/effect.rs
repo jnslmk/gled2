@@ -1,12 +1,10 @@
-use std::path::PathBuf;
-
 use crate::{
     animation::{Animation, AnimationConfig, AnimationRenderer, State},
     app::positions,
-    assets::find_palette,
     constants::GPU_NOT_INIT,
     hotkey::Hotkey,
     output_mix::OutputMix,
+    storage::{AssetPath, AssetTrait, Palette},
     texture_to_output::TextureToOutput,
     transition::Transition,
     wgpu_render_state,
@@ -15,10 +13,10 @@ use egui::TextureId;
 use serde::{Deserialize, Serialize};
 use wgpu::{Buffer, CommandEncoder, Queue};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Effect {
-    pub palette: PathBuf,
+    pub palette: Option<AssetPath>, //TODO: Change to offset to palette, palette is to be set globaly for a deck
     pub opacity: f32,
     pub active: bool,
     pub beat_progression_offset: f32,
@@ -64,31 +62,6 @@ impl PartialEq for Effect {
 
 impl Eq for Effect {}
 
-impl Default for Effect {
-    fn default() -> Self {
-        Self {
-            opacity: 1.0,
-            hotkey_dimmer: 1.0,
-            flash_hotkey: Default::default(),
-            hotkey: Default::default(),
-            palette: Default::default(),
-            active: Default::default(),
-            beat_progression_offset: Default::default(),
-            group: Default::default(),
-            animation: Default::default(),
-            transition: Default::default(),
-            sent_group: Default::default(),
-            texture_to_output: Default::default(),
-            texture_id: Default::default(),
-            output_is_dirty: Default::default(),
-            was_ever_rendered: Default::default(),
-            output_mix: Default::default(),
-            renderer: Default::default(),
-            flash: false,
-        }
-    }
-}
-
 impl Clone for Effect {
     fn clone(&self) -> Self {
         Self {
@@ -110,13 +83,14 @@ fn default_send_positions() -> bool {
 }
 
 impl Effect {
-    pub fn new(animation: Animation, palette: PathBuf, group: String) -> Self {
+    pub fn new(animation: Animation, palette: Option<AssetPath>, group: String) -> Self {
         Self {
             animation,
             palette,
             opacity: 1.0,
             active: true,
             group,
+            hotkey_dimmer: 1.0,
             ..Default::default()
         }
     }
@@ -124,9 +98,8 @@ impl Effect {
     pub fn init_gpu(&mut self) {
         self.output_mix.get_or_insert_with(OutputMix::new);
         self.renderer.get_or_insert_with(|| {
-            let config = self.animation.config();
             let animation_shader = self.animation.shader_code();
-            AnimationRenderer::new(&animation_shader, &config)
+            AnimationRenderer::new(&animation_shader)
         });
         self.texture_to_output.get_or_insert_with(|| {
             TextureToOutput::init(self.renderer.as_ref().expect(GPU_NOT_INIT).texture())
@@ -207,7 +180,11 @@ impl Effect {
             self.renderer.as_ref().expect(GPU_NOT_INIT).set_buffers(
                 queue,
                 &state,
-                &find_palette(&self.palette),
+                &self
+                    .palette
+                    .as_ref()
+                    .map(|palette| Palette::find(palette).data)
+                    .unwrap_or_default(),
                 &self.animation.config(),
             );
 

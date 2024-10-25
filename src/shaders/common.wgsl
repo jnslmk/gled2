@@ -5,9 +5,10 @@ struct Uniforms {
     frame_rate: f32,
     opacity: f32,
 
-    // colors: 272 bytes
-    colors_count: i32,
-    colors: array<vec3<f32>, 16>,
+    // colors: 288 bytes
+    primary_color: vec3<f32>,
+    secondary_color: vec3<f32>,
+    gradient: array<vec3<f32>, 16>,
 
     // config: 32 bytes
     center_coord: vec2<f32>,

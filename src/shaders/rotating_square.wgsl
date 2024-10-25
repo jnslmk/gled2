@@ -8,9 +8,9 @@ fn animation(coord: vec2<f32>, beat_progression: f32) -> vec3<f32> {
     let inner: vec2<f32> = step(abs(pos), vec2(uniforms.size - uniforms.thickness));
 
 	if (inner.x * inner.y == 1.0) {
-		return uniforms.colors[1];
+		return uniforms.secondary_color;
 	} else if (outer.x * outer.y == 1.0) {
-        return uniforms.colors[0];
+        return uniforms.primary_color;
     }
 
 	return vec3<f32>(0.0);

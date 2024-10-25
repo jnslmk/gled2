@@ -1,53 +1,43 @@
-use crate::assets::{set_palette_in_cache, Action};
+use super::{
+    find_palette,
+    tree::{Asset, AssetTrait},
+    AssetPath,
+};
 use egui::Color32;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, sync::Arc};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ColorPalette {
-    /// Max: 16 colors
-    pub colors: Vec<Color>,
+#[serde(default)]
+pub struct Palette {
+    pub primary: Color,
+    pub secondary: Color,
+    pub gradient: [Color; 16],
 }
 
-impl ColorPalette {
+impl AssetTrait for Palette {
+    fn find(path: &AssetPath) -> Asset<Self> {
+        find_palette(path)
+    }
+}
+
+impl Palette {
     /// must be aligned by 16 bytes
     pub fn write_data(&self, data: &mut [u8]) {
-        let count = self.colors.len().min(16);
-
-        data[0..4].copy_from_slice(&(count as i32).to_le_bytes());
-        // implicit 12 bytes padding
-        let mut i = 16;
-        for color in self.colors.iter() {
+        for (i, color) in std::iter::once(self.primary)
+            .chain(std::iter::once(self.secondary))
+            .chain(self.gradient.iter().copied())
+            .enumerate()
+        {
             let rgb = color.rgb();
-            data[i..i + 4].copy_from_slice(&rgb[0].to_le_bytes());
-            data[i + 4..i + 8].copy_from_slice(&rgb[1].to_le_bytes());
-            data[i + 8..i + 12].copy_from_slice(&rgb[2].to_le_bytes());
-            i += 16;
+            data[i * 16..i * 16 + 4].copy_from_slice(&rgb[0].to_le_bytes());
+            data[i * 16 + 4..i * 16 + 8].copy_from_slice(&rgb[1].to_le_bytes());
+            data[i * 16 + 8..i * 16 + 12].copy_from_slice(&rgb[2].to_le_bytes());
         }
     }
 
     /// must be a multiple of 16
     pub const fn size() -> usize {
-        272
-    }
-
-    pub fn colors(&self) -> &Vec<Color> {
-        &self.colors
-    }
-
-    pub fn add_color(&mut self, color: Color) {
-        self.colors.push(color);
-    }
-
-    pub fn remove_color(&mut self, index: usize) {
-        self.colors.remove(index);
-    }
-
-    pub fn save(self, path: PathBuf) {
-        let palette = Arc::new(self);
-        set_palette_in_cache(path.clone(), palette.clone());
-
-        Action::SavePalette { path, palette }.send();
+        18 * 16
     }
 }
 

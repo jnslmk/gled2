@@ -55,5 +55,5 @@ fn animation(coord: vec2<f32>, beat_progression: f32) -> vec3<f32> {
 	pos = pos * (10.);
 	let F: vec2<f32> = cellular2x2x2(vec3<f32>(pos, uniforms.beat_progression));
 	let n: f32 = 1.0 - smoothstep(0.3, 0.3 + f32(uniforms.count) * 0.1, F.x);
-	return vec3<f32>(uniforms.colors[i32(F.y * f32(uniforms.colors_count)) % uniforms.colors_count] * n);
+	return vec3<f32>(uniforms.gradient[i32(F.y * 16.) % 16] * n);
 } 

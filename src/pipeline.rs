@@ -7,6 +7,7 @@ use crate::{
     output_sender::{GpuReadyReceiver, OutputSender},
     preview::Preview,
     preview_indices::PreviewIndices,
+    storage::AssetPath,
     svg::Universes,
     transition::{Transition, TransitionGoal},
     wgpu_render_state,
@@ -16,8 +17,6 @@ use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
-    path::PathBuf,
-    str::FromStr,
     time::{Duration, Instant},
 };
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
@@ -77,51 +76,51 @@ impl Pipeline {
     pub fn demo() -> Self {
         let mut pipeline = Self::default();
 
-        for i in 0..10 {
-            let gradient = Gradient {
-                gradient: GradientType::Radial,
-                center: (0.25, 0.5),
-                ..Default::default()
-            };
-            let mut effect = Effect::new(
-                gradient.into(),
-                PathBuf::from_str("palettes/red").unwrap(),
-                "allFull".to_owned(),
-            );
-            effect.active = i == 0;
-            pipeline.add_effect(effect);
+        let gradient = Gradient {
+            gradient: GradientType::Radial,
+            center: (0.25, 0.5),
+            ..Default::default()
+        };
+        let mut effect = Effect::new(
+            gradient.into(),
+            Some(AssetPath::new("primary".to_string(), "red".to_string())),
+            "allFull".to_owned(),
+        );
+        effect.active = true;
+        effect.opacity = 1.0;
+        pipeline.add_effect(effect);
 
-            let gradient = Gradient {
-                gradient: GradientType::LinearHorizontal,
-                common: CommonConfig {
-                    ..Default::default()
-                },
+        let gradient = Gradient {
+            gradient: GradientType::LinearHorizontal,
+            common: CommonConfig {
                 ..Default::default()
-            };
-            let mut effect = Effect::new(
-                gradient.into(),
-                PathBuf::from_str("palettes/green").unwrap(),
-                "innerFull".to_owned(),
-            );
-            effect.active = i == 0;
-            pipeline.add_effect(effect);
+            },
+            ..Default::default()
+        };
+        let mut effect = Effect::new(
+            gradient.into(),
+            Some(AssetPath::new("primary".to_string(), "green".to_string())),
+            "innerFull".to_owned(),
+        );
+        effect.active = true;
+        effect.opacity = 0.5;
+        pipeline.add_effect(effect);
 
-            let stripes = Stripes {
-                count: 2,
-                common: CommonConfig {
-                    direction: Direction::Backward,
-                    ..Default::default()
-                },
+        let stripes = Stripes {
+            count: 1,
+            common: CommonConfig {
+                direction: Direction::Backward,
                 ..Default::default()
-            };
-            let mut effect = Effect::new(
-                stripes.into(),
-                PathBuf::from_str("palettes/blue").unwrap(),
-                "innerEdge".to_owned(),
-            );
-            effect.active = i == 0;
-            pipeline.add_effect(effect);
-        }
+            },
+            ..Default::default()
+        };
+        let mut effect = Effect::new(
+            stripes.into(),
+            Some(AssetPath::new("primary".to_string(), "blue".to_string())),
+            "innerEdge".to_owned(),
+        );
+        effect.active = true;
+        pipeline.add_effect(effect);
 
         pipeline
     }

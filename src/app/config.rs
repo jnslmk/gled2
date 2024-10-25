@@ -2,13 +2,8 @@ mod color;
 pub mod group;
 
 use super::{timing::FadeMode, App};
-use crate::{
-    animation::{Animation, AnimationConfig, Color},
-    assets::find_palette,
-    hotkey::Hotkey,
-};
+use crate::{animation::Animation, hotkey::Hotkey};
 use egui::{Button, Checkbox, Color32, Context, Layout, Modifiers, RichText, Slider};
-use std::collections::BTreeSet;
 use strum::IntoEnumIterator;
 
 impl App {
@@ -19,16 +14,22 @@ impl App {
             .min_width(280.0)
             .max_width(ctx.used_rect().width() - 950.0)
             .show(ctx, |ui| {
+                /*
                 let all_colors: BTreeSet<Color> = std::iter::once(Color::default())
                     .chain(
                         self.pipeline
                             .effects()
                             .into_iter()
                             .flat_map(|(_index, effect)| {
-                                find_palette(&effect.palette).colors.clone().into_iter()
+                                find_palette(&effect.palette)
+                                    .data
+                                    .gradient
+                                    .clone()
+                                    .into_iter()
                             }),
                     )
                     .collect();
+                */
 
                 let svg = self
                     .svg
@@ -77,12 +78,7 @@ impl App {
                         ui.separator();
 
                         ui.label(RichText::new("Colors").heading());
-                        color::color_selection(
-                            ui,
-                            &effect.palette,
-                            all_colors,
-                            effect.animation.uses_multiple_colors(),
-                        );
+                        //color::color_selection(ui, &effect.palette);
 
                         ui.separator();
 

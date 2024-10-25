@@ -15,6 +15,7 @@ use crate::{
     output_sender::{self, GpuReadyReceiver, OutputSender},
     pipeline::{Pipeline, RenderDeactivatedEffects},
     project::Project,
+    storage::{ChangingAsset, Palette},
 };
 use egui::Modifiers;
 use egui_extras::RetainedImage;
@@ -25,8 +26,9 @@ use timing::Timing;
 pub use svg::{positions, preview_positions, preview_uv, Svg};
 
 pub struct App {
+    startup: bool,
     receiver: Receiver<ArtnetEvent>,
-
+    palette: Option<ChangingAsset<Palette>>,
     output_sender: OutputSender,
     gpu_ready_receiver: GpuReadyReceiver,
     logo_image: RetainedImage,
@@ -49,6 +51,17 @@ pub struct App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if let Some(loading) = crate::storage::loading_state() {
+            println!("Loading: {:.0}%", loading * 100.0);
+            //TODO: Display
+        } else if let Some(err) = crate::storage::error_state() {
+            println!("Error: {}", err);
+            //TODO: Display
+        } else if self.startup {
+            println!("Loading complete");
+            self.startup = false;
+        }
+
         self.timing.tick(self.persistant_state.fps_limit);
         self.gamepad.tick(&mut self.receiver);
 
@@ -110,6 +123,7 @@ impl App {
         let logo_image = logo_image();
 
         let mut app = Self {
+            startup: true,
             receiver,
             output_sender,
             gpu_ready_receiver,
@@ -128,6 +142,7 @@ impl App {
             pipeline: Pipeline::default(),
             gamepad: Gamepad::new(),
             inputs: HashMap::new(),
+            palette: None,
         };
 
         app.load_project();

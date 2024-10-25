@@ -1,6 +1,6 @@
 //! Renders to a texture
-use super::{config::Config, state::State, ColorPalette};
-use crate::{constants::TEXTURE_SIZE, wgpu_render_state};
+use super::{config::Config, state::State};
+use crate::{constants::TEXTURE_SIZE, storage::Palette, wgpu_render_state};
 use std::num::NonZeroU64;
 use wgpu::{util::DeviceExt, *};
 
@@ -16,7 +16,7 @@ pub struct AnimationRenderer {
 }
 
 impl AnimationRenderer {
-    pub fn new(animation_shader: &str, config: &Config) -> Self {
+    pub fn new(animation_shader: &str) -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE as u32,
@@ -62,7 +62,7 @@ impl AnimationRenderer {
                     ty: BufferBindingType::Uniform,
                     has_dynamic_offset: false,
                     min_binding_size: NonZeroU64::new(
-                        (State::size() + ColorPalette::size() + Config::size()) as u64,
+                        (State::size() + Palette::size() + Config::size()) as u64,
                     ),
                 },
                 count: None,
@@ -97,12 +97,7 @@ impl AnimationRenderer {
             multiview: None,
         });
 
-        let mut contents = [0u8; State::size() + ColorPalette::size() + Config::size()];
-        config.write_data(
-            &mut contents[State::size() + ColorPalette::size()
-                ..State::size() + ColorPalette::size() + Config::size()],
-        );
-
+        let contents = [0u8; State::size() + Palette::size() + Config::size()];
         let uniform = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("animation uniform buffer"),
             contents: &contents,
@@ -127,19 +122,13 @@ impl AnimationRenderer {
         }
     }
 
-    pub fn set_buffers(
-        &self,
-        queue: &Queue,
-        state: &State,
-        palette: &ColorPalette,
-        config: &Config,
-    ) {
-        let mut contents = [0; State::size() + ColorPalette::size() + Config::size()];
+    pub fn set_buffers(&self, queue: &Queue, state: &State, palette: &Palette, config: &Config) {
+        let mut contents = [0; State::size() + Palette::size() + Config::size()];
         state.write_data(&mut contents[..State::size()]);
-        palette.write_data(&mut contents[State::size()..State::size() + ColorPalette::size()]);
+        palette.write_data(&mut contents[State::size()..State::size() + Palette::size()]);
         config.write_data(
-            &mut contents[State::size() + ColorPalette::size()
-                ..State::size() + ColorPalette::size() + Config::size()],
+            &mut contents
+                [State::size() + Palette::size()..State::size() + Palette::size() + Config::size()],
         );
         queue.write_buffer(&self.uniform, 0, &contents);
     }

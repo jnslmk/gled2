@@ -7,14 +7,14 @@ use mkdirp::mkdirp;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
-pub struct Storage {
+pub struct Git {
     synced: bool,
     url: String,
     folder: PathBuf,
     repository: Option<Repository>,
 }
 
-impl Storage {
+impl Git {
     pub fn open(url: String) -> Result<Self, Error> {
         let folder = BaseDirs::new()
             .expect("Could not get base dirs")
@@ -86,8 +86,8 @@ impl Storage {
         Ok(())
     }
 
-    pub fn commit_and_push(&mut self, file: &Path, message: &str) -> Result<(), Error> {
-        self.commit(file, message)?;
+    pub fn commit_and_push(&mut self, message: &str) -> Result<(), Error> {
+        self.commit(message)?;
 
         match self.push() {
             Ok(_) => self.synced = true,
@@ -250,8 +250,23 @@ impl Storage {
         Ok(())
     }
 
-    fn commit(&self, file: &Path, msg: &str) -> Result<(), Error> {
-        log::info!("Committing file: {}", file.display());
+    fn add(&self, file: &Path) -> Result<(), Error> {
+        log::info!("Adding file: {}", file.display());
+
+        let repository = self
+            .repository
+            .as_ref()
+            .ok_or(Error::from_str("No repository set"))?;
+
+        let mut index = repository.index()?;
+        index.add_path(file)?;
+        index.write()?;
+
+        Ok(())
+    }
+
+    fn commit(&self, msg: &str) -> Result<(), Error> {
+        log::info!("Committing..");
 
         let repository = self
             .repository
@@ -263,7 +278,6 @@ impl Storage {
         let email = config.get_string("user.email")?;
 
         let mut index = repository.index()?;
-        index.add_path(file)?;
         let tree_oid = index.write_tree()?;
         let tree = repository.find_tree(tree_oid)?;
 
@@ -315,7 +329,6 @@ impl Storage {
         path: &Path,
         folder: &Path,
         value: &T,
-        message: &str,
     ) -> Result<(), ()> {
         let Some(parent) = path.parent() else {
             log::error!("Could not get parent of file: {}", path.display());
@@ -333,8 +346,8 @@ impl Storage {
             log::error!("Could not write file: {err:?}");
             return Err(());
         }
-        if let Err(err) = self.commit_and_push(path, message) {
-            log::error!("Could not commit file: {err:?}");
+        if let Err(err) = self.add(path) {
+            log::error!("Could not add file: {err:?}");
             return Err(());
         }
 

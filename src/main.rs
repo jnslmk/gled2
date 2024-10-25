@@ -5,7 +5,6 @@
 mod animation;
 mod app;
 mod artnet_receiver;
-mod assets;
 mod constants;
 mod effect;
 mod extract_output;
@@ -21,6 +20,7 @@ mod preview;
 mod preview_indices;
 mod project;
 mod scene;
+mod storage;
 mod svg;
 mod texture_to_output;
 mod transition;
@@ -35,7 +35,8 @@ pub static WGPU_RENDER_STATE: OnceCell<RenderState> = OnceCell::new();
 
 fn main() {
     logging::init();
-    assets::start_thread();
+    storage::start_thread();
+
     let receiver = artnet_receiver::start_thread();
 
     let options = eframe::NativeOptions {

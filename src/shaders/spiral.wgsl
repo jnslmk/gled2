@@ -15,5 +15,5 @@ fn animation(coord: vec2<f32>, beat_progression: f32) -> vec3<f32> {
     let pos: vec2<f32> = (1.0 + coord) / 2.0;
 	let v: f32 = spiral(uniforms.center_coord - pos, f32(uniforms.count), beat_progression);
 
-    return vec3(uniforms.colors[0] * v);
+    return vec3(uniforms.primary_color * v);
 }

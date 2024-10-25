@@ -10,9 +10,9 @@ fn animation(coord: vec2<f32>, beat_progression: f32) -> vec3<f32> {
     }
 
     if ((beat_progression + pos) % 1.0 < uniforms.thickness) {
-        return uniforms.colors[0];
+        return uniforms.primary_color;
     } else if (((1.0 - beat_progression) + pos) % 1.0 < uniforms.thickness) {
-        return uniforms.colors[1];
+        return uniforms.secondary_color;
     } else {
         return vec3<f32>(0.);
     }
