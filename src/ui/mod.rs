@@ -4,8 +4,8 @@ pub mod action;
 pub mod effect;
 pub mod group;
 pub mod input;
+pub mod logo;
 pub mod palette;
-pub mod text_input;
 pub mod windows;
 
 pub trait ChangeButton {

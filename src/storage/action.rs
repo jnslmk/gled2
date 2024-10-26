@@ -1,8 +1,10 @@
 use super::{tree::Asset, Palette, Project, Scene};
-use once_cell::sync::OnceCell;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{
+    mpsc::{Receiver, Sender},
+    OnceLock,
+};
 
-static SENDER: OnceCell<Sender<Action>> = OnceCell::new();
+static SENDER: OnceLock<Sender<Action>> = OnceLock::new();
 
 pub fn init() -> Receiver<Action> {
     let (tx, rx) = std::sync::mpsc::channel();

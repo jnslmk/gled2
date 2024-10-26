@@ -1,17 +1,13 @@
 use crate::{pipeline::Pipeline, svg::MeasurementPoints, texture_to_output::Positions};
 use anyhow::Result;
-use egui::Rect;
+use egui::{mutex::Mutex, Rect};
 use egui_extras::RetainedImage;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::BTreeSet,
-    path::Path,
-    sync::{Arc, RwLock},
-};
+use std::{collections::BTreeSet, path::Path, sync::Arc};
 
-static MEASUREMENT_POINTS: Lazy<Arc<RwLock<MeasurementPoints>>> =
-    Lazy::new(|| Arc::new(RwLock::new(MeasurementPoints::default())));
+static MEASUREMENT_POINTS: Lazy<Arc<Mutex<MeasurementPoints>>> =
+    Lazy::new(|| Arc::new(Mutex::new(MeasurementPoints::default())));
 
 #[derive(Serialize, Deserialize)]
 pub struct Svg {
@@ -51,9 +47,7 @@ impl Svg {
                 let svg = crate::svg::ParsedSvg::parse(&self.svg_contents).ok()?;
                 let measurement_points = MeasurementPoints::from(&svg);
                 let universes = measurement_points.universes();
-                *MEASUREMENT_POINTS
-                    .write()
-                    .expect("MEASUREMENT_POINTS is poisoned") = measurement_points;
+                *MEASUREMENT_POINTS.lock() = measurement_points;
                 let image = svg.render().ok()?;
                 pipeline.svg_or_groups_changed(universes);
 
@@ -65,42 +59,25 @@ impl Svg {
 }
 
 pub fn reset() {
-    *MEASUREMENT_POINTS
-        .write()
-        .expect("MEASUREMENT_POINTS is poisoned") = MeasurementPoints::default();
+    *MEASUREMENT_POINTS.lock() = MeasurementPoints::default();
 }
 
 pub fn groups() -> Vec<String> {
-    MEASUREMENT_POINTS
-        .read()
-        .expect("MEASUREMENT_POINTS is poisoned")
-        .groups()
+    MEASUREMENT_POINTS.lock().groups()
 }
 
 pub fn positions(group: &str) -> Positions {
-    MEASUREMENT_POINTS
-        .read()
-        .expect("MEASUREMENT_POINTS is poisoned")
-        .positions(group)
+    MEASUREMENT_POINTS.lock().positions(group)
 }
 
 pub fn preview_positions() -> Positions {
-    MEASUREMENT_POINTS
-        .read()
-        .expect("MEASUREMENT_POINTS is poisoned")
-        .preview_positions()
+    MEASUREMENT_POINTS.lock().preview_positions()
 }
 
 pub fn preview_uv() -> Option<Rect> {
-    MEASUREMENT_POINTS
-        .write()
-        .expect("MEASUREMENT_POINTS is poisoned")
-        .preview_uv()
+    MEASUREMENT_POINTS.lock().preview_uv()
 }
 
 pub fn universes() -> BTreeSet<u16> {
-    MEASUREMENT_POINTS
-        .read()
-        .expect("MEASUREMENT_POINTS is poisoned")
-        .universes()
+    MEASUREMENT_POINTS.lock().universes()
 }

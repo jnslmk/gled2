@@ -1,4 +1,3 @@
-mod about;
 mod config;
 mod effects;
 mod menu;
@@ -10,17 +9,15 @@ mod timing;
 use crate::{
     extract_output::ExtractOutput,
     input::Input,
-    logo::logo_image,
     output_sender::{self, GpuReadyReceiver, OutputSender},
     pipeline::{Pipeline, RenderDeactivatedEffects},
     project::Project,
     storage::{ChangingAsset, Palette},
-    ui::{action::Action, text_input::TextInput, windows::Windows},
+    ui::{action::Action, windows::Windows},
 };
 use egui::Modifiers;
-use egui_extras::RetainedImage;
 use persistant_state::PersistantState;
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 use timing::Timing;
 
 pub use svg::{positions, preview_positions, preview_uv, Svg};
@@ -31,21 +28,13 @@ pub struct App {
     palette: Option<ChangingAsset<Palette>>,
     output_sender: OutputSender,
     gpu_ready_receiver: GpuReadyReceiver,
-    logo_image: RetainedImage,
-    extract_output: ExtractOutput,
     timing: Timing,
     persistant_state: PersistantState,
     project_path: Option<PathBuf>,
     pipeline: Pipeline,
 
-    /// Text which is currently beeing edited
-    text_inputs: HashMap<TextInput, String>,
-
     blackout: bool,
     svg: Option<Svg>,
-    about_window_open: bool,
-    config_output_window_open: bool,
-    artnet_input_window_open: bool,
     selected_effect: usize,
     hovered_effect: usize,
 }
@@ -133,8 +122,6 @@ impl eframe::App for App {
         );
 
         self.windows.update(ctx);
-        self.about_window(ctx);
-        self.config_output_window(ctx);
         self.menu(ctx);
         self.config(ctx);
         self.preview(ctx);
@@ -148,29 +135,21 @@ impl eframe::App for App {
 impl App {
     pub fn new() -> Option<Self> {
         let persistant_state = PersistantState::load();
-        let extract_output = ExtractOutput::new();
         let (output_sender, gpu_ready_receiver) =
-            output_sender::start(extract_output.clone()).expect("Could not start output sender");
-        let logo_image = logo_image();
+            output_sender::start().expect("Could not start output sender");
 
         let mut app = Self {
             startup: true,
             output_sender,
             gpu_ready_receiver,
-            logo_image,
-            extract_output,
             svg: None,
             project_path: crate::opts::OPTS.project_path.clone(),
             persistant_state,
             timing: Timing::default(),
             blackout: false,
-            about_window_open: false,
-            config_output_window_open: false,
-            artnet_input_window_open: false,
             selected_effect: 0,
             hovered_effect: 0,
             pipeline: Pipeline::default(),
-            text_inputs: HashMap::new(),
             palette: None,
             windows: Windows::default(),
         };
@@ -187,15 +166,9 @@ impl App {
 
     pub fn use_project(&mut self, project: Project) {
         self.pipeline = project.pipeline;
-        self.pipeline
-            .set_extract_output(self.extract_output.clone());
         self.pipeline.init_gpu();
 
-        *self
-            .extract_output
-            .outputs
-            .write()
-            .expect("outputs is poisoned") = project.outputs;
+        *ExtractOutput::get().outputs.lock() = project.outputs;
 
         svg::reset();
         self.svg = project.svg;

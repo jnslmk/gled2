@@ -50,4 +50,8 @@ impl ArtnetInputWindow {
                 }
             });
     }
+
+    pub fn open(&mut self) {
+        self.open = true;
+    }
 }

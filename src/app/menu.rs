@@ -1,7 +1,5 @@
-mod output;
-
 use super::{svg::Svg, App};
-use crate::project::Project;
+use crate::{extract_output::ExtractOutput, project::Project, ui::logo::logo_image};
 use egui::{
     load::SizedTexture, text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers,
     RichText, Slider, Stroke, TextFormat, Vec2,
@@ -16,12 +14,12 @@ impl App {
 
                 if ui
                     .add(ImageButton::new(SizedTexture::new(
-                        self.logo_image.texture_id(ctx),
+                        logo_image().texture_id(ctx),
                         Vec2::splat(ui.available_height()),
                     )))
                     .clicked()
                 {
-                    self.about_window_open = true;
+                    self.windows.about.open();
                 };
                 ui.separator();
 
@@ -124,12 +122,7 @@ impl App {
                         Project {
                             svg: self.svg.clone(),
                             pipeline: self.pipeline.clone(),
-                            outputs: self
-                                .extract_output
-                                .outputs
-                                .read()
-                                .expect("outputs is poisoned")
-                                .clone(),
+                            outputs: ExtractOutput::get().outputs.lock().clone(),
                         }
                         .store(&project_path);
                     }
@@ -189,14 +182,14 @@ impl App {
                     ui.separator();
 
                     if ui.button(RichText::new("Outputs").heading()).clicked() {
-                        self.config_output_window_open = true;
+                        self.windows.output.open();
                         ui.close_menu();
                     }
 
                     ui.separator();
 
                     if ui.button(RichText::new("Artnet Input").heading()).clicked() {
-                        self.artnet_input_window_open = true;
+                        self.windows.artnet_input.open();
                         ui.close_menu();
                     }
 

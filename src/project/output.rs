@@ -20,19 +20,16 @@ impl Outputs {
     pub fn universe_output_mut(&mut self, universe: u16) -> &mut UniverseOutput {
         self.universe_outputs
             .entry(universe)
-            .or_insert_with(|| UniverseOutput::Default)
+            .or_insert_with(|| Default::default())
     }
 
-    pub fn universe_output(&self, universe: u16) -> UniverseOutput {
-        self.universe_outputs
-            .get(&universe)
-            .cloned()
-            .unwrap_or_default()
+    pub fn universe_output(&mut self, universe: u16) -> &mut UniverseOutput {
+        self.universe_outputs.entry(universe).or_default()
     }
 
     pub fn universe_output_normalized(&self, universe: u16) -> UniverseOutput {
         match self.universe_outputs.get(&universe) {
-            Some(UniverseOutput::Default) | None => match self.default_output {
+            None => match self.default_output {
                 Output::Artnet { ip } => UniverseOutput::Artnet { ip, universe },
                 Output::WledDRGB { ip, port } => UniverseOutput::WledDRGB { ip, port },
                 Output::WledDNRGB { ip, port, start } => {
@@ -59,28 +56,24 @@ impl Default for Output {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum UniverseOutput {
-    #[default]
-    Default,
-    Artnet {
-        ip: IpAddr,
-        universe: u16,
-    },
-    WledDRGB {
-        ip: IpAddr,
-        port: u16,
-    },
-    WledDNRGB {
-        ip: IpAddr,
-        port: u16,
-        start: u16,
-    },
+    Artnet { ip: IpAddr, universe: u16 },
+    WledDRGB { ip: IpAddr, port: u16 },
+    WledDNRGB { ip: IpAddr, port: u16, start: u16 },
+}
+
+impl Default for UniverseOutput {
+    fn default() -> Self {
+        Self::Artnet {
+            ip: [127, 0, 0, 1].into(),
+            universe: 0,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum OutputKind {
-    Default,
     Artnet,
     WledDRGB,
     WledDNRGB,
@@ -99,7 +92,6 @@ impl Output {
 impl UniverseOutput {
     pub fn kind(&self) -> OutputKind {
         match self {
-            UniverseOutput::Default => OutputKind::Default,
             UniverseOutput::Artnet { .. } => OutputKind::Artnet,
             UniverseOutput::WledDRGB { .. } => OutputKind::WledDRGB,
             UniverseOutput::WledDNRGB { .. } => OutputKind::WledDNRGB,

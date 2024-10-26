@@ -6,53 +6,46 @@ use crate::{
     svg::Universes,
     wgpu_render_state,
 };
+use egui::mutex::Mutex;
 use std::{
     collections::BTreeSet,
-    sync::{Arc, RwLock},
+    sync::{Arc, OnceLock},
 };
 use wgpu::*;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ExtractOutput {
     output_cpu: Arc<Buffer>,
-    universes: Arc<RwLock<Universes>>,
-    pub outputs: Arc<RwLock<Outputs>>,
+    pub universes: Arc<Mutex<Universes>>,
+    pub outputs: Arc<Mutex<Outputs>>,
 }
 
 impl ExtractOutput {
-    pub fn new() -> Self {
-        let output_cpu = wgpu_render_state().device.create_buffer(&BufferDescriptor {
-            size: OUTPUT_BUFFER_SIZE,
-            usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
-            label: Some("TextureToOutput output buffer cpu"),
-            mapped_at_creation: false,
-        });
+    pub fn get() -> &'static Self {
+        static EXTRACT_OUTPUT: OnceLock<ExtractOutput> = OnceLock::new();
+        EXTRACT_OUTPUT.get_or_init(|| {
+            let output_cpu = wgpu_render_state().device.create_buffer(&BufferDescriptor {
+                size: OUTPUT_BUFFER_SIZE,
+                usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+                label: Some("TextureToOutput output buffer cpu"),
+                mapped_at_creation: false,
+            });
 
-        Self {
-            output_cpu: Arc::new(output_cpu),
-            universes: Arc::new(RwLock::new(BTreeSet::new())),
-            outputs: Arc::new(RwLock::new(Outputs::default())),
-        }
+            Self {
+                output_cpu: Arc::new(output_cpu),
+                universes: Arc::new(Mutex::new(BTreeSet::new())),
+                outputs: Arc::new(Mutex::new(Outputs::default())),
+            }
+        })
     }
 
-    pub fn set_universes(&mut self, universes: Universes) {
-        *self.universes.write().expect("universes is poisoned") = universes;
-    }
-
-    pub fn universes(&self) -> Universes {
-        self.universes
-            .read()
-            .expect("universes is poisoned")
-            .clone()
-    }
-
-    pub fn run(&mut self, encoder: &mut CommandEncoder, output: &Buffer) {
+    pub fn run(&self, encoder: &mut CommandEncoder, output: &Buffer) {
         encoder.copy_buffer_to_buffer(output, 0, &self.output_cpu, 0, OUTPUT_BUFFER_SIZE);
     }
 
-    pub fn poll_output_buffer(&mut self) -> Vec<u8> {
+    pub fn poll_output_buffer(&self) -> Vec<u8> {
         let active_len =
-            self.universes().len().min(UNIVERSES as usize) * UNIVERSE_BUFFER_SIZE as usize;
+            self.universes.lock().len().min(UNIVERSES as usize) * UNIVERSE_BUFFER_SIZE as usize;
 
         if active_len == 0 {
             return vec![];

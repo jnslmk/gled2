@@ -7,11 +7,9 @@ mod scene;
 mod tree;
 
 use self::action::Action;
-use std::{
-    fmt::Debug,
-    path::PathBuf,
-    sync::{Arc, RwLock},
-};
+use egui::mutex::Mutex;
+use once_cell::sync::Lazy;
+use std::{fmt::Debug, path::PathBuf, sync::Arc};
 use tree::Folders;
 
 pub use self::{
@@ -22,7 +20,7 @@ pub use self::{
     tree::{Asset, AssetTrait, ChangingAsset},
 };
 
-static STATE: RwLock<State> = RwLock::new(State::Loading(0.0));
+static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::Loading(0.0)));
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
@@ -41,7 +39,7 @@ pub enum State {
 }
 
 pub fn loading_state() -> Option<f32> {
-    if let State::Loading(loading) = *STATE.read().unwrap() {
+    if let State::Loading(loading) = *STATE.lock() {
         Some(loading)
     } else {
         None
@@ -49,7 +47,7 @@ pub fn loading_state() -> Option<f32> {
 }
 
 pub fn error_state() -> Option<String> {
-    if let State::Error(err) = &*STATE.read().unwrap() {
+    if let State::Error(err) = &*STATE.lock() {
         Some(err.clone())
     } else {
         None
@@ -62,7 +60,7 @@ pub fn start_thread() {
     std::thread::spawn(move || {
         let mut retry_wait = std::time::Duration::from_secs(0);
         loop {
-            *STATE.write().unwrap() = State::Loading(0.0);
+            *STATE.lock() = State::Loading(0.0);
 
             std::thread::sleep(retry_wait);
             retry_wait = std::time::Duration::from_secs(2);
@@ -71,46 +69,43 @@ pub fn start_thread() {
                 match git::Git::open("git@git.freshx.de:rene/gled2_assets.git".to_string()) {
                     Ok(git) => git,
                     Err(err) => {
-                        *STATE.write().unwrap() =
-                            State::Error(format!("Could not open git: {err}"));
+                        *STATE.lock() = State::Error(format!("Could not open git: {err}"));
                         continue;
                     }
                 };
 
-            *STATE.write().unwrap() = State::Loading(0.2);
+            *STATE.lock() = State::Loading(0.2);
 
             let branches = match git.branches() {
                 Ok(branches) => branches,
                 Err(err) => {
-                    *STATE.write().unwrap() =
-                        State::Error(format!("Could not get branches: {err}"));
+                    *STATE.lock() = State::Error(format!("Could not get branches: {err}"));
                     continue;
                 }
             };
 
-            *STATE.write().unwrap() = State::Loading(0.3);
+            *STATE.lock() = State::Loading(0.3);
 
             let current_branch = match git.current_branch() {
                 Ok(current_branch) => current_branch,
                 Err(err) => {
-                    *STATE.write().unwrap() =
-                        State::Error(format!("Could not get current_branch: {err}"));
+                    *STATE.lock() = State::Error(format!("Could not get current_branch: {err}"));
                     continue;
                 }
             };
 
-            *STATE.write().unwrap() = State::Loading(0.4);
+            *STATE.lock() = State::Loading(0.4);
 
             let root = git.folder().to_owned();
 
             let palettes = Folders::<Palette>::load(root.join("palettes"));
-            *STATE.write().unwrap() = State::Loading(0.6);
+            *STATE.lock() = State::Loading(0.6);
             let projects = Folders::<Project>::load(root.join("projects"));
-            *STATE.write().unwrap() = State::Loading(0.8);
+            *STATE.lock() = State::Loading(0.8);
             let scenes = Folders::<Scene>::load(root.join("scenes"));
-            *STATE.write().unwrap() = State::Loading(1.0);
+            *STATE.lock() = State::Loading(1.0);
 
-            *STATE.write().unwrap() = State::Opened {
+            *STATE.lock() = State::Opened {
                 synced: git.synced(),
                 branches,
                 current_branch,
@@ -126,7 +121,7 @@ pub fn start_thread() {
                 match action {
                     Action::CommitAndPush { message } => {
                         if let Err(err) = git.commit_and_push(&message) {
-                            *STATE.write().unwrap() =
+                            *STATE.lock() =
                                 State::Error(format!("Error committing and pushing: {err}"));
                             break;
                         }
@@ -138,8 +133,7 @@ pub fn start_thread() {
                             break;
                         }
                         Err(err) => {
-                            *STATE.write().unwrap() =
-                                State::Error(format!("Error switching branch: {err}"));
+                            *STATE.lock() = State::Error(format!("Error switching branch: {err}"));
                             break;
                         }
                     },
@@ -157,7 +151,7 @@ pub fn start_thread() {
                             continue;
                         }
 
-                        let state: &mut State = &mut STATE.write().unwrap();
+                        let state: &mut State = &mut STATE.lock();
                         if let State::Opened { synced, .. } = state {
                             *synced = git.synced();
                         }
@@ -176,7 +170,7 @@ pub fn start_thread() {
                             continue;
                         }
 
-                        let state: &mut State = &mut STATE.write().unwrap();
+                        let state: &mut State = &mut STATE.lock();
                         if let State::Opened { synced, .. } = state {
                             *synced = git.synced();
                         }
@@ -195,7 +189,7 @@ pub fn start_thread() {
                             continue;
                         }
 
-                        let state: &mut State = &mut STATE.write().unwrap();
+                        let state: &mut State = &mut STATE.lock();
                         if let State::Opened { synced, .. } = state {
                             *synced = git.synced();
                         }
@@ -207,7 +201,7 @@ pub fn start_thread() {
 }
 
 fn find_palette(path: &AssetPath<Palette>) -> Asset<Palette> {
-    let state: &State = &STATE.read().unwrap();
+    let state: &State = &STATE.lock();
     if let State::Opened { palettes, .. } = state {
         if let Some(asset) = palettes.get(path) {
             return asset.clone();
@@ -222,14 +216,14 @@ fn find_palette(path: &AssetPath<Palette>) -> Asset<Palette> {
 
 fn set_palette_in_cache(palette: Asset<Palette>) {
     log::info!("Setting palette in cache: {:?}", palette.path);
-    let state: &mut State = &mut STATE.write().unwrap();
+    let state: &mut State = &mut STATE.lock();
     if let State::Opened { palettes, .. } = state {
         palettes.set_asset(palette);
     }
 }
 
 fn find_project(path: &AssetPath<Project>) -> Asset<Project> {
-    let state: &State = &STATE.read().unwrap();
+    let state: &State = &STATE.lock();
     if let State::Opened { projects, .. } = state {
         if let Some(asset) = projects.get(path) {
             return asset.clone();
@@ -244,14 +238,14 @@ fn find_project(path: &AssetPath<Project>) -> Asset<Project> {
 
 fn set_project_in_cache(project: Asset<Project>) {
     log::info!("Setting project in cache: {:?}", project.path);
-    let state: &mut State = &mut STATE.write().unwrap();
+    let state: &mut State = &mut STATE.lock();
     if let State::Opened { projects, .. } = state {
         projects.set_asset(project);
     }
 }
 
 fn find_scene(path: &AssetPath<Scene>) -> Asset<Scene> {
-    let state: &State = &STATE.read().unwrap();
+    let state: &State = &STATE.lock();
     if let State::Opened { scenes, .. } = state {
         if let Some(asset) = scenes.get(path) {
             return asset.clone();
@@ -266,7 +260,7 @@ fn find_scene(path: &AssetPath<Scene>) -> Asset<Scene> {
 
 fn set_scene_in_cache(scene: Asset<Scene>) {
     log::info!("Setting scene in cache: {:?}", scene.path);
-    let state: &mut State = &mut STATE.write().unwrap();
+    let state: &mut State = &mut STATE.lock();
     if let State::Opened { scenes, .. } = state {
         scenes.set_asset(scene);
     }

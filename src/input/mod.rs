@@ -5,16 +5,15 @@ use egui::{mutex::Mutex, Context};
 use event::GamepadEvent;
 use gilrs::{Axis, Button, Event, Gilrs};
 use log::debug;
-use once_cell::sync::OnceCell;
 use std::{
     collections::{HashMap, HashSet},
-    sync::{mpsc::Receiver, Arc},
+    sync::{mpsc::Receiver, Arc, OnceLock},
 };
 
 pub use artnet::ARTNET_INPUT_CONFIG;
 pub use event::InputEvent;
 
-static INPUT: OnceCell<Arc<Mutex<Input>>> = OnceCell::new();
+static INPUT: OnceLock<Arc<Mutex<Input>>> = OnceLock::new();
 
 #[derive(Debug)]
 pub struct Input {

@@ -5,7 +5,7 @@ use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-pub use output::{Output, OutputKind, Outputs, UniverseOutput};
+pub use output::{OutputKind, Outputs, UniverseOutput};
 
 #[derive(Serialize, Deserialize, Default)]
 #[serde(default)]

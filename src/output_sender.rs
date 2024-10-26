@@ -16,7 +16,7 @@ pub type OutputSender = Sender<()>;
 pub type GpuReadyReceiver = Receiver<()>;
 
 /// Start output thread
-pub fn start(mut extract_output: ExtractOutput) -> Result<(OutputSender, GpuReadyReceiver)> {
+pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
     debug!("Spawning output thread");
     let (output_sender, output_receiver) = std::sync::mpsc::channel::<()>();
     let (gpu_ready_sender, gpu_ready_receiver) = std::sync::mpsc::channel::<()>();
@@ -38,15 +38,18 @@ pub fn start(mut extract_output: ExtractOutput) -> Result<(OutputSender, GpuRead
                 Err(e) => debug!("Could not activate non-blocking mode: {}", e),
             };
 
+            let extract_output = ExtractOutput::get();
+
             for _ in output_receiver.iter() {
                 let packages: Vec<(SocketAddr, Vec<u8>)> = {
                     let output_data = extract_output.poll_output_buffer();
                     gpu_ready_sender.send(()).ok();
 
-                    let outputs = extract_output.outputs.read().expect("outputs is poisoned");
+                    let outputs = extract_output.outputs.lock();
 
                     extract_output
-                        .universes()
+                        .universes
+                        .lock()
                         .iter()
                         .take(UNIVERSES as usize)
                         .zip(output_data.chunks(UNIVERSE_BUFFER_SIZE as usize))
@@ -54,7 +57,6 @@ pub fn start(mut extract_output: ExtractOutput) -> Result<(OutputSender, GpuRead
                             let universe_output = outputs.universe_output_normalized(*universe);
 
                             match universe_output {
-                                UniverseOutput::Default => unreachable!(),
                                 UniverseOutput::Artnet { ip, universe } => {
                                     log::debug!("Preparing artnet command for universe {universe}");
                                     let output = artnet_protocol::Output {

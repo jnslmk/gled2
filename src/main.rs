@@ -1,4 +1,5 @@
 #![windows_subsystem = "windows"]
+#![allow(deprecated)]
 
 mod animation;
 mod app;
@@ -7,7 +8,6 @@ mod effect;
 mod extract_output;
 mod input;
 mod logging;
-mod logo;
 mod opts;
 mod output_clear;
 mod output_mix;
@@ -23,14 +23,16 @@ mod texture_to_output;
 mod transition;
 mod ui;
 
+use std::sync::OnceLock;
+
 use app::App;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration};
 use egui::ViewportBuilder;
 use input::Input;
-use once_cell::sync::OnceCell;
+use ui::logo::icon;
 use wgpu::PowerPreference;
 
-pub static WGPU_RENDER_STATE: OnceCell<RenderState> = OnceCell::new();
+pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
 
 fn main() {
     logging::init();
@@ -41,7 +43,7 @@ fn main() {
             .with_inner_size([1300.0, 1024.0])
             .with_drag_and_drop(true)
             .with_min_inner_size([300.0, 200.0])
-            .with_icon(logo::icon()),
+            .with_icon(icon()),
         renderer: eframe::Renderer::Wgpu,
         vsync: false,
         wgpu_options: WgpuConfiguration {

@@ -34,8 +34,6 @@ pub struct Pipeline {
     #[serde(skip)]
     start: Option<Instant>,
     #[serde(skip)]
-    extract: Option<ExtractOutput>,
-    #[serde(skip)]
     preview_indices: Option<PreviewIndices>,
     #[serde(skip)]
     preview: Option<Preview>,
@@ -54,7 +52,6 @@ impl Default for Pipeline {
             auto_mode_seconds: 45,
             auto_mode_max_effects: 3,
             start: Default::default(),
-            extract: Default::default(),
             preview_indices: Default::default(),
             preview: Default::default(),
             output: Default::default(),
@@ -132,10 +129,6 @@ impl Pipeline {
         pipeline.add_effect(effect);
 
         pipeline
-    }
-
-    pub fn set_extract_output(&mut self, extract_output: ExtractOutput) {
-        self.extract = Some(extract_output);
     }
 
     pub fn init_gpu(&mut self) {
@@ -222,10 +215,7 @@ impl Pipeline {
             .as_mut()
             .expect(GPU_NOT_INIT)
             .send_positions();
-        self.extract
-            .as_mut()
-            .expect(GPU_NOT_INIT)
-            .set_universes(universes);
+        *ExtractOutput::get().universes.lock() = universes;
     }
 
     pub fn preview_texture_id(&self) -> TextureId {
@@ -337,10 +327,7 @@ impl Pipeline {
             );
         }
 
-        self.extract
-            .as_mut()
-            .expect(GPU_NOT_INIT)
-            .run(&mut encoder, self.output.as_ref().expect(GPU_NOT_INIT));
+        ExtractOutput::get().run(&mut encoder, self.output.as_ref().expect(GPU_NOT_INIT));
         self.preview_indices
             .as_mut()
             .expect(GPU_NOT_INIT)
