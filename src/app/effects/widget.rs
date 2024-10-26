@@ -152,17 +152,10 @@ impl<'a> Widget for EffectWidget<'a> {
                                 slider_rect = Some(
                                     ui.allocate_rect(
                                         Rect::from_min_max(
-                                            {
-                                                let mut pos = ui.next_widget_position();
-                                                pos.y -= size.y / 2.0;
-                                                pos
-                                            },
-                                            {
-                                                let mut pos = ui.next_widget_position();
-                                                pos.x += 16.0;
-                                                pos.y += size.y / 2.0;
-                                                pos
-                                            },
+                                            ui.next_widget_position()
+                                                - Vec2::new(0.0, size.y / 2.0),
+                                            ui.next_widget_position()
+                                                + Vec2::new(16.0, size.y / 2.0),
                                         ),
                                         Sense::hover(),
                                     )
@@ -241,88 +234,72 @@ fn color_band(rect: Rect, path: &Option<AssetPath>) -> Option<Mesh> {
     mesh.add_triangle(index, index + 1, index + 2);
     mesh.add_triangle(index + 3, index + 4, index + 5);
     let primary_color = palette.primary.into();
-
     // Top left
     mesh.vertices.push(Vertex {
-        pos: {
-            let mut pos = start_pos;
-            pos.x -= color_width + BORDER + GAP + BORDER + gradient_with + BORDER;
-            pos.y -= HEIGHT / 2.0 - BORDER;
-            pos
-        },
+        pos: start_pos
+            - Vec2::new(
+                color_width + BORDER + GAP + BORDER + gradient_with + BORDER,
+                HEIGHT / 2.0 - BORDER,
+            ),
         uv: WHITE_UV,
         color: primary_color,
     });
     // Top right
     mesh.vertices.push(Vertex {
-        pos: {
-            let mut pos = start_pos;
-            pos.x -= BORDER + GAP + BORDER + gradient_with + BORDER;
-            pos.y -= HEIGHT / 2.0 - BORDER;
-            pos
-        },
+        pos: start_pos
+            - Vec2::new(
+                BORDER + GAP + BORDER + gradient_with + BORDER,
+                HEIGHT / 2.0 - BORDER,
+            ),
         uv: WHITE_UV,
         color: primary_color,
     });
     // Bottom left
     mesh.vertices.push(Vertex {
-        pos: {
-            let mut pos = start_pos;
-            pos.x -= color_width + BORDER + GAP + BORDER + gradient_with + BORDER;
-            pos.y += HEIGHT / 2.0 - BORDER;
-            pos
-        },
+        pos: start_pos
+            - Vec2::new(
+                color_width + BORDER + GAP + BORDER + gradient_with + BORDER,
+                -HEIGHT / 2.0 + BORDER,
+            ),
         uv: WHITE_UV,
         color: primary_color,
     });
     let secondary_color = palette.secondary.into();
     // Top right
     mesh.vertices.push(Vertex {
-        pos: {
-            let mut pos = start_pos;
-            pos.x -= BORDER + GAP + BORDER + gradient_with + BORDER;
-            pos.y -= HEIGHT / 2.0 - BORDER;
-            pos
-        },
+        pos: start_pos
+            - Vec2::new(
+                BORDER + GAP + BORDER + gradient_with + BORDER,
+                HEIGHT / 2.0 - BORDER,
+            ),
         uv: WHITE_UV,
         color: secondary_color,
     });
     // Bottom left
     mesh.vertices.push(Vertex {
-        pos: {
-            let mut pos = start_pos;
-            pos.x -= color_width + BORDER + GAP + BORDER + gradient_with + BORDER;
-            pos.y += HEIGHT / 2.0 - BORDER;
-            pos
-        },
+        pos: start_pos
+            - Vec2::new(
+                color_width + BORDER + GAP + BORDER + gradient_with + BORDER,
+                -HEIGHT / 2.0 + BORDER,
+            ),
         uv: WHITE_UV,
         color: secondary_color,
     });
     // Bottom right
     mesh.vertices.push(Vertex {
-        pos: {
-            let mut pos = start_pos;
-            pos.x -= BORDER + GAP + BORDER + gradient_with + BORDER;
-            pos.y += HEIGHT / 2.0 - BORDER;
-            pos
-        },
+        pos: start_pos
+            - Vec2::new(
+                BORDER + GAP + BORDER + gradient_with + BORDER,
+                -HEIGHT / 2.0 + BORDER,
+            ),
         uv: WHITE_UV,
         color: secondary_color,
     });
     // Gradient background
     mesh.add_colored_rect(
         Rect::from_min_max(
-            {
-                let mut pos = start_pos;
-                pos.x -= BORDER + gradient_with + BORDER;
-                pos.y -= HEIGHT / 2.0;
-                pos
-            },
-            {
-                let mut pos = start_pos;
-                pos.y += HEIGHT / 2.0;
-                pos
-            },
+            start_pos - Vec2::new(BORDER + gradient_with + BORDER, HEIGHT / 2.0),
+            start_pos - Vec2::new(BORDER, -HEIGHT / 2.0),
         ),
         Color32::BLACK,
     );
@@ -330,18 +307,16 @@ fn color_band(rect: Rect, path: &Option<AssetPath>) -> Option<Mesh> {
     for (i, color) in palette.gradient.into_iter().rev().enumerate() {
         mesh.add_colored_rect(
             Rect::from_min_max(
-                {
-                    let mut pos: egui::Pos2 = start_pos;
-                    pos.x -= width_per_gradient_color * (i + 1) as f32 + BORDER;
-                    pos.y -= HEIGHT / 2.0 - BORDER;
-                    pos
-                },
-                {
-                    let mut pos = start_pos;
-                    pos.x -= width_per_gradient_color * i as f32 + BORDER;
-                    pos.y += HEIGHT / 2.0 - BORDER;
-                    pos
-                },
+                start_pos
+                    - Vec2::new(
+                        width_per_gradient_color * (i + 1) as f32 + BORDER,
+                        HEIGHT / 2.0 - BORDER,
+                    ),
+                start_pos
+                    - Vec2::new(
+                        width_per_gradient_color * i as f32 + BORDER,
+                        -HEIGHT / 2.0 + BORDER,
+                    ),
             ),
             color.into(),
         );
