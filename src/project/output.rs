@@ -4,40 +4,12 @@ use std::net::IpAddr;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct Outputs {
-    default_output: Output,
     universe_outputs: HashMap<u16, UniverseOutput>,
 }
 
 impl Outputs {
-    pub fn default_output_mut(&mut self) -> &mut Output {
-        &mut self.default_output
-    }
-
-    pub fn default_output(&self) -> &Output {
-        &self.default_output
-    }
-
-    pub fn universe_output_mut(&mut self, universe: u16) -> &mut UniverseOutput {
-        self.universe_outputs
-            .entry(universe)
-            .or_insert_with(|| Default::default())
-    }
-
     pub fn universe_output(&mut self, universe: u16) -> &mut UniverseOutput {
         self.universe_outputs.entry(universe).or_default()
-    }
-
-    pub fn universe_output_normalized(&self, universe: u16) -> UniverseOutput {
-        match self.universe_outputs.get(&universe) {
-            None => match self.default_output {
-                Output::Artnet { ip } => UniverseOutput::Artnet { ip, universe },
-                Output::WledDRGB { ip, port } => UniverseOutput::WledDRGB { ip, port },
-                Output::WledDNRGB { ip, port, start } => {
-                    UniverseOutput::WledDNRGB { ip, port, start }
-                }
-            },
-            Some(universe_output) => universe_output.clone(),
-        }
     }
 }
 

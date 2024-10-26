@@ -45,7 +45,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                     let output_data = extract_output.poll_output_buffer();
                     gpu_ready_sender.send(()).ok();
 
-                    let outputs = extract_output.outputs.lock();
+                    let mut outputs = extract_output.outputs.lock();
 
                     extract_output
                         .universes
@@ -54,7 +54,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                         .take(UNIVERSES as usize)
                         .zip(output_data.chunks(UNIVERSE_BUFFER_SIZE as usize))
                         .filter_map(|(universe, data)| {
-                            let universe_output = outputs.universe_output_normalized(*universe);
+                            let universe_output = outputs.universe_output(*universe);
 
                             match universe_output {
                                 UniverseOutput::Artnet { ip, universe } => {
@@ -62,13 +62,13 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                                     let output = artnet_protocol::Output {
                                         data: artnet_protocol::PaddedData::from(data.to_vec()),
                                         port_address: artnet_protocol::PortAddress::try_from(
-                                            universe,
+                                            *universe,
                                         )
                                         .ok()?,
                                         ..Default::default()
                                     };
 
-                                    (ip, 6454)
+                                    (*ip, 6454)
                                         .to_socket_addrs()
                                         .ok()
                                         .and_then(|mut addrs| addrs.next())
@@ -86,7 +86,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                                     wled_data.push(255); // Seconds of no signal after which to switch to auto. 255 is infinite.
                                     wled_data.extend(&data[..510]);
 
-                                    (ip, port)
+                                    (*ip, *port)
                                         .to_socket_addrs()
                                         .ok()
                                         .and_then(|mut addrs| addrs.next())
@@ -103,7 +103,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                                     wled_data.push(start.to_be_bytes()[1]);
                                     wled_data.extend(&data[..510]);
 
-                                    (ip, port)
+                                    (*ip, *port)
                                         .to_socket_addrs()
                                         .ok()
                                         .and_then(|mut addrs| addrs.next())
