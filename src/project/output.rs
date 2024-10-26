@@ -14,21 +14,6 @@ impl Outputs {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum Output {
-    Artnet { ip: IpAddr },
-    WledDRGB { ip: IpAddr, port: u16 },
-    WledDNRGB { ip: IpAddr, port: u16, start: u16 },
-}
-
-impl Default for Output {
-    fn default() -> Self {
-        Self::Artnet {
-            ip: "127.0.0.1".parse().expect("Could not parse 127.0.0.1"),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum UniverseOutput {
     Artnet { ip: IpAddr, universe: u16 },
     WledDRGB { ip: IpAddr, port: u16 },
@@ -49,16 +34,6 @@ pub enum OutputKind {
     Artnet,
     WledDRGB,
     WledDNRGB,
-}
-
-impl Output {
-    pub fn kind(&self) -> OutputKind {
-        match self {
-            Output::Artnet { .. } => OutputKind::Artnet,
-            Output::WledDRGB { .. } => OutputKind::WledDRGB,
-            Output::WledDNRGB { .. } => OutputKind::WledDNRGB,
-        }
-    }
 }
 
 impl UniverseOutput {
