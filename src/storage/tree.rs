@@ -11,19 +11,19 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 pub use folders::Folders;
 
 pub trait AssetTrait: Serialize + DeserializeOwned + Debug + Send + Sync + Clone {
-    fn find(path: &AssetPath) -> Asset<Self>;
+    fn find(path: &AssetPath<Self>) -> Asset<Self>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(from = "StoredAsset<T>", bound = "T: DeserializeOwned + Serialize")]
 pub struct Asset<T: AssetTrait> {
-    pub path: AssetPath,
+    pub path: AssetPath<T>,
     #[serde(skip_serializing)]
     pub data: Arc<T>,
 }
 
 pub struct ChangingAsset<T: AssetTrait> {
-    pub path: AssetPath,
+    pub path: AssetPath<T>,
     pub data: T,
 }
 
@@ -48,7 +48,7 @@ impl<T: AssetTrait> From<ChangingAsset<T>> for Asset<T> {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 /// Asset on disk, basically just the path to the asset
 pub struct StoredAsset<T> {
-    pub path: AssetPath,
+    pub path: AssetPath<T>,
     #[serde(skip)]
     _phantom: std::marker::PhantomData<T>,
 }

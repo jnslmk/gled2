@@ -26,7 +26,7 @@ pub struct SceneGroup {
 }
 
 impl AssetTrait for Project {
-    fn find(path: &AssetPath) -> Asset<Self> {
+    fn find(path: &AssetPath<Project>) -> Asset<Self> {
         find_project(path)
     }
 }

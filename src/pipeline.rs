@@ -83,7 +83,10 @@ impl Pipeline {
         };
         let mut effect = Effect::new(
             gradient.into(),
-            Some(AssetPath::new("primary".to_string(), "red".to_string())),
+            Some(AssetPath::new(
+                "primary".to_string().into(),
+                "red".to_string().into(),
+            )),
             "allFull".to_owned(),
         );
         effect.active = true;
@@ -99,7 +102,10 @@ impl Pipeline {
         };
         let mut effect = Effect::new(
             gradient.into(),
-            Some(AssetPath::new("primary".to_string(), "green".to_string())),
+            Some(AssetPath::new(
+                "primary".to_string().into(),
+                "green".to_string().into(),
+            )),
             "innerFull".to_owned(),
         );
         effect.active = true;
@@ -116,7 +122,10 @@ impl Pipeline {
         };
         let mut effect = Effect::new(
             stripes.into(),
-            Some(AssetPath::new("primary".to_string(), "blue".to_string())),
+            Some(AssetPath::new(
+                "primary".to_string().into(),
+                "blue".to_string().into(),
+            )),
             "innerEdge".to_owned(),
         );
         effect.active = true;

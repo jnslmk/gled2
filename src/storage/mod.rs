@@ -206,7 +206,7 @@ pub fn start_thread() {
     });
 }
 
-fn find_palette(path: &AssetPath) -> Asset<Palette> {
+fn find_palette(path: &AssetPath<Palette>) -> Asset<Palette> {
     let state: &State = &STATE.read().unwrap();
     if let State::Opened { palettes, .. } = state {
         if let Some(asset) = palettes.get(path) {
@@ -228,7 +228,7 @@ fn set_palette_in_cache(palette: Asset<Palette>) {
     }
 }
 
-fn find_project(path: &AssetPath) -> Asset<Project> {
+fn find_project(path: &AssetPath<Project>) -> Asset<Project> {
     let state: &State = &STATE.read().unwrap();
     if let State::Opened { projects, .. } = state {
         if let Some(asset) = projects.get(path) {
@@ -250,7 +250,7 @@ fn set_project_in_cache(project: Asset<Project>) {
     }
 }
 
-fn find_scene(path: &AssetPath) -> Asset<Scene> {
+fn find_scene(path: &AssetPath<Scene>) -> Asset<Scene> {
     let state: &State = &STATE.read().unwrap();
     if let State::Opened { scenes, .. } = state {
         if let Some(asset) = scenes.get(path) {

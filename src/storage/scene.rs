@@ -14,7 +14,7 @@ pub struct Scene {
 }
 
 impl AssetTrait for Scene {
-    fn find(path: &AssetPath) -> Asset<Self> {
+    fn find(path: &AssetPath<Scene>) -> Asset<Self> {
         find_scene(path)
     }
 }

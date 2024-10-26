@@ -1,6 +1,4 @@
 #![windows_subsystem = "windows"]
-#![allow(dead_code)]
-#![allow(deprecated)]
 
 mod animation;
 mod app;
@@ -24,6 +22,7 @@ mod storage;
 mod svg;
 mod texture_to_output;
 mod transition;
+mod ui;
 
 use app::App;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration};

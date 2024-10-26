@@ -40,7 +40,7 @@ impl<T: AssetTrait> Folders<T> {
             .collect()
     }
 
-    pub fn get(&self, path: &AssetPath) -> Option<&Asset<T>> {
+    pub fn get(&self, path: &AssetPath<T>) -> Option<&Asset<T>> {
         self.0.get(&path.folder)?.get(&path.file)
     }
 

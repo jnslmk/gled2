@@ -1,8 +1,9 @@
 mod color;
+
 pub mod group;
 
 use super::{timing::FadeMode, App};
-use crate::{animation::Animation, hotkey::Hotkey};
+use crate::{animation::Animation, hotkey::Hotkey, ui::SelectionButton};
 use egui::{Button, Checkbox, Color32, Context, Layout, Modifiers, RichText, Slider};
 use strum::IntoEnumIterator;
 
@@ -77,8 +78,8 @@ impl App {
                         });
                         ui.separator();
 
-                        ui.label(RichText::new("Colors").heading());
-                        //color::color_selection(ui, &effect.palette);
+                        ui.label(RichText::new("Color Palette").heading());
+                        effect.palette.selection_button(ui);
 
                         ui.separator();
 

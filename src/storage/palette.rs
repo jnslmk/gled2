@@ -15,7 +15,7 @@ pub struct Palette {
 }
 
 impl AssetTrait for Palette {
-    fn find(path: &AssetPath) -> Asset<Self> {
+    fn find(path: &AssetPath<Palette>) -> Asset<Self> {
         find_palette(path)
     }
 }

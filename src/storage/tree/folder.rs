@@ -33,10 +33,7 @@ impl<T: AssetTrait> Folder<T> {
                 if file_type.is_file() {
                     let file = Arc::new(entry.file_name().into_string().ok()?);
 
-                    let path = AssetPath {
-                        folder: folder.clone(),
-                        file: file.clone(),
-                    };
+                    let path = AssetPath::new(folder.clone(), file.clone());
                     let data =
                         serde_json::from_reader(std::fs::File::open(entry.path()).ok()?).ok()?;
 

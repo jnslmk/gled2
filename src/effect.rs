@@ -16,7 +16,7 @@ use wgpu::{Buffer, CommandEncoder, Queue};
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Effect {
-    pub palette: Option<AssetPath>, //TODO: Change to offset to palette, palette is to be set globaly for a deck
+    pub palette: Option<AssetPath<Palette>>, //TODO: Change to offset to palette, palette is to be set globaly for a deck
     pub opacity: f32,
     pub active: bool,
     pub beat_progression_offset: f32,
@@ -83,7 +83,7 @@ fn default_send_positions() -> bool {
 }
 
 impl Effect {
-    pub fn new(animation: Animation, palette: Option<AssetPath>, group: String) -> Self {
+    pub fn new(animation: Animation, palette: Option<AssetPath<Palette>>, group: String) -> Self {
         Self {
             animation,
             palette,
