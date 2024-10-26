@@ -1,11 +1,14 @@
 use crate::app::svg::groups;
 use egui::{Button, Color32, RichText, Stroke, Ui};
 
-pub fn selection(ui: &mut Ui, selected_group: &mut String) {
+pub fn group_selection(ui: &mut Ui, selected_group: &mut String) {
     ui.scope(|ui| {
         ui.horizontal_wrapped(|ui| {
             for group in groups() {
-                if ui.add(button(&group, selected_group == &group)).clicked() {
+                if ui
+                    .add(group_button(&group, selected_group == &group))
+                    .clicked()
+                {
                     *selected_group = group;
                 };
             }
@@ -13,7 +16,7 @@ pub fn selection(ui: &mut Ui, selected_group: &mut String) {
     });
 }
 
-pub fn button(group: &str, selected: bool) -> Button {
+pub fn group_button(group: &str, selected: bool) -> Button {
     static COLORS: &[Color32] = &[
         Color32::from_rgb(175, 213, 129),
         Color32::from_rgb(177, 152, 221),

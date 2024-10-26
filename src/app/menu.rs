@@ -1,4 +1,3 @@
-mod artnet_input;
 mod output;
 
 use super::{svg::Svg, App};

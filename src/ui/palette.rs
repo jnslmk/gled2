@@ -1,12 +1,12 @@
-use super::SelectionButton;
+use super::ChangeButton;
 use crate::storage::{AssetPath, AssetTrait, Palette};
 use egui::{
     epaint::{Vertex, WHITE_UV},
     Button, Color32, Mesh, Rect, Shape, Ui, Vec2,
 };
 
-impl SelectionButton for Option<AssetPath<Palette>> {
-    fn selection_button(&mut self, ui: &mut Ui) {
+impl ChangeButton for Option<AssetPath<Palette>> {
+    fn change_button(&mut self, ui: &mut Ui) {
         let palette = self.as_ref().map(Palette::find);
         let response = ui
             .vertical_centered_justified(|ui| {

@@ -2,7 +2,7 @@ use crate::{
     animation::{Animation, AnimationConfig, AnimationRenderer, State},
     app::positions,
     constants::GPU_NOT_INIT,
-    hotkey::Hotkey,
+    input::InputEvent,
     output_mix::OutputMix,
     storage::{AssetPath, AssetTrait, Palette},
     texture_to_output::TextureToOutput,
@@ -22,10 +22,11 @@ pub struct Effect {
     pub beat_progression_offset: f32,
     pub group: String,
     pub animation: Animation,
-    pub hotkey: Option<Hotkey>,
-    pub flash_hotkey: Option<Hotkey>,
+    pub selection_input: Option<InputEvent>,
+    pub flash_input: Option<InputEvent>,
+    pub dimmer_input: Option<InputEvent>,
     pub flash: bool,
-    pub hotkey_dimmer: f32,
+    pub input_dimmer: f32,
 
     #[serde(skip)]
     transition: Option<Transition>,
@@ -53,10 +54,10 @@ impl PartialEq for Effect {
             && self.beat_progression_offset == other.beat_progression_offset
             && self.group == other.group
             && self.animation == other.animation
-            && self.hotkey == other.hotkey
-            && self.flash_hotkey == other.flash_hotkey
+            && self.selection_input == other.selection_input
+            && self.flash_input == other.flash_input
             && self.flash == other.flash
-            && self.hotkey_dimmer == other.hotkey_dimmer
+            && self.input_dimmer == other.input_dimmer
     }
 }
 
@@ -71,8 +72,8 @@ impl Clone for Effect {
             beat_progression_offset: self.beat_progression_offset,
             group: self.group.clone(),
             animation: self.animation.clone(),
-            hotkey: self.hotkey,
-            flash_hotkey: self.flash_hotkey,
+            selection_input: self.selection_input,
+            flash_input: self.flash_input,
             ..Default::default()
         }
     }
@@ -90,7 +91,7 @@ impl Effect {
             opacity: 1.0,
             active: true,
             group,
-            hotkey_dimmer: 1.0,
+            input_dimmer: 1.0,
             ..Default::default()
         }
     }
@@ -165,7 +166,7 @@ impl Effect {
         }
 
         if always_render || self.active || !self.was_ever_rendered || self.flash {
-            state.opacity = self.opacity * main_dimmer * opacity_factor * self.hotkey_dimmer;
+            state.opacity = self.opacity * main_dimmer * opacity_factor * self.input_dimmer;
             state.beat_progression += self.beat_progression_offset;
 
             if self.sent_group.as_ref() != Some(&self.group) {
@@ -222,10 +223,6 @@ impl Effect {
         self.texture_id.as_ref().expect(GPU_NOT_INIT).0
     }
 
-    pub fn config_ui(&mut self, ui: &mut egui::Ui, svg: Option<TextureId>) {
-        self.animation.ui(ui, self.texture_id(), svg);
-    }
-
     pub fn set_transition(&mut self, transition: Transition) {
         self.active = true;
         self.transition = Some(transition);
@@ -255,8 +252,8 @@ impl Effect {
         self.flash = flash;
     }
 
-    pub fn set_hotkey_dimmer(&mut self, hotkey_dimmer: f32) {
-        self.hotkey_dimmer = hotkey_dimmer;
+    pub fn set_input_dimmer(&mut self, input_dimmer: f32) {
+        self.input_dimmer = input_dimmer;
     }
 }
 

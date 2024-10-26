@@ -1,6 +1,7 @@
 use crate::{
     app::{svg::universes, App},
     project::{Output, OutputKind, UniverseOutput},
+    ui::text_input::TextInput,
 };
 use egui::{Context, Layout, RichText, TextEdit};
 use std::net::IpAddr;
@@ -15,7 +16,7 @@ impl App {
                 .open(&mut self.config_output_window_open)
                 .show(ctx, |ui| {
                     egui::ScrollArea::vertical()
-                        .id_source("output_scroll")
+                        .id_salt("output_scroll")
                         .show(ui, |ui| {
                             ui.with_layout(Layout::top_down_justified(egui::Align::Min), |ui| {
                                 let mut new_outputs = None;
@@ -85,8 +86,8 @@ impl App {
                                         Output::Artnet { ip } => {
                                             ui.label("Artnet IP");
                                             let ip = self
-                                                .inputs
-                                                .entry("default_artnet_ip".to_string())
+                                                .text_inputs
+                                                .entry(TextInput::ArtnetOutputDefaultIp)
                                                 .or_insert_with(|| ip.to_string());
                                             if ui.add(TextEdit::singleline(ip)).changed()
                                                 && ip.parse::<IpAddr>().is_ok()
@@ -102,8 +103,8 @@ impl App {
                                             {
                                                 ui.label("Wled DRGB IP");
                                                 let ip = self
-                                                    .inputs
-                                                    .entry("default_wledrgb_ip".to_string())
+                                                    .text_inputs
+                                                    .entry(TextInput::WledDrgbOutputDefaultIp)
                                                     .or_insert_with(|| ip.to_string());
                                                 if ui.add(TextEdit::singleline(ip)).changed()
                                                     && ip.parse::<IpAddr>().is_ok()
@@ -123,8 +124,8 @@ impl App {
                                             {
                                                 ui.label("Wled DRGB Port");
                                                 let port = self
-                                                    .inputs
-                                                    .entry("default_wledrgb_port".to_string())
+                                                    .text_inputs
+                                                    .entry(TextInput::WledDrgbOutputDefaultPort)
                                                     .or_insert_with(|| port.to_string());
                                                 if ui.add(TextEdit::singleline(port)).changed()
                                                     && port.parse::<u16>().is_ok()
@@ -145,8 +146,8 @@ impl App {
                                             {
                                                 ui.label("Wled DNRGB IP");
                                                 let ip = self
-                                                    .inputs
-                                                    .entry("default_wlednrgb_ip".to_string())
+                                                    .text_inputs
+                                                    .entry(TextInput::WledDnrgbOutputDefaultIp)
                                                     .or_insert_with(|| ip.to_string());
                                                 if ui.add(TextEdit::singleline(ip)).changed()
                                                     && ip.parse::<IpAddr>().is_ok()
@@ -167,8 +168,8 @@ impl App {
                                             {
                                                 ui.label("Wled DNRGB Port");
                                                 let port = self
-                                                    .inputs
-                                                    .entry("default_wlednrgb_port".to_string())
+                                                    .text_inputs
+                                                    .entry(TextInput::WledDnrgbOutputDefaultPort)
                                                     .or_insert_with(|| port.to_string());
                                                 if ui.add(TextEdit::singleline(port)).changed()
                                                     && port.parse::<u16>().is_ok()
@@ -189,8 +190,8 @@ impl App {
                                             {
                                                 ui.label("Wled DNRGB Start");
                                                 let start = self
-                                                    .inputs
-                                                    .entry("default_wlednrgb_start".to_string())
+                                                    .text_inputs
+                                                    .entry(TextInput::WledDnrgbOutputDefaultStart)
                                                     .or_insert_with(|| start.to_string());
                                                 if ui.add(TextEdit::singleline(start)).changed()
                                                     && start.parse::<u16>().is_ok()
@@ -298,8 +299,8 @@ impl App {
                                                 {
                                                     ui.label("Artnet IP");
                                                     let ip = self
-                                                        .inputs
-                                                        .entry(format!("artnet_ip_{universe}"))
+                                                        .text_inputs
+                                                        .entry(TextInput::ArtnetOutputIp(universe))
                                                         .or_insert_with(|| ip.to_string());
                                                     if ui.add(TextEdit::singleline(ip)).changed()
                                                         && ip.parse::<IpAddr>().is_ok()
@@ -319,9 +320,9 @@ impl App {
                                                 {
                                                     ui.label("Artnet Universe");
                                                     let universe_str = self
-                                                        .inputs
-                                                        .entry(format!(
-                                                            "artnet_universe_{universe}"
+                                                        .text_inputs
+                                                        .entry(TextInput::ArtnetOutputUniverse(
+                                                            universe,
                                                         ))
                                                         .or_insert_with(|| {
                                                             universe_changed.to_string()
@@ -347,8 +348,10 @@ impl App {
                                                 {
                                                     ui.label("Wled DRGB IP");
                                                     let ip = self
-                                                        .inputs
-                                                        .entry(format!("wledrgb_ip_{universe}"))
+                                                        .text_inputs
+                                                        .entry(TextInput::WledDrgbOutputIp(
+                                                            universe,
+                                                        ))
                                                         .or_insert_with(|| ip.to_string());
                                                     if ui.add(TextEdit::singleline(ip)).changed()
                                                         && ip.parse::<IpAddr>().is_ok()
@@ -368,8 +371,10 @@ impl App {
                                                 {
                                                     ui.label("Wled DRGB Port");
                                                     let port = self
-                                                        .inputs
-                                                        .entry(format!("wledrgb_port_{universe}"))
+                                                        .text_inputs
+                                                        .entry(TextInput::WledDrgbOutputPort(
+                                                            universe,
+                                                        ))
                                                         .or_insert_with(|| port.to_string());
                                                     if ui.add(TextEdit::singleline(port)).changed()
                                                         && port.parse::<u16>().is_ok()
@@ -390,8 +395,10 @@ impl App {
                                                 {
                                                     ui.label("Wled DNRGB IP");
                                                     let ip = self
-                                                        .inputs
-                                                        .entry(format!("wlednrgb_ip_{universe}"))
+                                                        .text_inputs
+                                                        .entry(TextInput::WledDnrgbOutputIp(
+                                                            universe,
+                                                        ))
                                                         .or_insert_with(|| ip.to_string());
                                                     if ui.add(TextEdit::singleline(ip)).changed()
                                                         && ip.parse::<IpAddr>().is_ok()
@@ -412,8 +419,10 @@ impl App {
                                                 {
                                                     ui.label("Wled DNRGB Port");
                                                     let port = self
-                                                        .inputs
-                                                        .entry(format!("wlednrgb_port_{universe}"))
+                                                        .text_inputs
+                                                        .entry(TextInput::WledDnrgbOutputPort(
+                                                            universe,
+                                                        ))
                                                         .or_insert_with(|| port.to_string());
                                                     if ui.add(TextEdit::singleline(port)).changed()
                                                         && port.parse::<u16>().is_ok()
@@ -434,8 +443,10 @@ impl App {
                                                 {
                                                     ui.label("Wled DNRGB Start");
                                                     let start = self
-                                                        .inputs
-                                                        .entry(format!("wlednrgb_start_{universe}"))
+                                                        .text_inputs
+                                                        .entry(TextInput::WledDnrgbOutputStart(
+                                                            universe,
+                                                        ))
                                                         .or_insert_with(|| start.to_string());
                                                     if ui.add(TextEdit::singleline(start)).changed()
                                                         && start.parse::<u16>().is_ok()

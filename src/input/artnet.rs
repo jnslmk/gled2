@@ -1,12 +1,11 @@
 use artnet_protocol::{ArtCommand, PollReply, PortAddress};
+use egui::mutex::Mutex;
 use log::{debug, info, trace, warn};
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
+use once_cell::sync::Lazy;
 use std::{
     net::{Ipv4Addr, UdpSocket},
-    sync::{
-        mpsc::{Receiver, Sender},
-        Mutex,
-    },
+    sync::mpsc::{Receiver, Sender},
     thread,
     time::Duration,
 };
@@ -19,10 +18,12 @@ pub struct ArtnetEvent {
     pub value: u8,
 }
 
-pub static ARTNET_CONFIG: Mutex<ArtnetConfig> = Mutex::new(ArtnetConfig {
-    universe: 18,
-    start: 1,
-    channels: 100,
+pub static ARTNET_INPUT_CONFIG: Lazy<Mutex<ArtnetConfig>> = Lazy::new(|| {
+    Mutex::new(ArtnetConfig {
+        universe: 18,
+        start: 1,
+        channels: 100,
+    })
 });
 
 pub struct ArtnetConfig {
@@ -154,7 +155,7 @@ fn thread(sender: Sender<ArtnetEvent>) {
                     };
                     trace!("parsed artnet");
 
-                    let config = ARTNET_CONFIG.lock().expect("ARTNET_CONFIG is poisoned");
+                    let config = ARTNET_INPUT_CONFIG.lock();
                     if output.port_address != config.port_address() {
                         debug!("Ignoring universe {:?}", output.port_address);
                         std::thread::sleep(Duration::from_millis(10));

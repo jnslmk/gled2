@@ -1,6 +1,7 @@
 use crate::{
     effect::Effect,
     storage::{AssetTrait, Palette},
+    ui::group::group_button,
 };
 use egui::{
     load::SizedTexture, Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding,
@@ -87,23 +88,20 @@ impl<'a> Widget for EffectWidget<'a> {
                                 ui.set_max_width(size.x + 28.0);
                                 if !self.effect.group.is_empty() {
                                     ui.add(
-                                        crate::app::config::group::button(
-                                            &self.effect.group,
-                                            false,
-                                        )
-                                        .sense(Sense::hover()),
+                                        group_button(&self.effect.group, false)
+                                            .sense(Sense::hover()),
                                     );
                                 }
-                                if let Some(hotkey) =
-                                    self.effect.hotkey.as_ref().map(|key| format!("{key}"))
+                                if let Some(hotkey) = self
+                                    .effect
+                                    .selection_input
+                                    .as_ref()
+                                    .map(|key| format!("{key}"))
                                 {
                                     ui.add_enabled(false, Button::new(hotkey));
                                 }
-                                if let Some(flash_hotkey) = self
-                                    .effect
-                                    .flash_hotkey
-                                    .as_ref()
-                                    .map(|key| format!("{key}"))
+                                if let Some(flash_hotkey) =
+                                    self.effect.flash_input.as_ref().map(|key| format!("{key}"))
                                 {
                                     ui.add_enabled(
                                         false,

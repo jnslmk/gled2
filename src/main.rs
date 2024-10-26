@@ -2,11 +2,10 @@
 
 mod animation;
 mod app;
-mod artnet_receiver;
 mod constants;
 mod effect;
 mod extract_output;
-mod hotkey;
+mod input;
 mod logging;
 mod logo;
 mod opts;
@@ -27,6 +26,7 @@ mod ui;
 use app::App;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration};
 use egui::ViewportBuilder;
+use input::Input;
 use once_cell::sync::OnceCell;
 use wgpu::PowerPreference;
 
@@ -35,8 +35,6 @@ pub static WGPU_RENDER_STATE: OnceCell<RenderState> = OnceCell::new();
 fn main() {
     logging::init();
     storage::start_thread();
-
-    let receiver = artnet_receiver::start_thread();
 
     let options = eframe::NativeOptions {
         viewport: ViewportBuilder::default()
@@ -57,6 +55,8 @@ fn main() {
         "gled",
         options,
         Box::new(|cc| {
+            Input::init(&cc.egui_ctx);
+
             WGPU_RENDER_STATE
                 .set(
                     cc.wgpu_render_state
@@ -65,9 +65,7 @@ fn main() {
                 )
                 .map_err(|_err| ())
                 .expect("Could not set wgpu render state");
-            Ok(Box::new(
-                App::new(receiver).expect("Could not create new App"),
-            ))
+            Ok(Box::new(App::new().expect("Could not create new App")))
         }),
     )
     .expect("Could not run native");

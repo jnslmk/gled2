@@ -1,19 +1,13 @@
 use super::{widget::EffectWidget, App};
 use crate::transition::{Transition, TransitionGoal};
-use egui::{scroll_area::ScrollBarVisibility, Color32, Context, Rect, TextureId, Ui, Vec2};
+use egui::{scroll_area::ScrollBarVisibility, Color32, Rect, TextureId, Ui, Vec2};
 
 impl App {
-    pub fn effects_grid(
-        &mut self,
-        ctx: &Context,
-        ui: &mut Ui,
-        svg: Option<TextureId>,
-        uv: Option<Rect>,
-    ) {
+    pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureId>, uv: Option<Rect>) {
         let effects = &self.persistant_state.effects;
 
         egui::ScrollArea::vertical()
-            .id_source("effects_scroll")
+            .id_salt("effects_scroll")
             .auto_shrink([false, false])
             .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
             .show(ui, |ui| {
@@ -37,20 +31,22 @@ impl App {
                         );
                         if response.changed()
                             || effect
-                                .hotkey
+                                .selection_input
                                 .as_ref()
-                                .map(|hotkey| hotkey.pressed(ctx, &self.gamepad))
+                                .map(|event| event.is_new())
                                 .unwrap_or_default()
                         {
                             changed = Some(index);
                         }
 
-                        if let Some(hotkey) = effect.flash_hotkey.as_ref() {
-                            if hotkey.live(ctx, &self.gamepad) {
+                        if let Some(event) = effect.flash_input.as_ref() {
+                            if event.is_live() {
                                 flashed.push(index);
                             }
+                        }
 
-                            effect.set_hotkey_dimmer(hotkey.dimmer(&self.gamepad));
+                        if let Some(event) = effect.dimmer_input.as_ref() {
+                            effect.set_input_dimmer(event.dimmer());
                         }
                     }
 

@@ -4,30 +4,30 @@ mod effects;
 mod menu;
 mod persistant_state;
 mod preview;
-mod svg;
+pub mod svg;
 mod timing;
 
 use crate::{
-    artnet_receiver::ArtnetEvent,
     extract_output::ExtractOutput,
-    hotkey::Gamepad,
+    input::Input,
     logo::logo_image,
     output_sender::{self, GpuReadyReceiver, OutputSender},
     pipeline::{Pipeline, RenderDeactivatedEffects},
     project::Project,
     storage::{ChangingAsset, Palette},
+    ui::{action::Action, text_input::TextInput, windows::Windows},
 };
 use egui::Modifiers;
 use egui_extras::RetainedImage;
 use persistant_state::PersistantState;
-use std::{collections::HashMap, path::PathBuf, sync::mpsc::Receiver};
+use std::{collections::HashMap, path::PathBuf};
 use timing::Timing;
 
 pub use svg::{positions, preview_positions, preview_uv, Svg};
 
 pub struct App {
+    windows: Windows,
     startup: bool,
-    receiver: Receiver<ArtnetEvent>,
     palette: Option<ChangingAsset<Palette>>,
     output_sender: OutputSender,
     gpu_ready_receiver: GpuReadyReceiver,
@@ -37,8 +37,9 @@ pub struct App {
     persistant_state: PersistantState,
     project_path: Option<PathBuf>,
     pipeline: Pipeline,
-    gamepad: Gamepad,
-    inputs: HashMap<String, String>,
+
+    /// Text which is currently beeing edited
+    text_inputs: HashMap<TextInput, String>,
 
     blackout: bool,
     svg: Option<Svg>,
@@ -63,7 +64,37 @@ impl eframe::App for App {
         }
 
         self.timing.tick(self.persistant_state.fps_limit);
-        self.gamepad.tick(&mut self.receiver);
+        Input::tick();
+
+        match Action::dequeue() {
+            None => (),
+            Some(Action::DeleteSelectedEffect) => {
+                self.pipeline.remove_effect(self.selected_effect);
+
+                self.selected_effect = self
+                    .pipeline
+                    .effects()
+                    .first()
+                    .map(|(index, _effect)| *index)
+                    .unwrap_or_default();
+            }
+            Some(Action::CloneSelectedEffect) => {
+                if let Some(index) =
+                    self.pipeline
+                        .effect(self.selected_effect)
+                        .cloned()
+                        .map(|mut effect| {
+                            effect.active = false;
+                            self.pipeline.add_effect(effect)
+                        })
+                {
+                    self.selected_effect = index;
+                }
+            }
+            Some(Action::InitGpu) => {
+                self.pipeline.init_gpu();
+            }
+        }
 
         if ctx.input_mut(|i| i.consume_key(Modifiers::ALT, egui::Key::Enter)) {
             self.persistant_state.fullscreen = !self.persistant_state.fullscreen;
@@ -101,9 +132,9 @@ impl eframe::App for App {
             self.timing.fade_duration(),
         );
 
+        self.windows.update(ctx);
         self.about_window(ctx);
         self.config_output_window(ctx);
-        self.config_artnet_input_window(ctx);
         self.menu(ctx);
         self.config(ctx);
         self.preview(ctx);
@@ -115,7 +146,7 @@ impl eframe::App for App {
 }
 
 impl App {
-    pub fn new(receiver: Receiver<ArtnetEvent>) -> Option<Self> {
+    pub fn new() -> Option<Self> {
         let persistant_state = PersistantState::load();
         let extract_output = ExtractOutput::new();
         let (output_sender, gpu_ready_receiver) =
@@ -124,7 +155,6 @@ impl App {
 
         let mut app = Self {
             startup: true,
-            receiver,
             output_sender,
             gpu_ready_receiver,
             logo_image,
@@ -140,9 +170,9 @@ impl App {
             selected_effect: 0,
             hovered_effect: 0,
             pipeline: Pipeline::default(),
-            gamepad: Gamepad::new(),
-            inputs: HashMap::new(),
+            text_inputs: HashMap::new(),
             palette: None,
+            windows: Windows::default(),
         };
 
         app.load_project();

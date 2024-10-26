@@ -38,7 +38,7 @@ impl App {
                 .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
                 .show(ui, |ui| {
                     self.effects_header(ui);
-                    self.effects_grid(ctx, ui, svg, uv)
+                    self.effects_grid(ui, svg, uv)
                 });
         });
     }
