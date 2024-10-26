@@ -114,7 +114,17 @@ impl<'a> Widget for EffectWidget<'a> {
                                 }
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     checkbox_rect = Some(ui.checkbox(&mut false, "").rect);
-                                    color_band(ui, &self.effect.palette);
+
+                                    let color_band_rect = Rect::from_min_max(
+                                        ui.next_widget_position()
+                                            - Vec2::new(ui.available_width(), 0.0),
+                                        ui.next_widget_position() - Vec2::new(2.0, 0.0),
+                                    );
+                                    if let Some(mesh) =
+                                        color_band(color_band_rect, &self.effect.palette)
+                                    {
+                                        ui.painter().add(Shape::mesh(mesh));
+                                    }
                                 });
                             });
 
@@ -200,43 +210,30 @@ impl<'a> Widget for EffectWidget<'a> {
     }
 }
 
-fn color_band(ui: &mut Ui, path: &Option<AssetPath>) {
-    let Some(path) = path.as_ref() else {
-        return;
-    };
+fn color_band(rect: Rect, path: &Option<AssetPath>) -> Option<Mesh> {
+    let path = path.as_ref()?;
 
     let palette = Palette::find(path).data;
 
-    const GAP_TO_NEXT_WIDGET: f32 = 2.0;
     const COLOR_GRADIENT_RATIO: f32 = 0.35;
     const GAP: f32 = 2.0;
     const BORDER: f32 = 1.0;
     const HEIGHT: f32 = 18.0;
-    let available_width = ui.available_width() - GAP - 4.0 * BORDER - GAP_TO_NEXT_WIDGET;
+    let available_width = rect.width() - GAP - 4.0 * BORDER;
     let color_width = available_width * COLOR_GRADIENT_RATIO;
     let gradient_with: f32 = available_width - color_width;
     let width_per_gradient_color = gradient_with / 16.0;
-    let start_pos = {
-        let mut pos = ui.next_widget_position();
-        pos.x -= GAP_TO_NEXT_WIDGET;
-        pos
-    };
+    let start_pos = rect.right_center();
 
     let mut mesh = Mesh::default();
     mesh.add_colored_rect(
         Rect::from_min_max(
-            {
-                let mut pos = start_pos;
-                pos.x -= BORDER + color_width + BORDER + GAP + BORDER + gradient_with + BORDER;
-                pos.y -= HEIGHT / 2.0;
-                pos
-            },
-            {
-                let mut pos = start_pos;
-                pos.x -= GAP + BORDER + gradient_with + BORDER;
-                pos.y += HEIGHT / 2.0;
-                pos
-            },
+            start_pos
+                - Vec2::new(
+                    BORDER + color_width + BORDER + GAP + BORDER + gradient_with + BORDER,
+                    HEIGHT / 2.0,
+                ),
+            start_pos - Vec2::new(GAP + BORDER + gradient_with + BORDER, -HEIGHT / 2.0),
         ),
         Color32::BLACK,
     );
@@ -349,5 +346,5 @@ fn color_band(ui: &mut Ui, path: &Option<AssetPath>) {
             color.into(),
         );
     }
-    ui.painter().add(Shape::mesh(mesh));
+    Some(mesh)
 }
