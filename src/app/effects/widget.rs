@@ -3,8 +3,10 @@ use crate::{
     storage::{AssetPath, AssetTrait, Palette},
 };
 use egui::{
-    load::SizedTexture, Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding,
-    Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
+    epaint::{Vertex, WHITE_UV},
+    load::SizedTexture,
+    Align, Button, Checkbox, Color32, Image, Layout, Margin, Mesh, Rect, Rounding, Sense, Shape,
+    Slider, TextureId, Ui, Vec2, Widget,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -203,48 +205,149 @@ fn color_band(ui: &mut Ui, path: &Option<AssetPath>) {
         return;
     };
 
-    //TODO: Add primary and secondary color
-    let colors = Palette::find(path).data.gradient;
-    let width_per_color = (ui.available_width() - 2.0) / 16.0;
+    let palette = Palette::find(path).data;
 
-    ui.painter().add(Shape::Vec(
-        std::iter::once(Shape::rect_filled(
+    const GAP_TO_NEXT_WIDGET: f32 = 2.0;
+    const COLOR_GRADIENT_RATIO: f32 = 0.35;
+    const GAP: f32 = 2.0;
+    const BORDER: f32 = 1.0;
+    const HEIGHT: f32 = 18.0;
+    let available_width = ui.available_width() - GAP - 4.0 * BORDER - GAP_TO_NEXT_WIDGET;
+    let color_width = available_width * COLOR_GRADIENT_RATIO;
+    let gradient_with: f32 = available_width - color_width;
+    let width_per_gradient_color = gradient_with / 16.0;
+    let start_pos = {
+        let mut pos = ui.next_widget_position();
+        pos.x -= GAP_TO_NEXT_WIDGET;
+        pos
+    };
+
+    let mut mesh = Mesh::default();
+    mesh.add_colored_rect(
+        Rect::from_min_max(
+            {
+                let mut pos = start_pos;
+                pos.x -= BORDER + color_width + BORDER + GAP + BORDER + gradient_with + BORDER;
+                pos.y -= HEIGHT / 2.0;
+                pos
+            },
+            {
+                let mut pos = start_pos;
+                pos.x -= GAP + BORDER + gradient_with + BORDER;
+                pos.y += HEIGHT / 2.0;
+                pos
+            },
+        ),
+        Color32::BLACK,
+    );
+    let index = mesh.vertices.len() as u32;
+    mesh.add_triangle(index, index + 1, index + 2);
+    mesh.add_triangle(index + 3, index + 4, index + 5);
+    let primary_color = palette.primary.into();
+
+    // Top left
+    mesh.vertices.push(Vertex {
+        pos: {
+            let mut pos = start_pos;
+            pos.x -= color_width + BORDER + GAP + BORDER + gradient_with + BORDER;
+            pos.y -= HEIGHT / 2.0 - BORDER;
+            pos
+        },
+        uv: WHITE_UV,
+        color: primary_color,
+    });
+    // Top right
+    mesh.vertices.push(Vertex {
+        pos: {
+            let mut pos = start_pos;
+            pos.x -= BORDER + GAP + BORDER + gradient_with + BORDER;
+            pos.y -= HEIGHT / 2.0 - BORDER;
+            pos
+        },
+        uv: WHITE_UV,
+        color: primary_color,
+    });
+    // Bottom left
+    mesh.vertices.push(Vertex {
+        pos: {
+            let mut pos = start_pos;
+            pos.x -= color_width + BORDER + GAP + BORDER + gradient_with + BORDER;
+            pos.y += HEIGHT / 2.0 - BORDER;
+            pos
+        },
+        uv: WHITE_UV,
+        color: primary_color,
+    });
+    let secondary_color = palette.secondary.into();
+    // Top right
+    mesh.vertices.push(Vertex {
+        pos: {
+            let mut pos = start_pos;
+            pos.x -= BORDER + GAP + BORDER + gradient_with + BORDER;
+            pos.y -= HEIGHT / 2.0 - BORDER;
+            pos
+        },
+        uv: WHITE_UV,
+        color: secondary_color,
+    });
+    // Bottom left
+    mesh.vertices.push(Vertex {
+        pos: {
+            let mut pos = start_pos;
+            pos.x -= color_width + BORDER + GAP + BORDER + gradient_with + BORDER;
+            pos.y += HEIGHT / 2.0 - BORDER;
+            pos
+        },
+        uv: WHITE_UV,
+        color: secondary_color,
+    });
+    // Bottom right
+    mesh.vertices.push(Vertex {
+        pos: {
+            let mut pos = start_pos;
+            pos.x -= BORDER + GAP + BORDER + gradient_with + BORDER;
+            pos.y += HEIGHT / 2.0 - BORDER;
+            pos
+        },
+        uv: WHITE_UV,
+        color: secondary_color,
+    });
+    // Gradient background
+    mesh.add_colored_rect(
+        Rect::from_min_max(
+            {
+                let mut pos = start_pos;
+                pos.x -= BORDER + gradient_with + BORDER;
+                pos.y -= HEIGHT / 2.0;
+                pos
+            },
+            {
+                let mut pos = start_pos;
+                pos.y += HEIGHT / 2.0;
+                pos
+            },
+        ),
+        Color32::BLACK,
+    );
+    // Gradient colors
+    for (i, color) in palette.gradient.into_iter().rev().enumerate() {
+        mesh.add_colored_rect(
             Rect::from_min_max(
                 {
-                    let mut pos = ui.next_widget_position();
-                    pos.x -= ui.available_width();
-                    pos.y -= 9.0;
+                    let mut pos: egui::Pos2 = start_pos;
+                    pos.x -= width_per_gradient_color * (i + 1) as f32 + BORDER;
+                    pos.y -= HEIGHT / 2.0 - BORDER;
                     pos
                 },
                 {
-                    let mut pos = ui.next_widget_position();
-                    pos.y += 9.0;
+                    let mut pos = start_pos;
+                    pos.x -= width_per_gradient_color * i as f32 + BORDER;
+                    pos.y += HEIGHT / 2.0 - BORDER;
                     pos
                 },
             ),
-            Rounding::ZERO,
-            Color32::BLACK,
-        ))
-        .chain(colors.iter().rev().enumerate().map(|(i, color)| {
-            Shape::rect_filled(
-                Rect::from_min_max(
-                    {
-                        let mut pos = ui.next_widget_position();
-                        pos.x -= 1.0 + width_per_color * (i + 1) as f32;
-                        pos.y -= 8.0;
-                        pos
-                    },
-                    {
-                        let mut pos = ui.next_widget_position();
-                        pos.x -= 1.0 + width_per_color * i as f32;
-                        pos.y += 8.0;
-                        pos
-                    },
-                ),
-                Rounding::ZERO,
-                color,
-            )
-        }))
-        .collect(),
-    ));
+            color.into(),
+        );
+    }
+    ui.painter().add(Shape::mesh(mesh));
 }
