@@ -1,13 +1,12 @@
+use crate::{
+    extract_output::ExtractOutput,
+    project::{OutputDevice, OutputDeviceKind},
+};
 use egui::{Button, Color32, ComboBox, TextEdit};
 use egui_extras::{Column, TableBuilder};
 use std::collections::HashMap;
 use strum::IntoEnumIterator;
 use uuid::Uuid;
-
-use crate::{
-    extract_output::ExtractOutput,
-    project::{OutputDevice, OutputDeviceKind},
-};
 
 #[derive(Default)]
 pub struct OutputDevicesWindow {
@@ -71,6 +70,7 @@ impl OutputDevicesWindow {
                         header.col(|_ui| {});
                     })
                     .body(|mut body| {
+                        //TODO: Save in storage instead!
                         let extract_output = ExtractOutput::get();
                         let mut devices = extract_output.devices.lock();
                         let mut remove = None;
