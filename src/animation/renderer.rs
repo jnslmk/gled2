@@ -1,7 +1,11 @@
 //! Renders to a texture
 use super::{config::Config, state::State};
-use crate::{constants::TEXTURE_SIZE, storage::Palette, wgpu_render_state};
-use std::num::NonZeroU64;
+use crate::{
+    constants::TEXTURE_SIZE,
+    storage::{Asset, Palette},
+    wgpu_render_state,
+};
+use std::{num::NonZeroU64, sync::Arc};
 use wgpu::{util::DeviceExt, *};
 
 static COMMON_SHADER_CODE: &str = include_str!("../shaders/common.wgsl");
@@ -122,10 +126,20 @@ impl AnimationRenderer {
         }
     }
 
-    pub fn set_buffers(&self, queue: &Queue, state: &State, palette: &Palette, config: &Config) {
+    pub fn set_buffers(
+        &self,
+        queue: &Queue,
+        state: &State,
+        palette: Option<Arc<Asset<Palette>>>,
+        config: &Config,
+    ) {
         let mut contents = [0; State::size() + Palette::size() + Config::size()];
         state.write_data(&mut contents[..State::size()]);
-        palette.write_data(&mut contents[State::size()..State::size() + Palette::size()]);
+        if let Some(palette) = palette {
+            palette
+                .data
+                .write_data(&mut contents[State::size()..State::size() + Palette::size()]);
+        }
         config.write_data(
             &mut contents
                 [State::size() + Palette::size()..State::size() + Palette::size() + Config::size()],

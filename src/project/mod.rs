@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use uuid::Uuid;
 
-pub use output::{OutputDevice, OutputDeviceKind, OutputRouting, OutputRoutings};
+pub use output::{OutputDevice, OutputDeviceKind, OutputRoutings};
 
 #[derive(Serialize, Deserialize, Default)]
 #[serde(default)]

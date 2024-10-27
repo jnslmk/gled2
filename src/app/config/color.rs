@@ -1,7 +1,7 @@
-use crate::storage::{ChangingAsset, Palette};
+use crate::storage::{Asset, Palette};
 use egui::Ui;
 
-pub fn palette_editor(ui: &mut Ui, palette: &mut Option<ChangingAsset<Palette>>) {
+pub fn palette_editor(ui: &mut Ui, palette: &mut Option<Asset<Palette>>) {
     let mut changed = false;
 
     if let Some(palette) = palette {

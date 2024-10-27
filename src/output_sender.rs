@@ -59,11 +59,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                             let device = devices.get(&routing.device?)?;
 
                             match device {
-                                OutputDevice::Artnet {
-                                    name,
-                                    ip,
-                                    universes,
-                                } => {
+                                OutputDevice::Artnet { ip, universes, .. } => {
                                     let universe = routing.universe?;
                                     if !universes.contains(&universe) {
                                         log::warn!("Universe which is not configured: {universe}");
@@ -91,7 +87,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                                                 .map(|data| (addr, data))
                                         })
                                 }
-                                OutputDevice::WledDRGB { name, ip, port } => {
+                                OutputDevice::WledDRGB { ip, port, .. } => {
                                     log::debug!("Preparing wled drgb data for universe {universe}");
                                     let mut wled_data = Vec::with_capacity(512);
                                     wled_data.push(2); // DRGB
@@ -105,10 +101,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                                         .map(|addr| (addr, wled_data))
                                 }
                                 OutputDevice::WledDNRGB {
-                                    name,
-                                    ip,
-                                    port,
-                                    start,
+                                    ip, port, start, ..
                                 } => {
                                     log::debug!(
                                         "Preparing wled dnrgb data for universe {universe}"

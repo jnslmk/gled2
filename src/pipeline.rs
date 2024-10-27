@@ -7,7 +7,7 @@ use crate::{
     output_sender::{GpuReadyReceiver, OutputSender},
     preview::Preview,
     preview_indices::PreviewIndices,
-    storage::AssetPath,
+    storage::AssetId,
     svg::Universes,
     transition::{Transition, TransitionGoal},
     wgpu_render_state,
@@ -17,8 +17,10 @@ use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
+    str::FromStr,
     time::{Duration, Instant},
 };
+use uuid::Uuid;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -80,9 +82,8 @@ impl Pipeline {
         };
         let mut effect = Effect::new(
             gradient.into(),
-            Some(AssetPath::new(
-                "primary".to_string().into(),
-                "red".to_string().into(),
+            Some(AssetId::new(
+                Uuid::from_str("3ab086c9-fca5-46c5-8e81-2001a7c2fb11").unwrap(),
             )),
             "allFull".to_owned(),
         );
@@ -99,9 +100,8 @@ impl Pipeline {
         };
         let mut effect = Effect::new(
             gradient.into(),
-            Some(AssetPath::new(
-                "primary".to_string().into(),
-                "green".to_string().into(),
+            Some(AssetId::new(
+                Uuid::from_str("39ab8644-0206-4d19-ab16-c0a924a35c4d").unwrap(),
             )),
             "innerFull".to_owned(),
         );
@@ -119,9 +119,8 @@ impl Pipeline {
         };
         let mut effect = Effect::new(
             stripes.into(),
-            Some(AssetPath::new(
-                "primary".to_string().into(),
-                "blue".to_string().into(),
+            Some(AssetId::new(
+                Uuid::from_str("08c1f6e4-6428-43b6-b9fd-f6d0b5261174").unwrap(),
             )),
             "innerEdge".to_owned(),
         );

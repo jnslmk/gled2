@@ -1,9 +1,9 @@
 use super::{
-    find_project,
-    tree::{Asset, AssetTrait},
-    AssetPath, Palette, Scene,
+    asset::{Asset, AssetTrait},
+    find_project, AssetId, Palette, Scene,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
 pub struct Project {
@@ -22,11 +22,11 @@ pub struct Deck {
 pub struct SceneGroup {
     pub primary_group: String,
     pub secondary_group: Option<String>,
-    pub scenes: Vec<Asset<Scene>>,
+    pub scenes: Vec<AssetId<Scene>>,
 }
 
 impl AssetTrait for Project {
-    fn find(path: &AssetPath<Project>) -> Asset<Self> {
-        find_project(path)
+    fn find(id: &AssetId<Project>) -> Arc<Asset<Self>> {
+        find_project(id)
     }
 }

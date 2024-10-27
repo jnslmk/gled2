@@ -1,11 +1,11 @@
 use super::ChangeButton;
-use crate::storage::{AssetPath, AssetTrait, Palette};
+use crate::storage::{AssetId, AssetTrait, Palette};
 use egui::{
     epaint::{Vertex, WHITE_UV},
     Button, Color32, Mesh, Rect, Shape, Ui, Vec2,
 };
 
-impl ChangeButton for Option<AssetPath<Palette>> {
+impl ChangeButton for Option<AssetId<Palette>> {
     fn change_button(&mut self, ui: &mut Ui) {
         let palette = self.as_ref().map(Palette::find);
         let response = ui

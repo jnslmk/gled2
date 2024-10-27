@@ -1,11 +1,10 @@
 use super::{
-    find_scene,
-    tree::{Asset, AssetTrait},
-    AssetPath,
+    asset::{Asset, AssetTrait},
+    find_scene, AssetId,
 };
 use crate::effect::Effect;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
 pub struct Scene {
@@ -14,8 +13,8 @@ pub struct Scene {
 }
 
 impl AssetTrait for Scene {
-    fn find(path: &AssetPath<Scene>) -> Asset<Self> {
-        find_scene(path)
+    fn find(id: &AssetId<Scene>) -> Arc<Asset<Self>> {
+        find_scene(id)
     }
 }
 pub struct SceneInstance {

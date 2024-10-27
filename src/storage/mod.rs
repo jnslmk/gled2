@@ -1,23 +1,24 @@
 mod action;
+mod asset;
+mod asset_id;
+mod collection;
 mod git;
 mod palette;
-mod path;
 mod project;
 mod scene;
-mod tree;
 
-use self::action::Action;
+use collection::Collection;
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use std::{fmt::Debug, path::PathBuf, sync::Arc};
-use tree::Folders;
 
 pub use self::{
+    action::Action,
+    asset::{Asset, AssetTrait},
+    asset_id::AssetId,
     palette::Palette,
-    path::AssetPath,
     project::Project,
     scene::Scene,
-    tree::{Asset, AssetTrait, ChangingAsset},
 };
 
 static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::Loading(0.0)));
@@ -32,9 +33,9 @@ pub enum State {
         branches: Vec<String>,
         current_branch: String,
         folder: PathBuf,
-        projects: Folders<Project>,
-        palettes: Folders<Palette>,
-        scenes: Folders<Scene>,
+        projects: Collection<Project>,
+        palettes: Collection<Palette>,
+        scenes: Collection<Scene>,
     },
 }
 
@@ -98,11 +99,11 @@ pub fn start_thread() {
 
             let root = git.folder().to_owned();
 
-            let palettes = Folders::<Palette>::load(root.join("palettes"));
+            let palettes = Collection::<Palette>::load(root.join("palettes"));
             *STATE.lock() = State::Loading(0.6);
-            let projects = Folders::<Project>::load(root.join("projects"));
+            let projects = Collection::<Project>::load(root.join("projects"));
             *STATE.lock() = State::Loading(0.8);
-            let scenes = Folders::<Scene>::load(root.join("scenes"));
+            let scenes = Collection::<Scene>::load(root.join("scenes"));
             *STATE.lock() = State::Loading(1.0);
 
             *STATE.lock() = State::Opened {
@@ -138,16 +139,11 @@ pub fn start_thread() {
                         }
                     },
                     Action::SavePalette { palette } => {
-                        if find_palette(&palette.path) != palette {
-                            log::info!("Skipping save as a new version is already in cache");
-                            continue;
-                        }
-
                         if git
-                            .write_file(&palette.path.disk_path(&root), &root, &palette)
+                            .write_asset(&palette.id.disk_path(&root), &root, palette)
                             .is_err()
                         {
-                            log::error!("Could not save color palette {:?}", palette.path);
+                            log::error!("Could not save color palette");
                             continue;
                         }
 
@@ -157,16 +153,11 @@ pub fn start_thread() {
                         }
                     }
                     Action::SaveProject { project } => {
-                        if find_project(&project.path) != project {
-                            log::info!("Skipping save as a new version is already in cache");
-                            continue;
-                        }
-
                         if git
-                            .write_file(&project.path.disk_path(&root), &root, &project)
+                            .write_asset(&project.id.disk_path(&root), &root, project)
                             .is_err()
                         {
-                            log::error!("Could not save project {:?}", project.path);
+                            log::error!("Could not save project");
                             continue;
                         }
 
@@ -176,16 +167,9 @@ pub fn start_thread() {
                         }
                     }
                     Action::SaveScene { scene } => {
-                        if find_scene(&scene.path) != scene {
-                            log::info!("Skipping save as a new version is already in cache");
-                            continue;
-                        }
-
-                        if git
-                            .write_file(&scene.path.disk_path(&root), &root, &scene)
-                            .is_err()
+                        if let Err(err) = git.write_asset(&scene.id.disk_path(&root), &root, scene)
                         {
-                            log::error!("Could not save scene {:?}", scene.path);
+                            log::error!("Could not save scene: {err}");
                             continue;
                         }
 
@@ -200,66 +184,69 @@ pub fn start_thread() {
     });
 }
 
-fn find_palette(path: &AssetPath<Palette>) -> Asset<Palette> {
+fn find_palette(id: &AssetId<Palette>) -> Arc<Asset<Palette>> {
     let state: &State = &STATE.lock();
     if let State::Opened { palettes, .. } = state {
-        if let Some(asset) = palettes.get(path) {
+        if let Some(asset) = palettes.get(id) {
             return asset.clone();
         }
     }
 
-    Asset {
-        path: path.to_owned(),
-        data: Arc::new(Palette::default()),
-    }
+    Arc::new(Asset {
+        id: id.to_owned(),
+        name: Default::default(),
+        data: Palette::default(),
+    })
 }
 
 fn set_palette_in_cache(palette: Asset<Palette>) {
-    log::info!("Setting palette in cache: {:?}", palette.path);
+    log::info!("Setting palette in cache: {:?}", palette.id);
     let state: &mut State = &mut STATE.lock();
     if let State::Opened { palettes, .. } = state {
         palettes.set_asset(palette);
     }
 }
 
-fn find_project(path: &AssetPath<Project>) -> Asset<Project> {
+fn find_project(id: &AssetId<Project>) -> Arc<Asset<Project>> {
     let state: &State = &STATE.lock();
     if let State::Opened { projects, .. } = state {
-        if let Some(asset) = projects.get(path) {
+        if let Some(asset) = projects.get(id) {
             return asset.clone();
         }
     }
 
-    Asset {
-        path: path.to_owned(),
-        data: Arc::new(Project::default()),
-    }
+    Arc::new(Asset {
+        id: id.to_owned(),
+        name: Default::default(),
+        data: Project::default(),
+    })
 }
 
 fn set_project_in_cache(project: Asset<Project>) {
-    log::info!("Setting project in cache: {:?}", project.path);
+    log::info!("Setting project in cache: {:?}", project.id);
     let state: &mut State = &mut STATE.lock();
     if let State::Opened { projects, .. } = state {
         projects.set_asset(project);
     }
 }
 
-fn find_scene(path: &AssetPath<Scene>) -> Asset<Scene> {
+fn find_scene(id: &AssetId<Scene>) -> Arc<Asset<Scene>> {
     let state: &State = &STATE.lock();
     if let State::Opened { scenes, .. } = state {
-        if let Some(asset) = scenes.get(path) {
+        if let Some(asset) = scenes.get(id) {
             return asset.clone();
         }
     }
 
-    Asset {
-        path: path.to_owned(),
-        data: Arc::new(Scene::default()),
-    }
+    Arc::new(Asset {
+        id: id.to_owned(),
+        name: Default::default(),
+        data: Scene::default(),
+    })
 }
 
 fn set_scene_in_cache(scene: Asset<Scene>) {
-    log::info!("Setting scene in cache: {:?}", scene.path);
+    log::info!("Setting scene in cache: {:?}", scene.id);
     let state: &mut State = &mut STATE.lock();
     if let State::Opened { scenes, .. } = state {
         scenes.set_asset(scene);

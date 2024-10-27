@@ -4,7 +4,7 @@ use crate::{
     constants::GPU_NOT_INIT,
     input::InputEvent,
     output_mix::OutputMix,
-    storage::{AssetPath, AssetTrait, Palette},
+    storage::{AssetId, AssetTrait, Palette},
     texture_to_output::TextureToOutput,
     transition::Transition,
     wgpu_render_state,
@@ -16,7 +16,7 @@ use wgpu::{Buffer, CommandEncoder, Queue};
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Effect {
-    pub palette: Option<AssetPath<Palette>>, //TODO: Change to offset to palette, palette is to be set globaly for a deck
+    pub palette: Option<AssetId<Palette>>, //TODO: Change to offset to palette, palette is to be set globaly for a deck
     pub opacity: f32,
     pub active: bool,
     pub beat_progression_offset: f32,
@@ -84,7 +84,7 @@ fn default_send_positions() -> bool {
 }
 
 impl Effect {
-    pub fn new(animation: Animation, palette: Option<AssetPath<Palette>>, group: String) -> Self {
+    pub fn new(animation: Animation, palette: Option<AssetId<Palette>>, group: String) -> Self {
         Self {
             animation,
             palette,
@@ -181,11 +181,7 @@ impl Effect {
             self.renderer.as_ref().expect(GPU_NOT_INIT).set_buffers(
                 queue,
                 &state,
-                &self
-                    .palette
-                    .as_ref()
-                    .map(|palette| Palette::find(palette).data)
-                    .unwrap_or_default(),
+                self.palette.as_ref().map(|palette| Palette::find(palette)),
                 &self.animation.config(),
             );
 

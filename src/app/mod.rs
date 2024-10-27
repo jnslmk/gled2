@@ -12,7 +12,7 @@ use crate::{
     output_sender::{self, GpuReadyReceiver, OutputSender},
     pipeline::{Pipeline, RenderDeactivatedEffects},
     project::Project,
-    storage::{ChangingAsset, Palette},
+    storage::{Asset, Palette},
     ui::{action::Action, windows::Windows},
 };
 use egui::Modifiers;
@@ -25,7 +25,7 @@ pub use svg::{positions, preview_positions, preview_uv, Svg};
 pub struct App {
     windows: Windows,
     startup: bool,
-    palette: Option<ChangingAsset<Palette>>,
+    palette: Option<Asset<Palette>>,
     output_sender: OutputSender,
     gpu_ready_receiver: GpuReadyReceiver,
     timing: Timing,

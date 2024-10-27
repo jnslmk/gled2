@@ -1,4 +1,4 @@
-use super::{tree::Asset, Palette, Project, Scene};
+use super::{asset::Asset, Palette, Project, Scene};
 use std::sync::{
     mpsc::{Receiver, Sender},
     OnceLock,

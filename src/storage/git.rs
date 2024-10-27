@@ -4,8 +4,9 @@ use git2::{
     RemoteCallbacks, Repository, Signature,
 };
 use mkdirp::mkdirp;
-use serde::Serialize;
 use std::path::{Path, PathBuf};
+
+use super::{Asset, AssetTrait};
 
 pub struct Git {
     synced: bool,
@@ -324,31 +325,32 @@ impl Git {
         self.synced
     }
 
-    pub fn write_file<T: Serialize>(
+    pub fn write_asset<T: AssetTrait>(
         &mut self,
         path: &Path,
         folder: &Path,
-        value: &T,
-    ) -> Result<(), ()> {
+        asset: Asset<T>,
+    ) -> Result<(), String> {
         let Some(parent) = path.parent() else {
-            log::error!("Could not get parent of file: {}", path.display());
-            return Err(());
+            return Err(format!("Could not get parent of file: {}", path.display()));
         };
         if let Err(err) = mkdirp(folder.join(parent)) {
-            log::error!("Could not create basedir of {}: {err:?}", path.display());
-            return Err(());
+            return Err(format!(
+                "Could not create basedir of {}: {err:?}",
+                path.display()
+            ));
         }
-        let Ok(file) = std::fs::File::create(folder.join(path)) else {
-            log::error!("Could not open file: {}", path.display());
-            return Err(());
+        let file = match std::fs::File::create(folder.join(path)) {
+            Ok(file) => file,
+            Err(err) => {
+                return Err(format!("Could not open file {}: {err:?}", path.display()));
+            }
         };
-        if let Err(err) = serde_json::to_writer_pretty(file, value) {
-            log::error!("Could not write file: {err:?}");
-            return Err(());
+        if let Err(err) = asset.write(file) {
+            return Err(format!("Could not write asset: {err:?}"));
         }
         if let Err(err) = self.add(path) {
-            log::error!("Could not add file: {err:?}");
-            return Err(());
+            return Err(format!("Could not add file to git: {err:?}"));
         }
 
         Ok(())

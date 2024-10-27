@@ -1,10 +1,10 @@
 use super::{
-    find_palette,
-    tree::{Asset, AssetTrait},
-    AssetPath,
+    asset::{Asset, AssetTrait},
+    find_palette, AssetId,
 };
 use egui::Color32;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
@@ -15,8 +15,8 @@ pub struct Palette {
 }
 
 impl AssetTrait for Palette {
-    fn find(path: &AssetPath<Palette>) -> Asset<Self> {
-        find_palette(path)
+    fn find(id: &AssetId<Palette>) -> Arc<Asset<Self>> {
+        find_palette(id)
     }
 }
 
