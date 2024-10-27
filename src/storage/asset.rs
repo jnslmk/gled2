@@ -25,8 +25,8 @@ struct AssetOnDisk<T: AssetTrait> {
 }
 
 impl<T: AssetTrait> Asset<T> {
-    pub fn read(file: File, id: AssetId<T>) -> Result<Arc<Self>, serde_json::Error> {
-        let asset: AssetOnDisk<T> = serde_json::from_reader(file)?;
+    pub fn read(file: File, id: AssetId<T>) -> Result<Arc<Self>, simd_json::Error> {
+        let asset: AssetOnDisk<T> = simd_json::from_reader(file)?;
 
         Ok(Arc::new(Self {
             id,
@@ -35,13 +35,13 @@ impl<T: AssetTrait> Asset<T> {
         }))
     }
 
-    pub fn write(self, file: File) -> Result<(), serde_json::Error> {
+    pub fn write(self, file: File) -> Result<(), simd_json::Error> {
         let asset = AssetOnDisk {
             name: self.name,
             data: self.data,
         };
 
-        serde_json::to_writer(file, &asset)
+        simd_json::to_writer(file, &asset)
     }
 }
 

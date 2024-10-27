@@ -26,8 +26,8 @@ impl Project {
                     .map_err(|err| error!("Could not read project file: {err:?}"))
                     .ok()
             })
-            .and_then(|bytes| {
-                serde_json::from_slice(&bytes)
+            .and_then(|mut bytes| {
+                simd_json::from_slice(&mut bytes)
                     .map_err(|err| error!("Could not parse project file: {err:?}"))
                     .ok()
             });
@@ -51,7 +51,7 @@ impl Project {
     }
 
     pub fn store(&self, path: &Path) {
-        let contents = match serde_json::to_string_pretty(&self) {
+        let contents = match simd_json::to_string_pretty(&self) {
             Ok(contents) => contents,
             Err(err) => {
                 error!("Could not serialize project: {err:?}");

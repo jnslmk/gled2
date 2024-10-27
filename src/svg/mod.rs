@@ -82,7 +82,7 @@ fn traverse_node(
                 .next()
                 .and_then(|child| child.children().next())
                 .and_then(|child| {
-                    serde_json::from_str::<Parameter>(&child.text())
+                    serde_hjson::from_str::<Parameter>(&child.text())
                         .map_err(|e| info!("Could not parse parameter of {}: {}", node.id(), e))
                         .ok()
                 })

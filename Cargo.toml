@@ -27,7 +27,8 @@ rayon = "1.10"
 resvg = { version = "0.44", default-features = false }
 rfd = "0.15"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde-hjson = "1"
+simd-json = "0.14"
 svgdom = "0.18"
 strum = { version = "0.26", features = ["derive"] }
 tiny-skia = { version = "0.11", default-features = false, features = [

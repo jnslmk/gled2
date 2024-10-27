@@ -32,8 +32,8 @@ impl Default for PersistantState {
 impl PersistantState {
     pub fn load() -> Self {
         Self::path()
-            .and_then(|path| std::fs::read_to_string(path).ok())
-            .and_then(|contents| serde_json::from_str(&contents).ok())
+            .and_then(|path| std::fs::read(path).ok())
+            .and_then(|mut contents| simd_json::from_slice(&mut contents).ok())
             .unwrap_or_default()
     }
 
@@ -49,7 +49,7 @@ impl PersistantState {
                 error!("Could not determine persistant state path");
                 return;
             };
-            let Ok(contents) = serde_json::to_string_pretty(&persistant_state) else {
+            let Ok(contents) = simd_json::to_string_pretty(&persistant_state) else {
                 error!("Could not serialize persistant state");
                 return;
             };
