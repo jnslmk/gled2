@@ -122,7 +122,8 @@ impl App {
                         Project {
                             svg: self.svg.clone(),
                             pipeline: self.pipeline.clone(),
-                            outputs: ExtractOutput::get().outputs.lock().clone(),
+                            output_devices: ExtractOutput::get().devices.lock().clone(),
+                            output_routings: ExtractOutput::get().routings.lock().clone(),
                         }
                         .store(&project_path);
                     }
@@ -181,8 +182,21 @@ impl App {
 
                     ui.separator();
 
-                    if ui.button(RichText::new("Outputs").heading()).clicked() {
-                        self.windows.output.open();
+                    if ui
+                        .button(RichText::new("Output Devices").heading())
+                        .clicked()
+                    {
+                        self.windows.output_devices.open();
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui
+                        .button(RichText::new("Output Routings").heading())
+                        .clicked()
+                    {
+                        self.windows.output_routings.open();
                         ui.close_menu();
                     }
 

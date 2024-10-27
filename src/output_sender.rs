@@ -10,7 +10,7 @@ use std::{
 use crate::{
     constants::{UNIVERSES, UNIVERSE_BUFFER_SIZE},
     extract_output::ExtractOutput,
-    project::UniverseOutput,
+    project::OutputDevice,
 };
 pub type OutputSender = Sender<()>;
 pub type GpuReadyReceiver = Receiver<()>;
@@ -45,7 +45,8 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                     let output_data = extract_output.poll_output_buffer();
                     gpu_ready_sender.send(()).ok();
 
-                    let mut outputs = extract_output.outputs.lock();
+                    let devices = extract_output.devices.lock();
+                    let mut routings = extract_output.routings.lock();
 
                     extract_output
                         .universes
@@ -54,15 +55,26 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                         .take(UNIVERSES as usize)
                         .zip(output_data.chunks(UNIVERSE_BUFFER_SIZE as usize))
                         .filter_map(|(universe, data)| {
-                            let universe_output = outputs.universe_output(*universe);
+                            let routing = routings.universe_output_routing(*universe);
+                            let device = devices.get(&routing.device?)?;
 
-                            match universe_output {
-                                UniverseOutput::Artnet { ip, universe } => {
+                            match device {
+                                OutputDevice::Artnet {
+                                    name,
+                                    ip,
+                                    universes,
+                                } => {
+                                    let universe = routing.universe?;
+                                    if !universes.contains(&universe) {
+                                        log::warn!("Universe which is not configured: {universe}");
+                                        return None;
+                                    }
+
                                     log::debug!("Preparing artnet command for universe {universe}");
                                     let output = artnet_protocol::Output {
                                         data: artnet_protocol::PaddedData::from(data.to_vec()),
                                         port_address: artnet_protocol::PortAddress::try_from(
-                                            *universe,
+                                            universe,
                                         )
                                         .ok()?,
                                         ..Default::default()
@@ -79,7 +91,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                                                 .map(|data| (addr, data))
                                         })
                                 }
-                                UniverseOutput::WledDRGB { ip, port } => {
+                                OutputDevice::WledDRGB { name, ip, port } => {
                                     log::debug!("Preparing wled drgb data for universe {universe}");
                                     let mut wled_data = Vec::with_capacity(512);
                                     wled_data.push(2); // DRGB
@@ -92,7 +104,12 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                                         .and_then(|mut addrs| addrs.next())
                                         .map(|addr| (addr, wled_data))
                                 }
-                                UniverseOutput::WledDNRGB { ip, port, start } => {
+                                OutputDevice::WledDNRGB {
+                                    name,
+                                    ip,
+                                    port,
+                                    start,
+                                } => {
                                     log::debug!(
                                         "Preparing wled dnrgb data for universe {universe}"
                                     );

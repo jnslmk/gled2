@@ -1,18 +1,21 @@
 mod about;
 mod artnet_input;
-mod output;
+mod output_devices;
+mod output_routings;
 
 #[derive(Default)]
 pub struct Windows {
-    pub artnet_input: artnet_input::ArtnetInputWindow,
-    pub output: output::OutputWindow,
     pub about: about::AboutWindow,
+    pub artnet_input: artnet_input::ArtnetInputWindow,
+    pub output_devices: output_devices::OutputDevicesWindow,
+    pub output_routings: output_routings::OutputRoutingsWindow,
 }
 
 impl Windows {
     pub fn update(&mut self, ctx: &egui::Context) {
-        self.artnet_input.update(ctx);
-        self.output.update(ctx);
         self.about.update(ctx);
+        self.artnet_input.update(ctx);
+        self.output_devices.update(ctx);
+        self.output_routings.update(ctx);
     }
 }

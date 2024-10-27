@@ -2,22 +2,24 @@
 
 use crate::{
     constants::{OUTPUT_BUFFER_SIZE, UNIVERSES, UNIVERSE_BUFFER_SIZE},
-    project::Outputs,
+    project::{OutputDevice, OutputRoutings},
     svg::Universes,
     wgpu_render_state,
 };
 use egui::mutex::Mutex;
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     sync::{Arc, OnceLock},
 };
+use uuid::Uuid;
 use wgpu::*;
 
 #[derive(Clone)]
 pub struct ExtractOutput {
     output_cpu: Arc<Buffer>,
+    pub devices: Arc<Mutex<BTreeMap<Uuid, OutputDevice>>>,
     pub universes: Arc<Mutex<Universes>>,
-    pub outputs: Arc<Mutex<Outputs>>,
+    pub routings: Arc<Mutex<OutputRoutings>>,
 }
 
 impl ExtractOutput {
@@ -33,8 +35,9 @@ impl ExtractOutput {
 
             Self {
                 output_cpu: Arc::new(output_cpu),
+                devices: Arc::new(Mutex::new(BTreeMap::new())),
                 universes: Arc::new(Mutex::new(BTreeSet::new())),
-                outputs: Arc::new(Mutex::new(Outputs::default())),
+                routings: Arc::new(Mutex::new(OutputRoutings::default())),
             }
         })
     }
