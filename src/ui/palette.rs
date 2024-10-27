@@ -7,7 +7,7 @@ use egui::{
 
 impl ChangeButton for Option<AssetId<Palette>> {
     fn change_button(&mut self, ui: &mut Ui) {
-        let palette = self.as_ref().map(Palette::find);
+        let palette = self.as_ref().map(Palette::get);
         let response = ui
             .vertical_centered_justified(|ui| {
                 ui.add(Button::new(if palette.is_some() {

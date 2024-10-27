@@ -1083,6 +1083,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_ltreeview"
+version = "0.1.7"
+source = "git+https://github.com/elwerene/egui_ltreeview.git#60294aa526483d3a76b9540274a08cf663a182bc"
+dependencies = [
+ "egui",
+ "serde",
+ "uuid",
+]
+
+[[package]]
 name = "either"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1524,6 +1534,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui_extras",
+ "egui_ltreeview",
  "fern",
  "gilrs",
  "git2",
@@ -1935,9 +1946,9 @@ dependencies = [
 
 [[package]]
 name = "libm"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
+checksum = "3bda4c6077b0b08da2c48b172195795498381a7c8988c9e6212a6c55c5b9bd70"
 
 [[package]]
 name = "libredox"
@@ -2916,9 +2927,9 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustix"
-version = "0.38.37"
+version = "0.38.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8acb788b847c24f28525660c4d7758620a7210875711f79e7f663cc152726811"
+checksum = "aa260229e6538e52293eeb577aabd09945a09d6d9cc0fc550ed7529056c2e32a"
 dependencies = [
  "bitflags 2.6.0",
  "errno",

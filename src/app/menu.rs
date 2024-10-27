@@ -1,8 +1,8 @@
 use super::{svg::Svg, App};
 use crate::{extract_output::ExtractOutput, project::Project, ui::logo::logo_image};
 use egui::{
-    load::SizedTexture, text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers,
-    RichText, Slider, Stroke, TextFormat, Vec2,
+    load::SizedTexture, text::LayoutJob, Button, Color32, Context, Direction, ImageButton, Key,
+    Modifiers, RichText, Slider, Stroke, TextFormat, Vec2,
 };
 use log::{debug, error};
 
@@ -189,9 +189,6 @@ impl App {
                         self.windows.output_devices.open();
                         ui.close_menu();
                     }
-
-                    ui.separator();
-
                     if ui
                         .button(RichText::new("Output Routings").heading())
                         .clicked()
@@ -226,6 +223,16 @@ impl App {
                     ui.label(RichText::new("UI Zoom").heading());
                     egui::gui_zoom::zoom_menu_buttons(ui);
                 });
+
+                ui.menu_button("Assets", |ui| {
+                    ui.set_min_width(300.0);
+
+                    if ui.button(RichText::new("Palettes").heading()).clicked() {
+                        self.windows.palettes.open();
+                        ui.close_menu();
+                    }
+                });
+
                 ui.separator();
 
                 ui.spacing_mut().slider_width =

@@ -117,7 +117,7 @@ impl<'a> Widget for EffectWidget<'a> {
                                         ui.next_widget_position() - Vec2::new(2.0, 0.0),
                                     );
                                     if let Some(palette) =
-                                        self.effect.palette.as_ref().map(Palette::find)
+                                        self.effect.palette.as_ref().map(Palette::get)
                                     {
                                         ui.painter().add(Shape::mesh(
                                             palette.data.color_band_mesh(color_band_rect),

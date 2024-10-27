@@ -6,7 +6,8 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
 pub trait AssetTrait: Serialize + DeserializeOwned + Debug + Send + Sync + Clone {
-    fn find(path: &AssetId<Self>) -> Arc<Asset<Self>>;
+    fn get(path: &AssetId<Self>) -> Arc<Asset<Self>>;
+    fn all() -> Vec<Arc<Asset<Self>>>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,6 +43,10 @@ impl<T: AssetTrait> Asset<T> {
         };
 
         simd_json::to_writer(file, &asset)
+    }
+
+    pub fn dir(&self) -> Vec<String> {
+        self.name[..self.name.len() - 1].to_owned()
     }
 }
 

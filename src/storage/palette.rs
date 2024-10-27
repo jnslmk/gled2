@@ -1,6 +1,7 @@
 use super::{
+    all_palettes,
     asset::{Asset, AssetTrait},
-    find_palette, AssetId,
+    get_palette, AssetId,
 };
 use egui::Color32;
 use serde::{Deserialize, Serialize};
@@ -15,8 +16,12 @@ pub struct Palette {
 }
 
 impl AssetTrait for Palette {
-    fn find(id: &AssetId<Palette>) -> Arc<Asset<Self>> {
-        find_palette(id)
+    fn get(id: &AssetId<Palette>) -> Arc<Asset<Self>> {
+        get_palette(id)
+    }
+
+    fn all() -> Vec<Arc<Asset<Self>>> {
+        all_palettes()
     }
 }
 

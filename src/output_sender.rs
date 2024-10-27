@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use log::{debug, error};
 use std::{
     net::{SocketAddr, ToSocketAddrs, UdpSocket},
-    sync::mpsc::{Receiver, Sender},
+    sync::mpsc::{channel, Receiver, Sender},
     thread,
 };
 
@@ -15,11 +15,15 @@ use crate::{
 pub type OutputSender = Sender<()>;
 pub type GpuReadyReceiver = Receiver<()>;
 
-/// Start output thread
+/// Start output thread.
+///
+/// Returns:
+/// * a sender to activate the output thread
+/// * a receiver to wait for the GPU to be ready again
 pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
     debug!("Spawning output thread");
-    let (output_sender, output_receiver) = std::sync::mpsc::channel::<()>();
-    let (gpu_ready_sender, gpu_ready_receiver) = std::sync::mpsc::channel::<()>();
+    let (output_sender, output_receiver) = channel::<()>();
+    let (gpu_ready_sender, gpu_ready_receiver) = channel::<()>();
     gpu_ready_sender.send(()).ok();
 
     thread::Builder::new()

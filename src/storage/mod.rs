@@ -184,7 +184,7 @@ pub fn start_thread() {
     });
 }
 
-fn find_palette(id: &AssetId<Palette>) -> Arc<Asset<Palette>> {
+fn get_palette(id: &AssetId<Palette>) -> Arc<Asset<Palette>> {
     let state: &State = &STATE.lock();
     if let State::Opened { palettes, .. } = state {
         if let Some(asset) = palettes.get(id) {
@@ -199,6 +199,15 @@ fn find_palette(id: &AssetId<Palette>) -> Arc<Asset<Palette>> {
     })
 }
 
+fn all_palettes() -> Vec<Arc<Asset<Palette>>> {
+    let state: &State = &STATE.lock();
+    if let State::Opened { palettes, .. } = state {
+        return palettes.assets();
+    }
+
+    Default::default()
+}
+
 fn set_palette_in_cache(palette: Asset<Palette>) {
     log::info!("Setting palette in cache: {:?}", palette.id);
     let state: &mut State = &mut STATE.lock();
@@ -207,7 +216,7 @@ fn set_palette_in_cache(palette: Asset<Palette>) {
     }
 }
 
-fn find_project(id: &AssetId<Project>) -> Arc<Asset<Project>> {
+fn get_project(id: &AssetId<Project>) -> Arc<Asset<Project>> {
     let state: &State = &STATE.lock();
     if let State::Opened { projects, .. } = state {
         if let Some(asset) = projects.get(id) {
@@ -222,6 +231,15 @@ fn find_project(id: &AssetId<Project>) -> Arc<Asset<Project>> {
     })
 }
 
+fn all_projects() -> Vec<Arc<Asset<Project>>> {
+    let state: &State = &STATE.lock();
+    if let State::Opened { projects, .. } = state {
+        return projects.assets();
+    }
+
+    Default::default()
+}
+
 fn set_project_in_cache(project: Asset<Project>) {
     log::info!("Setting project in cache: {:?}", project.id);
     let state: &mut State = &mut STATE.lock();
@@ -230,7 +248,7 @@ fn set_project_in_cache(project: Asset<Project>) {
     }
 }
 
-fn find_scene(id: &AssetId<Scene>) -> Arc<Asset<Scene>> {
+fn get_scene(id: &AssetId<Scene>) -> Arc<Asset<Scene>> {
     let state: &State = &STATE.lock();
     if let State::Opened { scenes, .. } = state {
         if let Some(asset) = scenes.get(id) {
@@ -243,6 +261,15 @@ fn find_scene(id: &AssetId<Scene>) -> Arc<Asset<Scene>> {
         name: Default::default(),
         data: Scene::default(),
     })
+}
+
+fn all_scenes() -> Vec<Arc<Asset<Scene>>> {
+    let state: &State = &STATE.lock();
+    if let State::Opened { scenes, .. } = state {
+        return scenes.assets();
+    }
+
+    Default::default()
 }
 
 fn set_scene_in_cache(scene: Asset<Scene>) {

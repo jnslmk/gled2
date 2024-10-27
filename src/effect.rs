@@ -181,7 +181,7 @@ impl Effect {
             self.renderer.as_ref().expect(GPU_NOT_INIT).set_buffers(
                 queue,
                 &state,
-                self.palette.as_ref().map(|palette| Palette::find(palette)),
+                self.palette.as_ref().map(|palette| Palette::get(palette)),
                 &self.animation.config(),
             );
 

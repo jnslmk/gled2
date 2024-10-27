@@ -1,6 +1,7 @@
 use super::{
+    all_scenes,
     asset::{Asset, AssetTrait},
-    find_scene, AssetId,
+    get_scene, AssetId,
 };
 use crate::effect::Effect;
 use serde::{Deserialize, Serialize};
@@ -13,10 +14,15 @@ pub struct Scene {
 }
 
 impl AssetTrait for Scene {
-    fn find(id: &AssetId<Scene>) -> Arc<Asset<Self>> {
-        find_scene(id)
+    fn get(id: &AssetId<Scene>) -> Arc<Asset<Self>> {
+        get_scene(id)
+    }
+
+    fn all() -> Vec<Arc<Asset<Self>>> {
+        all_scenes()
     }
 }
+
 pub struct SceneInstance {
     path: PathBuf,
     /// cloned from the scene cache

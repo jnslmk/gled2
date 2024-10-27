@@ -1,6 +1,7 @@
 use super::{
+    all_projects,
     asset::{Asset, AssetTrait},
-    find_project, AssetId, Palette, Scene,
+    get_project, AssetId, Palette, Scene,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -26,7 +27,11 @@ pub struct SceneGroup {
 }
 
 impl AssetTrait for Project {
-    fn find(id: &AssetId<Project>) -> Arc<Asset<Self>> {
-        find_project(id)
+    fn get(id: &AssetId<Project>) -> Arc<Asset<Self>> {
+        get_project(id)
+    }
+
+    fn all() -> Vec<Arc<Asset<Self>>> {
+        all_projects()
     }
 }

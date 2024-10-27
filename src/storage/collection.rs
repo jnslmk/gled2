@@ -54,8 +54,8 @@ impl<T: AssetTrait> Collection<T> {
     }
 
     /// returns all assets in the collection
-    pub fn assets(&self) -> Vec<&Arc<Asset<T>>> {
-        self.0.values().collect()
+    pub fn assets(&self) -> Vec<Arc<Asset<T>>> {
+        self.0.values().cloned().collect()
     }
 
     pub fn get(&self, id: &AssetId<T>) -> Option<&Arc<Asset<T>>> {

@@ -1,5 +1,3 @@
-mod color;
-
 use super::{timing::FadeMode, App};
 use egui::{Context, Layout, RichText};
 
