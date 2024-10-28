@@ -27,6 +27,8 @@ pub struct SceneGroup {
 }
 
 impl AssetTrait for Project {
+    const DIR_NAME: &'static str = "projects";
+
     fn get(id: &AssetId<Project>) -> Arc<Asset<Self>> {
         get_project(id)
     }

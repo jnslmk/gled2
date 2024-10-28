@@ -14,6 +14,8 @@ pub struct Scene {
 }
 
 impl AssetTrait for Scene {
+    const DIR_NAME: &'static str = "scenes";
+
     fn get(id: &AssetId<Scene>) -> Arc<Asset<Self>> {
         get_scene(id)
     }

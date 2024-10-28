@@ -259,6 +259,14 @@ impl Git {
             .as_ref()
             .ok_or(Error::from_str("No repository set"))?;
 
+        let root = repository
+            .path()
+            .parent()
+            .ok_or_else(|| Error::from_str("No parent"))?;
+        let file = file
+            .strip_prefix(root)
+            .map_err(|_err| Error::from_str("Could not make path relative"))?;
+
         let mut index = repository.index()?;
         index.add_path(file)?;
         index.write()?;

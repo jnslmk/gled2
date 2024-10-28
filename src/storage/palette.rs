@@ -16,6 +16,8 @@ pub struct Palette {
 }
 
 impl AssetTrait for Palette {
+    const DIR_NAME: &'static str = "palettes";
+
     fn get(id: &AssetId<Palette>) -> Arc<Asset<Self>> {
         get_palette(id)
     }

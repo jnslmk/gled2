@@ -99,11 +99,11 @@ pub fn start_thread() {
 
             let root = git.folder().to_owned();
 
-            let palettes = Collection::<Palette>::load(root.join("palettes"));
+            let palettes = Collection::<Palette>::load(root.join(Palette::DIR_NAME));
             *STATE.lock() = State::Loading(0.6);
-            let projects = Collection::<Project>::load(root.join("projects"));
+            let projects = Collection::<Project>::load(root.join(Project::DIR_NAME));
             *STATE.lock() = State::Loading(0.8);
-            let scenes = Collection::<Scene>::load(root.join("scenes"));
+            let scenes = Collection::<Scene>::load(root.join(Scene::DIR_NAME));
             *STATE.lock() = State::Loading(1.0);
 
             *STATE.lock() = State::Opened {
@@ -139,11 +139,10 @@ pub fn start_thread() {
                         }
                     },
                     Action::SavePalette { palette } => {
-                        if git
-                            .write_asset(&palette.id.disk_path(&root), &root, palette)
-                            .is_err()
+                        if let Err(err) =
+                            git.write_asset(&palette.id.disk_path(&root), &root, palette)
                         {
-                            log::error!("Could not save color palette");
+                            log::error!("Could not save color palette: {err:?}");
                             continue;
                         }
 
@@ -153,11 +152,10 @@ pub fn start_thread() {
                         }
                     }
                     Action::SaveProject { project } => {
-                        if git
-                            .write_asset(&project.id.disk_path(&root), &root, project)
-                            .is_err()
+                        if let Err(err) =
+                            git.write_asset(&project.id.disk_path(&root), &root, project)
                         {
-                            log::error!("Could not save project");
+                            log::error!("Could not save project: {err:?}");
                             continue;
                         }
 

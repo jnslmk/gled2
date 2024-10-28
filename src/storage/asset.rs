@@ -6,6 +6,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
 pub trait AssetTrait: Serialize + DeserializeOwned + Debug + Send + Sync + Clone {
+    const DIR_NAME: &'static str;
     fn get(path: &AssetId<Self>) -> Arc<Asset<Self>>;
     fn all() -> Vec<Arc<Asset<Self>>>;
 }
@@ -47,6 +48,14 @@ impl<T: AssetTrait> Asset<T> {
 
     pub fn dir(&self) -> Vec<String> {
         self.name[..self.name.len() - 1].to_owned()
+    }
+
+    pub fn change_dir(&mut self, new_dir: &[String]) {
+        let name = self.name.pop();
+        self.name = new_dir.to_owned();
+        if let Some(name) = name {
+            self.name.push(name);
+        }
     }
 }
 
