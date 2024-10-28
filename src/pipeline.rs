@@ -82,7 +82,7 @@ impl Pipeline {
         };
         let mut effect = Effect::new(
             gradient.into(),
-            Some(AssetId::new(
+            Some(AssetId::from_uuid(
                 Uuid::from_str("3ab086c9-fca5-46c5-8e81-2001a7c2fb11").unwrap(),
             )),
             "allFull".to_owned(),
@@ -100,7 +100,7 @@ impl Pipeline {
         };
         let mut effect = Effect::new(
             gradient.into(),
-            Some(AssetId::new(
+            Some(AssetId::from_uuid(
                 Uuid::from_str("39ab8644-0206-4d19-ab16-c0a924a35c4d").unwrap(),
             )),
             "innerFull".to_owned(),
@@ -119,7 +119,7 @@ impl Pipeline {
         };
         let mut effect = Effect::new(
             stripes.into(),
-            Some(AssetId::new(
+            Some(AssetId::from_uuid(
                 Uuid::from_str("08c1f6e4-6428-43b6-b9fd-f6d0b5261174").unwrap(),
             )),
             "innerEdge".to_owned(),

@@ -1,7 +1,7 @@
 use super::{
     all_scenes,
     asset::{Asset, AssetTrait},
-    get_scene, set_scene_in_cache, Action, AssetId,
+    delete_scene_from_cache, get_scene, set_scene_in_cache, Action, AssetId,
 };
 use crate::effect::Effect;
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ pub struct Scene {
 impl AssetTrait for Scene {
     const DIR_NAME: &'static str = "scenes";
 
-    fn get(id: &AssetId<Scene>) -> Arc<Asset<Self>> {
+    fn get(id: AssetId<Scene>) -> Arc<Asset<Self>> {
         get_scene(id)
     }
 
@@ -28,6 +28,12 @@ impl AssetTrait for Scene {
         set_scene_in_cache(asset.clone());
 
         Action::SaveScene { scene: asset }.send();
+    }
+
+    fn delete(id: AssetId<Self>) {
+        delete_scene_from_cache(id);
+
+        Action::DeleteScene { id }.send();
     }
 }
 

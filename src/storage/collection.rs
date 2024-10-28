@@ -38,10 +38,12 @@ impl<T: AssetTrait> Collection<T> {
                     .map_err(|err| log::warn!("Could not parse UUID: {err:?}"))
                     .ok()?;
 
-                    let asset =
-                        Asset::<T>::read(std::fs::File::open(entry.path()).ok()?, AssetId::new(id))
-                            .map_err(|err| log::warn!("Could not read/parse asset: {err:?}"))
-                            .ok()?;
+                    let asset = Asset::<T>::read(
+                        std::fs::File::open(entry.path()).ok()?,
+                        AssetId::from_uuid(id),
+                    )
+                    .map_err(|err| log::warn!("Could not read/parse asset: {err:?}"))
+                    .ok()?;
 
                     return Some((id, asset));
                 }
@@ -65,5 +67,9 @@ impl<T: AssetTrait> Collection<T> {
     /// Overwrite asset in memory cache
     pub fn set_asset(&mut self, asset: Asset<T>) {
         self.0.insert(asset.id.id, Arc::new(asset));
+    }
+
+    pub fn delete_asset(&mut self, id: AssetId<T>) {
+        self.0.remove(&id.id);
     }
 }

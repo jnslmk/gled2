@@ -333,6 +333,17 @@ impl Git {
         self.synced
     }
 
+    pub fn delete_asset(&mut self, path: &Path) -> Result<(), String> {
+        if let Err(err) = std::fs::remove_file(path) {
+            return Err(format!("Could not remove file: {err:?}"));
+        }
+        if let Err(err) = self.add(path) {
+            return Err(format!("Could not add file to git: {err:?}"));
+        }
+
+        Ok(())
+    }
+
     pub fn write_asset<T: AssetTrait>(
         &mut self,
         path: &Path,

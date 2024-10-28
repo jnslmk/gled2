@@ -1,4 +1,4 @@
-use super::{asset::Asset, Palette, Project, Scene};
+use super::{asset::Asset, AssetId, Palette, Project, Scene};
 use std::sync::{
     mpsc::{Receiver, Sender},
     OnceLock,
@@ -16,8 +16,11 @@ pub enum Action {
     Update,
     SwitchBranch(String),
     SavePalette { palette: Asset<Palette> },
+    DeletePalette { id: AssetId<Palette> },
     SaveProject { project: Asset<Project> },
+    DeleteProject { id: AssetId<Project> },
     SaveScene { scene: Asset<Scene> },
+    DeleteScene { id: AssetId<Scene> },
     CommitAndPush { message: String },
 }
 

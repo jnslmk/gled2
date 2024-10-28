@@ -24,7 +24,11 @@ impl<T> Hash for AssetId<T> {
 }
 
 impl<T: AssetTrait> AssetId<T> {
-    pub fn new(id: Uuid) -> Self {
+    pub fn new() -> Self {
+        Self::from_uuid(Uuid::new_v4())
+    }
+
+    pub fn from_uuid(id: Uuid) -> Self {
         Self {
             id,
             _phantom: std::marker::PhantomData,

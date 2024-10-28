@@ -151,11 +151,33 @@ pub fn start_thread() {
                             *synced = git.synced();
                         }
                     }
+                    Action::DeletePalette { id } => {
+                        if let Err(err) = git.delete_asset(&id.disk_path(&root)) {
+                            log::error!("Could not delete color palette: {err:?}");
+                            continue;
+                        }
+
+                        let state: &mut State = &mut STATE.lock();
+                        if let State::Opened { synced, .. } = state {
+                            *synced = git.synced();
+                        }
+                    }
                     Action::SaveProject { project } => {
                         if let Err(err) =
                             git.write_asset(&project.id.disk_path(&root), &root, project)
                         {
                             log::error!("Could not save project: {err:?}");
+                            continue;
+                        }
+
+                        let state: &mut State = &mut STATE.lock();
+                        if let State::Opened { synced, .. } = state {
+                            *synced = git.synced();
+                        }
+                    }
+                    Action::DeleteProject { id } => {
+                        if let Err(err) = git.delete_asset(&id.disk_path(&root)) {
+                            log::error!("Could not delete project: {err:?}");
                             continue;
                         }
 
@@ -176,16 +198,27 @@ pub fn start_thread() {
                             *synced = git.synced();
                         }
                     }
+                    Action::DeleteScene { id } => {
+                        if let Err(err) = git.delete_asset(&id.disk_path(&root)) {
+                            log::error!("Could not delete scene: {err}");
+                            continue;
+                        }
+
+                        let state: &mut State = &mut STATE.lock();
+                        if let State::Opened { synced, .. } = state {
+                            *synced = git.synced();
+                        }
+                    }
                 }
             }
         }
     });
 }
 
-fn get_palette(id: &AssetId<Palette>) -> Arc<Asset<Palette>> {
+fn get_palette(id: AssetId<Palette>) -> Arc<Asset<Palette>> {
     let state: &State = &STATE.lock();
     if let State::Opened { palettes, .. } = state {
-        if let Some(asset) = palettes.get(id) {
+        if let Some(asset) = palettes.get(&id) {
             return asset.clone();
         }
     }
@@ -214,10 +247,18 @@ fn set_palette_in_cache(palette: Asset<Palette>) {
     }
 }
 
-fn get_project(id: &AssetId<Project>) -> Arc<Asset<Project>> {
+fn delete_palette_from_cache(id: AssetId<Palette>) {
+    log::info!("Deleting palette from cache: {:?}", id);
+    let state: &mut State = &mut STATE.lock();
+    if let State::Opened { palettes, .. } = state {
+        palettes.delete_asset(id);
+    }
+}
+
+fn get_project(id: AssetId<Project>) -> Arc<Asset<Project>> {
     let state: &State = &STATE.lock();
     if let State::Opened { projects, .. } = state {
-        if let Some(asset) = projects.get(id) {
+        if let Some(asset) = projects.get(&id) {
             return asset.clone();
         }
     }
@@ -246,10 +287,18 @@ fn set_project_in_cache(project: Asset<Project>) {
     }
 }
 
-fn get_scene(id: &AssetId<Scene>) -> Arc<Asset<Scene>> {
+fn delete_project_from_cache(id: AssetId<Project>) {
+    log::info!("Deleting project from cache: {:?}", id);
+    let state: &mut State = &mut STATE.lock();
+    if let State::Opened { projects, .. } = state {
+        projects.delete_asset(id);
+    }
+}
+
+fn get_scene(id: AssetId<Scene>) -> Arc<Asset<Scene>> {
     let state: &State = &STATE.lock();
     if let State::Opened { scenes, .. } = state {
-        if let Some(asset) = scenes.get(id) {
+        if let Some(asset) = scenes.get(&id) {
             return asset.clone();
         }
     }
@@ -275,5 +324,13 @@ fn set_scene_in_cache(scene: Asset<Scene>) {
     let state: &mut State = &mut STATE.lock();
     if let State::Opened { scenes, .. } = state {
         scenes.set_asset(scene);
+    }
+}
+
+fn delete_scene_from_cache(id: AssetId<Scene>) {
+    log::info!("Deleting scene from cache: {:?}", id);
+    let state: &mut State = &mut STATE.lock();
+    if let State::Opened { scenes, .. } = state {
+        scenes.delete_asset(id);
     }
 }

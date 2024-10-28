@@ -1,5 +1,5 @@
 use crate::storage::{Asset, AssetId, AssetTrait};
-use egui::{Label, Ui};
+use egui::{Button, Color32, Label, Layout, Stroke, Ui};
 use egui_ltreeview::{node::NodeBuilder, Action, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -27,11 +27,20 @@ impl<T: AssetTrait> TreeEntry<T> {
                 tree_ids.push(TreeId::Dir(dir.to_owned()));
                 builder.node(NodeBuilder::dir(tree_ids.len() - 1).label(|ui| {
                     ui.add(Label::new(dir.last().cloned().unwrap_or_default()).selectable(false));
-                    if ui.small_button("+").clicked() {
-                        let mut dir = dir.clone();
-                        dir.push("New Folder".to_string());
-                        empty_dirs.push(dir);
-                    }
+                    ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.small_button("+Asset").clicked() {
+                            let mut name = dir.clone();
+                            name.push("New Asset".to_string());
+                            let mut asset = Asset::<T>::new(name);
+                            asset.change_dir(dir);
+                            AssetTrait::save(asset);
+                        }
+                        if ui.small_button("+Dir").clicked() {
+                            let mut dir = dir.clone();
+                            dir.push("New Folder".to_string());
+                            empty_dirs.push(dir);
+                        }
+                    });
                 }));
                 for entry in children
                     .values()
@@ -151,7 +160,7 @@ impl<T: AssetTrait> AssetTree<T> {
                         .map(|index| tree_ids.remove(index))
                         .map(|id| match id {
                             TreeId::File(id) => {
-                                TreeSelection::Asset(Arc::unwrap_or_clone(T::get(&id)))
+                                TreeSelection::Asset(Arc::unwrap_or_clone(T::get(id)))
                             }
                             TreeId::Dir(dir) => TreeSelection::Dir {
                                 current: dir.clone(),
@@ -159,19 +168,6 @@ impl<T: AssetTrait> AssetTree<T> {
                             },
                         })
                         .unwrap_or_default();
-                }
-                Action::Drag {
-                    source,
-                    mut target,
-                    position,
-                } => {
-                    if source < target {
-                        target -= 1;
-                    }
-
-                    let source = tree_ids.remove(source);
-                    let target = tree_ids.remove(target);
-                    dbg!((&source, &target, &position));
                 }
                 Action::Move {
                     source, mut target, ..
@@ -182,10 +178,10 @@ impl<T: AssetTrait> AssetTree<T> {
 
                     let source = tree_ids.remove(source);
                     let target = tree_ids.remove(target);
-                    dbg!((&source, &target));
+
                     if let (TreeId::File(source), TreeId::Dir(target)) = (source, target) {
                         let target = target.clone();
-                        let mut asset = Arc::unwrap_or_clone(T::get(&source));
+                        let mut asset = Arc::unwrap_or_clone(T::get(source));
                         asset.name = target
                             .into_iter()
                             .chain(std::iter::once(asset.name.last().unwrap().clone()))
@@ -193,6 +189,7 @@ impl<T: AssetTrait> AssetTree<T> {
                         AssetTrait::save(asset);
                     }
                 }
+                _ => {}
             }
         }
     }
@@ -201,7 +198,18 @@ impl<T: AssetTrait> AssetTree<T> {
         &mut self.selection
     }
 
-    /// Shows the folder editor
+    pub fn show_delete_button(&mut self, ui: &mut Ui) {
+        if let TreeSelection::Asset(asset) = &self.selection {
+            if ui
+                .add(Button::new("Delete").stroke(Stroke::new(3.0, Color32::RED)))
+                .clicked()
+            {
+                AssetTrait::delete(asset.id);
+                self.selection = TreeSelection::None;
+            }
+        }
+    }
+
     pub fn show_folder_editor(&mut self, ui: &mut Ui) {
         let TreeSelection::Dir { current, new } = &mut self.selection else {
             return;

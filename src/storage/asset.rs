@@ -4,12 +4,13 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
 pub trait AssetTrait:
-    Serialize + DeserializeOwned + Debug + Send + Sync + Clone + PartialEq
+    Serialize + DeserializeOwned + Debug + Send + Sync + Clone + PartialEq + Default
 {
     const DIR_NAME: &'static str;
-    fn get(path: &AssetId<Self>) -> Arc<Asset<Self>>;
+    fn get(id: AssetId<Self>) -> Arc<Asset<Self>>;
     fn all() -> Vec<Arc<Asset<Self>>>;
     fn save(asset: Asset<Self>);
+    fn delete(id: AssetId<Self>);
     fn tree_entry_show(&self, ui: &mut Ui) {
         let _ = ui;
     }
@@ -20,6 +21,16 @@ pub struct Asset<T: AssetTrait> {
     pub id: AssetId<T>,
     pub name: Vec<String>,
     pub data: T,
+}
+
+impl<T: AssetTrait> Asset<T> {
+    pub fn new(name: Vec<String>) -> Self {
+        Self {
+            id: AssetId::<T>::new(),
+            name,
+            data: T::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

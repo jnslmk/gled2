@@ -40,6 +40,7 @@ impl PalettesWindow {
                         }
                         TreeSelection::Asset(palette) => {
                             palette_editor(ui, palette, &mut self.dirty);
+                            self.tree.show_delete_button(ui);
                         }
                         TreeSelection::Dir { .. } => {
                             self.tree.show_folder_editor(ui);

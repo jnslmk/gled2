@@ -66,7 +66,7 @@ impl Eq for Effect {}
 impl Clone for Effect {
     fn clone(&self) -> Self {
         Self {
-            palette: self.palette.clone(),
+            palette: self.palette,
             opacity: self.opacity,
             active: self.active,
             beat_progression_offset: self.beat_progression_offset,
@@ -181,7 +181,7 @@ impl Effect {
             self.renderer.as_ref().expect(GPU_NOT_INIT).set_buffers(
                 queue,
                 &state,
-                self.palette.as_ref().map(|palette| Palette::get(palette)),
+                self.palette.map(Palette::get),
                 &self.animation.config(),
             );
 

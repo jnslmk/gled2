@@ -1,8 +1,8 @@
 use super::{svg::Svg, App};
 use crate::{extract_output::ExtractOutput, project::Project, ui::logo::logo_image};
 use egui::{
-    load::SizedTexture, text::LayoutJob, Button, Color32, Context, Direction, ImageButton, Key,
-    Modifiers, RichText, Slider, Stroke, TextFormat, Vec2,
+    load::SizedTexture, text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers,
+    RichText, Slider, Stroke, TextFormat, Vec2,
 };
 use log::{debug, error};
 

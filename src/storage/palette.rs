@@ -1,7 +1,7 @@
 use super::{
     all_palettes,
     asset::{Asset, AssetTrait},
-    get_palette, set_palette_in_cache, Action, AssetId,
+    delete_palette_from_cache, get_palette, set_palette_in_cache, Action, AssetId,
 };
 use egui::{Color32, Rect, Shape, Vec2};
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,7 @@ pub struct Palette {
 impl AssetTrait for Palette {
     const DIR_NAME: &'static str = "palettes";
 
-    fn get(id: &AssetId<Palette>) -> Arc<Asset<Self>> {
+    fn get(id: AssetId<Palette>) -> Arc<Asset<Self>> {
         get_palette(id)
     }
 
@@ -40,6 +40,12 @@ impl AssetTrait for Palette {
         set_palette_in_cache(asset.clone());
 
         Action::SavePalette { palette: asset }.send();
+    }
+
+    fn delete(id: AssetId<Self>) {
+        delete_palette_from_cache(id);
+
+        Action::DeletePalette { id }.send();
     }
 }
 
