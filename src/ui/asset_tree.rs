@@ -16,15 +16,34 @@ impl<T: AssetTrait> Default for TreeEntry<T> {
 }
 
 impl<T: AssetTrait> TreeEntry<T> {
-    pub fn build(&self, tree_ids: &mut Vec<TreeId<T>>, builder: &mut TreeViewBuilder<usize>) {
+    pub fn build(
+        &self,
+        empty_dirs: &mut Vec<Vec<String>>,
+        tree_ids: &mut Vec<TreeId<T>>,
+        builder: &mut TreeViewBuilder<usize>,
+    ) {
         match self {
             TreeEntry::Dir(dir, children) => {
                 tree_ids.push(TreeId::Dir(dir.to_owned()));
                 builder.node(NodeBuilder::dir(tree_ids.len() - 1).label(|ui| {
                     ui.add(Label::new(dir.last().cloned().unwrap_or_default()).selectable(false));
+                    if ui.small_button("+").clicked() {
+                        let mut dir = dir.clone();
+                        dir.push("New Folder".to_string());
+                        empty_dirs.push(dir);
+                    }
                 }));
-                for entry in children.values() {
-                    entry.build(tree_ids, builder);
+                for entry in children
+                    .values()
+                    .filter(|entry| !matches!(entry, TreeEntry::Dir(..)))
+                {
+                    entry.build(empty_dirs, tree_ids, builder);
+                }
+                for entry in children
+                    .values()
+                    .filter(|entry| !matches!(entry, TreeEntry::Asset(..)))
+                {
+                    entry.build(empty_dirs, tree_ids, builder);
                 }
                 builder.close_dir();
             }
@@ -42,6 +61,7 @@ impl<T: AssetTrait> TreeEntry<T> {
     }
 }
 
+#[derive(Debug)]
 pub enum TreeId<T: AssetTrait> {
     Dir(Vec<String>),
     File(AssetId<T>),
@@ -60,6 +80,7 @@ pub enum TreeSelection<T: AssetTrait> {
 }
 
 pub struct AssetTree<T: AssetTrait> {
+    folder_dirty: bool,
     empty_dirs: Vec<Vec<String>>,
     selection: TreeSelection<T>,
 }
@@ -67,6 +88,7 @@ pub struct AssetTree<T: AssetTrait> {
 impl<T: AssetTrait> Default for AssetTree<T> {
     fn default() -> Self {
         Self {
+            folder_dirty: false,
             empty_dirs: Default::default(),
             selection: Default::default(),
         }
@@ -110,18 +132,14 @@ impl<T: AssetTrait> AssetTree<T> {
         pos
     }
 
-    pub fn add_empty_dir(&mut self, dir: Vec<String>) {
-        self.empty_dirs.push(dir.clone());
-    }
-
     pub fn show(&mut self, ui: &mut Ui) {
         let entries = self.load();
         let mut tree_ids = vec![];
 
-        let actions = TreeView::new(ui.make_persistent_id("palettes tree view"))
+        let actions = TreeView::new(ui.make_persistent_id("asset tree view"))
             .show(ui, |mut builder| {
                 for entry in entries.iter() {
-                    entry.build(&mut tree_ids, &mut builder);
+                    entry.build(&mut self.empty_dirs, &mut tree_ids, &mut builder);
                 }
             })
             .actions;
@@ -142,9 +160,29 @@ impl<T: AssetTrait> AssetTree<T> {
                         })
                         .unwrap_or_default();
                 }
-                Action::Move { source, target, .. } => {
+                Action::Drag {
+                    source,
+                    mut target,
+                    position,
+                } => {
+                    if source < target {
+                        target -= 1;
+                    }
+
                     let source = tree_ids.remove(source);
                     let target = tree_ids.remove(target);
+                    dbg!((&source, &target, &position));
+                }
+                Action::Move {
+                    source, mut target, ..
+                } => {
+                    if source < target {
+                        target -= 1;
+                    }
+
+                    let source = tree_ids.remove(source);
+                    let target = tree_ids.remove(target);
+                    dbg!((&source, &target));
                     if let (TreeId::File(source), TreeId::Dir(target)) = (source, target) {
                         let target = target.clone();
                         let mut asset = Arc::unwrap_or_clone(T::get(&source));
@@ -155,12 +193,52 @@ impl<T: AssetTrait> AssetTree<T> {
                         AssetTrait::save(asset);
                     }
                 }
-                _ => {}
             }
         }
     }
 
     pub fn selected(&mut self) -> &mut TreeSelection<T> {
         &mut self.selection
+    }
+
+    /// Shows the folder editor
+    pub fn show_folder_editor(&mut self, ui: &mut Ui) {
+        let TreeSelection::Dir { current, new } = &mut self.selection else {
+            return;
+        };
+
+        ui.label("Name:");
+        let mut name = new.last().cloned().unwrap_or_default();
+        let res = ui.text_edit_singleline(&mut name);
+        if res.changed() {
+            self.folder_dirty = true;
+            new.pop();
+            new.push(name);
+        }
+
+        if self.folder_dirty
+            && ui
+                .button("Save")
+                .on_hover_ui(|ui| {
+                    ui.label("Save all assets in this folder with new name to disk");
+                })
+                .clicked()
+        {
+            self.folder_dirty = false;
+            let assets = T::all();
+            for asset in assets {
+                if &asset.dir() == current {
+                    let mut asset = Arc::unwrap_or_clone(asset);
+                    asset.change_dir(new);
+                    AssetTrait::save(asset);
+                }
+            }
+            for empty_dir in self.empty_dirs.iter_mut() {
+                if empty_dir[..current.len()] == current[..] {
+                    empty_dir[..current.len()].clone_from_slice(&new[..]);
+                }
+            }
+            *current = new.clone();
+        }
     }
 }
