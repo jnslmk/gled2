@@ -1,9 +1,9 @@
 use super::{
     all_palettes,
     asset::{Asset, AssetTrait},
-    get_palette, AssetId,
+    get_palette, set_palette_in_cache, Action, AssetId,
 };
-use egui::Color32;
+use egui::{Color32, Rect, Shape, Vec2};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -24,6 +24,22 @@ impl AssetTrait for Palette {
 
     fn all() -> Vec<Arc<Asset<Self>>> {
         all_palettes()
+    }
+
+    fn tree_entry_show(&self, ui: &mut egui::Ui) {
+        let max = ui.next_widget_position() + Vec2::new(ui.available_width(), 0.0);
+        let color_band_rect = Rect::from_min_max(
+            ui.next_widget_position().max(max - Vec2::new(200.0, 0.0)),
+            max,
+        );
+        ui.painter()
+            .add(Shape::Mesh(self.color_band_mesh(color_band_rect)));
+    }
+
+    fn save(asset: Asset<Self>) {
+        set_palette_in_cache(asset.clone());
+
+        Action::SavePalette { palette: asset }.send();
     }
 }
 

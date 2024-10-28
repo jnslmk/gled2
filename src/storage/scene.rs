@@ -1,7 +1,7 @@
 use super::{
     all_scenes,
     asset::{Asset, AssetTrait},
-    get_scene, AssetId,
+    get_scene, set_scene_in_cache, Action, AssetId,
 };
 use crate::effect::Effect;
 use serde::{Deserialize, Serialize};
@@ -22,6 +22,12 @@ impl AssetTrait for Scene {
 
     fn all() -> Vec<Arc<Asset<Self>>> {
         all_scenes()
+    }
+
+    fn save(asset: Asset<Self>) {
+        set_scene_in_cache(asset.clone());
+
+        Action::SaveScene { scene: asset }.send();
     }
 }
 

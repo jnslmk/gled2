@@ -1,7 +1,7 @@
 use super::{
     all_projects,
     asset::{Asset, AssetTrait},
-    get_project, AssetId, Palette, Scene,
+    get_project, set_project_in_cache, Action, AssetId, Palette, Scene,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -35,5 +35,11 @@ impl AssetTrait for Project {
 
     fn all() -> Vec<Arc<Asset<Self>>> {
         all_projects()
+    }
+
+    fn save(asset: Asset<Self>) {
+        set_project_in_cache(asset.clone());
+
+        Action::SaveProject { project: asset }.send();
     }
 }

@@ -1,14 +1,18 @@
-use super::{
-    action::Action, set_palette_in_cache, set_project_in_cache, set_scene_in_cache, AssetId,
-    Palette, Project, Scene,
-};
+use super::AssetId;
+use egui::Ui;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
-pub trait AssetTrait: Serialize + DeserializeOwned + Debug + Send + Sync + Clone {
+pub trait AssetTrait:
+    Serialize + DeserializeOwned + Debug + Send + Sync + Clone + PartialEq
+{
     const DIR_NAME: &'static str;
     fn get(path: &AssetId<Self>) -> Arc<Asset<Self>>;
     fn all() -> Vec<Arc<Asset<Self>>>;
+    fn save(asset: Asset<Self>);
+    fn tree_entry_show(&self, ui: &mut Ui) {
+        let _ = ui;
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,29 +60,5 @@ impl<T: AssetTrait> Asset<T> {
         if let Some(name) = name {
             self.name.push(name);
         }
-    }
-}
-
-impl Asset<Palette> {
-    pub fn save(self) {
-        set_palette_in_cache(self.clone());
-
-        Action::SavePalette { palette: self }.send();
-    }
-}
-
-impl Asset<Project> {
-    pub fn save(self) {
-        set_project_in_cache(self.clone());
-
-        Action::SaveProject { project: self }.send();
-    }
-}
-
-impl Asset<Scene> {
-    pub fn save(self) {
-        set_scene_in_cache(self.clone());
-
-        Action::SaveScene { scene: self }.send();
     }
 }
