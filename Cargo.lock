@@ -1085,7 +1085,7 @@ dependencies = [
 [[package]]
 name = "egui_ltreeview"
 version = "0.1.7"
-source = "git+https://github.com/elwerene/egui_ltreeview.git#c3b150f6d2f42be1cbe2984e937b3bcdc117057e"
+source = "git+https://github.com/elwerene/egui_ltreeview.git#06759744e602bf0b6ea7d18777366963720af644"
 dependencies = [
  "egui",
  "serde",
