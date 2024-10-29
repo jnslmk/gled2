@@ -1,5 +1,5 @@
 use crate::storage::{Asset, AssetId, AssetTrait};
-use egui::{Button, Color32, Label, Layout, Stroke, Ui};
+use egui::{Button, Color32, Label, Stroke, Ui};
 use egui_ltreeview::{node::NodeBuilder, Action, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -25,24 +25,35 @@ impl<T: AssetTrait> TreeEntry<T> {
         match self {
             TreeEntry::Dir(dir, children) => {
                 tree_ids.push(TreeId::Dir(dir.to_owned()));
-                builder.node(NodeBuilder::dir(tree_ids.len() - 1).label(|ui| {
-                    ui.add(Label::new(dir.last().cloned().unwrap_or_default()).selectable(false));
-
-                    if ui.small_button("+Asset").clicked() {
-                        let mut name = dir.clone();
-                        name.push("New Asset".to_string());
-                        let mut asset = Asset::<T>::new(name);
-                        asset.change_dir(dir);
-                        AssetTrait::save(asset);
-                    }
-                    if ui.small_button("+Dir").clicked() {
-                        let mut dir = dir.clone();
-                        dir.push("New Folder".to_string());
-                        if !empty_dirs.contains(&dir) {
-                            empty_dirs.push(dir);
-                        }
-                    }
-                }));
+                builder.node(
+                    NodeBuilder::dir(tree_ids.len() - 1)
+                        .icon(|ui| {
+                            ui.menu_button("+", |ui| {
+                                if ui.button("Folder").clicked() {
+                                    let mut dir = dir.clone();
+                                    dir.push("New Folder".to_string());
+                                    if !empty_dirs.contains(&dir) {
+                                        empty_dirs.push(dir);
+                                    }
+                                    ui.close_menu();
+                                }
+                                if ui.button("Asset").clicked() {
+                                    let mut name = dir.clone();
+                                    name.push("New Asset".to_string());
+                                    let mut asset = Asset::<T>::new(name);
+                                    asset.change_dir(dir);
+                                    AssetTrait::save(asset);
+                                    ui.close_menu();
+                                }
+                            });
+                        })
+                        .label(|ui| {
+                            ui.add(
+                                Label::new(dir.last().cloned().unwrap_or_default())
+                                    .selectable(false),
+                            );
+                        }),
+                );
                 for entry in children
                     .values()
                     .filter(|entry| !matches!(entry, TreeEntry::Dir(..)))
@@ -143,12 +154,17 @@ impl<T: AssetTrait> AssetTree<T> {
     }
 
     pub fn show(&mut self, ui: &mut Ui) {
-        if ui.small_button("+Dir").clicked() {
-            let dir = vec!["New Folder".to_string()];
-            if !self.empty_dirs.contains(&dir) {
-                self.empty_dirs.push(dir);
+        ui.horizontal(|ui| {
+            if ui.button("+Folder").clicked() {
+                let dir = vec!["New Folder".to_string()];
+                if !self.empty_dirs.contains(&dir) {
+                    self.empty_dirs.push(dir);
+                }
             }
-        }
+            if ui.button("Clear Empty Folders").clicked() {
+                self.empty_dirs.clear();
+            }
+        });
 
         let entries = self.load();
         let mut tree_ids = vec![];

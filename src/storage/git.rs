@@ -274,6 +274,29 @@ impl Git {
         Ok(())
     }
 
+    fn delete(&self, file: &Path) -> Result<(), Error> {
+        log::info!("Deleting file: {}", file.display());
+
+        let repository = self
+            .repository
+            .as_ref()
+            .ok_or(Error::from_str("No repository set"))?;
+
+        let root = repository
+            .path()
+            .parent()
+            .ok_or_else(|| Error::from_str("No parent"))?;
+        let file = file
+            .strip_prefix(root)
+            .map_err(|_err| Error::from_str("Could not make path relative"))?;
+
+        let mut index = repository.index()?;
+        index.remove_path(file)?;
+        index.write()?;
+
+        Ok(())
+    }
+
     fn commit(&self, msg: &str) -> Result<(), Error> {
         log::info!("Committing..");
 
@@ -337,8 +360,8 @@ impl Git {
         if let Err(err) = std::fs::remove_file(path) {
             return Err(format!("Could not remove file: {err:?}"));
         }
-        if let Err(err) = self.add(path) {
-            return Err(format!("Could not add file to git: {err:?}"));
+        if let Err(err) = self.delete(path) {
+            return Err(format!("Could not delete file from git: {err:?}"));
         }
 
         Ok(())
