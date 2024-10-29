@@ -1,5 +1,5 @@
 use crate::storage::{Asset, AssetId, AssetTrait};
-use egui::{Button, Color32, Label, Stroke, Ui};
+use egui::{Align, Button, Color32, Label, Layout, Stroke, Ui};
 use egui_ltreeview::{node::NodeBuilder, Action, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -223,15 +223,17 @@ impl<T: AssetTrait> AssetTree<T> {
     }
 
     pub fn show_delete_button(&mut self, ui: &mut Ui) {
-        if let TreeSelection::Asset(asset) = &self.selection {
-            if ui
-                .add(Button::new("Delete").stroke(Stroke::new(3.0, Color32::RED)))
-                .clicked()
-            {
-                AssetTrait::delete(asset.id);
-                self.selection = TreeSelection::None;
+        ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
+            if let TreeSelection::Asset(asset) = &self.selection {
+                if ui
+                    .add(Button::new("Delete").stroke(Stroke::new(3.0, Color32::RED)))
+                    .clicked()
+                {
+                    AssetTrait::delete(asset.id);
+                    self.selection = TreeSelection::None;
+                }
             }
-        }
+        });
     }
 
     pub fn show_folder_editor(&mut self, ui: &mut Ui) {

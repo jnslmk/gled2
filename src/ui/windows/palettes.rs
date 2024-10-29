@@ -2,7 +2,7 @@ use crate::{
     storage::{Asset, AssetTrait, Palette},
     ui::asset_tree::{AssetTree, TreeSelection},
 };
-use egui::{Context, Margin, Ui};
+use egui::{Context, Layout, Margin, Ui};
 
 #[derive(Default)]
 pub struct PalettesWindow {
@@ -83,15 +83,17 @@ pub fn palette_editor(ui: &mut Ui, palette: &mut Asset<Palette>, dirty: &mut boo
         });
     });
 
-    if *dirty
-        && ui
+    if *dirty {
+        ui.add_space(4.0);
+        if ui
             .button("Save")
             .on_hover_ui(|ui| {
                 ui.label("Save the palette to disk");
             })
             .clicked()
-    {
-        *dirty = false;
-        AssetTrait::save(palette.clone());
+        {
+            *dirty = false;
+            AssetTrait::save(palette.clone());
+        }
     }
 }
