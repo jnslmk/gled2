@@ -2,7 +2,8 @@ use crate::{
     storage::{Asset, AssetTrait, Palette},
     ui::asset_tree::{AssetTree, TreeSelection},
 };
-use egui::{Context, Layout, Margin, Ui};
+use egui::{Button, Context, Margin, Ui};
+use std::sync::Arc;
 
 #[derive(Default)]
 pub struct PalettesWindow {
@@ -83,10 +84,10 @@ pub fn palette_editor(ui: &mut Ui, palette: &mut Asset<Palette>, dirty: &mut boo
         });
     });
 
-    if *dirty {
-        ui.add_space(4.0);
+    ui.add_space(4.0);
+    ui.horizontal(|ui| {
         if ui
-            .button("Save")
+            .add_enabled(*dirty, Button::new("Save"))
             .on_hover_ui(|ui| {
                 ui.label("Save the palette to disk");
             })
@@ -95,5 +96,15 @@ pub fn palette_editor(ui: &mut Ui, palette: &mut Asset<Palette>, dirty: &mut boo
             *dirty = false;
             AssetTrait::save(palette.clone());
         }
-    }
+        if ui
+            .add_enabled(*dirty, Button::new("Reset"))
+            .on_hover_ui(|ui| {
+                ui.label("Reset to state on disk");
+            })
+            .clicked()
+        {
+            *dirty = false;
+            *palette = Arc::unwrap_or_clone(Palette::get(palette.id));
+        }
+    });
 }
