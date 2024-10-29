@@ -226,7 +226,7 @@ impl<T: AssetTrait> AssetTree<T> {
         ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
             if let TreeSelection::Asset(asset) = &self.selection {
                 if ui
-                    .add(Button::new("Delete").stroke(Stroke::new(3.0, Color32::RED)))
+                    .add(Button::new("Delete").fill(Color32::DARK_RED))
                     .clicked()
                 {
                     AssetTrait::delete(asset.id);
