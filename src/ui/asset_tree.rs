@@ -27,20 +27,21 @@ impl<T: AssetTrait> TreeEntry<T> {
                 tree_ids.push(TreeId::Dir(dir.to_owned()));
                 builder.node(NodeBuilder::dir(tree_ids.len() - 1).label(|ui| {
                     ui.add(Label::new(dir.last().cloned().unwrap_or_default()).selectable(false));
-                    ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.small_button("+Asset").clicked() {
-                            let mut name = dir.clone();
-                            name.push("New Asset".to_string());
-                            let mut asset = Asset::<T>::new(name);
-                            asset.change_dir(dir);
-                            AssetTrait::save(asset);
-                        }
-                        if ui.small_button("+Dir").clicked() {
-                            let mut dir = dir.clone();
-                            dir.push("New Folder".to_string());
+
+                    if ui.small_button("+Asset").clicked() {
+                        let mut name = dir.clone();
+                        name.push("New Asset".to_string());
+                        let mut asset = Asset::<T>::new(name);
+                        asset.change_dir(dir);
+                        AssetTrait::save(asset);
+                    }
+                    if ui.small_button("+Dir").clicked() {
+                        let mut dir = dir.clone();
+                        dir.push("New Folder".to_string());
+                        if !empty_dirs.contains(&dir) {
                             empty_dirs.push(dir);
                         }
-                    });
+                    }
                 }));
                 for entry in children
                     .values()
@@ -142,6 +143,13 @@ impl<T: AssetTrait> AssetTree<T> {
     }
 
     pub fn show(&mut self, ui: &mut Ui) {
+        if ui.small_button("+Dir").clicked() {
+            let dir = vec!["New Folder".to_string()];
+            if !self.empty_dirs.contains(&dir) {
+                self.empty_dirs.push(dir);
+            }
+        }
+
         let entries = self.load();
         let mut tree_ids = vec![];
 
@@ -242,7 +250,7 @@ impl<T: AssetTrait> AssetTree<T> {
                 }
             }
             for empty_dir in self.empty_dirs.iter_mut() {
-                if empty_dir[..current.len()] == current[..] {
+                if empty_dir.len() > current.len() && empty_dir[..current.len()] == current[..] {
                     empty_dir[..current.len()].clone_from_slice(&new[..]);
                 }
             }
