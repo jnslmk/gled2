@@ -21,6 +21,7 @@ impl<T: AssetTrait> TreeEntry<T> {
         empty_dirs: &mut Vec<Vec<String>>,
         tree_ids: &mut Vec<TreeId<T>>,
         builder: &mut TreeViewBuilder<usize>,
+        only_asset_selection: bool,
     ) {
         match self {
             TreeEntry::Dir(dir, children) => {
@@ -28,52 +29,54 @@ impl<T: AssetTrait> TreeEntry<T> {
                 builder.node(
                     NodeBuilder::dir(tree_ids.len() - 1)
                         .icon(|ui| {
-                            ui.menu_button("+", |ui| {
-                                let new_dir_name = {
-                                    let mut name = dir.clone();
-                                    name.push("New Folder".to_string());
-                                    name
-                                };
-                                if ui
-                                    .add_enabled(
-                                        !empty_dirs.contains(&new_dir_name)
-                                            && !children.values().any(|child| {
-                                                let TreeEntry::Dir(dir, ..) = child else {
+                            if !only_asset_selection {
+                                ui.menu_button("+", |ui| {
+                                    let new_dir_name = {
+                                        let mut name = dir.clone();
+                                        name.push("New Folder".to_string());
+                                        name
+                                    };
+                                    if ui
+                                        .add_enabled(
+                                            !empty_dirs.contains(&new_dir_name)
+                                                && !children.values().any(|child| {
+                                                    let TreeEntry::Dir(dir, ..) = child else {
+                                                        return false;
+                                                    };
+                                                    dir == &new_dir_name
+                                                }),
+                                            Button::new("Folder"),
+                                        )
+                                        .clicked()
+                                    {
+                                        empty_dirs.push(new_dir_name);
+                                        ui.close_menu();
+                                    }
+
+                                    let new_asset_name = {
+                                        let mut name = dir.clone();
+                                        name.push("New Asset".to_string());
+                                        name
+                                    };
+                                    if ui
+                                        .add_enabled(
+                                            !children.values().any(|child| {
+                                                let TreeEntry::Asset(asset) = child else {
                                                     return false;
                                                 };
-                                                dir == &new_dir_name
+                                                asset.name == new_asset_name
                                             }),
-                                        Button::new("Folder"),
-                                    )
-                                    .clicked()
-                                {
-                                    empty_dirs.push(new_dir_name);
-                                    ui.close_menu();
-                                }
-
-                                let new_asset_name = {
-                                    let mut name = dir.clone();
-                                    name.push("New Asset".to_string());
-                                    name
-                                };
-                                if ui
-                                    .add_enabled(
-                                        !children.values().any(|child| {
-                                            let TreeEntry::Asset(asset) = child else {
-                                                return false;
-                                            };
-                                            asset.name == new_asset_name
-                                        }),
-                                        Button::new("Asset"),
-                                    )
-                                    .clicked()
-                                {
-                                    let mut asset = Asset::<T>::new(new_asset_name);
-                                    asset.change_dir(dir);
-                                    AssetTrait::save(asset);
-                                    ui.close_menu();
-                                }
-                            });
+                                            Button::new("Asset"),
+                                        )
+                                        .clicked()
+                                    {
+                                        let mut asset = Asset::<T>::new(new_asset_name);
+                                        asset.change_dir(dir);
+                                        AssetTrait::save(asset);
+                                        ui.close_menu();
+                                    }
+                                });
+                            }
                         })
                         .label(|ui| {
                             ui.add(
@@ -86,13 +89,13 @@ impl<T: AssetTrait> TreeEntry<T> {
                     .values()
                     .filter(|entry| !matches!(entry, TreeEntry::Dir(..)))
                 {
-                    entry.build(empty_dirs, tree_ids, builder);
+                    entry.build(empty_dirs, tree_ids, builder, only_asset_selection);
                 }
                 for entry in children
                     .values()
                     .filter(|entry| !matches!(entry, TreeEntry::Asset(..)))
                 {
-                    entry.build(empty_dirs, tree_ids, builder);
+                    entry.build(empty_dirs, tree_ids, builder, only_asset_selection);
                 }
                 builder.close_dir();
             }
@@ -129,6 +132,7 @@ pub enum TreeSelection<T: AssetTrait> {
 }
 
 pub struct AssetTree<T: AssetTrait> {
+    only_asset_selection: bool,
     folder_dirty: bool,
     empty_dirs: Vec<Vec<String>>,
     selection: TreeSelection<T>,
@@ -137,6 +141,7 @@ pub struct AssetTree<T: AssetTrait> {
 impl<T: AssetTrait> Default for AssetTree<T> {
     fn default() -> Self {
         Self {
+            only_asset_selection: false,
             folder_dirty: false,
             empty_dirs: Default::default(),
             selection: Default::default(),
@@ -185,41 +190,48 @@ impl<T: AssetTrait> AssetTree<T> {
         let entries = self.load();
         let mut tree_ids = vec![];
 
-        ui.horizontal(|ui| {
-            let new_dir_name = vec!["New Folder".to_string()];
-            if ui
-                .add_enabled(
-                    !self.empty_dirs.contains(&new_dir_name)
-                        && !entries.iter().any(|child| {
-                            let TreeEntry::Dir(dir, ..) = child else {
-                                return false;
-                            };
-                            dir == &new_dir_name
-                        }),
-                    Button::new("+Folder"),
-                )
-                .clicked()
-            {
-                self.empty_dirs.push(new_dir_name);
-            }
-            if ui
-                .add_enabled(
-                    !self.empty_dirs.is_empty(),
-                    Button::new("Clear Empty Folders"),
-                )
-                .clicked()
-            {
-                if matches!(self.selection, TreeSelection::Dir { .. }) {
-                    self.selection = TreeSelection::None;
+        if !self.only_asset_selection {
+            ui.horizontal(|ui| {
+                let new_dir_name = vec!["New Folder".to_string()];
+                if ui
+                    .add_enabled(
+                        !self.empty_dirs.contains(&new_dir_name)
+                            && !entries.iter().any(|child| {
+                                let TreeEntry::Dir(dir, ..) = child else {
+                                    return false;
+                                };
+                                dir == &new_dir_name
+                            }),
+                        Button::new("+Folder"),
+                    )
+                    .clicked()
+                {
+                    self.empty_dirs.push(new_dir_name);
                 }
-                self.empty_dirs.clear();
-            }
-        });
+                if ui
+                    .add_enabled(
+                        !self.empty_dirs.is_empty(),
+                        Button::new("Clear Empty Folders"),
+                    )
+                    .clicked()
+                {
+                    if matches!(self.selection, TreeSelection::Dir { .. }) {
+                        self.selection = TreeSelection::None;
+                    }
+                    self.empty_dirs.clear();
+                }
+            });
+        }
 
         let actions = TreeView::new(ui.make_persistent_id("asset tree view"))
             .show(ui, |mut builder| {
                 for entry in entries.iter() {
-                    entry.build(&mut self.empty_dirs, &mut tree_ids, &mut builder);
+                    entry.build(
+                        &mut self.empty_dirs,
+                        &mut tree_ids,
+                        &mut builder,
+                        self.only_asset_selection,
+                    );
                 }
             })
             .actions;
@@ -320,6 +332,18 @@ impl<T: AssetTrait> AssetTree<T> {
                 }
             }
             *current = new.clone();
+        }
+    }
+
+    pub fn show_asset_selection(ui: &mut Ui) -> Option<AssetId<T>> {
+        let mut tree = AssetTree {
+            only_asset_selection: true,
+            ..Default::default()
+        };
+        tree.show(ui);
+        match tree.selection {
+            TreeSelection::Asset(asset) => Some(asset.id),
+            _ => None,
         }
     }
 }

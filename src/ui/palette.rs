@@ -1,8 +1,8 @@
-use super::ChangeButton;
+use super::{asset_tree::AssetTree, ChangeButton};
 use crate::storage::{AssetId, AssetTrait, Palette};
 use egui::{
     epaint::{Vertex, WHITE_UV},
-    Button, Color32, Mesh, Rect, Shape, Ui, Vec2,
+    Color32, Mesh, Rect, Shape, Ui, Vec2,
 };
 
 impl ChangeButton for Option<AssetId<Palette>> {
@@ -10,19 +10,25 @@ impl ChangeButton for Option<AssetId<Palette>> {
         let palette = self.map(Palette::get);
         let response = ui
             .vertical_centered_justified(|ui| {
-                ui.add(Button::new(if palette.is_some() {
-                    ""
-                } else {
-                    "📂 Select Palette"
-                }))
+                ui.menu_button(
+                    if palette.is_some() {
+                        ""
+                    } else {
+                        "📂 Select Palette"
+                    },
+                    |ui| {
+                        if let Some(id) = AssetTree::show_asset_selection(ui) {
+                            *self = Some(id);
+                            ui.close_menu();
+                        }
+                    },
+                )
+                .response
             })
             .inner;
         if let Some(palette) = palette {
             ui.painter()
                 .add(Shape::mesh(palette.data.color_band_mesh(response.rect)));
-        }
-        if response.clicked() {
-            println!("Selecting palette");
         }
     }
 }

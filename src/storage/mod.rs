@@ -70,7 +70,9 @@ pub fn start_thread() {
                 match git::Git::open("git@git.freshx.de:rene/gled2_assets.git".to_string()) {
                     Ok(git) => git,
                     Err(err) => {
-                        *STATE.lock() = State::Error(format!("Could not open git: {err}"));
+                        let err: String = format!("Could not open git: {err}");
+                        log::error!("{err}");
+                        *STATE.lock() = State::Error(err);
                         continue;
                     }
                 };
@@ -80,7 +82,9 @@ pub fn start_thread() {
             let branches = match git.branches() {
                 Ok(branches) => branches,
                 Err(err) => {
-                    *STATE.lock() = State::Error(format!("Could not get branches: {err}"));
+                    let err: String = format!("Could not get branches: {err}");
+                    log::error!("{err}");
+                    *STATE.lock() = State::Error(err);
                     continue;
                 }
             };
@@ -90,7 +94,9 @@ pub fn start_thread() {
             let current_branch = match git.current_branch() {
                 Ok(current_branch) => current_branch,
                 Err(err) => {
-                    *STATE.lock() = State::Error(format!("Could not get current_branch: {err}"));
+                    let err: String = format!("Could not get current_branch: {err}");
+                    log::error!("{err}");
+                    *STATE.lock() = State::Error(err);
                     continue;
                 }
             };

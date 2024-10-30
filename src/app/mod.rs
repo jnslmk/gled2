@@ -40,7 +40,6 @@ pub struct App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if let Some(loading) = crate::storage::loading_state() {
-            println!("Loading: {:.0}%", loading * 100.0);
             //TODO: Display
         } else if let Some(err) = crate::storage::error_state() {
             println!("Error: {}", err);
