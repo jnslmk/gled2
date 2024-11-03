@@ -2,7 +2,7 @@ use super::{svg::Svg, App, PersistantState};
 use crate::{extract_output::ExtractOutput, project::Project, ui::logo::logo_image};
 use egui::{
     load::SizedTexture, text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers,
-    RichText, Slider, Stroke, TextFormat, Vec2,
+    Slider, Stroke, TextFormat, Vec2,
 };
 use log::{debug, error};
 
@@ -168,7 +168,7 @@ impl App {
                 ui.menu_button("Config", |ui| {
                     ui.set_min_width(300.0);
 
-                    ui.label(RichText::new("Framerate Limiter").heading());
+                    ui.label("Framerate Limiter");
                     let mut fps_limit = PersistantState::fps_limit();
                     if ui
                         .add(
@@ -185,35 +185,29 @@ impl App {
 
                     ui.separator();
 
-                    if ui
-                        .button(RichText::new("Output Devices").heading())
-                        .clicked()
-                    {
+                    if ui.button("Output Devices").clicked() {
                         self.windows.output_devices.open();
                         ui.close_menu();
                     }
-                    if ui
-                        .button(RichText::new("Output Routings").heading())
-                        .clicked()
-                    {
+                    if ui.button("Output Routings").clicked() {
                         self.windows.output_routings.open();
                         ui.close_menu();
                     }
 
                     ui.separator();
 
-                    if ui.button(RichText::new("Shortcuts").heading()).clicked() {
+                    if ui.button("Shortcuts").clicked() {
                         self.windows.shortcuts.open();
                         ui.close_menu();
                     }
-                    if ui.button(RichText::new("Artnet Input").heading()).clicked() {
+                    if ui.button("Artnet Input").clicked() {
                         self.windows.artnet_input.open();
                         ui.close_menu();
                     }
 
                     ui.separator();
 
-                    ui.label(RichText::new("Main Dimmer").heading());
+                    ui.label("Main Dimmer");
 
                     let mut main_dimmer = PersistantState::main_dimmer();
                     if ui
@@ -231,14 +225,14 @@ impl App {
 
                     ui.separator();
 
-                    ui.label(RichText::new("UI Zoom").heading());
+                    ui.label("UI Zoom");
                     egui::gui_zoom::zoom_menu_buttons(ui);
                 });
 
                 ui.menu_button("Assets", |ui| {
                     ui.set_min_width(300.0);
 
-                    if ui.button(RichText::new("Palettes").heading()).clicked() {
+                    if ui.button("Palettes").clicked() {
                         self.windows.palettes.open();
                         ui.close_menu();
                     }
