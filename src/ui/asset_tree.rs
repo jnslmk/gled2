@@ -1,5 +1,5 @@
 use crate::storage::{Asset, AssetId, AssetTrait};
-use egui::{Align, Button, Color32, Label, Layout, Ui};
+use egui::{Align, Button, Color32, Label, Layout, Rect, Ui, Vec2};
 use egui_ltreeview::{node::NodeBuilder, Action, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -106,7 +106,13 @@ impl<T: AssetTrait> TreeEntry<T> {
                         Label::new(asset.name.last().cloned().unwrap_or_default())
                             .selectable(false),
                     );
-                    asset.data.tree_entry_show(ui);
+
+                    let max = ui.next_widget_position() + Vec2::new(ui.available_width(), 0.0);
+                    let rect = Rect::from_min_max(
+                        ui.next_widget_position().max(max - Vec2::new(200.0, 0.0)),
+                        max,
+                    );
+                    asset.data.show(ui, rect);
                 }));
             }
         }

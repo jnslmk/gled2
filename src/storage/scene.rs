@@ -11,6 +11,7 @@ pub struct Scene {
 
 impl AssetTrait for Scene {
     const DIR_NAME: &'static str = "scenes";
+    const NAME: &'static str = "Scene";
 }
 
 pub struct SceneInstance {

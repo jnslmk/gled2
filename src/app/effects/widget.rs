@@ -1,7 +1,11 @@
-use crate::{effect::Effect, storage::Asset, ui::group::group_button};
+use crate::{
+    effect::Effect,
+    storage::{Asset, AssetTrait},
+    ui::group::group_button,
+};
 use egui::{
     load::SizedTexture, Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding,
-    Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
+    Sense, Slider, TextureId, Ui, Vec2, Widget,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -113,9 +117,7 @@ impl<'a> Widget for EffectWidget<'a> {
                                         ui.next_widget_position() - Vec2::new(2.0, 0.0),
                                     );
                                     if let Some(palette) = self.effect.palette.map(Asset::get) {
-                                        ui.painter().add(Shape::mesh(
-                                            palette.data.color_band_mesh(color_band_rect),
-                                        ));
+                                        palette.data.show(ui, color_band_rect);
                                     }
                                 });
                             });

@@ -1,5 +1,5 @@
 use super::{collection::Collection, Action, AssetId, State, STATE};
-use egui::Ui;
+use egui::Rect;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
@@ -7,9 +7,11 @@ pub trait AssetTrait:
     Serialize + DeserializeOwned + Debug + Send + Sync + Clone + Default + 'static
 {
     const DIR_NAME: &'static str;
+    const NAME: &'static str;
 
-    fn tree_entry_show(&self, ui: &mut Ui) {
+    fn show(&self, ui: &mut egui::Ui, rect: Rect) {
         let _ = ui;
+        let _ = rect;
     }
 }
 
