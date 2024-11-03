@@ -1,7 +1,7 @@
 use super::asset::{Asset, AssetTrait};
 use crate::storage::AssetId;
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use std::{collections::HashMap, fmt::Debug, path::PathBuf, str::FromStr, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, path::Path, str::FromStr, sync::Arc};
 use typemap::Key;
 use uuid::Uuid;
 
@@ -13,7 +13,8 @@ impl<T: AssetTrait + 'static> Key for Collection<T> {
 }
 
 impl<T: AssetTrait> Collection<T> {
-    pub fn load(path: PathBuf) -> Self {
+    pub fn load(path: &Path) -> Self {
+        let path = path.join(T::DIR_NAME);
         let Ok(directory) = path.read_dir() else {
             return Self(HashMap::new());
         };

@@ -1,13 +1,26 @@
+mod curve;
+mod output_device;
+mod palette;
+mod project;
+mod scene;
+
 use super::{collection::Collection, Action, AssetId, State, STATE};
 use egui::Rect;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
+pub use curve::Curve;
+pub use output_device::OutputDevice;
+pub use palette::Palette;
+pub use project::Project;
+pub use scene::Scene;
+
 pub trait AssetTrait:
-    Serialize + DeserializeOwned + Debug + Send + Sync + Clone + Default + 'static
+    Serialize + DeserializeOwned + Debug + Default + Send + Sync + Clone + 'static
 {
     const DIR_NAME: &'static str;
     const NAME: &'static str;
+    const SHOW_NAME_IF_SELECTED: bool = false;
 
     fn show(&self, ui: &mut egui::Ui, rect: Rect) {
         let _ = ui;
@@ -26,35 +39,31 @@ struct AssetOnDisk<T: AssetTrait> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Asset<T: AssetTrait> {
     pub id: AssetId<T>,
-    pub name: Vec<String>,
+    pub path: Vec<String>,
     pub data: T,
 }
 
+impl<T: AssetTrait> Default for Asset<T> {
+    fn default() -> Self {
+        Self::new(vec![format!("New {}", T::NAME)])
+    }
+}
+
 impl<T: AssetTrait> Asset<T> {
-    pub fn new(name: Vec<String>) -> Self {
+    pub fn new(path: Vec<String>) -> Self {
         Self {
             id: AssetId::<T>::new(),
-            name,
+            path,
             data: T::default(),
         }
     }
 
-    pub fn get(id: AssetId<T>) -> Arc<Self> {
+    pub fn get(id: AssetId<T>) -> Option<Arc<Self>> {
         let state: &State = &STATE.lock();
-        if let State::Opened { collections, .. } = state {
-            if let Some(asset) = collections
-                .get::<Collection<T>>()
-                .and_then(|collection| collection.get(&id))
-            {
-                return asset.clone();
-            }
-        }
-
-        Arc::new(Asset {
-            id: id.to_owned(),
-            name: Default::default(),
-            data: Default::default(),
-        })
+        let State::Opened { collections, .. } = state else {
+            return None;
+        };
+        collections.get::<Collection<T>>()?.get(&id).cloned()
     }
 
     pub fn all() -> Vec<Arc<Asset<T>>> {
@@ -101,14 +110,14 @@ impl<T: AssetTrait> Asset<T> {
 
         Ok(Arc::new(Self {
             id,
-            name: asset.name,
+            path: asset.name,
             data: asset.data,
         }))
     }
 
     pub fn into_json(self) -> Result<String, simd_json::Error> {
         let asset = AssetOnDisk {
-            name: self.name,
+            name: self.path,
             data: self.data,
         };
 
@@ -116,14 +125,21 @@ impl<T: AssetTrait> Asset<T> {
     }
 
     pub fn dir(&self) -> Vec<String> {
-        self.name[..self.name.len() - 1].to_owned()
+        self.path[..self.path.len() - 1].to_owned()
+    }
+
+    pub fn name(&self) -> &str {
+        self.path
+            .last()
+            .map(|name| name.as_str())
+            .unwrap_or("No name")
     }
 
     pub fn change_dir(&mut self, new_dir: &[String]) {
-        let name = self.name.pop();
-        self.name = new_dir.to_owned();
+        let name = self.path.pop();
+        self.path = new_dir.to_owned();
         if let Some(name) = name {
-            self.name.push(name);
+            self.path.push(name);
         }
     }
 }

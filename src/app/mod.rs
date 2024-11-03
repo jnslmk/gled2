@@ -160,7 +160,6 @@ impl App {
         self.pipeline = project.pipeline;
         self.pipeline.init_gpu();
 
-        *ExtractOutput::get().devices.lock() = project.output_devices;
         *ExtractOutput::get().routings.lock() = project.output_routings;
 
         svg::reset();

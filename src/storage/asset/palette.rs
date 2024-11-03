@@ -1,4 +1,4 @@
-use super::asset::AssetTrait;
+use super::AssetTrait;
 use egui::{
     epaint::{Vertex, WHITE_UV},
     Color32, Mesh, Rect, Shape, Vec2,

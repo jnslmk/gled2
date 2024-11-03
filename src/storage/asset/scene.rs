@@ -1,4 +1,4 @@
-use super::asset::AssetTrait;
+use super::AssetTrait;
 use crate::effect::Effect;
 use serde::{Deserialize, Serialize};
 

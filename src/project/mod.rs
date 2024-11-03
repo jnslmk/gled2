@@ -1,20 +1,17 @@
-mod output;
+mod output_routings;
 
 use crate::{app::Svg, pipeline::Pipeline};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::path::Path;
-use uuid::Uuid;
 
-pub use output::{OutputDevice, OutputDeviceKind, OutputRoutings};
+pub use output_routings::OutputRoutings;
 
 #[derive(Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Project {
     pub pipeline: Pipeline,
     pub svg: Option<Svg>,
-    pub output_devices: BTreeMap<Uuid, OutputDevice>,
     pub output_routings: OutputRoutings,
 }
 

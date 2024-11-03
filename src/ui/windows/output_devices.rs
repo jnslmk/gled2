@@ -1,22 +1,38 @@
 use crate::{
-    extract_output::ExtractOutput,
-    project::{OutputDevice, OutputDeviceKind},
+    storage::{Asset, AssetId, OutputDevice},
+    ui::asset_tree::{AssetTree, TreeSelection},
 };
-use egui::{Button, Color32, ComboBox, TextEdit};
-use egui_extras::{Column, TableBuilder};
-use std::collections::HashMap;
-use strum::IntoEnumIterator;
-use uuid::Uuid;
+use egui::{Button, ComboBox, Margin, TextEdit, Ui};
+use std::{collections::HashMap, sync::Arc};
+use strum::{EnumIter, IntoEnumIterator, IntoStaticStr};
+
+#[derive(Clone, Copy, Debug, IntoStaticStr, PartialEq, Eq, EnumIter)]
+pub enum OutputDeviceKind {
+    Artnet,
+    WledDRGB,
+    WledDNRGB,
+}
+
+impl OutputDevice {
+    pub fn kind(&self) -> OutputDeviceKind {
+        match self {
+            OutputDevice::Artnet { .. } => OutputDeviceKind::Artnet,
+            OutputDevice::WledDRGB { .. } => OutputDeviceKind::WledDRGB,
+            OutputDevice::WledDNRGB { .. } => OutputDeviceKind::WledDNRGB,
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct OutputDevicesWindow {
     open: bool,
-    device_strings: HashMap<Uuid, DeviceStrings>,
+    dirty: bool,
+    tree: AssetTree<OutputDevice>,
+    device_strings: HashMap<AssetId<OutputDevice>, DeviceStrings>,
 }
 
 #[derive(Default)]
 struct DeviceStrings {
-    name: Option<String>,
     ip: Option<String>,
     port: Option<String>,
     universes: Option<String>,
@@ -36,229 +52,203 @@ impl OutputDevicesWindow {
             .resizable(true)
             .default_pos(ctx.available_rect().center())
             .show(ctx, |ui| {
-                ui.vertical_centered_justified(|ui| {
-                    if ui.button("Add device").clicked() {
-                        let mut devices = ExtractOutput::get().devices.lock();
-                        devices.insert(
-                            Uuid::new_v4(),
-                            OutputDevice::Artnet {
-                                name: "New Artnet device".into(),
-                                ip: [127, 0, 0, 1].into(),
-                                universes: vec![],
-                            },
-                        );
-                    }
-                });
-                TableBuilder::new(ui)
-                    .column(Column::exact(100.0))
-                    .column(Column::exact(150.0))
-                    .column(Column::exact(100.0))
-                    .column(Column::remainder())
-                    .column(Column::exact(20.0))
-                    .striped(true)
-                    .header(20.0, |mut header| {
-                        header.col(|ui| {
-                            ui.heading("Kind");
-                        });
-                        header.col(|ui| {
-                            ui.heading("Name");
-                        });
-                        header.col(|ui| {
-                            ui.heading("IP");
-                        });
-                        header.col(|_ui| {});
-                        header.col(|_ui| {});
-                    })
-                    .body(|mut body| {
-                        //TODO: Save in storage instead!
-                        let extract_output = ExtractOutput::get();
-                        let mut devices = extract_output.devices.lock();
-                        let mut remove = None;
-
-                        for (id, device) in devices.iter_mut() {
-                            let mut kind = device.kind();
-
-                            body.row(30.0, |mut row| {
-                                row.col(|ui| {
-                                    ComboBox::new(format!("{id}_kind"), "Kind")
-                                        .selected_text({
-                                            let name: &'static str = kind.into();
-                                            name
-                                        })
-                                        .width(100.0)
-                                        .show_ui(ui, |ui| {
-                                            for k in OutputDeviceKind::iter() {
-                                                if ui
-                                                    .selectable_value(&mut kind, k, {
-                                                        let name: &'static str = k.into();
-                                                        name
-                                                    })
-                                                    .changed()
-                                                {
-                                                    match kind {
-                                                        OutputDeviceKind::Artnet => {
-                                                            *device = OutputDevice::Artnet {
-                                                                name: "New Artnet device".into(),
-                                                                ip: [127, 0, 0, 1].into(),
-                                                                universes: vec![],
-                                                            }
-                                                        }
-                                                        OutputDeviceKind::WledDRGB => {
-                                                            *device = OutputDevice::WledDRGB {
-                                                                name: "New Wled DRGB device".into(),
-                                                                ip: [127, 0, 0, 1].into(),
-                                                                port: 1324,
-                                                            }
-                                                        }
-                                                        OutputDeviceKind::WledDNRGB => {
-                                                            *device = OutputDevice::WledDNRGB {
-                                                                name: "New Wled DNRGB device"
-                                                                    .into(),
-                                                                ip: [127, 0, 0, 1].into(),
-                                                                port: 1324,
-                                                                start: 0,
-                                                            }
-                                                        }
-                                                    }
-
-                                                    self.device_strings.remove(id);
-                                                }
-                                            }
-                                        });
-                                });
-
-                                let device_strings = self.device_strings.entry(*id).or_default();
-
-                                row.col(|ui| {
-                                    let name = device_strings
-                                        .name
-                                        .get_or_insert_with(|| device.name().to_string());
-                                    if ui.add(TextEdit::singleline(name)).changed() {
-                                        device.set_name(name.clone());
-                                    }
-                                });
-                                row.col(|ui| {
-                                    let ip = device_strings
-                                        .ip
-                                        .get_or_insert_with(|| device.ip().to_string());
-
-                                    if ui.add(TextEdit::singleline(ip)).changed() {
-                                        if let Ok(ip) = ip.parse() {
-                                            device.set_ip(ip);
-                                        }
-                                    }
-                                });
-                                row.col(|ui| {
-                                    ui.horizontal(|ui| {
-                                        if let OutputDevice::Artnet { universes, .. } = device {
-                                            ui.label("Universes:");
-                                            let universes =
-                                                device_strings.universes.get_or_insert_with(|| {
-                                                    universes
-                                                        .iter()
-                                                        .map(|universe| universe.to_string())
-                                                        .collect::<Vec<_>>()
-                                                        .join(", ")
-                                                });
-
-                                            if ui.add(TextEdit::singleline(universes)).changed() {
-                                                let universes = universes
-                                                    .split(',')
-                                                    .map(|universe| {
-                                                        universe.trim().parse().unwrap_or_default()
-                                                    })
-                                                    .collect();
-                                                *device = OutputDevice::Artnet {
-                                                    name: device.name().to_string(),
-                                                    ip: device.ip(),
-                                                    universes,
-                                                };
-                                            }
-                                        }
-
-                                        if let OutputDevice::WledDRGB { port, .. }
-                                        | OutputDevice::WledDNRGB { port, .. } = device
-                                        {
-                                            ui.label("Port:");
-                                            let port = device_strings
-                                                .port
-                                                .get_or_insert_with(|| port.to_string());
-
-                                            if ui.add(TextEdit::singleline(port)).changed() {
-                                                if let Ok(port) = port.parse() {
-                                                    match device.clone() {
-                                                        OutputDevice::WledDRGB {
-                                                            name, ip, ..
-                                                        } => {
-                                                            *device = OutputDevice::WledDRGB {
-                                                                name,
-                                                                ip,
-                                                                port,
-                                                            };
-                                                        }
-                                                        OutputDevice::WledDNRGB {
-                                                            name,
-                                                            ip,
-                                                            start,
-                                                            ..
-                                                        } => {
-                                                            *device = OutputDevice::WledDNRGB {
-                                                                name,
-                                                                ip,
-                                                                port,
-                                                                start,
-                                                            };
-                                                        }
-                                                        _ => {}
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        if let OutputDevice::WledDNRGB {
-                                            start,
-                                            port,
-                                            ip,
-                                            name,
-                                            ..
-                                        } = device
-                                        {
-                                            ui.label("Start:");
-                                            let start = device_strings
-                                                .start
-                                                .get_or_insert_with(|| start.to_string());
-
-                                            if ui.add(TextEdit::singleline(start)).changed() {
-                                                if let Ok(start) = start.parse() {
-                                                    *device = OutputDevice::WledDNRGB {
-                                                        name: name.clone(),
-                                                        ip: *ip,
-                                                        port: *port,
-                                                        start,
-                                                    };
-                                                }
-                                            }
-                                        }
-                                    });
-                                });
-                                row.col(|ui| {
-                                    if ui.add(Button::new("🗙").fill(Color32::DARK_RED)).clicked()
-                                    {
-                                        remove = Some(*id);
-                                    }
-                                });
-                            });
-                        }
-
-                        if let Some(id) = remove {
-                            self.device_strings.remove(&id);
-                            devices.remove(&id);
-                        }
+                egui::SidePanel::left("output devices tree")
+                    .exact_width(300.0)
+                    .resizable(false)
+                    .show_inside(ui, |ui| {
+                        self.tree.show(ui);
                     });
+
+                egui::Frame::default().outer_margin(Margin::same(4.0)).show(
+                    ui,
+                    |ui| match &mut self.tree.selected() {
+                        TreeSelection::None => {
+                            ui.label("Please select an item from the tree");
+                        }
+                        TreeSelection::Asset(palette) => {
+                            output_device_editor(
+                                ui,
+                                palette,
+                                &mut self.dirty,
+                                &mut self.device_strings,
+                            );
+                            self.tree.show_delete_button(ui);
+                        }
+                        TreeSelection::Dir { .. } => {
+                            self.tree.show_folder_editor(ui);
+                        }
+                    },
+                );
             });
     }
 
     pub fn open(&mut self) {
         self.open = true;
     }
+}
+
+fn output_device_editor(
+    ui: &mut Ui,
+    output_device: &mut Asset<OutputDevice>,
+    dirty: &mut bool,
+    device_strings: &mut HashMap<AssetId<OutputDevice>, DeviceStrings>,
+) {
+    let mut kind = output_device.data.kind();
+    let id = output_device.id;
+
+    ui.label("Name:");
+    let mut name = output_device.name().to_string();
+    let res = ui.text_edit_singleline(&mut name);
+    if res.changed() {
+        *dirty = true;
+        output_device.path.pop();
+        output_device.path.push(name);
+    }
+
+    ui.label("Kind");
+    ComboBox::new(format!("{id}_kind"), "Kind")
+        .selected_text({
+            let name: &'static str = kind.into();
+            name
+        })
+        .width(100.0)
+        .show_ui(ui, |ui| {
+            for k in OutputDeviceKind::iter() {
+                if ui
+                    .selectable_value(&mut kind, k, {
+                        let name: &'static str = k.into();
+                        name
+                    })
+                    .changed()
+                {
+                    match kind {
+                        OutputDeviceKind::Artnet => {
+                            output_device.data = OutputDevice::Artnet {
+                                ip: [127, 0, 0, 1].into(),
+                                universes: vec![],
+                            }
+                        }
+                        OutputDeviceKind::WledDRGB => {
+                            output_device.data = OutputDevice::WledDRGB {
+                                ip: [127, 0, 0, 1].into(),
+                                port: 1324,
+                            }
+                        }
+                        OutputDeviceKind::WledDNRGB => {
+                            output_device.data = OutputDevice::WledDNRGB {
+                                ip: [127, 0, 0, 1].into(),
+                                port: 1324,
+                                start: 0,
+                            }
+                        }
+                    }
+                    device_strings.remove(&id);
+                    *dirty = true;
+                }
+            }
+        });
+
+    let device_strings = device_strings.entry(id).or_default();
+
+    ui.heading("IP-Address");
+    let ip = device_strings
+        .ip
+        .get_or_insert_with(|| output_device.data.ip().to_string());
+
+    if ui.add(TextEdit::singleline(ip)).changed() {
+        if let Ok(ip) = ip.parse() {
+            output_device.data.set_ip(ip);
+            *dirty = true;
+        }
+    }
+
+    if let OutputDevice::Artnet { universes, .. } = &output_device.data {
+        ui.heading("Universes:");
+        let universes = device_strings.universes.get_or_insert_with(|| {
+            universes
+                .iter()
+                .map(|universe| universe.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        });
+
+        if ui.add(TextEdit::singleline(universes)).changed() {
+            let universes = universes
+                .split(',')
+                .map(|universe| universe.trim().parse().unwrap_or_default())
+                .collect();
+            output_device.data = OutputDevice::Artnet {
+                ip: output_device.data.ip(),
+                universes,
+            };
+            *dirty = true;
+        }
+    }
+
+    if let OutputDevice::WledDRGB { port, .. } | OutputDevice::WledDNRGB { port, .. } =
+        output_device.data
+    {
+        ui.heading("Port:");
+        let port = device_strings.port.get_or_insert_with(|| port.to_string());
+
+        if ui.add(TextEdit::singleline(port)).changed() {
+            if let Ok(port) = port.parse() {
+                match output_device.data.clone() {
+                    OutputDevice::WledDRGB { ip, .. } => {
+                        output_device.data = OutputDevice::WledDRGB { ip, port };
+                    }
+                    OutputDevice::WledDNRGB { ip, start, .. } => {
+                        output_device.data = OutputDevice::WledDNRGB { ip, port, start };
+                    }
+                    _ => {}
+                }
+            }
+
+            *dirty = true;
+        }
+    }
+
+    if let OutputDevice::WledDNRGB {
+        start, port, ip, ..
+    } = &output_device.data
+    {
+        ui.heading("Start:");
+        let start = device_strings
+            .start
+            .get_or_insert_with(|| start.to_string());
+
+        if ui.add(TextEdit::singleline(start)).changed() {
+            if let Ok(start) = start.parse() {
+                output_device.data = OutputDevice::WledDNRGB {
+                    ip: *ip,
+                    port: *port,
+                    start,
+                };
+            }
+        }
+    }
+
+    ui.add_space(4.0);
+    ui.horizontal(|ui| {
+        if ui
+            .add_enabled(*dirty, Button::new("Save"))
+            .on_hover_ui(|ui| {
+                ui.label("Save output device to disk");
+            })
+            .clicked()
+        {
+            *dirty = false;
+            output_device.clone().save();
+        }
+        if ui
+            .add_enabled(*dirty, Button::new("Reset"))
+            .on_hover_ui(|ui| {
+                ui.label("Reset to state on disk");
+            })
+            .clicked()
+        {
+            *dirty = false;
+            *output_device = Arc::unwrap_or_clone(Asset::get(output_device.id).unwrap_or_default());
+        }
+    });
 }

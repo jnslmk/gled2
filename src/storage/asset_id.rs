@@ -1,7 +1,10 @@
 use super::AssetTrait;
 use crate::storage::{collection::Collection, Action, State, STATE};
 use serde::{Deserialize, Serialize};
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt::Display,
+    hash::{Hash, Hasher},
+};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -10,6 +13,12 @@ pub struct AssetId<T> {
     pub id: Uuid,
     #[serde(skip)]
     _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T> Display for AssetId<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AssetId").field("id", &self.id).finish()
+    }
 }
 
 impl<T: Clone> Copy for AssetId<T> {}

@@ -178,7 +178,7 @@ impl Effect {
             self.renderer.as_ref().expect(GPU_NOT_INIT).set_buffers(
                 queue,
                 &state,
-                self.palette.map(Asset::get),
+                self.palette.and_then(Asset::get),
                 &self.animation.config(),
             );
 

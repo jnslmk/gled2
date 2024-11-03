@@ -56,14 +56,14 @@ impl PalettesWindow {
     }
 }
 
-pub fn palette_editor(ui: &mut Ui, palette: &mut Asset<Palette>, dirty: &mut bool) {
+fn palette_editor(ui: &mut Ui, palette: &mut Asset<Palette>, dirty: &mut bool) {
     ui.label("Name:");
-    let mut name = palette.name.last().cloned().unwrap_or_default();
+    let mut name = palette.name().to_string();
     let res = ui.text_edit_singleline(&mut name);
     if res.changed() {
         *dirty = true;
-        palette.name.pop();
-        palette.name.push(name);
+        palette.path.pop();
+        palette.path.push(name);
     }
 
     ui.label("Primary color:");
@@ -104,7 +104,7 @@ pub fn palette_editor(ui: &mut Ui, palette: &mut Asset<Palette>, dirty: &mut boo
             .clicked()
         {
             *dirty = false;
-            *palette = Arc::unwrap_or_clone(Asset::<Palette>::get(palette.id));
+            *palette = Arc::unwrap_or_clone(Asset::get(palette.id).unwrap_or_default());
         }
     });
 }

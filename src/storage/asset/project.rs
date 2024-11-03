@@ -1,4 +1,4 @@
-use super::{asset::AssetTrait, AssetId, Palette, Scene};
+use super::{AssetId, AssetTrait, Palette, Scene};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]

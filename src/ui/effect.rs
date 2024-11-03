@@ -24,7 +24,9 @@ impl Effect {
         ui.separator();
 
         ui.label(RichText::new("Color Palette").heading());
-        self.palette.change_button(ui);
+        ui.vertical_centered_justified(|ui| {
+            self.palette.change_button(ui);
+        });
 
         ui.separator();
 

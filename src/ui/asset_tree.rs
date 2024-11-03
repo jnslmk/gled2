@@ -55,7 +55,7 @@ impl<T: AssetTrait> TreeEntry<T> {
 
                                     let new_asset_name = {
                                         let mut name = dir.clone();
-                                        name.push("New Asset".to_string());
+                                        name.push(format!("New {}", T::NAME));
                                         name
                                     };
                                     if ui
@@ -64,9 +64,9 @@ impl<T: AssetTrait> TreeEntry<T> {
                                                 let TreeEntry::Asset(asset) = child else {
                                                     return false;
                                                 };
-                                                asset.name == new_asset_name
+                                                asset.path == new_asset_name
                                             }),
-                                            Button::new("Asset"),
+                                            Button::new(T::NAME),
                                         )
                                         .clicked()
                                     {
@@ -102,10 +102,7 @@ impl<T: AssetTrait> TreeEntry<T> {
             TreeEntry::Asset(asset) => {
                 tree_ids.push(TreeId::File(asset.id));
                 builder.node(NodeBuilder::leaf(tree_ids.len() - 1).label(|ui| {
-                    ui.add(
-                        Label::new(asset.name.last().cloned().unwrap_or_default())
-                            .selectable(false),
-                    );
+                    ui.add(Label::new(asset.name()).selectable(false));
 
                     let max = ui.next_widget_position() + Vec2::new(ui.available_width(), 0.0);
                     let rect = Rect::from_min_max(
@@ -162,7 +159,7 @@ impl<T: AssetTrait> AssetTree<T> {
         for asset in assets {
             let pos = Self::add_dir(&mut root, asset.dir());
             if let TreeEntry::Dir(_, ref mut dir) = pos {
-                dir.entry(asset.name.last().cloned().unwrap_or_default())
+                dir.entry(asset.path.last().cloned().unwrap_or_default())
                     .or_insert_with(|| TreeEntry::Asset(asset));
             } else {
                 unreachable!();
@@ -247,14 +244,13 @@ impl<T: AssetTrait> AssetTree<T> {
                 Action::SetSelected(index) => {
                     self.selection = index
                         .map(|index| tree_ids.remove(index))
-                        .map(|id| match id {
-                            TreeId::File(id) => {
-                                TreeSelection::Asset(Arc::unwrap_or_clone(Asset::get(id)))
-                            }
-                            TreeId::Dir(dir) => TreeSelection::Dir {
+                        .and_then(|id| match id {
+                            TreeId::File(id) => Asset::get(id)
+                                .map(|asset| TreeSelection::Asset(Arc::unwrap_or_clone(asset))),
+                            TreeId::Dir(dir) => Some(TreeSelection::Dir {
                                 current: dir.clone(),
                                 new: dir,
-                            },
+                            }),
                         })
                         .unwrap_or_default();
                 }
@@ -270,12 +266,14 @@ impl<T: AssetTrait> AssetTree<T> {
 
                     if let (TreeId::File(source), TreeId::Dir(target)) = (source, target) {
                         let target = target.clone();
-                        let mut asset = Arc::unwrap_or_clone(Asset::get(source));
-                        asset.name = target
-                            .into_iter()
-                            .chain(std::iter::once(asset.name.last().unwrap().clone()))
-                            .collect();
-                        asset.save();
+                        if let Some(asset) = Asset::get(source) {
+                            let mut asset = Arc::unwrap_or_clone(asset);
+                            asset.path = target
+                                .into_iter()
+                                .chain(std::iter::once(asset.path.last().unwrap().clone()))
+                                .collect();
+                            asset.save();
+                        }
                     }
                 }
                 _ => {}

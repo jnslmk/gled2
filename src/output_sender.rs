@@ -10,7 +10,7 @@ use std::{
 use crate::{
     constants::{UNIVERSES, UNIVERSE_BUFFER_SIZE},
     extract_output::ExtractOutput,
-    project::OutputDevice,
+    storage::{Asset, OutputDevice},
 };
 pub type OutputSender = Sender<()>;
 pub type GpuReadyReceiver = Receiver<()>;
@@ -49,7 +49,6 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                     let output_data = extract_output.poll_output_buffer();
                     gpu_ready_sender.send(()).ok();
 
-                    let devices = extract_output.devices.lock();
                     let mut routings = extract_output.routings.lock();
 
                     extract_output
@@ -60,9 +59,9 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                         .zip(output_data.chunks(UNIVERSE_BUFFER_SIZE as usize))
                         .filter_map(|(universe, data)| {
                             let routing = routings.universe_output_routing(*universe);
-                            let device = devices.get(&routing.device?)?;
+                            let device = routing.device.and_then(Asset::get)?;
 
-                            match device {
+                            match &device.data {
                                 OutputDevice::Artnet { ip, universes, .. } => {
                                     let universe = routing.universe?;
                                     if !universes.contains(&universe) {

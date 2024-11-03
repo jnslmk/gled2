@@ -122,7 +122,6 @@ impl App {
                         Project {
                             svg: self.svg.clone(),
                             pipeline: self.pipeline.clone(),
-                            output_devices: ExtractOutput::get().devices.lock().clone(),
                             output_routings: ExtractOutput::get().routings.lock().clone(),
                         }
                         .store(&project_path);
@@ -207,6 +206,13 @@ impl App {
 
                     ui.separator();
 
+                    if ui.button("Palettes").clicked() {
+                        self.windows.palettes.open();
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
                     ui.label("Main Dimmer");
 
                     let mut main_dimmer = PersistantState::main_dimmer();
@@ -227,15 +233,6 @@ impl App {
 
                     ui.label("UI Zoom");
                     egui::gui_zoom::zoom_menu_buttons(ui);
-                });
-
-                ui.menu_button("Assets", |ui| {
-                    ui.set_min_width(300.0);
-
-                    if ui.button("Palettes").clicked() {
-                        self.windows.palettes.open();
-                        ui.close_menu();
-                    }
                 });
 
                 ui.separator();

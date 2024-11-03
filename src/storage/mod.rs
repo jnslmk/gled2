@@ -3,9 +3,6 @@ mod asset;
 mod asset_id;
 mod collection;
 mod git;
-mod palette;
-mod project;
-mod scene;
 
 use collection::Collection;
 use egui::mutex::Mutex;
@@ -17,14 +14,7 @@ use std::{
 use typemap::ShareDebugMap;
 use uuid::Uuid;
 
-pub use self::{
-    action::Action,
-    asset::{Asset, AssetTrait},
-    asset_id::AssetId,
-    palette::Palette,
-    project::Project,
-    scene::Scene,
-};
+pub use self::{action::Action, asset::*, asset_id::AssetId};
 
 static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::Loading(0.0)));
 
@@ -107,18 +97,17 @@ pub fn start_thread() {
             *STATE.lock() = State::Loading(0.4);
 
             let root = git.folder().to_owned();
-
-            let palettes = Collection::<Palette>::load(root.join(Palette::DIR_NAME));
-            *STATE.lock() = State::Loading(0.6);
-            let projects = Collection::<Project>::load(root.join(Project::DIR_NAME));
-            *STATE.lock() = State::Loading(0.8);
-            let scenes = Collection::<Scene>::load(root.join(Scene::DIR_NAME));
-            *STATE.lock() = State::Loading(1.0);
-
             let mut collections = ShareDebugMap::custom();
-            collections.insert::<Collection<Palette>>(palettes);
-            collections.insert::<Collection<Project>>(projects);
-            collections.insert::<Collection<Scene>>(scenes);
+            collections.insert::<Collection<Curve>>(Collection::<Curve>::load(&root));
+            *STATE.lock() = State::Loading(0.6);
+            collections.insert::<Collection<OutputDevice>>(Collection::<OutputDevice>::load(&root));
+            *STATE.lock() = State::Loading(0.7);
+            collections.insert::<Collection<Palette>>(Collection::<Palette>::load(&root));
+            *STATE.lock() = State::Loading(0.8);
+            collections.insert::<Collection<Project>>(Collection::<Project>::load(&root));
+            *STATE.lock() = State::Loading(0.9);
+            collections.insert::<Collection<Scene>>(Collection::<Scene>::load(&root));
+            *STATE.lock() = State::Loading(1.0);
 
             *STATE.lock() = State::Opened {
                 synced: git.synced(),

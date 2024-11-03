@@ -1,4 +1,4 @@
-use crate::{app::svg::universes, extract_output::ExtractOutput};
+use crate::{app::svg::universes, extract_output::ExtractOutput, storage::Asset, ui::ChangeButton};
 use egui::{ComboBox, Context, Layout, RichText};
 
 #[derive(Default)]
@@ -22,7 +22,6 @@ impl OutputRoutingsWindow {
                     .id_salt("output_scroll")
                     .show(ui, |ui| {
                         let extract_output = ExtractOutput::get();
-                        let devices = extract_output.devices.lock();
                         let mut routings = extract_output.routings.lock();
 
                         ui.with_layout(Layout::top_down_justified(egui::Align::Min), |ui| {
@@ -41,37 +40,13 @@ impl OutputRoutingsWindow {
 
                                 ui.horizontal(|ui| {
                                     let output_routing = routings.universe_output_routing(universe);
-                                    let device = output_routing
-                                        .device
-                                        .as_ref()
-                                        .map(|device| devices.get(device));
+                                    output_routing.device.change_button(ui);
 
-                                    ComboBox::new(format!("{universe}_device"), "")
-                                        .selected_text(match (devices.is_empty(), device) {
-                                            (true, _) => "No devices configured",
-                                            (false, None) => "No device selected",
-                                            (false, Some(None)) => "Device not found",
-                                            (false, Some(Some(device))) => device.name(),
-                                        })
-                                        .width(150.0)
-                                        .show_ui(ui, |ui| {
-                                            for (id, device) in devices.iter() {
-                                                if ui
-                                                    .selectable_value(
-                                                        &mut output_routing.device.unwrap_or_default(),
-                                                        *id,
-                                                        device.name(),
-                                                    )
-                                                    .changed()
-                                                {
-                                                    output_routing.device = Some(*id);
-                                                    output_routing.universe.take();
-                                                }
-                                            }
-                                        });
-
-                                    if let Some(device) = device.flatten() {
-                                        if !device.universes().is_empty() {
+                                    if let Some(device) = output_routing
+                                    .device
+                                    .and_then(Asset::get) {
+                                        let universes = device.data.universes();
+                                        if !universes.is_empty() {
                                             ComboBox::new(format!("{universe}_universe"), "")
                                                 .selected_text(match output_routing.universe {
                                                     None => "No universe selected".to_string(),
@@ -79,7 +54,7 @@ impl OutputRoutingsWindow {
                                                 })
                                                 .width(150.0)
                                                 .show_ui(ui, |ui| {
-                                                    for universe in device.universes() {
+                                                    for universe in universes {
                                                         if ui
                                                             .selectable_value(
                                                                 &mut output_routing
