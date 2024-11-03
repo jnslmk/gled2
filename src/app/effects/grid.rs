@@ -1,10 +1,14 @@
 use super::{widget::EffectWidget, App};
-use crate::transition::{Transition, TransitionGoal};
+use crate::{
+    app::PersistantState,
+    transition::{Transition, TransitionGoal},
+};
 use egui::{scroll_area::ScrollBarVisibility, Color32, Rect, TextureId, Ui, Vec2};
 
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureId>, uv: Option<Rect>) {
-        let effects = &self.persistant_state.effects;
+        let effects_size = PersistantState::effects_size();
+        let effects_show_svg = PersistantState::effects_show_svg();
 
         egui::ScrollArea::vertical()
             .id_salt("effects_scroll")
@@ -17,14 +21,14 @@ impl App {
                     let mut flashed = Vec::new();
                     for (index, effect) in self.pipeline.effects().into_iter() {
                         let response = ui.add_sized(
-                            Vec2::new(effects.size + 40.0, effects.size + 60.0),
+                            Vec2::new(effects_size + 40.0, effects_size + 60.0),
                             EffectWidget {
                                 selected_effect: &mut self.selected_effect,
                                 hovered_effect: &mut self.hovered_effect,
                                 index,
                                 effect,
-                                svg: svg.filter(|_| effects.show_svg),
-                                effects_size: effects.size,
+                                svg: svg.filter(|_| effects_show_svg),
+                                effects_size,
                                 live_color: Color32::GREEN,
                                 uv,
                             },

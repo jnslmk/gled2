@@ -10,5 +10,5 @@ pub mod palette;
 pub mod windows;
 
 pub trait ChangeButton {
-    fn change_button(&mut self, ui: &mut Ui);
+    fn change_button(&mut self, ui: &mut Ui) -> bool;
 }

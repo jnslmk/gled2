@@ -1,6 +1,5 @@
-use egui::{
-    text::LayoutJob, Button, Color32, Key, Modifiers, Rounding, Stroke, TextFormat, Ui, Vec2,
-};
+use super::PersistantState;
+use egui::{text::LayoutJob, Button, Color32, Rounding, Stroke, TextFormat, Ui, Vec2};
 use log::debug;
 use std::time::{Duration, Instant};
 
@@ -52,14 +51,15 @@ impl Timing {
         self.avg_fps
     }
 
-    pub fn tick(&mut self, fps_limit: f32) {
-        self.limit_fps(fps_limit);
+    pub fn tick(&mut self) {
+        self.limit_fps();
         self.progress_beat();
         self.calculate_avg_fps();
         self.remove_old_taps();
     }
 
-    fn limit_fps(&mut self, fps_limit: f32) {
+    fn limit_fps(&mut self) {
+        let fps_limit = PersistantState::fps_limit();
         let target_frame_time_nanos = 1e+9f32 / fps_limit;
         while target_frame_time_nanos > (self.last_frame.elapsed().as_nanos() as f32) {
             std::thread::sleep(std::time::Duration::from_nanos(100));
@@ -126,7 +126,7 @@ impl Timing {
         }
     }
 
-    pub fn beat_button(&mut self, ctx: &egui::Context, ui: &mut Ui, menu_button_size: Vec2) {
+    pub fn beat_button(&mut self, ui: &mut Ui, menu_button_size: Vec2) {
         let underlined = TextFormat {
             underline: Stroke::new(1.0, Color32::GRAY),
             ..Default::default()
@@ -190,12 +190,7 @@ impl Timing {
             );
         }
 
-        let tapped = response.clicked()
-            || !ctx.wants_keyboard_input()
-                && ctx.input_mut(|i| {
-                    i.consume_key(Modifiers::NONE, Key::Space)
-                        || i.consume_key(Modifiers::NONE, Key::T)
-                });
+        let tapped = response.clicked() || PersistantState::tap_input_is_new();
 
         if tapped {
             let now = Instant::now();
@@ -219,7 +214,7 @@ impl Timing {
         }
     }
 
-    pub fn freeze_button(&mut self, ctx: &egui::Context, ui: &mut Ui, menu_button_size: Vec2) {
+    pub fn freeze_button(&mut self, ui: &mut Ui, menu_button_size: Vec2) {
         let underlined = TextFormat {
             underline: Stroke::new(1.0, Color32::GRAY),
             ..Default::default()
@@ -233,8 +228,7 @@ impl Timing {
             freeze = freeze.fill(Color32::DARK_RED);
         }
         if ui.add_sized(menu_button_size, freeze).clicked()
-            || !ctx.wants_keyboard_input()
-                && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::F))
+            || PersistantState::freeze_input_is_new()
         {
             self.freeze = !self.freeze;
         }

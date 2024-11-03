@@ -1,10 +1,12 @@
 use super::App;
-use crate::effect::Effect;
+use crate::{app::PersistantState, effect::Effect};
 use egui::{Align, Checkbox, Layout, RichText, Slider, Ui};
 
 impl App {
     pub fn effects_header(&mut self, ui: &mut Ui) {
-        let effects = &mut self.persistant_state.effects;
+        let mut effects_show_svg = PersistantState::effects_show_svg();
+        let mut effects_always_render = PersistantState::effects_always_render();
+        let mut effects_size = PersistantState::effects_size();
 
         ui.horizontal(|ui| {
             ui.label(RichText::new("Effects").heading());
@@ -16,28 +18,34 @@ impl App {
                 if ui
                     .add_enabled(
                         self.svg.is_some(),
-                        Checkbox::new(&mut effects.show_svg, RichText::new("SVG")),
+                        Checkbox::new(&mut effects_show_svg, RichText::new("SVG")),
                     )
                     .changed()
                 {
-                    self.persistant_state.dirty = true;
+                    let mut persistant_state = PersistantState::get();
+                    persistant_state.effects_show_svg = effects_show_svg;
+                    persistant_state.save();
                 };
 
                 if ui
-                    .checkbox(&mut effects.always_render, RichText::new("Render all"))
+                    .checkbox(&mut effects_always_render, RichText::new("Render all"))
                     .changed()
                 {
-                    self.persistant_state.dirty = true;
+                    let mut persistant_state = PersistantState::get();
+                    persistant_state.effects_always_render = effects_always_render;
+                    persistant_state.save();
                 };
                 if ui
                     .add(
-                        Slider::new(&mut effects.size, 90.0..=500.0)
+                        Slider::new(&mut effects_size, 90.0..=500.0)
                             .show_value(false)
                             .text(RichText::new("Size")),
                     )
                     .changed()
                 {
-                    self.persistant_state.dirty = true;
+                    let mut persistant_state = PersistantState::get();
+                    persistant_state.effects_size = effects_size;
+                    persistant_state.save();
                 }
             });
         });

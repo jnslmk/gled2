@@ -15,10 +15,10 @@ use crate::{
     ui::{action::Action, windows::Windows},
 };
 use egui::Modifiers;
-use persistant_state::PersistantState;
 use std::path::PathBuf;
 use timing::Timing;
 
+pub use persistant_state::PersistantState;
 pub use svg::{positions, preview_positions, preview_uv, Svg};
 
 pub struct App {
@@ -27,7 +27,6 @@ pub struct App {
     output_sender: OutputSender,
     gpu_ready_receiver: GpuReadyReceiver,
     timing: Timing,
-    persistant_state: PersistantState,
     project_path: Option<PathBuf>,
     pipeline: Pipeline,
 
@@ -39,7 +38,7 @@ pub struct App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if let Some(loading) = crate::storage::loading_state() {
+        if let Some(_loading) = crate::storage::loading_state() {
             //TODO: Display
         } else if let Some(err) = crate::storage::error_state() {
             println!("Error: {}", err);
@@ -49,7 +48,7 @@ impl eframe::App for App {
             self.startup = false;
         }
 
-        self.timing.tick(self.persistant_state.fps_limit);
+        self.timing.tick();
         Input::tick();
 
         match Action::dequeue() {
@@ -83,11 +82,12 @@ impl eframe::App for App {
         }
 
         if ctx.input_mut(|i| i.consume_key(Modifiers::ALT, egui::Key::Enter)) {
-            self.persistant_state.fullscreen = !self.persistant_state.fullscreen;
-            self.persistant_state.dirty = true;
+            let mut persistant_state = PersistantState::get();
+            persistant_state.fullscreen = !persistant_state.fullscreen;
             ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(
-                self.persistant_state.fullscreen,
+                persistant_state.fullscreen,
             ));
+            persistant_state.save();
         }
 
         ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
@@ -109,8 +109,7 @@ impl eframe::App for App {
             self.timing.beats_per_minute,
             self.timing.framerate().unwrap_or_default(),
             self.blackout,
-            self.persistant_state.main_dimmer,
-            if self.persistant_state.effects.always_render {
+            if PersistantState::effects_always_render() {
                 RenderDeactivatedEffects::Always
             } else {
                 RenderDeactivatedEffects::Some(self.selected_effect, self.hovered_effect)
@@ -125,13 +124,11 @@ impl eframe::App for App {
         self.effects(ctx);
 
         ctx.request_repaint();
-        self.persistant_state.store();
     }
 }
 
 impl App {
     pub fn new() -> Option<Self> {
-        let persistant_state = PersistantState::load();
         let (output_sender, gpu_ready_receiver) =
             output_sender::start().expect("Could not start output sender");
 
@@ -141,7 +138,6 @@ impl App {
             gpu_ready_receiver,
             svg: None,
             project_path: crate::opts::OPTS.project_path.clone(),
-            persistant_state,
             timing: Timing::default(),
             blackout: false,
             selected_effect: 0,

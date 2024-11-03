@@ -1,4 +1,4 @@
-use super::{svg::Svg, App};
+use super::{svg::Svg, App, PersistantState};
 use crate::{extract_output::ExtractOutput, project::Project, ui::logo::logo_image};
 use egui::{
     load::SizedTexture, text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers,
@@ -169,15 +169,18 @@ impl App {
                     ui.set_min_width(300.0);
 
                     ui.label(RichText::new("Framerate Limiter").heading());
+                    let mut fps_limit = PersistantState::fps_limit();
                     if ui
                         .add(
-                            Slider::new(&mut self.persistant_state.fps_limit, 30.0..=1000.0)
+                            Slider::new(&mut fps_limit, 30.0..=1000.0)
                                 .integer()
                                 .custom_formatter(|n, _| format!("{n:.0} fps")),
                         )
                         .changed()
                     {
-                        self.persistant_state.dirty = true;
+                        let mut persistant_state = PersistantState::get();
+                        persistant_state.fps_limit = fps_limit;
+                        persistant_state.save();
                     }
 
                     ui.separator();
@@ -199,6 +202,10 @@ impl App {
 
                     ui.separator();
 
+                    if ui.button(RichText::new("Shortcuts").heading()).clicked() {
+                        self.windows.shortcuts.open();
+                        ui.close_menu();
+                    }
                     if ui.button(RichText::new("Artnet Input").heading()).clicked() {
                         self.windows.artnet_input.open();
                         ui.close_menu();
@@ -207,15 +214,19 @@ impl App {
                     ui.separator();
 
                     ui.label(RichText::new("Main Dimmer").heading());
+
+                    let mut main_dimmer = PersistantState::main_dimmer();
                     if ui
                         .add(
-                            Slider::new(&mut self.persistant_state.main_dimmer, 0.0..=1.0)
+                            Slider::new(&mut main_dimmer, 0.0..=1.0)
                                 .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
                                 .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
                         )
                         .changed()
                     {
-                        self.persistant_state.dirty = true;
+                        let mut persistant_state = PersistantState::get();
+                        persistant_state.main_dimmer = main_dimmer;
+                        persistant_state.save();
                     }
 
                     ui.separator();
@@ -255,14 +266,13 @@ impl App {
                         blackout = blackout.fill(Color32::DARK_RED);
                     }
                     if ui.add_sized(menu_button_size, blackout).clicked()
-                        || !ctx.wants_keyboard_input()
-                            && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::B))
+                        || PersistantState::blackout_input_is_new()
                     {
                         self.blackout = !self.blackout;
                     }
 
-                    self.timing.freeze_button(ctx, ui, menu_button_size);
-                    self.timing.beat_button(ctx, ui, menu_button_size);
+                    self.timing.freeze_button(ui, menu_button_size);
+                    self.timing.beat_button(ui, menu_button_size);
                     ui.separator();
                 });
             });

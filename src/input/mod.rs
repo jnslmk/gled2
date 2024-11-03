@@ -2,7 +2,6 @@ mod artnet;
 mod event;
 
 use egui::{mutex::Mutex, Context};
-use event::GamepadEvent;
 use gilrs::{Axis, Button, Event, Gilrs};
 use log::debug;
 use std::{
@@ -11,7 +10,7 @@ use std::{
 };
 
 pub use artnet::ARTNET_INPUT_CONFIG;
-pub use event::InputEvent;
+pub use event::{GamepadEvent, InputEvent};
 
 static INPUT: OnceLock<Arc<Mutex<Input>>> = OnceLock::new();
 

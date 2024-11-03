@@ -3,7 +3,7 @@ use egui::Key;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum InputEvent {
     Key(Key),
     Gamepad(GamepadEvent),
@@ -41,7 +41,9 @@ impl std::fmt::Display for InputEvent {
     }
 }
 
-#[derive(Serialize, Deserialize, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(
+    Serialize, Deserialize, Display, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 pub enum GamepadEvent {
     South(usize),
     East(usize),

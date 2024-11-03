@@ -1,12 +1,15 @@
-use super::App;
+use super::{App, PersistantState};
 use crate::app::preview_uv;
 use egui::{load::SizedTexture, Align, Color32, Context, Image, Layout, RichText, Vec2};
 
 impl App {
     pub fn preview(&mut self, ctx: &Context) {
+        let mut show_preview_svg = PersistantState::show_preview_svg();
+        let preview_height = PersistantState::preview_height();
+
         if let Some(uv) = preview_uv() {
             let preview_rect = egui::TopBottomPanel::top("preview")
-                .default_height(self.persistant_state.preview_height)
+                .default_height(preview_height)
                 .min_height(50.0)
                 .resizable(true)
                 .show(ctx, |ui| {
@@ -14,13 +17,12 @@ impl App {
                         ui.label(RichText::new("Preview").heading());
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                             if ui
-                                .checkbox(
-                                    &mut self.persistant_state.show_preview_svg,
-                                    RichText::new("SVG").heading(),
-                                )
+                                .checkbox(&mut show_preview_svg, RichText::new("SVG").heading())
                                 .changed()
                             {
-                                self.persistant_state.dirty = true;
+                                let mut persistant_state = PersistantState::get();
+                                persistant_state.show_preview_svg = show_preview_svg;
+                                persistant_state.save();
                             }
                         });
                     });
@@ -44,7 +46,7 @@ impl App {
                     let res = self
                         .svg
                         .as_mut()
-                        .filter(|_| self.persistant_state.show_preview_svg)
+                        .filter(|_| show_preview_svg)
                         .and_then(|svg| svg.image(&mut self.pipeline))
                         .map(|image| {
                             ui.add(
@@ -56,7 +58,7 @@ impl App {
                     let mut preview =
                         Image::new(SizedTexture::new(self.pipeline.preview_texture_id(), size))
                             .uv(uv);
-                    if !self.persistant_state.show_preview_svg {
+                    if !show_preview_svg {
                         preview = preview.bg_fill(Color32::BLACK);
                     }
                     match res {
@@ -70,9 +72,10 @@ impl App {
                 })
                 .response
                 .rect;
-            if preview_rect.height() != self.persistant_state.preview_height {
-                self.persistant_state.preview_height = preview_rect.height();
-                self.persistant_state.dirty = true;
+            if preview_rect.height() != preview_height {
+                let mut persistant_state = PersistantState::get();
+                persistant_state.preview_height = preview_rect.height();
+                persistant_state.save();
             }
         }
     }

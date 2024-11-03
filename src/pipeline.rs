@@ -230,7 +230,6 @@ impl Pipeline {
         beats_per_minute: f32,
         framerate: f32,
         blackout: bool,
-        main_dimmer: f32,
         render_deactivated_effects: RenderDeactivatedEffects,
         fade_duration: Duration,
     ) {
@@ -300,7 +299,6 @@ impl Pipeline {
                 queue,
                 state,
                 blackout,
-                main_dimmer,
                 render_deactivated_effects.should_render(index),
             );
         }

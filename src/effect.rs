@@ -1,6 +1,6 @@
 use crate::{
     animation::{Animation, AnimationConfig, AnimationRenderer, State},
-    app::positions,
+    app::{positions, PersistantState},
     constants::GPU_NOT_INIT,
     input::InputEvent,
     output_mix::OutputMix,
@@ -145,7 +145,6 @@ impl Effect {
         queue: &Queue,
         mut state: State,
         blackout: bool,
-        main_dimmer: f32,
         always_render: bool,
     ) {
         // make sure we have a texture id (fixes a deadlock).
@@ -164,6 +163,8 @@ impl Effect {
                 }
             }
         }
+
+        let main_dimmer = PersistantState::main_dimmer();
 
         if always_render || self.active || !self.was_ever_rendered || self.flash {
             state.opacity = self.opacity * main_dimmer * opacity_factor * self.input_dimmer;

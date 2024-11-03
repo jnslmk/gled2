@@ -1,4 +1,4 @@
-use super::{timing::FadeMode, App};
+use super::{timing::FadeMode, App, PersistantState};
 use egui::{Context, Layout, RichText};
 
 impl App {
@@ -12,7 +12,7 @@ impl App {
                 let svg = self
                     .svg
                     .as_mut()
-                    .filter(|_| self.persistant_state.show_preview_svg)
+                    .filter(|_| PersistantState::show_preview_svg())
                     .and_then(|svg| svg.image(&mut self.pipeline))
                     .map(|svg| svg.texture_id(ctx));
 

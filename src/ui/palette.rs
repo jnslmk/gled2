@@ -6,7 +6,9 @@ use egui::{
 };
 
 impl ChangeButton for Option<AssetId<Palette>> {
-    fn change_button(&mut self, ui: &mut Ui) {
+    fn change_button(&mut self, ui: &mut Ui) -> bool {
+        let mut changed = false;
+
         let palette = self.map(Palette::get);
         let response = ui
             .vertical_centered_justified(|ui| {
@@ -20,6 +22,7 @@ impl ChangeButton for Option<AssetId<Palette>> {
                         if let Some(id) = AssetTree::show_asset_selection(ui) {
                             *self = Some(id);
                             ui.close_menu();
+                            changed = true;
                         }
                     },
                 )
@@ -30,6 +33,8 @@ impl ChangeButton for Option<AssetId<Palette>> {
             ui.painter()
                 .add(Shape::mesh(palette.data.color_band_mesh(response.rect)));
         }
+
+        changed
     }
 }
 
