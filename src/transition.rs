@@ -57,8 +57,4 @@ impl TransitionGoal {
     pub fn turning_off(&self) -> bool {
         matches!(self, Self::TurnOff)
     }
-
-    pub fn turning_on(&self) -> bool {
-        matches!(self, Self::TurnOn)
-    }
 }

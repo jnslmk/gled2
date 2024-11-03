@@ -140,14 +140,16 @@ impl Git {
     }
 
     pub fn update(&mut self) {
+        //TODO: Make manuel
+        /*
         eprintln!("Loading repository at {}", self.folder.display());
         if let Ok(repository) = Repository::open(&self.folder) {
             eprintln!("Repository loaded!");
             self.repository = Some(repository);
             self.synced = true;
         }
-        /*
-        //TODO: Manual progress!
+        */
+
         if self
             .pull()
             .or_else(|_err| self.clone())
@@ -156,7 +158,6 @@ impl Git {
         {
             self.synced = true;
         }
-        */
     }
 
     fn pull(&mut self) -> Result<(), Error> {

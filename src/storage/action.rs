@@ -12,6 +12,7 @@ pub fn init() -> Receiver<Action> {
     rx
 }
 
+#[allow(dead_code)]
 pub enum Action {
     Update,
     SwitchBranch(String),

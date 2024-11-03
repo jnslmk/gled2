@@ -148,10 +148,6 @@ impl Pipeline {
         self.set_buffers();
     }
 
-    pub fn start(&mut self) -> Instant {
-        *self.start.get_or_insert_with(Instant::now)
-    }
-
     pub fn add_effect(&mut self, effect: Effect) -> usize {
         self.effects.push(effect);
         self.init_gpu();
@@ -184,18 +180,6 @@ impl Pipeline {
             .as_mut()
             .expect(GPU_NOT_INIT)
             .set_buffers(self.output.as_ref().expect(GPU_NOT_INIT))
-    }
-
-    pub fn set_opacity(&mut self, index: usize, opacity: f32) {
-        if let Some(effect) = self.effect(index) {
-            effect.opacity = opacity;
-        }
-    }
-
-    pub fn set_active(&mut self, index: usize, active: bool) {
-        if let Some(effect) = self.effect(index) {
-            effect.active = active;
-        }
     }
 
     pub fn effects(&mut self) -> Vec<(usize, &mut Effect)> {

@@ -79,10 +79,6 @@ impl Clone for Effect {
     }
 }
 
-fn default_send_positions() -> bool {
-    true
-}
-
 impl Effect {
     pub fn new(animation: Animation, palette: Option<AssetId<Palette>>, group: String) -> Self {
         Self {
@@ -227,15 +223,6 @@ impl Effect {
 
     pub fn has_transition(&self) -> bool {
         self.transition.is_some()
-    }
-
-    /// whether the effect is (turning) on
-    pub fn on(&self) -> bool {
-        self.active
-            && match self.transition.as_ref() {
-                None => true,
-                Some(transition) => transition.goal().turning_on(),
-            }
     }
 
     pub fn transition_factor(&self) -> f32 {

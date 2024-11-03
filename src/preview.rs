@@ -12,7 +12,6 @@ pub struct Preview {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
     bind_group: Option<BindGroup>,
-    texture: Texture,
     view: TextureView,
     texture_id: TextureId,
 }
@@ -116,7 +115,6 @@ impl Preview {
             pipeline,
             bind_group_layout,
             bind_group: None,
-            texture,
             view,
             texture_id,
         }
