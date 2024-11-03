@@ -1,11 +1,6 @@
-use super::{
-    all_palettes,
-    asset::{Asset, AssetTrait},
-    delete_palette_from_cache, get_palette, set_palette_in_cache, Action, AssetId,
-};
+use super::asset::AssetTrait;
 use egui::{Color32, Rect, Shape, Vec2};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
@@ -18,14 +13,6 @@ pub struct Palette {
 impl AssetTrait for Palette {
     const DIR_NAME: &'static str = "palettes";
 
-    fn get(id: AssetId<Palette>) -> Arc<Asset<Self>> {
-        get_palette(id)
-    }
-
-    fn all() -> Vec<Arc<Asset<Self>>> {
-        all_palettes()
-    }
-
     fn tree_entry_show(&self, ui: &mut egui::Ui) {
         let max = ui.next_widget_position() + Vec2::new(ui.available_width(), 0.0);
         let color_band_rect = Rect::from_min_max(
@@ -34,18 +21,6 @@ impl AssetTrait for Palette {
         );
         ui.painter()
             .add(Shape::Mesh(self.color_band_mesh(color_band_rect)));
-    }
-
-    fn save(asset: Asset<Self>) {
-        set_palette_in_cache(asset.clone());
-
-        Action::SavePalette { palette: asset }.send();
-    }
-
-    fn delete(id: AssetId<Self>) {
-        delete_palette_from_cache(id);
-
-        Action::DeletePalette { id }.send();
     }
 }
 

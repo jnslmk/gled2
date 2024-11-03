@@ -45,6 +45,7 @@ directories = "5.0"
 git2 = "0.19"
 whoami = "1.5"
 mkdirp = "1.0"
+typemap = "0.3.3"
 
 [build-dependencies]
 winresource = "0.1"

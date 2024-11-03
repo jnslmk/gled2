@@ -1,5 +1,5 @@
 use crate::{
-    storage::{Asset, AssetTrait, Palette},
+    storage::{Asset, Palette},
     ui::asset_tree::{AssetTree, TreeSelection},
 };
 use egui::{Button, Context, Margin, Ui};
@@ -94,7 +94,7 @@ pub fn palette_editor(ui: &mut Ui, palette: &mut Asset<Palette>, dirty: &mut boo
             .clicked()
         {
             *dirty = false;
-            AssetTrait::save(palette.clone());
+            palette.clone().save();
         }
         if ui
             .add_enabled(*dirty, Button::new("Reset"))
@@ -104,7 +104,7 @@ pub fn palette_editor(ui: &mut Ui, palette: &mut Asset<Palette>, dirty: &mut boo
             .clicked()
         {
             *dirty = false;
-            *palette = Arc::unwrap_or_clone(Palette::get(palette.id));
+            *palette = Arc::unwrap_or_clone(Asset::<Palette>::get(palette.id));
         }
     });
 }

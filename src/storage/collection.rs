@@ -2,10 +2,15 @@ use super::asset::{Asset, AssetTrait};
 use crate::storage::AssetId;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use std::{collections::HashMap, fmt::Debug, path::PathBuf, str::FromStr, sync::Arc};
+use typemap::Key;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Default)]
 pub struct Collection<T: AssetTrait>(HashMap<Uuid, Arc<Asset<T>>>);
+
+impl<T: AssetTrait + 'static> Key for Collection<T> {
+    type Value = Collection<T>;
+}
 
 impl<T: AssetTrait> Collection<T> {
     pub fn load(path: PathBuf) -> Self {

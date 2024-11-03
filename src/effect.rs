@@ -4,7 +4,7 @@ use crate::{
     constants::GPU_NOT_INIT,
     input::InputEvent,
     output_mix::OutputMix,
-    storage::{AssetId, AssetTrait, Palette},
+    storage::{Asset, AssetId, Palette},
     texture_to_output::TextureToOutput,
     transition::Transition,
     wgpu_render_state,
@@ -178,7 +178,7 @@ impl Effect {
             self.renderer.as_ref().expect(GPU_NOT_INIT).set_buffers(
                 queue,
                 &state,
-                self.palette.map(Palette::get),
+                self.palette.map(Asset::get),
                 &self.animation.config(),
             );
 

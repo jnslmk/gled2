@@ -1,11 +1,7 @@
-use super::{
-    all_scenes,
-    asset::{Asset, AssetTrait},
-    delete_scene_from_cache, get_scene, set_scene_in_cache, Action, AssetId,
-};
+use super::asset::AssetTrait;
 use crate::effect::Effect;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
 pub struct Scene {
@@ -15,26 +11,6 @@ pub struct Scene {
 
 impl AssetTrait for Scene {
     const DIR_NAME: &'static str = "scenes";
-
-    fn get(id: AssetId<Scene>) -> Arc<Asset<Self>> {
-        get_scene(id)
-    }
-
-    fn all() -> Vec<Arc<Asset<Self>>> {
-        all_scenes()
-    }
-
-    fn save(asset: Asset<Self>) {
-        set_scene_in_cache(asset.clone());
-
-        Action::SaveScene { scene: asset }.send();
-    }
-
-    fn delete(id: AssetId<Self>) {
-        delete_scene_from_cache(id);
-
-        Action::DeleteScene { id }.send();
-    }
 }
 
 pub struct SceneInstance {

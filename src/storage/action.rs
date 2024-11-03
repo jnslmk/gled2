@@ -1,8 +1,8 @@
-use super::{asset::Asset, AssetId, Palette, Project, Scene};
 use std::sync::{
     mpsc::{Receiver, Sender},
     OnceLock,
 };
+use uuid::Uuid;
 
 static SENDER: OnceLock<Sender<Action>> = OnceLock::new();
 
@@ -16,13 +16,18 @@ pub fn init() -> Receiver<Action> {
 pub enum Action {
     Update,
     SwitchBranch(String),
-    SavePalette { palette: Asset<Palette> },
-    DeletePalette { id: AssetId<Palette> },
-    SaveProject { project: Asset<Project> },
-    DeleteProject { id: AssetId<Project> },
-    SaveScene { scene: Asset<Scene> },
-    DeleteScene { id: AssetId<Scene> },
-    CommitAndPush { message: String },
+    SaveAsset {
+        dir_name: &'static str,
+        uuid: Uuid,
+        json: String,
+    },
+    DeleteAsset {
+        dir_name: &'static str,
+        uuid: Uuid,
+    },
+    CommitAndPush {
+        message: String,
+    },
 }
 
 impl Action {

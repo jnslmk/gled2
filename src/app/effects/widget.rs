@@ -1,8 +1,4 @@
-use crate::{
-    effect::Effect,
-    storage::{AssetTrait, Palette},
-    ui::group::group_button,
-};
+use crate::{effect::Effect, storage::Asset, ui::group::group_button};
 use egui::{
     load::SizedTexture, Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding,
     Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
@@ -116,7 +112,7 @@ impl<'a> Widget for EffectWidget<'a> {
                                             - Vec2::new(ui.available_width(), 0.0),
                                         ui.next_widget_position() - Vec2::new(2.0, 0.0),
                                     );
-                                    if let Some(palette) = self.effect.palette.map(Palette::get) {
+                                    if let Some(palette) = self.effect.palette.map(Asset::get) {
                                         ui.painter().add(Shape::mesh(
                                             palette.data.color_band_mesh(color_band_rect),
                                         ));

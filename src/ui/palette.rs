@@ -1,5 +1,5 @@
 use super::{asset_tree::AssetTree, ChangeButton};
-use crate::storage::{AssetId, AssetTrait, Palette};
+use crate::storage::{Asset, AssetId, Palette};
 use egui::{
     epaint::{Vertex, WHITE_UV},
     Color32, Mesh, Rect, Shape, Ui, Vec2,
@@ -9,7 +9,7 @@ impl ChangeButton for Option<AssetId<Palette>> {
     fn change_button(&mut self, ui: &mut Ui) -> bool {
         let mut changed = false;
 
-        let palette = self.map(Palette::get);
+        let palette = self.map(Asset::get);
         let response = ui
             .vertical_centered_justified(|ui| {
                 ui.menu_button(

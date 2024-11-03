@@ -1,10 +1,5 @@
-use super::{
-    all_projects,
-    asset::{Asset, AssetTrait},
-    delete_project_from_cache, get_project, set_project_in_cache, Action, AssetId, Palette, Scene,
-};
+use super::{asset::AssetTrait, AssetId, Palette, Scene};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
 pub struct Project {
@@ -28,24 +23,4 @@ pub struct SceneGroup {
 
 impl AssetTrait for Project {
     const DIR_NAME: &'static str = "projects";
-
-    fn get(id: AssetId<Project>) -> Arc<Asset<Self>> {
-        get_project(id)
-    }
-
-    fn all() -> Vec<Arc<Asset<Self>>> {
-        all_projects()
-    }
-
-    fn save(asset: Asset<Self>) {
-        set_project_in_cache(asset.clone());
-
-        Action::SaveProject { project: asset }.send();
-    }
-
-    fn delete(id: AssetId<Project>) {
-        delete_project_from_cache(id);
-
-        Action::DeleteProject { id }.send();
-    }
 }

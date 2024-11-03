@@ -10,7 +10,12 @@ mod scene;
 use collection::Collection;
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
-use std::{fmt::Debug, path::PathBuf, sync::Arc};
+use std::{
+    fmt::Debug,
+    path::{Path, PathBuf},
+};
+use typemap::ShareDebugMap;
+use uuid::Uuid;
 
 pub use self::{
     action::Action,
@@ -23,8 +28,8 @@ pub use self::{
 
 static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::Loading(0.0)));
 
-#[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
 pub enum State {
     Loading(f32),
     Error(String),
@@ -33,9 +38,7 @@ pub enum State {
         branches: Vec<String>,
         current_branch: String,
         folder: PathBuf,
-        projects: Collection<Project>,
-        palettes: Collection<Palette>,
-        scenes: Collection<Scene>,
+        collections: ShareDebugMap,
     },
 }
 
@@ -112,14 +115,17 @@ pub fn start_thread() {
             let scenes = Collection::<Scene>::load(root.join(Scene::DIR_NAME));
             *STATE.lock() = State::Loading(1.0);
 
+            let mut collections = ShareDebugMap::custom();
+            collections.insert::<Collection<Palette>>(palettes);
+            collections.insert::<Collection<Project>>(projects);
+            collections.insert::<Collection<Scene>>(scenes);
+
             *STATE.lock() = State::Opened {
                 synced: git.synced(),
                 branches,
                 current_branch,
                 folder: root.clone(),
-                projects,
-                palettes,
-                scenes,
+                collections,
             };
 
             //TODO: Loader before main window which turns into main window once we are here
@@ -144,9 +150,12 @@ pub fn start_thread() {
                             break;
                         }
                     },
-                    Action::SavePalette { palette } => {
-                        if let Err(err) =
-                            git.write_asset(&palette.id.disk_path(&root), &root, palette)
+                    Action::SaveAsset {
+                        dir_name,
+                        uuid,
+                        json,
+                    } => {
+                        if let Err(err) = git.write_asset(&asset_path(&root, uuid, dir_name), json)
                         {
                             log::error!("Could not save color palette: {err:?}");
                             continue;
@@ -157,56 +166,9 @@ pub fn start_thread() {
                             *synced = git.synced();
                         }
                     }
-                    Action::DeletePalette { id } => {
-                        if let Err(err) = git.delete_asset(&id.disk_path(&root)) {
+                    Action::DeleteAsset { uuid, dir_name } => {
+                        if let Err(err) = git.delete_asset(&asset_path(&root, uuid, dir_name)) {
                             log::error!("Could not delete color palette: {err:?}");
-                            continue;
-                        }
-
-                        let state: &mut State = &mut STATE.lock();
-                        if let State::Opened { synced, .. } = state {
-                            *synced = git.synced();
-                        }
-                    }
-                    Action::SaveProject { project } => {
-                        if let Err(err) =
-                            git.write_asset(&project.id.disk_path(&root), &root, project)
-                        {
-                            log::error!("Could not save project: {err:?}");
-                            continue;
-                        }
-
-                        let state: &mut State = &mut STATE.lock();
-                        if let State::Opened { synced, .. } = state {
-                            *synced = git.synced();
-                        }
-                    }
-                    Action::DeleteProject { id } => {
-                        if let Err(err) = git.delete_asset(&id.disk_path(&root)) {
-                            log::error!("Could not delete project: {err:?}");
-                            continue;
-                        }
-
-                        let state: &mut State = &mut STATE.lock();
-                        if let State::Opened { synced, .. } = state {
-                            *synced = git.synced();
-                        }
-                    }
-                    Action::SaveScene { scene } => {
-                        if let Err(err) = git.write_asset(&scene.id.disk_path(&root), &root, scene)
-                        {
-                            log::error!("Could not save scene: {err}");
-                            continue;
-                        }
-
-                        let state: &mut State = &mut STATE.lock();
-                        if let State::Opened { synced, .. } = state {
-                            *synced = git.synced();
-                        }
-                    }
-                    Action::DeleteScene { id } => {
-                        if let Err(err) = git.delete_asset(&id.disk_path(&root)) {
-                            log::error!("Could not delete scene: {err}");
                             continue;
                         }
 
@@ -221,122 +183,6 @@ pub fn start_thread() {
     });
 }
 
-fn get_palette(id: AssetId<Palette>) -> Arc<Asset<Palette>> {
-    let state: &State = &STATE.lock();
-    if let State::Opened { palettes, .. } = state {
-        if let Some(asset) = palettes.get(&id) {
-            return asset.clone();
-        }
-    }
-
-    Arc::new(Asset {
-        id: id.to_owned(),
-        name: Default::default(),
-        data: Palette::default(),
-    })
-}
-
-fn all_palettes() -> Vec<Arc<Asset<Palette>>> {
-    let state: &State = &STATE.lock();
-    if let State::Opened { palettes, .. } = state {
-        return palettes.assets();
-    }
-
-    Default::default()
-}
-
-fn set_palette_in_cache(palette: Asset<Palette>) {
-    log::info!("Setting palette in cache: {:?}", palette.id);
-    let state: &mut State = &mut STATE.lock();
-    if let State::Opened { palettes, .. } = state {
-        palettes.set_asset(palette);
-    }
-}
-
-fn delete_palette_from_cache(id: AssetId<Palette>) {
-    log::info!("Deleting palette from cache: {:?}", id);
-    let state: &mut State = &mut STATE.lock();
-    if let State::Opened { palettes, .. } = state {
-        palettes.delete_asset(id);
-    }
-}
-
-fn get_project(id: AssetId<Project>) -> Arc<Asset<Project>> {
-    let state: &State = &STATE.lock();
-    if let State::Opened { projects, .. } = state {
-        if let Some(asset) = projects.get(&id) {
-            return asset.clone();
-        }
-    }
-
-    Arc::new(Asset {
-        id: id.to_owned(),
-        name: Default::default(),
-        data: Project::default(),
-    })
-}
-
-fn all_projects() -> Vec<Arc<Asset<Project>>> {
-    let state: &State = &STATE.lock();
-    if let State::Opened { projects, .. } = state {
-        return projects.assets();
-    }
-
-    Default::default()
-}
-
-fn set_project_in_cache(project: Asset<Project>) {
-    log::info!("Setting project in cache: {:?}", project.id);
-    let state: &mut State = &mut STATE.lock();
-    if let State::Opened { projects, .. } = state {
-        projects.set_asset(project);
-    }
-}
-
-fn delete_project_from_cache(id: AssetId<Project>) {
-    log::info!("Deleting project from cache: {:?}", id);
-    let state: &mut State = &mut STATE.lock();
-    if let State::Opened { projects, .. } = state {
-        projects.delete_asset(id);
-    }
-}
-
-fn get_scene(id: AssetId<Scene>) -> Arc<Asset<Scene>> {
-    let state: &State = &STATE.lock();
-    if let State::Opened { scenes, .. } = state {
-        if let Some(asset) = scenes.get(&id) {
-            return asset.clone();
-        }
-    }
-
-    Arc::new(Asset {
-        id: id.to_owned(),
-        name: Default::default(),
-        data: Scene::default(),
-    })
-}
-
-fn all_scenes() -> Vec<Arc<Asset<Scene>>> {
-    let state: &State = &STATE.lock();
-    if let State::Opened { scenes, .. } = state {
-        return scenes.assets();
-    }
-
-    Default::default()
-}
-
-fn set_scene_in_cache(scene: Asset<Scene>) {
-    log::info!("Setting scene in cache: {:?}", scene.id);
-    let state: &mut State = &mut STATE.lock();
-    if let State::Opened { scenes, .. } = state {
-        scenes.set_asset(scene);
-    }
-}
-
-fn delete_scene_from_cache(id: AssetId<Scene>) {
-    log::info!("Deleting scene from cache: {:?}", id);
-    let state: &mut State = &mut STATE.lock();
-    if let State::Opened { scenes, .. } = state {
-        scenes.delete_asset(id);
-    }
+pub fn asset_path(root: &Path, id: Uuid, dir_name: &str) -> PathBuf {
+    root.join(dir_name).join(format!("{}.json", id))
 }

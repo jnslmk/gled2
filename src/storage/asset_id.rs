@@ -1,11 +1,8 @@
-use serde::{Deserialize, Serialize};
-use std::{
-    hash::{Hash, Hasher},
-    path::{Path, PathBuf},
-};
-use uuid::Uuid;
-
 use super::AssetTrait;
+use crate::storage::{collection::Collection, Action, State, STATE};
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(transparent)]
@@ -35,7 +32,22 @@ impl<T: AssetTrait> AssetId<T> {
         }
     }
 
-    pub fn disk_path(&self, root: &Path) -> PathBuf {
-        root.join(T::DIR_NAME).join(format!("{}.json", self.id))
+    pub fn delete(self) {
+        log::info!("Deleting palette from cache: {:?}", self);
+
+        std::thread::spawn(move || {
+            let state: &mut State = &mut STATE.lock();
+            if let State::Opened { collections, .. } = state {
+                if let Some(collection) = collections.get_mut::<Collection<T>>() {
+                    collection.delete_asset(self);
+                }
+            }
+
+            Action::DeleteAsset {
+                uuid: self.id,
+                dir_name: T::DIR_NAME,
+            }
+            .send();
+        });
     }
 }

@@ -72,7 +72,7 @@ impl<T: AssetTrait> TreeEntry<T> {
                                     {
                                         let mut asset = Asset::<T>::new(new_asset_name);
                                         asset.change_dir(dir);
-                                        AssetTrait::save(asset);
+                                        asset.save();
                                         ui.close_menu();
                                     }
                                 });
@@ -152,7 +152,7 @@ impl<T: AssetTrait> Default for AssetTree<T> {
 impl<T: AssetTrait> AssetTree<T> {
     pub fn load(&self) -> Vec<TreeEntry<T>> {
         let mut root = TreeEntry::default();
-        let assets = T::all();
+        let assets = Asset::all();
         for asset in assets {
             let pos = Self::add_dir(&mut root, asset.dir());
             if let TreeEntry::Dir(_, ref mut dir) = pos {
@@ -243,7 +243,7 @@ impl<T: AssetTrait> AssetTree<T> {
                         .map(|index| tree_ids.remove(index))
                         .map(|id| match id {
                             TreeId::File(id) => {
-                                TreeSelection::Asset(Arc::unwrap_or_clone(T::get(id)))
+                                TreeSelection::Asset(Arc::unwrap_or_clone(Asset::get(id)))
                             }
                             TreeId::Dir(dir) => TreeSelection::Dir {
                                 current: dir.clone(),
@@ -264,12 +264,12 @@ impl<T: AssetTrait> AssetTree<T> {
 
                     if let (TreeId::File(source), TreeId::Dir(target)) = (source, target) {
                         let target = target.clone();
-                        let mut asset = Arc::unwrap_or_clone(T::get(source));
+                        let mut asset = Arc::unwrap_or_clone(Asset::get(source));
                         asset.name = target
                             .into_iter()
                             .chain(std::iter::once(asset.name.last().unwrap().clone()))
                             .collect();
-                        AssetTrait::save(asset);
+                        asset.save();
                     }
                 }
                 _ => {}
@@ -288,7 +288,7 @@ impl<T: AssetTrait> AssetTree<T> {
                     .add(Button::new("Delete").fill(Color32::DARK_RED))
                     .clicked()
                 {
-                    AssetTrait::delete(asset.id);
+                    asset.delete();
                     self.selection = TreeSelection::None;
                 }
             }
@@ -318,12 +318,12 @@ impl<T: AssetTrait> AssetTree<T> {
                 .clicked()
         {
             self.folder_dirty = false;
-            let assets = T::all();
+            let assets = Asset::<T>::all();
             for asset in assets {
                 if &asset.dir() == current {
                     let mut asset = Arc::unwrap_or_clone(asset);
                     asset.change_dir(new);
-                    AssetTrait::save(asset);
+                    asset.save();
                 }
             }
             for empty_dir in self.empty_dirs.iter_mut() {

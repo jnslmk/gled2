@@ -4,9 +4,10 @@ use git2::{
     RemoteCallbacks, Repository, Signature,
 };
 use mkdirp::mkdirp;
-use std::path::{Path, PathBuf};
-
-use super::{Asset, AssetTrait};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 pub struct Git {
     synced: bool,
@@ -268,13 +269,8 @@ impl Git {
             .repository
             .as_ref()
             .ok_or(Error::from_str("No repository set"))?;
-
-        let root = repository
-            .path()
-            .parent()
-            .ok_or_else(|| Error::from_str("No parent"))?;
         let file = file
-            .strip_prefix(root)
+            .strip_prefix(self.folder())
             .map_err(|_err| Error::from_str("Could not make path relative"))?;
 
         let mut index = repository.index()?;
@@ -377,31 +373,26 @@ impl Git {
         Ok(())
     }
 
-    pub fn write_asset<T: AssetTrait>(
-        &mut self,
-        path: &Path,
-        folder: &Path,
-        asset: Asset<T>,
-    ) -> Result<(), String> {
-        let Some(parent) = path.parent() else {
-            return Err(format!("Could not get parent of file: {}", path.display()));
-        };
-        if let Err(err) = mkdirp(folder.join(parent)) {
+    pub fn write_asset(&mut self, file: &Path, json: String) -> Result<(), String> {
+        let parent = file.parent().expect("Could not get parent of asset path");
+        if let Err(err) = mkdirp(parent) {
             return Err(format!(
                 "Could not create basedir of {}: {err:?}",
-                path.display()
+                parent.display()
             ));
         }
-        let file = match std::fs::File::create(folder.join(path)) {
-            Ok(file) => file,
-            Err(err) => {
-                return Err(format!("Could not open file {}: {err:?}", path.display()));
+        {
+            let mut file = match std::fs::File::create(file) {
+                Ok(file) => file,
+                Err(err) => {
+                    return Err(format!("Could not open file {}: {err:?}", file.display()));
+                }
+            };
+            if let Err(err) = file.write_all(json.as_bytes()) {
+                return Err(format!("Could not write asset: {err:?}"));
             }
-        };
-        if let Err(err) = asset.write(file) {
-            return Err(format!("Could not write asset: {err:?}"));
         }
-        if let Err(err) = self.add(path) {
+        if let Err(err) = self.add(file) {
             return Err(format!("Could not add file to git: {err:?}"));
         }
 
