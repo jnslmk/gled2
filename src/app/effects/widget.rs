@@ -1,8 +1,4 @@
-use crate::{
-    effect::Effect,
-    storage::{Asset, AssetTrait},
-    ui::group::group_button,
-};
+use crate::{effect::Effect, ui::group::group_button};
 use egui::{
     load::SizedTexture, Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding,
     Sense, Slider, TextureId, Ui, Vec2, Widget,
@@ -110,16 +106,6 @@ impl<'a> Widget for EffectWidget<'a> {
                                 }
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     checkbox_rect = Some(ui.checkbox(&mut false, "").rect);
-
-                                    let color_band_rect = Rect::from_min_max(
-                                        ui.next_widget_position()
-                                            - Vec2::new(ui.available_width(), 0.0),
-                                        ui.next_widget_position() - Vec2::new(2.0, 0.0),
-                                    );
-                                    if let Some(palette) = self.effect.palette.and_then(Asset::get)
-                                    {
-                                        palette.data.show(ui, color_band_rect);
-                                    }
                                 });
                             });
 

@@ -4,19 +4,19 @@ use crate::{
     constants::GPU_NOT_INIT,
     input::InputEvent,
     output_mix::OutputMix,
-    storage::{Asset, AssetId, Palette},
+    storage::{Asset, Palette},
     texture_to_output::TextureToOutput,
     transition::Transition,
     wgpu_render_state,
 };
 use egui::TextureId;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use wgpu::{Buffer, CommandEncoder, Queue};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Effect {
-    pub palette: Option<AssetId<Palette>>, //TODO: Change to offset to palette, palette is to be set globaly for a deck
     pub color_shift: f32,
     pub opacity: f32,
     pub active: bool,
@@ -49,7 +49,7 @@ pub struct Effect {
 
 impl PartialEq for Effect {
     fn eq(&self, other: &Self) -> bool {
-        self.palette == other.palette
+        self.color_shift == other.color_shift
             && self.opacity == other.opacity
             && self.active == other.active
             && self.beat_progression_offset == other.beat_progression_offset
@@ -67,7 +67,6 @@ impl Eq for Effect {}
 impl Clone for Effect {
     fn clone(&self) -> Self {
         Self {
-            palette: self.palette,
             color_shift: self.color_shift,
             opacity: self.opacity,
             active: self.active,
@@ -82,10 +81,9 @@ impl Clone for Effect {
 }
 
 impl Effect {
-    pub fn new(animation: Animation, palette: Option<AssetId<Palette>>, group: String) -> Self {
+    pub fn new(animation: Animation, group: String) -> Self {
         Self {
             animation,
-            palette,
             opacity: 1.0,
             active: true,
             group,
@@ -144,6 +142,7 @@ impl Effect {
         mut state: State,
         blackout: bool,
         always_render: bool,
+        palette: Option<Arc<Asset<Palette>>>,
     ) {
         // make sure we have a texture id (fixes a deadlock).
         self.texture_id();
@@ -181,7 +180,7 @@ impl Effect {
             self.renderer.as_ref().expect(GPU_NOT_INIT).set_buffers(
                 queue,
                 &state,
-                self.palette.and_then(Asset::get),
+                palette,
                 &self.animation.config(),
             );
 

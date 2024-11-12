@@ -1,5 +1,5 @@
 use super::App;
-use crate::{app::PersistantState, effect::Effect};
+use crate::{app::PersistantState, effect::Effect, ui::ChangeButton};
 use egui::{Align, Checkbox, Layout, RichText, Slider, Ui};
 
 impl App {
@@ -61,6 +61,9 @@ impl App {
                 self.pipeline.auto_mode_active,
                 Slider::new(&mut self.pipeline.auto_mode_max_effects, 1..=10),
             );
+            ui.vertical_centered_justified(|ui| {
+                self.pipeline.palette.change_button(ui);
+            });
         });
     }
 }

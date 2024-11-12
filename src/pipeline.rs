@@ -7,7 +7,7 @@ use crate::{
     output_sender::{GpuReadyReceiver, OutputSender},
     preview::Preview,
     preview_indices::PreviewIndices,
-    storage::AssetId,
+    storage::{Asset, AssetId, Palette},
     svg::Universes,
     transition::{Transition, TransitionGoal},
     wgpu_render_state,
@@ -17,16 +17,15 @@ use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
-    str::FromStr,
     time::{Duration, Instant},
 };
-use uuid::Uuid;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Pipeline {
     effects: Vec<Effect>,
+    pub palette: Option<AssetId<Palette>>,
     pub auto_mode_active: bool,
     pub auto_mode_seconds: u64,
     pub auto_mode_max_effects: usize,
@@ -49,6 +48,7 @@ impl Default for Pipeline {
     fn default() -> Self {
         Self {
             effects: Default::default(),
+            palette: Default::default(),
             auto_mode_last_change: Default::default(),
             auto_mode_active: false,
             auto_mode_seconds: 45,
@@ -80,13 +80,7 @@ impl Pipeline {
             center: (0.25, 0.5),
             ..Default::default()
         };
-        let mut effect = Effect::new(
-            gradient.into(),
-            Some(AssetId::from_uuid(
-                Uuid::from_str("3ab086c9-fca5-46c5-8e81-2001a7c2fb11").unwrap(),
-            )),
-            "allFull".to_owned(),
-        );
+        let mut effect = Effect::new(gradient.into(), "allFull".to_owned());
         effect.active = true;
         effect.opacity = 1.0;
         pipeline.add_effect(effect);
@@ -98,13 +92,7 @@ impl Pipeline {
             },
             ..Default::default()
         };
-        let mut effect = Effect::new(
-            gradient.into(),
-            Some(AssetId::from_uuid(
-                Uuid::from_str("39ab8644-0206-4d19-ab16-c0a924a35c4d").unwrap(),
-            )),
-            "innerFull".to_owned(),
-        );
+        let mut effect = Effect::new(gradient.into(), "innerFull".to_owned());
         effect.active = true;
         effect.opacity = 0.5;
         pipeline.add_effect(effect);
@@ -117,13 +105,7 @@ impl Pipeline {
             },
             ..Default::default()
         };
-        let mut effect = Effect::new(
-            stripes.into(),
-            Some(AssetId::from_uuid(
-                Uuid::from_str("08c1f6e4-6428-43b6-b9fd-f6d0b5261174").unwrap(),
-            )),
-            "innerEdge".to_owned(),
-        );
+        let mut effect = Effect::new(stripes.into(), "innerEdge".to_owned());
         effect.active = true;
         pipeline.add_effect(effect);
 
@@ -278,12 +260,14 @@ impl Pipeline {
             self.auto_mode_last_change.take();
         }
 
+        let palette = self.palette.and_then(Asset::get);
         for (index, effect) in self.effects() {
             effect.prepare(
                 queue,
                 state,
                 blackout,
                 render_deactivated_effects.should_render(index),
+                palette.clone(),
             );
         }
         self.preview_indices

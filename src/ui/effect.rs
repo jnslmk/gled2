@@ -23,10 +23,7 @@ impl Effect {
 
         ui.separator();
 
-        ui.label(RichText::new("Color Palette").heading());
-        ui.vertical_centered_justified(|ui| {
-            self.palette.change_button(ui);
-        });
+        ui.label(RichText::new("Color Shift").heading());
         ui.vertical_centered_justified(|ui| {
             self.color_shift.change_button(ui);
         });
