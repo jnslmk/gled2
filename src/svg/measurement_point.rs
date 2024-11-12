@@ -3,6 +3,7 @@
 use super::{Led, Parameter, ParsedSvg};
 use crate::{
     constants::UNIVERSES,
+    group::Group,
     texture_to_output::{Lamp, Positions, Universe},
 };
 use egui::{Pos2, Rect};
@@ -11,14 +12,14 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use tiny_skia::{Path, PathSegment, Point};
-use usvg::{Group, Node};
+use usvg::Node;
 
 pub type Universes = BTreeSet<u16>;
 
 #[derive(Clone, Debug, Default)]
 pub struct MeasurementPoints {
     /// points for each render group
-    points: BTreeMap<String, Vec<MeasurementPoint>>,
+    points: BTreeMap<Group, Vec<MeasurementPoint>>,
     /// Positions of each individual led
     preview_positions: Positions,
     uv: Option<Option<Rect>>,
@@ -34,7 +35,7 @@ impl MeasurementPoints {
             .collect()
     }
 
-    pub fn positions(&self, group: &str) -> Positions {
+    pub fn positions(&self, group: &Group) -> Positions {
         let mut positions = Positions::default();
 
         if let Some(points) = self.points.get(group) {
@@ -121,7 +122,7 @@ impl MeasurementPoints {
         })
     }
 
-    pub fn groups(&self) -> Vec<String> {
+    pub fn groups(&self) -> Vec<Group> {
         self.points.keys().cloned().collect()
     }
 }
@@ -133,7 +134,7 @@ pub struct MeasurementPoint {
     y: f32,
 }
 
-fn traverse_nodes(group: &Group) -> Vec<&Node> {
+fn traverse_nodes(group: &usvg::Group) -> Vec<&Node> {
     let mut nodes = vec![];
     for child in group.children() {
         nodes.push(child);
@@ -156,9 +157,8 @@ impl From<&ParsedSvg> for MeasurementPoints {
             .into_iter()
             .for_each(|node| {
                 if let Some(parameter) = svg.parameters.get(node.id()) {
-                    parameter.groups.iter().for_each(|group| {
-                        let measurement_points =
-                            points.entry(group.to_owned()).or_insert_with(Vec::new);
+                    parameter.groups.iter().cloned().for_each(|group| {
+                        let measurement_points = points.entry(group).or_insert_with(Vec::new);
                         match node {
                             Node::Path(path) if parameter.count > 1 => {
                                 let path_data = path

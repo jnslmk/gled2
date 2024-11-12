@@ -17,7 +17,7 @@ pub struct Stripes {
 impl Eq for Stripes {}
 
 impl AnimationConfig for Stripes {
-    fn ui(&mut self, ui: &mut egui::Ui, _rendered: egui::TextureId, _svg: Option<egui::TextureId>) {
+    fn ui(&mut self, ui: &mut egui::Ui, _rendered: egui::TextureId) {
         self.common.ui(ui);
         ui.horizontal(|ui| {
             ui.radio_value(&mut self.orientation, Orientation::Horizontal, "Horizontal");

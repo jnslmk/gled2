@@ -29,6 +29,12 @@ impl<T> Hash for AssetId<T> {
     }
 }
 
+impl<T: AssetTrait> Default for AssetId<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: AssetTrait> AssetId<T> {
     pub fn new() -> Self {
         Self::from_uuid(Uuid::new_v4())

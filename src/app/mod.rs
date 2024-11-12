@@ -10,7 +10,7 @@ use crate::{
     extract_output::ExtractOutput,
     input::Input,
     output_sender::{self, GpuReadyReceiver, OutputSender},
-    pipeline::{Pipeline, RenderDeactivatedEffects},
+    pipeline::{Pipeline, RenderDeactivatedScenes},
     project::Project,
     ui::{action::Action, windows::Windows},
 };
@@ -32,7 +32,7 @@ pub struct App {
 
     blackout: bool,
     svg: Option<Svg>,
-    selected_effect: usize,
+    selected_scene_instance: usize,
     hovered_effect: usize,
 }
 
@@ -53,27 +53,25 @@ impl eframe::App for App {
 
         match Action::dequeue() {
             None => (),
-            Some(Action::DeleteSelectedEffect) => {
-                self.pipeline.remove_effect(self.selected_effect);
+            Some(Action::DeleteSelectedSceneInstance) => {
+                self.pipeline
+                    .remove_scene_instance(self.selected_scene_instance);
 
-                self.selected_effect = self
+                self.selected_scene_instance = self
                     .pipeline
-                    .effects()
+                    .scene_instances()
                     .first()
-                    .map(|(index, _effect)| *index)
+                    .map(|(index, _scene_instance)| *index)
                     .unwrap_or_default();
             }
-            Some(Action::CloneSelectedEffect) => {
-                if let Some(index) =
-                    self.pipeline
-                        .effect(self.selected_effect)
-                        .cloned()
-                        .map(|mut effect| {
-                            effect.active = false;
-                            self.pipeline.add_effect(effect)
-                        })
+            Some(Action::CloneSelectedSceneInstance) => {
+                if let Some(scene) = self
+                    .pipeline
+                    .scene_instance(self.selected_scene_instance)
+                    .map(|scene_instance| scene_instance.scene)
                 {
-                    self.selected_effect = index;
+                    let index = self.pipeline.add_scene(scene);
+                    self.selected_scene_instance = index;
                 }
             }
             Some(Action::InitGpu) => {
@@ -110,9 +108,9 @@ impl eframe::App for App {
             self.timing.framerate().unwrap_or_default(),
             self.blackout,
             if PersistantState::effects_always_render() {
-                RenderDeactivatedEffects::Always
+                RenderDeactivatedScenes::Always
             } else {
-                RenderDeactivatedEffects::Some(self.selected_effect, self.hovered_effect)
+                RenderDeactivatedScenes::Some(self.selected_scene_instance, self.hovered_effect)
             },
             self.timing.fade_duration(),
         );
@@ -140,7 +138,7 @@ impl App {
             project_path: crate::opts::OPTS.project_path.clone(),
             timing: Timing::default(),
             blackout: false,
-            selected_effect: 0,
+            selected_scene_instance: 0,
             hovered_effect: 0,
             pipeline: Pipeline::default(),
             windows: Windows::default(),

@@ -36,9 +36,9 @@ impl AnimationConfig for Blob {
         }
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId, svg: Option<egui::TextureId>) {
+    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId) {
         self.common.ui(ui);
-        set_center_button(ui, &mut self.center, rendered, svg);
+        set_center_button(ui, &mut self.center, rendered);
     }
 
     fn uses_multiple_colors(&self) -> bool {

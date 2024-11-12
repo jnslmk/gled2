@@ -1,6 +1,5 @@
 mod grid;
 mod header;
-mod widget;
 
 use super::{preview_uv, App};
 use egui::{Color32, Context, Margin, Stroke};

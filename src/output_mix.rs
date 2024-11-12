@@ -10,6 +10,12 @@ pub struct OutputMix {
     bind_group: Option<BindGroup>,
 }
 
+impl Default for OutputMix {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OutputMix {
     pub fn new() -> Self {
         let device = wgpu_render_state().device;

@@ -1,4 +1,6 @@
-use crate::{pipeline::Pipeline, svg::MeasurementPoints, texture_to_output::Positions};
+use crate::{
+    group::Group, pipeline::Pipeline, svg::MeasurementPoints, texture_to_output::Positions,
+};
 use anyhow::Result;
 use egui::{mutex::Mutex, Rect};
 use egui_extras::RetainedImage;
@@ -62,11 +64,11 @@ pub fn reset() {
     *MEASUREMENT_POINTS.lock() = MeasurementPoints::default();
 }
 
-pub fn groups() -> Vec<String> {
+pub fn groups() -> Vec<Group> {
     MEASUREMENT_POINTS.lock().groups()
 }
 
-pub fn positions(group: &str) -> Positions {
+pub fn positions(group: &Group) -> Positions {
     MEASUREMENT_POINTS.lock().positions(group)
 }
 

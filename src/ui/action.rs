@@ -5,8 +5,8 @@ use std::collections::VecDeque;
 static ACTION_QUEUE: Lazy<Mutex<VecDeque<Action>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
 
 pub enum Action {
-    DeleteSelectedEffect,
-    CloneSelectedEffect,
+    DeleteSelectedSceneInstance,
+    CloneSelectedSceneInstance,
     InitGpu,
 }
 

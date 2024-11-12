@@ -1,13 +1,12 @@
 use crate::{
-    animation::{CommonConfig, Direction, Gradient, GradientType, State, Stripes},
     constants::{GPU_NOT_INIT, OUTPUT_BUFFER_SIZE},
-    effect::Effect,
     extract_output::ExtractOutput,
     output_clear::OutputClear,
     output_sender::{GpuReadyReceiver, OutputSender},
     preview::Preview,
     preview_indices::PreviewIndices,
-    storage::{Asset, AssetId, Palette},
+    scene_instance::SceneInstance,
+    storage::{Asset, AssetId, Palette, Scene},
     svg::Universes,
     transition::{Transition, TransitionGoal},
     wgpu_render_state,
@@ -24,11 +23,11 @@ use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Pipeline {
-    effects: Vec<Effect>,
+    pub scenes_instances: Vec<SceneInstance>,
     pub palette: Option<AssetId<Palette>>,
     pub auto_mode_active: bool,
     pub auto_mode_seconds: u64,
-    pub auto_mode_max_effects: usize,
+    pub auto_mode_max_scenes: usize,
 
     #[serde(skip)]
     auto_mode_last_change: Option<Instant>,
@@ -44,15 +43,30 @@ pub struct Pipeline {
     output_clear: Option<OutputClear>,
 }
 
+impl Clone for Pipeline {
+    fn clone(&self) -> Self {
+        Self {
+            scenes_instances: self.scenes_instances.clone(),
+            palette: self.palette,
+            auto_mode_active: self.auto_mode_active,
+            auto_mode_seconds: self.auto_mode_seconds,
+            auto_mode_max_scenes: self.auto_mode_max_scenes,
+            auto_mode_last_change: self.auto_mode_last_change,
+            start: self.start,
+            ..Default::default()
+        }
+    }
+}
+
 impl Default for Pipeline {
     fn default() -> Self {
         Self {
-            effects: Default::default(),
+            scenes_instances: Default::default(),
             palette: Default::default(),
             auto_mode_last_change: Default::default(),
             auto_mode_active: false,
             auto_mode_seconds: 45,
-            auto_mode_max_effects: 3,
+            auto_mode_max_scenes: 3,
             start: Default::default(),
             preview_indices: Default::default(),
             preview: Default::default(),
@@ -62,56 +76,7 @@ impl Default for Pipeline {
     }
 }
 
-impl Clone for Pipeline {
-    fn clone(&self) -> Self {
-        Self {
-            effects: self.effects.clone(),
-            ..Default::default()
-        }
-    }
-}
-
 impl Pipeline {
-    pub fn demo() -> Self {
-        let mut pipeline = Self::default();
-
-        let gradient = Gradient {
-            gradient: GradientType::Radial,
-            center: (0.25, 0.5),
-            ..Default::default()
-        };
-        let mut effect = Effect::new(gradient.into(), "allFull".to_owned());
-        effect.active = true;
-        effect.opacity = 1.0;
-        pipeline.add_effect(effect);
-
-        let gradient = Gradient {
-            gradient: GradientType::LinearHorizontal,
-            common: CommonConfig {
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-        let mut effect = Effect::new(gradient.into(), "innerFull".to_owned());
-        effect.active = true;
-        effect.opacity = 0.5;
-        pipeline.add_effect(effect);
-
-        let stripes = Stripes {
-            count: 1,
-            common: CommonConfig {
-                direction: Direction::Backward,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-        let mut effect = Effect::new(stripes.into(), "innerEdge".to_owned());
-        effect.active = true;
-        pipeline.add_effect(effect);
-
-        pipeline
-    }
-
     pub fn init_gpu(&mut self) {
         self.output_clear.get_or_insert_with(OutputClear::init);
         self.output.get_or_insert_with(|| {
@@ -124,57 +89,56 @@ impl Pipeline {
         });
         self.preview_indices.get_or_insert_with(PreviewIndices::new);
         self.preview.get_or_insert_with(Preview::new);
-        for effect in self.effects.iter_mut() {
-            effect.init_gpu();
+        for scene_instance in self.scenes_instances.iter_mut() {
+            scene_instance.init_states();
         }
         self.set_buffers();
     }
 
-    pub fn add_effect(&mut self, effect: Effect) -> usize {
-        self.effects.push(effect);
-        self.init_gpu();
+    pub fn add_scene(&mut self, scene: AssetId<Scene>) -> usize {
+        let mut scene_instance: SceneInstance = scene.into();
+        scene_instance.init_states();
+        self.scenes_instances.push(scene_instance);
 
-        self.effects.len() - 1
+        self.scenes_instances.len() - 1
     }
 
-    pub fn remove_effect(&mut self, index: usize) -> Option<Effect> {
-        let mut effect = None;
-
-        if self.effects.len() > index {
-            effect = Some(self.effects.remove(index));
+    pub fn remove_scene_instance(&mut self, index: usize) {
+        if self.scenes_instances.len() > index {
+            self.scenes_instances.remove(index);
             self.init_gpu();
         }
-
-        effect
     }
 
     pub fn set_buffers(&mut self) {
-        for effect in self.effects.iter_mut() {
-            effect.set_buffers(self.output.as_ref().expect(GPU_NOT_INIT))
+        let output = self.output.as_ref().expect(GPU_NOT_INIT);
+
+        for scene in self.scenes_instances.iter_mut() {
+            scene.set_buffers(output);
         }
 
         self.preview.as_mut().expect(GPU_NOT_INIT).set_buffers(
             self.preview_indices.as_ref().expect(GPU_NOT_INIT).indices(),
-            self.output.as_ref().expect(GPU_NOT_INIT),
+            output,
         );
 
         self.output_clear
             .as_mut()
             .expect(GPU_NOT_INIT)
-            .set_buffers(self.output.as_ref().expect(GPU_NOT_INIT))
+            .set_buffers(output)
     }
 
-    pub fn effects(&mut self) -> Vec<(usize, &mut Effect)> {
-        self.effects.iter_mut().enumerate().collect()
+    pub fn scene_instances(&mut self) -> Vec<(usize, &mut SceneInstance)> {
+        self.scenes_instances.iter_mut().enumerate().collect()
     }
 
-    pub fn effect(&mut self, index: usize) -> Option<&mut Effect> {
-        self.effects.get_mut(index)
+    pub fn scene_instance(&mut self, index: usize) -> Option<&mut SceneInstance> {
+        self.scenes_instances.get_mut(index)
     }
 
     pub fn svg_or_groups_changed(&mut self, universes: Universes) {
-        for effect in self.effects.iter_mut() {
-            effect.send_positions();
+        for scene_instance in self.scenes_instances.iter_mut() {
+            scene_instance.send_positions();
         }
         self.preview_indices
             .as_mut()
@@ -196,19 +160,16 @@ impl Pipeline {
         beats_per_minute: f32,
         framerate: f32,
         blackout: bool,
-        render_deactivated_effects: RenderDeactivatedEffects,
+        render_deactivated_scenes: RenderDeactivatedScenes,
         fade_duration: Duration,
     ) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
 
-        let state = State {
-            beat_progression,
-            beats_per_minute,
-            framerate,
-            ..Default::default()
-        };
+        for scene_instance in self.scenes_instances.iter_mut() {
+            scene_instance.set_state(beat_progression, beats_per_minute, framerate);
+        }
 
         if self.auto_mode_active {
             if self
@@ -218,24 +179,24 @@ impl Pipeline {
                 .as_secs()
                 > self.auto_mode_seconds
             {
-                let auto_mode_max_effects = self.auto_mode_max_effects;
+                let auto_mode_max_scenes = self.auto_mode_max_scenes;
                 let mut prev = HashSet::new();
                 {
                     let mut indices = self
-                        .effects()
+                        .scene_instances()
                         .into_iter()
-                        .filter(|(_index, effect)| effect.active)
-                        .map(|(index, _effect)| index)
+                        .filter(|(_index, scene)| scene.active)
+                        .map(|(index, _scene)| index)
                         .collect::<Vec<_>>();
 
                     let mut disable_count =
-                        (indices.len() + 1).saturating_sub(auto_mode_max_effects);
+                        (indices.len() + 1).saturating_sub(auto_mode_max_scenes);
                     while disable_count > 0 {
                         if let Some(index) = indices.choose_mut(&mut rand::thread_rng()).copied() {
                             if prev.insert(index) {
                                 disable_count -= 1;
-                                if let Some(effect) = self.effect(index) {
-                                    effect.set_transition(Transition::new(
+                                if let Some(scene) = self.scene_instance(index) {
+                                    scene.set_transition(Transition::new(
                                         TransitionGoal::TurnOff,
                                         fade_duration,
                                     ));
@@ -245,13 +206,13 @@ impl Pipeline {
                     }
                 }
 
-                let mut effects = self
-                    .effects()
+                let mut scenes = self
+                    .scene_instances()
                     .into_iter()
-                    .filter(|(index, _effect)| !prev.contains(index))
+                    .filter(|(index, _scene)| !prev.contains(index))
                     .collect::<Vec<_>>();
-                if let Some((_index, effect)) = effects.choose_mut(&mut rand::thread_rng()) {
-                    effect.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
+                if let Some((_index, scene)) = scenes.choose_mut(&mut rand::thread_rng()) {
+                    scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
                 }
 
                 self.auto_mode_last_change.take();
@@ -261,12 +222,10 @@ impl Pipeline {
         }
 
         let palette = self.palette.and_then(Asset::get);
-        for (index, effect) in self.effects() {
-            effect.prepare(
+        for (index, scene_instance) in self.scene_instances() {
+            scene_instance.prepare(
                 queue,
-                state,
-                blackout,
-                render_deactivated_effects.should_render(index),
+                render_deactivated_scenes.should_render(index),
                 palette.clone(),
             );
         }
@@ -284,11 +243,11 @@ impl Pipeline {
             .expect(GPU_NOT_INIT)
             .run(&mut encoder);
 
-        for (index, effect) in self.effects() {
-            effect.render(
+        for (index, scene) in self.scene_instances() {
+            scene.render(
                 &mut encoder,
                 blackout,
-                render_deactivated_effects.should_render(index),
+                render_deactivated_scenes.should_render(index),
             );
         }
 
@@ -309,16 +268,16 @@ impl Pipeline {
     }
 }
 
-pub enum RenderDeactivatedEffects {
+pub enum RenderDeactivatedScenes {
     Always,
     Some(usize, usize),
 }
 
-impl RenderDeactivatedEffects {
+impl RenderDeactivatedScenes {
     pub fn should_render(&self, index: usize) -> bool {
         match self {
-            RenderDeactivatedEffects::Always => true,
-            RenderDeactivatedEffects::Some(selected, hovered) => {
+            RenderDeactivatedScenes::Always => true,
+            RenderDeactivatedScenes::Some(selected, hovered) => {
                 *selected == index || *hovered == index
             }
         }

@@ -29,13 +29,7 @@ impl Project {
                     .ok()
             });
         match project {
-            None => {
-                info!("Loaded demo project");
-                Project {
-                    pipeline: Pipeline::demo(),
-                    ..Default::default()
-                }
-            }
+            None => Project::default(),
             Some(project) => {
                 info!(
                     "Loaded project file at {}",

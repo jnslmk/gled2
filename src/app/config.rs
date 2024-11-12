@@ -1,4 +1,4 @@
-use super::{timing::FadeMode, App, PersistantState};
+use super::{timing::FadeMode, App};
 use egui::{Context, Layout, RichText};
 
 impl App {
@@ -9,16 +9,9 @@ impl App {
             .min_width(280.0)
             .max_width(ctx.used_rect().width() - 950.0)
             .show(ctx, |ui| {
-                let svg = self
-                    .svg
-                    .as_mut()
-                    .filter(|_| PersistantState::show_preview_svg())
-                    .and_then(|svg| svg.image(&mut self.pipeline))
-                    .map(|svg| svg.texture_id(ctx));
-
-                match self.pipeline.effect(self.selected_effect) {
-                    Some(effect) => {
-                        effect.config_ui(ctx, ui, svg);
+                match self.pipeline.scene_instance(self.selected_scene_instance) {
+                    Some(scene_instance) => {
+                        scene_instance.config_ui(ctx, ui);
                     }
                     None => {
                         ui.label("There's no Effect to configure.");

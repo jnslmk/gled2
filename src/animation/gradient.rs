@@ -43,7 +43,7 @@ impl AnimationConfig for Gradient {
         }
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId, svg: Option<egui::TextureId>) {
+    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId) {
         self.common.ui(ui);
         ui.horizontal(|ui| {
             ui.radio_value(
@@ -60,7 +60,7 @@ impl AnimationConfig for Gradient {
         });
 
         if matches!(self.gradient, GradientType::Radial) {
-            set_center_button(ui, &mut self.center, rendered, svg);
+            set_center_button(ui, &mut self.center, rendered);
         }
     }
 

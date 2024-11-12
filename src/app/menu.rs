@@ -210,6 +210,10 @@ impl App {
                         self.windows.palettes.open();
                         ui.close_menu();
                     }
+                    if ui.button("Scenes").clicked() {
+                        self.windows.scenes.open();
+                        ui.close_menu();
+                    }
 
                     ui.separator();
 

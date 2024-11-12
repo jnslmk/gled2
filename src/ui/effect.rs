@@ -1,31 +1,15 @@
-use super::{action::Action, group::group_selection, ChangeButton};
-use crate::{
-    animation::{Animation, AnimationConfig},
-    effect::Effect,
-};
-use egui::{Button, Checkbox, Color32, Context, Modifiers, RichText, Slider, TextureId};
+use super::{action::Action, ChangeButton};
+use crate::{animation::Animation, effect::Effect};
+use egui::{Button, Checkbox, Color32, RichText, Slider};
 use strum::IntoEnumIterator;
 
 impl Effect {
-    pub fn config_ui(&mut self, ctx: &Context, ui: &mut egui::Ui, svg: Option<TextureId>) {
-        ui.label(RichText::new("Selection Input").heading());
-        self.selection_input.change_button(ui);
-
-        ui.separator();
-
-        ui.label(RichText::new("Flash Input").heading());
-        self.flash_input.change_button(ui);
-
-        ui.separator();
-
-        ui.label(RichText::new("Dimmer Input").heading());
-        self.dimmer_input.change_button(ui);
-
-        ui.separator();
+    pub fn config_ui(&mut self, ui: &mut egui::Ui) -> bool {
+        let mut changed = false;
 
         ui.label(RichText::new("Color Shift").heading());
         ui.vertical_centered_justified(|ui| {
-            self.color_shift.change_button(ui);
+            changed |= self.color_shift.change_button(ui);
         });
 
         ui.separator();
@@ -50,30 +34,40 @@ impl Effect {
             .inner
             .unwrap_or_default();
         if animation_changed {
-            self.reset_gpu_state();
+            changed = true;
+            //TODO: reset state of preview (we need a preview to change effect settings)
+            //self.reset_gpu_state();
             Action::InitGpu.enqueue();
         }
 
-        ui.add(Checkbox::new(&mut self.active, "Active"));
-        ui.add(
-            Slider::new(&mut self.opacity, 0.0..=1.0)
-                .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
-                .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0))
-                .text("Opacity"),
-        );
-        ui.add(
-            Slider::new(&mut self.beat_progression_offset, 0.0..=1.0)
-                .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
-                .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0))
-                .text("Beat offset"),
-        );
+        changed |= ui
+            .add(
+                Slider::new(&mut self.opacity, 0.0..=1.0)
+                    .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
+                    .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0))
+                    .text("Opacity"),
+            )
+            .changed();
+        changed |= ui
+            .add(
+                Slider::new(&mut self.beat_progression_offset, 0.0..=1.0)
+                    .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
+                    .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0))
+                    .text("Beat offset"),
+            )
+            .changed();
 
-        self.animation.ui(ui, self.texture_id(), svg);
+        //TODO: add animation settings back with texture_id of preview (we need a preview for the animation settings)
+        //self.animation.ui(ui, self.texture_id());
 
         ui.separator();
 
-        ui.label(RichText::new("Group").heading());
-        group_selection(ui, &mut self.group);
+        changed |= ui
+            .add(Checkbox::new(
+                &mut self.use_secondary_group,
+                "Use Secondary Group",
+            ))
+            .changed();
 
         ui.separator();
 
@@ -82,7 +76,7 @@ impl Effect {
                 .add(Button::new("🗐 Duplicate Effect").fill(Color32::DARK_BLUE))
                 .clicked()
             {
-                Action::CloneSelectedEffect.enqueue();
+                Action::CloneSelectedSceneInstance.enqueue();
             }
         });
         ui.vertical_centered_justified(|ui| {
@@ -93,16 +87,11 @@ impl Effect {
                         .shortcut_text("Del"),
                 )
                 .clicked()
-                || {
-                    !ctx.wants_keyboard_input()
-                        && ctx.input_mut(|i| {
-                            i.consume_key(Modifiers::default(), egui::Key::Backspace)
-                                || i.consume_key(Modifiers::default(), egui::Key::Delete)
-                        })
-                }
             {
-                Action::DeleteSelectedEffect.enqueue();
+                Action::DeleteSelectedSceneInstance.enqueue();
             }
         });
+
+        changed
     }
 }

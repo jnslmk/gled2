@@ -15,7 +15,7 @@ pub struct RandomCircles {
 impl Eq for RandomCircles {}
 
 impl AnimationConfig for RandomCircles {
-    fn ui(&mut self, ui: &mut egui::Ui, _rendered: egui::TextureId, _svg: Option<egui::TextureId>) {
+    fn ui(&mut self, ui: &mut egui::Ui, _rendered: egui::TextureId) {
         self.common.ui(ui);
         ui.add(Slider::new(&mut self.count, 1..=10).text("Density"));
     }

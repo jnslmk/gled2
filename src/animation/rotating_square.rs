@@ -43,7 +43,7 @@ impl AnimationConfig for RotatingSquare {
         }
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId, svg: Option<egui::TextureId>) {
+    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId) {
         self.common.ui(ui);
         ui.add(
             Slider::new(&mut self.size, 0.001..=1.0)
@@ -57,7 +57,7 @@ impl AnimationConfig for RotatingSquare {
                 .custom_formatter(|n, _| format!("{:.1} %", n * 100.0))
                 .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
         );
-        set_center_button(ui, &mut self.center, rendered, svg);
+        set_center_button(ui, &mut self.center, rendered);
     }
 
     fn uses_multiple_colors(&self) -> bool {

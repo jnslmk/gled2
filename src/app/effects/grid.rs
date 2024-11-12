@@ -1,7 +1,8 @@
-use super::{widget::EffectWidget, App};
+use super::App;
 use crate::{
     app::PersistantState,
     transition::{Transition, TransitionGoal},
+    ui::scene_instance::widget::SceneInstanceWidget,
 };
 use egui::{scroll_area::ScrollBarVisibility, Color32, Rect, TextureId, Ui, Vec2};
 
@@ -19,14 +20,14 @@ impl App {
                 ui.horizontal_wrapped(|ui| {
                     let mut changed = None;
                     let mut flashed = Vec::new();
-                    for (index, effect) in self.pipeline.effects().into_iter() {
+                    for (index, scene_instance) in self.pipeline.scene_instances().into_iter() {
                         let response = ui.add_sized(
                             Vec2::new(effects_size + 40.0, effects_size + 60.0),
-                            EffectWidget {
-                                selected_effect: &mut self.selected_effect,
-                                hovered_effect: &mut self.hovered_effect,
+                            SceneInstanceWidget {
+                                selected_scene_instance: &mut self.selected_scene_instance,
+                                hovered_scene_instance: &mut self.hovered_effect,
                                 index,
-                                effect,
+                                scene_instance,
                                 svg: svg.filter(|_| effects_show_svg),
                                 effects_size,
                                 live_color: Color32::GREEN,
@@ -34,7 +35,7 @@ impl App {
                             },
                         );
                         if response.changed()
-                            || effect
+                            || scene_instance
                                 .selection_input
                                 .as_ref()
                                 .map(|event| event.is_new())
@@ -43,21 +44,21 @@ impl App {
                             changed = Some(index);
                         }
 
-                        if let Some(event) = effect.flash_input.as_ref() {
+                        if let Some(event) = scene_instance.flash_input.as_ref() {
                             if event.is_live() {
                                 flashed.push(index);
                             }
                         }
 
-                        if let Some(event) = effect.dimmer_input.as_ref() {
-                            effect.set_input_dimmer(event.dimmer());
+                        if let Some(event) = scene_instance.dimmer_input.as_ref() {
+                            scene_instance.set_input_dimmer(event.dimmer());
                         }
                     }
 
                     if let Some(changed_index) = changed {
-                        if let Some(effect) = self.pipeline.effect(changed_index) {
-                            effect.set_transition(Transition::new(
-                                if effect.active {
+                        if let Some(scene_instance) = self.pipeline.scene_instance(changed_index) {
+                            scene_instance.set_transition(Transition::new(
+                                if scene_instance.active {
                                     TransitionGoal::TurnOff
                                 } else {
                                     TransitionGoal::TurnOn
@@ -67,8 +68,8 @@ impl App {
                         }
                     }
 
-                    for (index, effect) in self.pipeline.effects().iter_mut() {
-                        effect.set_flash(flashed.contains(index));
+                    for (index, scene_instance) in self.pipeline.scene_instances().iter_mut() {
+                        scene_instance.set_flash(flashed.contains(index));
                     }
                 });
             });

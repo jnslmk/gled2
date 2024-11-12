@@ -1,7 +1,8 @@
 //! Renders to a texture
-use super::{config::Config, state::State};
+use super::config::Config;
 use crate::{
     constants::TEXTURE_SIZE,
+    effect::EffectState,
     storage::{Asset, Palette},
     wgpu_render_state,
 };
@@ -66,7 +67,7 @@ impl AnimationRenderer {
                     ty: BufferBindingType::Uniform,
                     has_dynamic_offset: false,
                     min_binding_size: NonZeroU64::new(
-                        (State::size() + Palette::size() + Config::size()) as u64,
+                        (EffectState::size() + Palette::size() + Config::size()) as u64,
                     ),
                 },
                 count: None,
@@ -101,7 +102,7 @@ impl AnimationRenderer {
             multiview: None,
         });
 
-        let contents = [0u8; State::size() + Palette::size() + Config::size()];
+        let contents = [0u8; EffectState::size() + Palette::size() + Config::size()];
         let uniform = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("animation uniform buffer"),
             contents: &contents,
@@ -129,21 +130,22 @@ impl AnimationRenderer {
     pub fn set_buffers(
         &self,
         queue: &Queue,
-        state: &State,
+        state: &EffectState,
         palette: Option<Arc<Asset<Palette>>>,
         config: &Config,
     ) {
-        let mut contents = [0; State::size() + Palette::size() + Config::size()];
-        state.write_data(&mut contents[..State::size()]);
+        let mut contents = [0; EffectState::size() + Palette::size() + Config::size()];
+        state.write_data(&mut contents[..EffectState::size()]);
         if let Some(palette) = palette {
-            palette
-                .data
-                .write_data(&mut contents[State::size()..State::size() + Palette::size()]);
+            palette.data.write_data(
+                &mut contents[EffectState::size()..EffectState::size() + Palette::size()],
+            );
         }
         config.write_data(
-            &mut contents
-                [State::size() + Palette::size()..State::size() + Palette::size() + Config::size()],
+            &mut contents[EffectState::size() + Palette::size()
+                ..EffectState::size() + Palette::size() + Config::size()],
         );
+        dbg!(&contents);
         queue.write_buffer(&self.uniform, 0, &contents);
     }
 

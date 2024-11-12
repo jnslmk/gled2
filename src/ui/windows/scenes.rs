@@ -1,32 +1,31 @@
 use crate::{
-    storage::{Asset, Palette},
+    storage::{Asset, Scene},
     ui::asset_tree::{AssetTree, TreeSelection},
 };
 use egui::{Button, Context, Margin, Ui};
 use std::sync::Arc;
 
 #[derive(Default)]
-pub struct PalettesWindow {
+pub struct ScenesWindow {
     open: bool,
     dirty: bool,
-    tree: AssetTree<Palette>,
+    tree: AssetTree<Scene>,
 }
 
-impl PalettesWindow {
+impl ScenesWindow {
     pub fn update(&mut self, ctx: &Context) {
         if !self.open {
-            self.dirty = false;
             return;
         }
 
-        egui::Window::new("Palettes")
+        egui::Window::new("Scenes")
             .collapsible(false)
             .min_width(500.0)
             .resizable(true)
             .default_pos(ctx.available_rect().center())
             .open(&mut self.open)
             .show(ctx, |ui| {
-                egui::SidePanel::left("palettes tree")
+                egui::SidePanel::left("scenes tree")
                     .exact_width(300.0)
                     .resizable(false)
                     .show_inside(ui, |ui| {
@@ -40,7 +39,7 @@ impl PalettesWindow {
                             ui.label("Please select an item from the tree");
                         }
                         TreeSelection::Asset(palette) => {
-                            palette_editor(ui, palette, &mut self.dirty);
+                            scene_editor(ui, palette, &mut self.dirty);
                             self.tree.show_delete_button(ui);
                         }
                         TreeSelection::Dir { .. } => {
@@ -56,45 +55,31 @@ impl PalettesWindow {
     }
 }
 
-fn palette_editor(ui: &mut Ui, palette: &mut Asset<Palette>, dirty: &mut bool) {
+fn scene_editor(ui: &mut Ui, scene: &mut Asset<Scene>, dirty: &mut bool) {
     ui.label("Name:");
-    let mut name = palette.name().to_string();
+    let mut name = scene.name().to_string();
     let res = ui.text_edit_singleline(&mut name);
     if res.changed() {
         *dirty = true;
-        palette.path.pop();
-        palette.path.push(name);
+        scene.path.pop();
+        scene.path.push(name);
     }
 
-    ui.label("Primary color:");
-    let res = ui.color_edit_button_rgb(palette.data.primary.rgb_mut());
-    *dirty |= res.changed();
-
-    ui.label("Secondary color:");
-    let res = ui.color_edit_button_rgb(palette.data.secondary.rgb_mut());
-    *dirty |= res.changed();
-
-    ui.label("Gradient colors:");
-    ui.scope(|ui| {
-        ui.horizontal_wrapped(|ui| {
-            palette.data.gradient.iter_mut().for_each(|color| {
-                let res = ui.color_edit_button_rgb(color.rgb_mut());
-                *dirty |= res.changed();
-            });
-        });
-    });
+    if scene.data.first_effect_mut().config_ui(ui) {
+        *dirty = true;
+    }
 
     ui.add_space(4.0);
     ui.horizontal(|ui| {
         if ui
             .add_enabled(*dirty, Button::new("Save"))
             .on_hover_ui(|ui| {
-                ui.label("Save the palette to disk");
+                ui.label("Save the scene to disk");
             })
             .clicked()
         {
             *dirty = false;
-            palette.clone().save();
+            scene.clone().save();
         }
         if ui
             .add_enabled(*dirty, Button::new("Reset"))
@@ -104,7 +89,7 @@ fn palette_editor(ui: &mut Ui, palette: &mut Asset<Palette>, dirty: &mut bool) {
             .clicked()
         {
             *dirty = false;
-            *palette = Arc::unwrap_or_clone(Asset::get(palette.id).unwrap_or_default());
+            *scene = Arc::unwrap_or_clone(Asset::get(scene.id).unwrap_or_default());
         }
     });
 }

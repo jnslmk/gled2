@@ -6,6 +6,7 @@ mod app;
 mod constants;
 mod effect;
 mod extract_output;
+mod group;
 mod input;
 mod logging;
 mod opts;
@@ -16,19 +17,18 @@ mod pipeline;
 mod preview;
 mod preview_indices;
 mod project;
-mod scene;
+mod scene_instance;
 mod storage;
 mod svg;
 mod texture_to_output;
 mod transition;
 mod ui;
 
-use std::sync::OnceLock;
-
 use app::App;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration};
 use egui::ViewportBuilder;
 use input::Input;
+use std::sync::OnceLock;
 use ui::logo::icon;
 use wgpu::PowerPreference;
 

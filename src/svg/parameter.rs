@@ -1,4 +1,6 @@
 //! Parameters as set in a SVG file.
+use crate::group::Group;
+
 use super::Led;
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +10,7 @@ pub struct Parameter {
     pub start: u32,
     pub universe: u16,
     #[serde(alias = "render_groups")]
-    pub groups: Vec<String>,
+    pub groups: Vec<Group>,
     pub count: u32,
 
     #[serde(skip)]

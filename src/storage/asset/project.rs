@@ -1,4 +1,5 @@
 use super::{AssetId, AssetTrait, Palette, Scene};
+use crate::group::Groups;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
@@ -16,8 +17,7 @@ pub struct Deck {
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
 pub struct SceneGroup {
-    pub primary_group: String,
-    pub secondary_group: Option<String>,
+    pub groups: Groups,
     pub scenes: Vec<AssetId<Scene>>,
 }
 

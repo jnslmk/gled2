@@ -4,9 +4,9 @@ pub mod action;
 pub mod asset;
 pub mod asset_tree;
 pub mod effect;
-pub mod group;
 pub mod input;
 pub mod logo;
+pub mod scene_instance;
 pub mod windows;
 
 pub trait ChangeButton {

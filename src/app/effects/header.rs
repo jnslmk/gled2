@@ -1,5 +1,9 @@
 use super::App;
-use crate::{app::PersistantState, effect::Effect, ui::ChangeButton};
+use crate::{
+    app::PersistantState,
+    storage::{AssetId, Scene},
+    ui::ChangeButton,
+};
 use egui::{Align, Checkbox, Layout, RichText, Slider, Ui};
 
 impl App {
@@ -10,10 +14,14 @@ impl App {
 
         ui.horizontal(|ui| {
             ui.label(RichText::new("Effects").heading());
-            if ui.button("Add").clicked() {
-                let effect = Effect::default();
-                self.selected_effect = self.pipeline.add_effect(effect);
+
+            let mut scene: Option<AssetId<Scene>> = None;
+            scene.change_button(ui);
+            if let Some(scene) = scene {
+                self.selected_scene_instance = self.pipeline.add_scene(scene);
+                ui.close_menu();
             }
+
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if ui
                     .add_enabled(
@@ -59,7 +67,7 @@ impl App {
             ui.label("Max Effects:");
             ui.add_enabled(
                 self.pipeline.auto_mode_active,
-                Slider::new(&mut self.pipeline.auto_mode_max_effects, 1..=10),
+                Slider::new(&mut self.pipeline.auto_mode_max_scenes, 1..=10),
             );
             ui.vertical_centered_justified(|ui| {
                 self.pipeline.palette.change_button(ui);

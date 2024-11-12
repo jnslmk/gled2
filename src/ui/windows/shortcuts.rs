@@ -3,7 +3,7 @@ use egui::Context;
 
 #[derive(Default)]
 pub struct ShortcutsWindow {
-    pub open: bool,
+    open: bool,
 }
 
 impl ShortcutsWindow {
