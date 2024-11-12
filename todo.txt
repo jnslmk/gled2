@@ -1,3 +1,0 @@
-Autoupdate: https://docs.rs/self-replace/latest/self_replace/
-
-Pausemodus (fest 20bpm oder so) auf tastendruck. Blackout?
