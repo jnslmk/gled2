@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
 pub struct Project {
-    pub a: Vec<SceneGroup>,
-    pub b: Vec<SceneGroup>,
+    pub a: Deck,
+    pub b: Deck,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]

@@ -17,6 +17,7 @@ use wgpu::{Buffer, CommandEncoder, Queue};
 #[serde(default)]
 pub struct Effect {
     pub palette: Option<AssetId<Palette>>, //TODO: Change to offset to palette, palette is to be set globaly for a deck
+    pub color_shift: f32,
     pub opacity: f32,
     pub active: bool,
     pub beat_progression_offset: f32,
@@ -67,6 +68,7 @@ impl Clone for Effect {
     fn clone(&self) -> Self {
         Self {
             palette: self.palette,
+            color_shift: self.color_shift,
             opacity: self.opacity,
             active: self.active,
             beat_progression_offset: self.beat_progression_offset,
@@ -165,6 +167,7 @@ impl Effect {
         if always_render || self.active || !self.was_ever_rendered || self.flash {
             state.opacity = self.opacity * main_dimmer * opacity_factor * self.input_dimmer;
             state.beat_progression += self.beat_progression_offset;
+            state.color_shift = self.color_shift;
 
             if self.sent_group.as_ref() != Some(&self.group) {
                 let positions = positions(&self.group);

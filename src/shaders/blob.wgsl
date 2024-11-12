@@ -13,5 +13,5 @@ fn animation(coord: vec2<f32>, beat_progression: f32) -> vec3<f32> {
 	v = v + (roundLookingBlob(pos, vec2<f32>(cos(time * 0.8) * 0.7, sin(time * 1.1) * 0.4), 5.));
 	v = v + (roundLookingBlob(pos, vec2<f32>(cos(time * 0.2) * 0.2, sin(time * 0.9) * 0.5), 8.));
 	v = clamp((v - 0.5) * 1000., 0., 1.);
-	return vec3<f32>(uniforms.primary_color * v);
+	return vec3<f32>(primary_color() * v);
 } 

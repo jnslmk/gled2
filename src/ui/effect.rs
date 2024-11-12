@@ -27,6 +27,9 @@ impl Effect {
         ui.vertical_centered_justified(|ui| {
             self.palette.change_button(ui);
         });
+        ui.vertical_centered_justified(|ui| {
+            self.color_shift.change_button(ui);
+        });
 
         ui.separator();
 
