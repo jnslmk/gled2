@@ -39,6 +39,7 @@ fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
     return vec4<f32>(color * uniforms.opacity, 1.);
 }
 
+/// Convert rgb color to hsv, apply color shift to hue value and convert it back to rgb
 fn apply_color_shift(c: vec3<f32>) -> vec3<f32> {
     var K: vec4<f32> = vec4<f32>(0., -1. / 3., 2. / 3., -1.);
     var p: vec4<f32> = mix(vec4<f32>(c.bg, K.wz), vec4<f32>(c.gb, K.xy), step(c.b, c.g));
@@ -53,14 +54,17 @@ fn apply_color_shift(c: vec3<f32>) -> vec3<f32> {
     return v * mix(K2.xxx, vec3<f32>(clamp(p2.x, 0., 1.), clamp(p2.y, 0., 1.), clamp(p2.z, 0., 1.)), s);
 } 
 
+/// Get color shifted primary color
 fn primary_color() -> vec3<f32> {
     return apply_color_shift(uniforms.primary_color);
 }
 
+/// Get color shifted secondary color
 fn secondary_color() -> vec3<f32> {
     return apply_color_shift(uniforms.secondary_color);
 }
 
+/// Get color shifted gradient color by index
 fn gradient_color(index: i32) -> vec3<f32> {
     return apply_color_shift(uniforms.gradient_colors[index] % 16);
 }
