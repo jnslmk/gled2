@@ -3,6 +3,7 @@ use crate::{
     effect::{Effect, EffectState},
     group::Groups,
 };
+use egui::{epaint::CircleShape, Color32, Label, Rect, Shape, Vec2};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use wgpu::{Buffer, CommandEncoder, Queue};
@@ -23,8 +24,8 @@ impl Scene {
         self.effects.get_mut(index)
     }
 
-    pub fn effects(&mut self) -> &mut [Effect] {
-        &mut self.effects
+    pub fn effects(&self) -> &[Effect] {
+        &self.effects
     }
 
     pub fn add_effect(&mut self, effect_states: &mut Vec<EffectState>, effect: Effect) -> usize {
@@ -95,9 +96,71 @@ impl Scene {
             effect.render(state, encoder, send_output);
         }
     }
+
+    pub fn groups_selection(&self) -> GroupsSelection {
+        let mut primary = false;
+        let mut secondary = false;
+
+        for state in self.effects.iter() {
+            if state.use_secondary_group {
+                secondary = true;
+            } else {
+                primary = true;
+            }
+        }
+
+        match (primary, secondary) {
+            (true, true) => GroupsSelection::Both,
+            (true, false) => GroupsSelection::Primary,
+            (false, true) => GroupsSelection::Secondary,
+            (false, false) => GroupsSelection::None,
+        }
+    }
 }
 
 impl AssetTrait for Scene {
     const DIR_NAME: &'static str = "scenes";
     const NAME: &'static str = "Scene";
+
+    fn show(&self, ui: &mut egui::Ui, rect: egui::Rect) {
+        let groups_selection = self.groups_selection();
+        ui.painter().add(Shape::Circle(CircleShape::filled(
+            rect.left_top() + Vec2::new(10.0, 0.0),
+            5.5,
+            match groups_selection {
+                GroupsSelection::None => Color32::RED,
+                GroupsSelection::Primary | GroupsSelection::Both => Color32::GREEN,
+                GroupsSelection::Secondary => Color32::GOLD,
+            },
+        )));
+        ui.put(
+            Rect::from_min_size(rect.left_top() + Vec2::new(0.0, -9.5), Vec2::splat(20.0)),
+            Label::new(
+                egui::RichText::new(match groups_selection {
+                    GroupsSelection::None => "N",
+                    GroupsSelection::Primary | GroupsSelection::Both => "P",
+                    GroupsSelection::Secondary => "S",
+                })
+                .color(Color32::BLACK),
+            ),
+        );
+        if let GroupsSelection::Both = groups_selection {
+            ui.painter().add(Shape::Circle(CircleShape::filled(
+                rect.left_top() + Vec2::new(21.0, 0.0),
+                5.5,
+                Color32::GOLD,
+            )));
+            ui.put(
+                Rect::from_min_size(rect.left_top() + Vec2::new(11.0, -9.5), Vec2::splat(20.0)),
+                Label::new(egui::RichText::new("S").color(Color32::BLACK)),
+            );
+        }
+    }
+}
+
+pub enum GroupsSelection {
+    None,
+    Primary,
+    Secondary,
+    Both,
 }

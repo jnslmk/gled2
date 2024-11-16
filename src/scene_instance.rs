@@ -3,7 +3,7 @@ use crate::{
     effect::EffectState,
     group::Groups,
     input::InputEvent,
-    storage::{Asset, AssetId, Palette, Scene},
+    storage::{Asset, AssetId, GroupsSelection, Palette, Scene},
     transition::Transition,
 };
 use egui::TextureId;
@@ -176,5 +176,13 @@ impl SceneInstance {
             .iter()
             .map(|state| state.texture_id())
             .collect()
+    }
+
+    pub fn groups_selection(&self) -> GroupsSelection {
+        if let Some(scene) = Asset::get(self.scene) {
+            scene.data.groups_selection()
+        } else {
+            GroupsSelection::None
+        }
     }
 }

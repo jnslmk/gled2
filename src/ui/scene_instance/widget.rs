@@ -1,7 +1,9 @@
-use crate::scene_instance::SceneInstance;
+use crate::{scene_instance::SceneInstance, storage::GroupsSelection};
 use egui::{
-    epaint::RectShape, load::SizedTexture, pos2, Align, Button, Checkbox, Color32, Image, Layout,
-    Margin, Rect, Rounding, Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
+    epaint::{CircleShape, RectShape},
+    load::SizedTexture,
+    pos2, Align, Button, Checkbox, Color32, Image, Label, Layout, Margin, Rect, Rounding, Sense,
+    Shape, Slider, TextureId, Ui, Vec2, Widget,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -152,6 +154,47 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
                                     )
                                     .rect,
                                 );
+
+                                let groups_selection = self.scene_instance.groups_selection();
+                                ui.painter().add(Shape::Circle(CircleShape::filled(
+                                    rect.left_top() + Vec2::splat(10.0),
+                                    5.5,
+                                    match groups_selection {
+                                        GroupsSelection::None => Color32::RED,
+                                        GroupsSelection::Primary | GroupsSelection::Both => {
+                                            Color32::GREEN
+                                        }
+                                        GroupsSelection::Secondary => Color32::GOLD,
+                                    },
+                                )));
+                                ui.put(
+                                    Rect::from_min_size(
+                                        rect.left_top() + Vec2::new(0.0, 0.5),
+                                        Vec2::splat(20.0),
+                                    ),
+                                    Label::new(
+                                        egui::RichText::new(match groups_selection {
+                                            GroupsSelection::None => "N",
+                                            GroupsSelection::Primary | GroupsSelection::Both => "P",
+                                            GroupsSelection::Secondary => "S",
+                                        })
+                                        .color(Color32::BLACK),
+                                    ),
+                                );
+                                if let GroupsSelection::Both = groups_selection {
+                                    ui.painter().add(Shape::Circle(CircleShape::filled(
+                                        rect.left_top() + Vec2::new(21.0, 10.0),
+                                        5.5,
+                                        Color32::GOLD,
+                                    )));
+                                    ui.put(
+                                        Rect::from_min_size(
+                                            rect.left_top() + Vec2::new(11.0, 0.5),
+                                            Vec2::splat(20.0),
+                                        ),
+                                        Label::new(egui::RichText::new("S").color(Color32::BLACK)),
+                                    );
+                                }
                             });
                         })
                     })

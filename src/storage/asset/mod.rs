@@ -13,7 +13,7 @@ pub use curve::Curve;
 pub use output_device::OutputDevice;
 pub use palette::Palette;
 pub use project::Project;
-pub use scene::Scene;
+pub use scene::{GroupsSelection, Scene};
 
 pub trait AssetTrait:
     Serialize + DeserializeOwned + Debug + Default + Send + Sync + Clone + 'static
