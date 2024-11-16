@@ -23,6 +23,10 @@ impl Scene {
         self.effects.get_mut(index)
     }
 
+    pub fn effects(&mut self) -> &mut [Effect] {
+        &mut self.effects
+    }
+
     pub fn add_effect(&mut self, effect_states: &mut Vec<EffectState>, effect: Effect) -> usize {
         effect_states.push(EffectState::new(&effect));
         self.effects.push(effect);

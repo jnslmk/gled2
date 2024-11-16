@@ -10,8 +10,11 @@ use crate::{
     wgpu_render_state,
 };
 use egui::{
-    epaint::RectShape, pos2, scroll_area::ScrollBarVisibility, Button, Color32, Context, Margin,
-    Rect, Response, Rounding, Sense, Shape, Ui, Vec2, Widget,
+    epaint::{CircleShape, RectShape},
+    pos2,
+    scroll_area::ScrollBarVisibility,
+    Button, Color32, Context, Label, Margin, Rect, Response, Rounding, Sense, Shape, Ui, Vec2,
+    Widget,
 };
 use std::{
     iter::once,
@@ -164,17 +167,24 @@ impl ScenesWindow {
                             .show(ui, |ui| {
                                 ui.set_max_width(ui.available_width() - 30.0);
                                 ui.horizontal_wrapped(|ui| {
-                                    for (index, effect_state) in
-                                        self.effect_states.iter().enumerate()
-                                    {
-                                        ui.add_sized(
-                                            Vec2::splat(100.0),
-                                            EffectWidget {
-                                                selected_effect: &mut self.selected_effect,
-                                                index,
-                                                effect_state,
-                                            },
-                                        );
+                                    if let TreeSelection::Asset(scene) = self.tree.selected() {
+                                        for (index, (effect, effect_state)) in scene
+                                            .data
+                                            .effects()
+                                            .iter()
+                                            .zip(self.effect_states.iter_mut())
+                                            .enumerate()
+                                        {
+                                            ui.add_sized(
+                                                Vec2::splat(100.0),
+                                                EffectWidget {
+                                                    selected_effect: &mut self.selected_effect,
+                                                    index,
+                                                    effect,
+                                                    effect_state,
+                                                },
+                                            );
+                                        }
                                     }
                                 });
                             });
@@ -191,6 +201,7 @@ impl ScenesWindow {
 struct EffectWidget<'a> {
     selected_effect: &'a mut usize,
     index: usize,
+    effect: &'a Effect,
     effect_state: &'a EffectState,
 }
 
@@ -230,6 +241,26 @@ impl<'a> Widget for EffectWidget<'a> {
                     fill: Color32::WHITE,
                     stroke: Default::default(),
                 }));
+                ui.painter().add(Shape::Circle(CircleShape::filled(
+                    rect.left_top() + Vec2::splat(10.0),
+                    5.5,
+                    if self.effect.use_secondary_group {
+                        Color32::GOLD
+                    } else {
+                        Color32::GREEN
+                    },
+                )));
+                ui.put(
+                    Rect::from_min_size(rect.left_top() + Vec2::new(0.0, 0.5), Vec2::splat(20.0)),
+                    Label::new(
+                        egui::RichText::new(if self.effect.use_secondary_group {
+                            "S"
+                        } else {
+                            "P"
+                        })
+                        .color(Color32::BLACK),
+                    ),
+                );
             })
             .response;
 
