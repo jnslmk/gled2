@@ -53,7 +53,7 @@ impl OutputDevicesWindow {
             .default_pos(ctx.available_rect().center())
             .show(ctx, |ui| {
                 egui::SidePanel::left("output devices tree")
-                    .exact_width(300.0)
+                    .exact_width(200.0)
                     .resizable(false)
                     .show_inside(ui, |ui| {
                         self.tree

@@ -217,6 +217,7 @@ impl Curve {
                     {
                         if point.is_outer() {
                             self.linked = !self.linked;
+                            changed = true;
                             if self.linked {
                                 outer_change = Some((i, point.pos()));
                             }
@@ -225,7 +226,7 @@ impl Curve {
                         } else if point.is_inner() {
                             remove_point = Some(i);
                         }
-                    } else {
+                    } else if point_response.dragged() {
                         let mut new_screen_pos =
                             point.screen_pos(to_screen) + point_response.drag_delta();
                         if let Some(x_limit) = x_limits.get(i).and_then(|x_limit| *x_limit) {
@@ -235,6 +236,7 @@ impl Curve {
                         if point_response.dragged() && point.is_outer() && self.linked {
                             outer_change = Some((i, point.pos()));
                         }
+                        changed = true;
                     }
 
                     let stroke = if point.is_outer() && self.linked {
@@ -252,8 +254,8 @@ impl Curve {
                 let i = self.points.len() - i - 1;
                 if let Some(point) = self.points.get_mut(i) {
                     point.set_pos(pos);
+                    changed = true;
                 }
-                changed = true;
             }
             if let Some(i) = remove_point {
                 self.points.remove(i);

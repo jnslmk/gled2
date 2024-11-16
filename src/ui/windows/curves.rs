@@ -26,7 +26,7 @@ impl CurvesWindow {
             .open(&mut self.open)
             .show(ctx, |ui| {
                 egui::SidePanel::left("curves tree")
-                    .exact_width(300.0)
+                    .exact_width(200.0)
                     .resizable(false)
                     .show_inside(ui, |ui| {
                         self.tree.show(ui, ui.make_persistent_id("curves_tree"));
