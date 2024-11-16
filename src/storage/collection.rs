@@ -48,7 +48,12 @@ impl<T: AssetTrait> Collection<T> {
                         std::fs::File::open(entry.path()).ok()?,
                         AssetId::from_uuid(id),
                     )
-                    .map_err(|err| log::warn!("Could not read/parse asset: {err:?}"))
+                    .map_err(|err| {
+                        log::error!(
+                            "Could not read/parse asset {}: {err:?}",
+                            entry.path().display()
+                        )
+                    })
                     .ok()?;
 
                     return Some((id, asset));

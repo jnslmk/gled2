@@ -31,14 +31,9 @@ impl Config {
         data[4..8].copy_from_slice(&self.center.1.to_le_bytes());
         data[8..12].copy_from_slice(&self.thickness.to_le_bytes());
         data[12..16].copy_from_slice(&self.count.to_le_bytes());
-        data[16] = match self.common.direction {
-            Direction::Forward => 0x00,
-            Direction::Backward => 0x01,
-            Direction::Alternating => 0x02,
-        };
-        data[20..24].copy_from_slice(&self.mode.to_le_bytes());
-        data[24..28].copy_from_slice(&2f32.powi(self.common.speed_exponent).to_le_bytes());
-        data[28..32].copy_from_slice(&self.size.to_le_bytes());
+        data[16..20].copy_from_slice(&self.mode.to_le_bytes());
+        data[20..24].copy_from_slice(&2f32.powi(self.common.speed_exponent).to_le_bytes());
+        data[24..28].copy_from_slice(&self.size.to_le_bytes());
     }
 
     /// must be a multiple of 16
@@ -47,20 +42,9 @@ impl Config {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Direction {
-    #[default]
-    Forward,
-    Backward,
-    Alternating,
-}
-
 #[derive(Serialize, Deserialize, Default, Clone, Copy, Debug, PartialEq)]
 #[serde(default)]
 pub struct CommonConfig {
-    #[serde(default)]
-    pub direction: Direction,
-
     /// in 2^n of bpm
     #[serde(default)]
     pub speed_exponent: i32,
@@ -69,17 +53,7 @@ pub struct CommonConfig {
 impl CommonConfig {
     pub fn ui(&mut self, ui: &mut Ui) -> bool {
         let mut changed = false;
-        ui.horizontal(|ui| {
-            changed |= ui
-                .radio_value(&mut self.direction, Direction::Forward, "Forward")
-                .changed();
-            changed |= ui
-                .radio_value(&mut self.direction, Direction::Backward, "Backward")
-                .changed();
-            changed |= ui
-                .radio_value(&mut self.direction, Direction::Alternating, "Alternating")
-                .changed();
-        });
+
         changed |= ui
             .add(
                 Slider::new(&mut self.speed_exponent, -8..=8)

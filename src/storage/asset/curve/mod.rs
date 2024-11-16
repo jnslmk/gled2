@@ -7,7 +7,7 @@ use egui::{epaint::QuadraticBezierShape, Color32, Pos2, Rect, Sense, Shape, Stro
 use epaint::PathShape;
 use serde::{Deserialize, Serialize};
 
-pub use static_or_curve::StaticOrCurve;
+pub use static_or_curve::{RangeDegrees, RangePercentage, StaticOrCurve};
 
 const PRECISION: f32 = 0.005; // 100 updates per second at 240 bpm
 

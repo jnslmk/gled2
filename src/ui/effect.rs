@@ -3,21 +3,14 @@ use crate::{
     animation::{Animation, AnimationConfig},
     effect::{Effect, EffectState},
 };
-use egui::{Checkbox, Slider};
+use egui::Checkbox;
 use strum::IntoEnumIterator;
 
 impl Effect {
     pub fn config_ui(&mut self, state: &mut EffectState, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
 
-        ui.label("Color Shift");
-        ui.vertical_centered_justified(|ui| {
-            changed |= self.color_shift.change_button(ui);
-        });
-
-        ui.separator();
-
-        ui.label("Animation");
+        ui.heading("Animation");
         let animation_changed = egui::ComboBox::from_label("Animation")
             .selected_text(format!("{}", self.animation))
             .width(150.0)
@@ -42,18 +35,24 @@ impl Effect {
         }
 
         ui.horizontal(|ui| {
+            changed |= self.beat_progression.change_button(ui);
+            ui.label("Progression")
+        });
+
+        ui.horizontal(|ui| {
+            changed |= self.color_shift.change_button(ui);
+            ui.label("Colorshift")
+        });
+
+        ui.horizontal(|ui| {
             changed |= self.opacity.change_button(ui);
             ui.label("Opacity")
         });
 
-        changed |= ui
-            .add(
-                Slider::new(&mut self.beat_progression_offset, 0.0..=1.0)
-                    .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
-                    .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0))
-                    .text("Beat offset"),
-            )
-            .changed();
+        ui.horizontal(|ui| {
+            changed |= self.beat_progression_offset.change_button(ui);
+            ui.label("Beat offset")
+        });
 
         changed |= self.animation.ui(ui, state.texture_id());
 

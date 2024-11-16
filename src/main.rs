@@ -3,7 +3,6 @@
 
 mod animation;
 mod app;
-mod color_shift;
 mod constants;
 mod effect;
 mod extract_output;

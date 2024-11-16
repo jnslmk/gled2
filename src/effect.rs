@@ -3,9 +3,8 @@ mod state;
 use crate::{
     animation::{Animation, AnimationConfig},
     app::positions,
-    color_shift::ColorShift,
     group::Groups,
-    storage::{Asset, Palette, StaticOrCurve},
+    storage::{Asset, Palette, RangeDegrees, RangePercentage, StaticOrCurve},
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -13,15 +12,32 @@ use wgpu::{Buffer, CommandEncoder, Queue};
 
 pub use state::EffectState;
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct Effect {
-    pub color_shift: ColorShift,
-    pub opacity: StaticOrCurve,
-    pub beat_progression_offset: f32,
+    pub color_shift: StaticOrCurve<RangeDegrees>,
+    pub opacity: StaticOrCurve<RangePercentage>,
+    pub beat_progression: StaticOrCurve<RangePercentage>,
+    pub beat_progression_offset: StaticOrCurve<RangePercentage>,
     /// Whether it should use the primary or the secondary group
     pub use_secondary_group: bool,
     pub animation: Animation,
+}
+
+impl Default for Effect {
+    fn default() -> Self {
+        Self {
+            color_shift: StaticOrCurve::new_static(0.0),
+            opacity: StaticOrCurve::new_static(1.0),
+            beat_progression: StaticOrCurve::new_curve([
+                0x2E, 0x07, 0x5C, 0xCB, 0x90, 0xC4, 0x47, 0x4B, 0x8D, 0x16, 0xC6, 0x70, 0x40, 0x54,
+                0x99, 0xA6,
+            ]),
+            beat_progression_offset: StaticOrCurve::new_static(0.0),
+            use_secondary_group: Default::default(),
+            animation: Default::default(),
+        }
+    }
 }
 
 impl PartialEq for Effect {
@@ -35,18 +51,6 @@ impl PartialEq for Effect {
 }
 
 impl Eq for Effect {}
-
-impl Clone for Effect {
-    fn clone(&self) -> Self {
-        Self {
-            color_shift: self.color_shift,
-            opacity: self.opacity,
-            beat_progression_offset: self.beat_progression_offset,
-            use_secondary_group: self.use_secondary_group,
-            animation: self.animation.clone(),
-        }
-    }
-}
 
 impl Effect {
     pub fn new(animation: Animation) -> Self {
@@ -69,9 +73,13 @@ impl Effect {
         groups: &Groups,
         main_opacity: f32,
     ) {
-        effect_state.beat_progression += self.beat_progression_offset;
-        effect_state.opacity = self.opacity.value(effect_state.beat_progression) * main_opacity;
-        effect_state.color_shift = self.color_shift;
+        let beat_progression = effect_state.beat_progression
+            + self
+                .beat_progression_offset
+                .value(effect_state.beat_progression);
+        effect_state.beat_progression = self.beat_progression.value(beat_progression);
+        effect_state.opacity = self.opacity.value(beat_progression) * main_opacity;
+        effect_state.color_shift = self.color_shift.value(beat_progression);
 
         let group = groups.get(self.use_secondary_group);
         if effect_state.sent_group.as_ref() != group {

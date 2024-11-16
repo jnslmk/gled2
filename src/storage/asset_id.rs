@@ -40,7 +40,7 @@ impl<T: AssetTrait> AssetId<T> {
         Self::from_uuid(Uuid::new_v4())
     }
 
-    pub fn from_uuid(id: Uuid) -> Self {
+    pub const fn from_uuid(id: Uuid) -> Self {
         Self {
             id,
             _phantom: std::marker::PhantomData,

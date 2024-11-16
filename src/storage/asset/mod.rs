@@ -9,7 +9,7 @@ use egui::Rect;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
-pub use curve::{Curve, StaticOrCurve};
+pub use curve::{Curve, RangeDegrees, RangePercentage, StaticOrCurve};
 pub use output_device::OutputDevice;
 pub use palette::Palette;
 pub use project::Project;
@@ -105,8 +105,8 @@ impl<T: AssetTrait> Asset<T> {
         self.id.delete();
     }
 
-    pub fn read(file: File, id: AssetId<T>) -> Result<Arc<Self>, simd_json::Error> {
-        let asset: AssetOnDisk<T> = simd_json::from_reader(file)?;
+    pub fn read(file: File, id: AssetId<T>) -> Result<Arc<Self>, serde_json::Error> {
+        let asset: AssetOnDisk<T> = serde_json::from_reader(file)?;
 
         Ok(Arc::new(Self {
             id,
@@ -115,13 +115,13 @@ impl<T: AssetTrait> Asset<T> {
         }))
     }
 
-    pub fn into_json(self) -> Result<String, simd_json::Error> {
+    pub fn into_json(self) -> Result<String, serde_json::Error> {
         let asset = AssetOnDisk {
             name: self.path,
             data: self.data,
         };
 
-        simd_json::to_string_pretty(&asset)
+        serde_json::to_string_pretty(&asset)
     }
 
     pub fn dir(&self) -> Vec<String> {
