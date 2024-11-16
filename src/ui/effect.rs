@@ -10,8 +10,8 @@ impl Effect {
     pub fn config_ui(&mut self, state: &mut EffectState, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
 
-        ui.heading("Animation");
-        let animation_changed = egui::ComboBox::from_label("Animation")
+        ui.label("Animation");
+        let animation_changed = egui::ComboBox::from_label("")
             .selected_text(format!("{}", self.animation))
             .width(150.0)
             .show_ui(ui, |ui| {
@@ -34,35 +34,33 @@ impl Effect {
             state.update(self);
         }
 
-        ui.horizontal(|ui| {
+        ui.label("Progression");
+        ui.vertical_centered_justified(|ui| {
             changed |= self.beat_progression.change_button(ui);
-            ui.label("Progression")
         });
 
-        ui.horizontal(|ui| {
+        ui.label("Colorshift");
+        ui.vertical_centered_justified(|ui| {
             changed |= self.color_shift.change_button(ui);
-            ui.label("Colorshift")
         });
 
-        ui.horizontal(|ui| {
+        ui.label("Opacity");
+        ui.vertical_centered_justified(|ui| {
             changed |= self.opacity.change_button(ui);
-            ui.label("Opacity")
         });
 
-        ui.horizontal(|ui| {
+        ui.label("Beat offset");
+        ui.vertical_centered_justified(|ui| {
             changed |= self.beat_progression_offset.change_button(ui);
-            ui.label("Beat offset")
         });
 
         changed |= self.animation.ui(ui, state.texture_id());
 
         ui.separator();
 
+        ui.label("Use secondary group");
         changed |= ui
-            .add(Checkbox::new(
-                &mut self.use_secondary_group,
-                "Use Secondary Group",
-            ))
+            .add(Checkbox::new(&mut self.use_secondary_group, ""))
             .changed();
 
         changed

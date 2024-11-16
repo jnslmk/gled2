@@ -15,6 +15,7 @@ eframe = { version = "0.29", features = [
 ], default-features = false }
 egui = { version = "0.29", features = ["persistence"] }
 egui_extras = { version = "0.29", features = ["image"] }
+egui_flex = "0.1"
 egui_ltreeview.git = "https://github.com/elwerene/egui_ltreeview.git"
 emath = "0.29"
 epaint = "0.29"

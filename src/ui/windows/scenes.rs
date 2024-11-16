@@ -4,7 +4,7 @@ use crate::{
     group::Groups,
     storage::{Asset, AssetId, Palette, Scene},
     ui::{
-        asset_tree::{AssetTree, TreeSelection},
+        asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
         ChangeButton,
     },
     wgpu_render_state,
@@ -47,7 +47,7 @@ impl ScenesWindow {
             .open(&mut self.open)
             .show(ctx, |ui| {
                 egui::SidePanel::left("scenes tree")
-                    .exact_width(200.0)
+                    .exact_width(TREE_WIDTH)
                     .resizable(false)
                     .show_inside(ui, |ui| {
                         self.tree.show(ui, ui.make_persistent_id("scenes_tree"));
@@ -93,7 +93,7 @@ impl ScenesWindow {
 
                         ui.vertical_centered_justified(|ui| {
                             if ui
-                                .add(Button::new("+ Add Effect").fill(Color32::DARK_BLUE))
+                                .add(Button::new("+ Add Effect").fill(Color32::DARK_GREEN))
                                 .clicked()
                             {
                                 self.selected_effect = scene

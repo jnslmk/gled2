@@ -1,7 +1,10 @@
 use crate::storage::{Asset, AssetId, AssetTrait};
 use egui::{Button, Color32, Id, Label, Margin, Rect, Stroke, Ui, Vec2};
+use egui_flex::{item, Flex};
 use egui_ltreeview::{node::NodeBuilder, Action, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
+
+pub const TREE_WIDTH: f32 = 250.0;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TreeEntry<T: AssetTrait> {
@@ -106,7 +109,7 @@ impl<T: AssetTrait> TreeEntry<T> {
 
                     let max = ui.next_widget_position() + Vec2::new(ui.available_width(), 0.0);
                     let rect = Rect::from_min_max(
-                        ui.next_widget_position().max(max - Vec2::new(200.0, 0.0)),
+                        ui.next_widget_position().max(max - Vec2::new(150.0, 0.0)),
                         max,
                     );
                     asset.data.show(ui, rect);
@@ -303,7 +306,9 @@ impl<T: AssetTrait> AssetTree<T> {
                     TreeSelection::Asset(asset) => {
                         ui.label("Name:");
                         let mut name = asset.name().to_string();
-                        let res = ui.text_edit_singleline(&mut name);
+                        let res = ui
+                            .vertical_centered_justified(|ui| ui.text_edit_singleline(&mut name))
+                            .inner;
                         if res.changed() {
                             *dirty = true;
                             asset.path.pop();
@@ -321,9 +326,11 @@ impl<T: AssetTrait> AssetTree<T> {
                 }
 
                 ui.add_space(4.0);
-                ui.horizontal(|ui| {
-                    if ui
-                        .add_enabled(*dirty, Button::new("Save"))
+
+                Flex::horizontal().show(ui, |flex| {
+                    if flex
+                        .add(item().grow(1.0), Button::new("Save"))
+                        .inner
                         .on_hover_ui(|ui| {
                             ui.label("Save to disk");
                         })
@@ -337,8 +344,12 @@ impl<T: AssetTrait> AssetTree<T> {
 
                         changed = true;
                     }
-                    if ui
-                        .add_enabled(*dirty, Button::new("Reset").fill(Color32::DARK_RED))
+                    if flex
+                        .add(
+                            item().grow(1.0),
+                            Button::new("Reset").fill(Color32::DARK_RED),
+                        )
+                        .inner
                         .on_hover_ui(|ui| {
                             ui.label("Reset to state on disk");
                         })
@@ -351,11 +362,12 @@ impl<T: AssetTrait> AssetTree<T> {
 
                         changed = true;
                     }
-                    if ui
-                        .add_enabled(
-                            matches!(self.selection, TreeSelection::Asset(_)),
+                    if flex
+                        .add(
+                            item().grow(1.0),
                             Button::new("Delete").fill(Color32::DARK_RED),
                         )
+                        .inner
                         .clicked()
                     {
                         if let TreeSelection::Asset(asset) = &self.selection {

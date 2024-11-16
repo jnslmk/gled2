@@ -1,5 +1,5 @@
 use super::{timing::FadeMode, App};
-use egui::{Context, Layout, RichText};
+use egui::{Color32, Context, Layout, Margin, Stroke};
 
 impl App {
     pub fn config(&mut self, ctx: &Context) {
@@ -9,6 +9,8 @@ impl App {
             .min_width(280.0)
             .max_width(ctx.used_rect().width() - 950.0)
             .show(ctx, |ui| {
+                ui.add_space(6.0);
+
                 match self.pipeline.scene_instance(self.selected_scene_instance) {
                     Some(scene_instance) => {
                         scene_instance.config_ui(ctx, ui);
@@ -19,19 +21,42 @@ impl App {
                 }
 
                 ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
-                    if let Some(framerate) = self.timing.framerate() {
-                        ui.label(format!("{framerate:.01} fps"));
-                    }
+                    ui.add_space(6.0);
 
-                    ui.separator();
+                    egui::Frame::none()
+                        .inner_margin(Margin::from(6.0))
+                        .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
+                        .show(ui, |ui| {
+                            if let Some(framerate) = self.timing.framerate() {
+                                ui.label(format!("{framerate:.01} fps"));
+                            }
 
-                    ui.horizontal(|ui| {
-                        ui.radio_value(&mut self.timing.fade_mode, FadeMode::Instant, "Instant");
-                        ui.radio_value(&mut self.timing.fade_mode, FadeMode::Beat, "1 Beat");
-                        ui.radio_value(&mut self.timing.fade_mode, FadeMode::Beats4, "4 Beats");
-                        ui.radio_value(&mut self.timing.fade_mode, FadeMode::Beats16, "16 Beats");
-                    });
-                    ui.label(RichText::new("Fade Mode").heading());
+                            ui.separator();
+
+                            ui.horizontal(|ui| {
+                                ui.radio_value(
+                                    &mut self.timing.fade_mode,
+                                    FadeMode::Instant,
+                                    "Instant",
+                                );
+                                ui.radio_value(
+                                    &mut self.timing.fade_mode,
+                                    FadeMode::Beat,
+                                    "1 Beat",
+                                );
+                                ui.radio_value(
+                                    &mut self.timing.fade_mode,
+                                    FadeMode::Beats4,
+                                    "4 Beats",
+                                );
+                                ui.radio_value(
+                                    &mut self.timing.fade_mode,
+                                    FadeMode::Beats16,
+                                    "16 Beats",
+                                );
+                            });
+                            ui.label("Fade Mode");
+                        });
                 });
             });
     }

@@ -20,6 +20,7 @@ impl AnimationConfig for Stripes {
     fn ui(&mut self, ui: &mut egui::Ui, _rendered: egui::TextureId) -> bool {
         let mut changed = false;
         changed |= self.common.ui(ui);
+
         ui.horizontal(|ui| {
             changed |= ui
                 .radio_value(&mut self.orientation, Orientation::Horizontal, "Horizontal")
@@ -28,17 +29,23 @@ impl AnimationConfig for Stripes {
                 .radio_value(&mut self.orientation, Orientation::Vertical, "Vertical")
                 .changed();
         });
-        changed |= ui
-            .add(
-                Slider::new(&mut self.thickness, 0.001..=1.0)
-                    .text("Thickness")
-                    .custom_formatter(|n, _| format!("{:.1} %", n * 100.0))
-                    .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
-            )
-            .changed();
-        changed |= ui
-            .add(Slider::new(&mut self.count, 1..=15).text("Bars"))
-            .changed();
+
+        ui.label("Thickness");
+        ui.vertical_centered_justified(|ui| {
+            changed |= ui
+                .add(
+                    Slider::new(&mut self.thickness, 0.001..=1.0)
+                        .custom_formatter(|n, _| format!("{:.1} %", n * 100.0))
+                        .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
+                )
+                .changed();
+        });
+
+        ui.label("Bars");
+        ui.vertical_centered_justified(|ui| {
+            changed |= ui.add(Slider::new(&mut self.count, 1..=15)).changed();
+        });
+
         changed
     }
 

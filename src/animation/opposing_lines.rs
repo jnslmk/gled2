@@ -27,14 +27,17 @@ impl AnimationConfig for OpposingLines {
                 .radio_value(&mut self.orientation, Orientation::Vertical, "Vertical")
                 .changed();
         });
-        changed |= ui
-            .add(
-                Slider::new(&mut self.thickness, 0.001..=1.0)
-                    .text("Thickness")
-                    .custom_formatter(|n, _| format!("{:.1} %", n * 100.0))
-                    .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
-            )
-            .changed();
+
+        ui.label("Thickness");
+        ui.vertical_centered_justified(|ui| {
+            changed |= ui
+                .add(
+                    Slider::new(&mut self.thickness, 0.001..=1.0)
+                        .custom_formatter(|n, _| format!("{:.1} %", n * 100.0))
+                        .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
+                )
+                .changed();
+        });
         changed
     }
 

@@ -3,7 +3,7 @@ use egui::{
     epaint::{CircleShape, RectShape},
     load::SizedTexture,
     pos2, Align, Button, Checkbox, Color32, Image, Label, Layout, Margin, Rect, Rounding, Sense,
-    Shape, Slider, TextureId, Ui, Vec2, Widget,
+    Shape, TextureId, Ui, Vec2, Widget,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -20,7 +20,6 @@ pub struct SceneInstanceWidget<'a> {
 
 impl<'a> Widget for SceneInstanceWidget<'a> {
     fn ui(self, ui: &mut Ui) -> egui::Response {
-        let mut slider_rect = None;
         let mut checkbox_rect = None;
 
         let mut response = egui::Frame::none()
@@ -142,19 +141,6 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
                                     });
                                 }
 
-                                slider_rect = Some(
-                                    ui.allocate_rect(
-                                        Rect::from_min_max(
-                                            ui.next_widget_position()
-                                                - Vec2::new(0.0, size.y / 2.0),
-                                            ui.next_widget_position()
-                                                + Vec2::new(16.0, size.y / 2.0),
-                                        ),
-                                        Sense::hover(),
-                                    )
-                                    .rect,
-                                );
-
                                 let groups_selection = self.scene_instance.groups_selection();
                                 ui.painter().add(Shape::Circle(CircleShape::filled(
                                     rect.left_top() + Vec2::splat(10.0),
@@ -207,17 +193,6 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
         }
         if res.hovered() {
             *self.hovered_scene_instance = self.index;
-        }
-
-        if let Some(slider_rect) = slider_rect {
-            ui.spacing_mut().slider_width = slider_rect.height();
-            ui.put(
-                slider_rect,
-                Slider::new(&mut self.scene_instance.opacity, 0.0..=1.0)
-                    .vertical()
-                    .show_value(false),
-            )
-            .on_hover_text("Effect Dimmer");
         }
 
         if let Some(checkbox_rect) = checkbox_rect {

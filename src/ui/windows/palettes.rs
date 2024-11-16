@@ -1,6 +1,6 @@
 use crate::{
     storage::{Asset, Palette},
-    ui::asset_tree::{AssetTree, TreeSelection},
+    ui::asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
 };
 use egui::{Context, Margin, Ui};
 
@@ -26,7 +26,7 @@ impl PalettesWindow {
             .open(&mut self.open)
             .show(ctx, |ui| {
                 egui::SidePanel::left("palettes tree")
-                    .exact_width(200.0)
+                    .exact_width(TREE_WIDTH)
                     .resizable(false)
                     .show_inside(ui, |ui| {
                         self.tree.show(ui, ui.make_persistent_id("palettes_tree"));

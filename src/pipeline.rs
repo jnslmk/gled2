@@ -167,10 +167,6 @@ impl Pipeline {
         let device = wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
 
-        for scene_instance in self.scenes_instances.iter_mut() {
-            scene_instance.set_state_timing(timing);
-        }
-
         if self.auto_mode_active {
             if self
                 .auto_mode_last_change
@@ -227,6 +223,7 @@ impl Pipeline {
                 queue,
                 render_deactivated_scenes.should_render(index),
                 palette.clone(),
+                timing,
             );
         }
         self.preview_indices

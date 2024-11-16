@@ -46,22 +46,29 @@ impl AnimationConfig for RotatingSquare {
     fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId) -> bool {
         let mut changed = false;
         changed |= self.common.ui(ui);
-        changed |= ui
-            .add(
-                Slider::new(&mut self.size, 0.001..=1.0)
-                    .text("Size")
-                    .custom_formatter(|n, _| format!("{:.1} %", n * 100.0))
-                    .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
-            )
-            .changed();
-        changed |= ui
-            .add(
-                Slider::new(&mut self.thickness, 0.001..=1.0)
-                    .text("Border Thickness")
-                    .custom_formatter(|n, _| format!("{:.1} %", n * 100.0))
-                    .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
-            )
-            .changed();
+
+        ui.label("Size");
+        ui.vertical_centered_justified(|ui| {
+            changed |= ui
+                .add(
+                    Slider::new(&mut self.size, 0.001..=1.0)
+                        .custom_formatter(|n, _| format!("{:.1} %", n * 100.0))
+                        .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
+                )
+                .changed();
+        });
+
+        ui.label("Border Thickness");
+        ui.vertical_centered_justified(|ui| {
+            changed |= ui
+                .add(
+                    Slider::new(&mut self.thickness, 0.001..=1.0)
+                        .custom_formatter(|n, _| format!("{:.1} %", n * 100.0))
+                        .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
+                )
+                .changed();
+        });
+
         changed |= set_center_button(ui, &mut self.center, rendered);
         changed
     }

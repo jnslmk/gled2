@@ -46,10 +46,17 @@ impl AnimationConfig for Spiral {
     fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId) -> bool {
         let mut changed = false;
         changed |= self.common.ui(ui);
-        changed |= ui.checkbox(&mut self.sharp, "Sharp").changed();
-        changed |= ui
-            .add(Slider::new(&mut self.count, 1..=100).text("Count"))
-            .changed();
+
+        ui.label("Sharp");
+        ui.vertical_centered_justified(|ui| {
+            changed |= ui.checkbox(&mut self.sharp, "").changed();
+        });
+
+        ui.label("Count");
+        ui.vertical_centered_justified(|ui| {
+            changed |= ui.add(Slider::new(&mut self.count, 1..=100)).changed();
+        });
+
         changed |= set_center_button(ui, &mut self.center, rendered);
         changed
     }

@@ -32,7 +32,9 @@ impl OutputRoutingsWindow {
                                 .retain(|universe| universes.contains(universe));
 
                             if universes.is_empty() {
-                                ui.label(RichText::new("No universes available. You need to load a svg file first!").heading());
+                                ui.label(RichText::new(
+                                    "No universes available. You need to load a svg file first!",
+                                ));
                             }
 
                             for universe in universes {
@@ -42,9 +44,8 @@ impl OutputRoutingsWindow {
                                     let output_routing = routings.universe_output_routing(universe);
                                     output_routing.device.change_button(ui);
 
-                                    if let Some(device) = output_routing
-                                    .device
-                                    .and_then(Asset::get) {
+                                    if let Some(device) = output_routing.device.and_then(Asset::get)
+                                    {
                                         let universes = device.data.universes();
                                         if !universes.is_empty() {
                                             ComboBox::new(format!("{universe}_universe"), "")
@@ -65,7 +66,8 @@ impl OutputRoutingsWindow {
                                                             )
                                                             .changed()
                                                         {
-                                                            output_routing.universe = Some(*universe);
+                                                            output_routing.universe =
+                                                                Some(*universe);
                                                         }
                                                     }
                                                 });

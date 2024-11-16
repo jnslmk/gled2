@@ -18,9 +18,11 @@ impl AnimationConfig for RandomCircles {
     fn ui(&mut self, ui: &mut egui::Ui, _rendered: egui::TextureId) -> bool {
         let mut changed = false;
         changed |= self.common.ui(ui);
-        changed |= ui
-            .add(Slider::new(&mut self.count, 1..=10).text("Density"))
-            .changed();
+
+        ui.label("Density");
+        ui.vertical_centered_justified(|ui| {
+            changed |= ui.add(Slider::new(&mut self.count, 1..=10)).changed();
+        });
         changed
     }
 

@@ -54,41 +54,43 @@ impl CommonConfig {
     pub fn ui(&mut self, ui: &mut Ui) -> bool {
         let mut changed = false;
 
-        changed |= ui
-            .add(
-                Slider::new(&mut self.speed_exponent, -8..=8)
-                    .step_by(1.0)
-                    .custom_formatter(|n, _| {
-                        format!(
-                            "{} x",
-                            if n > 0.0 {
-                                2i32.pow(n as u32).to_string()
-                            } else if n > -0.1 {
-                                "1".to_string()
+        ui.label("Speed");
+        ui.horizontal(|ui| {
+            ui.spacing_mut().slider_width = ui.available_width() - 60.0;
+            changed |= ui
+                .add(
+                    Slider::new(&mut self.speed_exponent, -8..=8)
+                        .step_by(1.0)
+                        .custom_formatter(|n, _| {
+                            format!(
+                                "{} x",
+                                if n > 0.0 {
+                                    2i32.pow(n as u32).to_string()
+                                } else if n > -0.1 {
+                                    "1".to_string()
+                                } else {
+                                    format!("1/{}", 2i32.pow((-n) as u32))
+                                }
+                            )
+                        })
+                        .custom_parser(|s| {
+                            let s = s.split(' ').next().unwrap_or(s);
+                            let s = s.strip_suffix('x').unwrap_or(s);
+                            let n = if let Some(n) =
+                                s.strip_prefix("1/").and_then(|s| s.parse::<f32>().ok())
+                            {
+                                1f32 / n
                             } else {
-                                format!("1/{}", 2i32.pow((-n) as u32))
-                            }
-                        )
-                    })
-                    .custom_parser(|s| {
-                        let s = s.split(' ').next().unwrap_or(s);
-                        let s = s.strip_suffix('x').unwrap_or(s);
-                        let n = if let Some(n) =
-                            s.strip_prefix("1/").and_then(|s| s.parse::<f32>().ok())
-                        {
-                            1f32 / n
-                        } else {
-                            s.parse::<f32>().ok()?
-                        };
+                                s.parse::<f32>().ok()?
+                            };
 
-                        Some(n.log2() as f64)
-                    })
-                    .text("Speed"),
-            )
-            .changed();
+                            Some(n.log2() as f64)
+                        }),
+                )
+                .changed();
+        });
+
         ui.separator();
-
-        ui.label("Settings");
 
         changed
     }

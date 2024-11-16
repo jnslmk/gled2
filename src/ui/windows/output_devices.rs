@@ -91,12 +91,12 @@ fn output_device_editor(
     let id = output_device.id;
 
     ui.label("Kind");
-    ComboBox::new(format!("{id}_kind"), "Kind")
+    ComboBox::new(format!("{id}_kind"), "")
         .selected_text({
             let name: &'static str = kind.into();
             name
         })
-        .width(100.0)
+        .width(290.0)
         .show_ui(ui, |ui| {
             for k in OutputDeviceKind::iter() {
                 if ui

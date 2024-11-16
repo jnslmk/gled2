@@ -62,7 +62,7 @@ impl Curve {
         linear_points
     }
 
-    pub fn draw(&mut self, ui: &mut Ui, beat_position: Option<f32>, edit_mode: bool) -> bool {
+    pub fn draw(&mut self, ui: &mut Ui, edit_mode: bool) -> bool {
         let mut changed = false;
 
         let to_screen = emath::RectTransform::from_to(
@@ -266,26 +266,6 @@ impl Curve {
             painter.add(PathShape::line(
                 points_in_screen,
                 Stroke::new(1.0, Color32::RED.linear_multiply(0.25)),
-            ));
-        }
-
-        // draw current position
-        if let Some(beat_position) = beat_position {
-            painter.add(PathShape::line(
-                vec![
-                    to_screen.transform_pos(Pos2::new(beat_position, 0.0)),
-                    to_screen.transform_pos(Pos2::new(beat_position, 1.0)),
-                ],
-                Stroke::new(1.0, Color32::from_rgb(160, 0, 150)),
-            ));
-
-            let y = 1.0 - self.value(beat_position);
-            painter.add(PathShape::line(
-                vec![
-                    to_screen.transform_pos(Pos2::new(0.0, y)),
-                    to_screen.transform_pos(Pos2::new(4.0, y)),
-                ],
-                Stroke::new(1.0, Color32::from_rgb(160, 0, 150)),
             ));
         }
 

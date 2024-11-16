@@ -3,7 +3,7 @@ use crate::{
     effect::EffectState,
     group::Groups,
     input::InputEvent,
-    storage::{Asset, AssetId, GroupsSelection, Palette, Scene},
+    storage::{Asset, AssetId, GroupsSelection, Palette, RangePercentage, Scene, StaticOrCurve},
     transition::Transition,
 };
 use egui::TextureId;
@@ -16,9 +16,9 @@ pub struct SceneInstance {
     ///TODO: Remove as this should eventually come frome the SceneGroup
     pub groups: Groups,
     pub active: bool,
-    pub opacity: f32,
+    pub opacity: StaticOrCurve<RangePercentage>,
     pub input_dimmer: f32,
-    pub beat_progression_offset: f32,
+    pub beat_progression_offset: StaticOrCurve<RangePercentage>,
     pub selection_input: Option<InputEvent>,
     pub flash_input: Option<InputEvent>,
     pub dimmer_input: Option<InputEvent>,
@@ -59,9 +59,9 @@ impl From<AssetId<Scene>> for SceneInstance {
             scene,
             groups: Default::default(),
             active: Default::default(),
-            opacity: 1.0,
+            opacity: StaticOrCurve::new_static(1.0),
             input_dimmer: 1.0,
-            beat_progression_offset: Default::default(),
+            beat_progression_offset: StaticOrCurve::new_static(0.0),
             selection_input: Default::default(),
             flash_input: Default::default(),
             dimmer_input: Default::default(),
@@ -79,21 +79,21 @@ impl SceneInstance {
         }
     }
 
-    pub fn set_state_timing(&mut self, timing: &Timing) {
-        for effect_state in self.effect_states.iter_mut() {
-            effect_state.beat_progression =
-                timing.beat_progression() + self.beat_progression_offset;
-            effect_state.beats_per_minute = timing.beats_per_minute;
-            effect_state.framerate = timing.framerate().unwrap_or_default();
-        }
-    }
-
     pub fn prepare(
         &mut self,
         queue: &Queue,
         always_render: bool,
         palette: Option<Arc<Asset<Palette>>>,
+        timing: &Timing,
     ) {
+        let mut beat_progression = timing.beat_progression();
+        beat_progression += self.beat_progression_offset.value(beat_progression);
+        for effect_state in self.effect_states.iter_mut() {
+            effect_state.beat_progression = beat_progression;
+            effect_state.beats_per_minute = timing.beats_per_minute;
+            effect_state.framerate = timing.framerate().unwrap_or_default();
+        }
+
         let mut opacity_factor = 1.0;
         if let Some(transition) = self.transition.as_ref() {
             match transition.opacity_factor() {
@@ -108,8 +108,10 @@ impl SceneInstance {
         }
 
         if always_render || self.active || self.flash {
-            let main_opacity =
-                PersistantState::main_dimmer() * opacity_factor * self.opacity * self.input_dimmer;
+            let main_opacity = PersistantState::main_dimmer()
+                * opacity_factor
+                * self.opacity.value(beat_progression)
+                * self.input_dimmer;
             if let Some(scene) = Asset::get(self.scene) {
                 scene.data.prepare(
                     &mut self.effect_states,
