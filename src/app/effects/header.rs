@@ -13,7 +13,7 @@ impl App {
         let mut effects_size = PersistantState::effects_size();
 
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Effects").heading());
+            ui.label(RichText::new("Scenes").heading());
 
             let mut scene: Option<AssetId<Scene>> = None;
             scene.change_button(ui);

@@ -30,7 +30,7 @@ impl PalettesWindow {
                     .exact_width(300.0)
                     .resizable(false)
                     .show_inside(ui, |ui| {
-                        self.tree.show(ui);
+                        self.tree.show(ui, ui.make_persistent_id("palettes_tree"));
                     });
 
                 egui::Frame::default().outer_margin(Margin::same(4.0)).show(

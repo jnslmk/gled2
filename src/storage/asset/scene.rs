@@ -13,15 +13,6 @@ pub struct Scene {
 }
 
 impl Scene {
-    //TODO: Remove
-    pub fn first_effect_mut(&mut self) -> &mut Effect {
-        if self.effects.is_empty() {
-            self.effects.push(Effect::default());
-        }
-
-        self.effects.first_mut().unwrap()
-    }
-
     pub fn set_buffers(&self, effect_states: &mut [EffectState], output: &Buffer) {
         for (effect, effect_state) in self.effects.iter().zip(effect_states.iter_mut()) {
             effect.set_buffers(effect_state, output);
@@ -30,10 +21,6 @@ impl Scene {
 
     pub fn effect(&mut self, index: usize) -> Option<&mut Effect> {
         self.effects.get_mut(index)
-    }
-
-    pub fn effects(&mut self) -> Vec<(usize, &mut Effect)> {
-        self.effects.iter_mut().enumerate().collect()
     }
 
     pub fn add_effect(&mut self, effect_states: &mut Vec<EffectState>, effect: Effect) -> usize {
@@ -58,13 +45,6 @@ impl Scene {
         effect
     }
 
-    /// Resend positions to gpu
-    pub fn send_positions(&self, effect_states: &mut [EffectState]) {
-        for state in effect_states.iter_mut() {
-            state.send_positions();
-        }
-    }
-
     pub fn init_states(&self, effect_states: &mut Vec<EffectState>) {
         if effect_states.len() != self.effects.len() {
             if effect_states.len() > self.effects.len() {
@@ -77,10 +57,10 @@ impl Scene {
                         .map(EffectState::new),
                 );
             }
+        }
 
-            for (effect, state) in self.effects.iter().zip(effect_states.iter_mut()) {
-                state.update(effect);
-            }
+        for (effect, state) in self.effects.iter().zip(effect_states.iter_mut()) {
+            state.update(effect);
         }
     }
 

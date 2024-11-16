@@ -74,7 +74,7 @@ impl eframe::App for App {
                     self.selected_scene_instance = index;
                 }
             }
-            Some(Action::InitGpu) => {
+            Some(Action::InitGPU) => {
                 self.pipeline.init_gpu();
             }
         }

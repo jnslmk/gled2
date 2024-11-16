@@ -7,7 +7,7 @@ static ACTION_QUEUE: Lazy<Mutex<VecDeque<Action>>> = Lazy::new(|| Mutex::new(Vec
 pub enum Action {
     DeleteSelectedSceneInstance,
     CloneSelectedSceneInstance,
-    InitGpu,
+    InitGPU,
 }
 
 impl Action {

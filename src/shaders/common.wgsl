@@ -36,6 +36,10 @@ fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
 
     let color = animation(coord, beat_progression);
 
+    if color.r == 0.0 && color.g == 0.0 && color.b == 0.0 {
+        return vec4<f32>(0.0);
+    }
+
     return vec4<f32>(color * uniforms.opacity, 1.);
 }
 

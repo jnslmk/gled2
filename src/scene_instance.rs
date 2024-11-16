@@ -6,6 +6,7 @@ use crate::{
     storage::{Asset, AssetId, Palette, Scene},
     transition::Transition,
 };
+use egui::TextureId;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use wgpu::{Buffer, CommandEncoder, Queue};
@@ -72,11 +73,6 @@ impl From<AssetId<Scene>> for SceneInstance {
 }
 
 impl SceneInstance {
-    //TODO: Remove
-    pub fn first_effect_state(&self) -> Option<&EffectState> {
-        self.effect_states.first()
-    }
-
     pub fn init_states(&mut self) {
         if let Some(scene) = Asset::get(self.scene) {
             scene.data.init_states(&mut self.effect_states);
@@ -173,5 +169,12 @@ impl SceneInstance {
 
     pub fn set_input_dimmer(&mut self, input_dimmer: f32) {
         self.input_dimmer = input_dimmer;
+    }
+
+    pub fn texture_ids(&self) -> Vec<TextureId> {
+        self.effect_states
+            .iter()
+            .map(|state| state.texture_id())
+            .collect()
     }
 }

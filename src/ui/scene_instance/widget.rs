@@ -1,7 +1,7 @@
 use crate::scene_instance::SceneInstance;
 use egui::{
-    load::SizedTexture, Align, Button, Checkbox, Color32, Image, Layout, Margin, Rect, Rounding,
-    Sense, Slider, TextureId, Ui, Vec2, Widget,
+    epaint::RectShape, load::SizedTexture, pos2, Align, Button, Checkbox, Color32, Image, Layout,
+    Margin, Rect, Rounding, Sense, Shape, Slider, TextureId, Ui, Vec2, Widget,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -107,29 +107,39 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
                             });
 
                             ui.horizontal(|ui| {
-                                if let Some(effect_state) = self.scene_instance.first_effect_state()
-                                {
-                                    let res = ui.add({
-                                        let mut image = Image::new(SizedTexture::new(
-                                            effect_state.texture_id(),
-                                            dbg!(size),
-                                        ));
+                                let rect = Rect::from_min_size(ui.next_widget_position(), size);
+                                ui.allocate_rect(rect, Sense::hover());
+                                ui.painter().add(Shape::Rect(RectShape::filled(
+                                    rect,
+                                    Rounding::default(),
+                                    Color32::BLACK,
+                                )));
+
+                                for texture_id in self.scene_instance.texture_ids() {
+                                    ui.painter().add(Shape::Rect(RectShape {
+                                        rect,
+                                        rounding: Rounding::default(),
+                                        blur_width: 0.0,
+                                        fill_texture_id: texture_id,
+                                        uv: uv.unwrap_or_else(|| {
+                                            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0))
+                                        }),
+                                        fill: Color32::WHITE,
+                                        stroke: Default::default(),
+                                    }));
+                                }
+
+                                if let Some(svg_texture_id) = self.svg {
+                                    ui.put(rect, {
+                                        let mut image =
+                                            Image::new(SizedTexture::new(svg_texture_id, size));
                                         if let Some(uv) = uv {
                                             image = image.uv(uv);
                                         }
                                         image
                                     });
-                                    if let Some(svg_texture_id) = self.svg {
-                                        ui.put(res.rect, {
-                                            let mut image =
-                                                Image::new(SizedTexture::new(svg_texture_id, size));
-                                            if let Some(uv) = uv {
-                                                image = image.uv(uv);
-                                            }
-                                            image
-                                        });
-                                    }
                                 }
+
                                 slider_rect = Some(
                                     ui.allocate_rect(
                                         Rect::from_min_max(

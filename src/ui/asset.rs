@@ -1,6 +1,7 @@
 use super::{asset_tree::AssetTree, ChangeButton};
 use crate::storage::{Asset, AssetId, AssetTrait};
 use egui::Ui;
+use egui_ltreeview::TreeViewState;
 
 impl<T: AssetTrait> ChangeButton for Option<AssetId<T>> {
     fn change_button(&mut self, ui: &mut Ui) -> bool {
@@ -16,11 +17,16 @@ impl<T: AssetTrait> ChangeButton for Option<AssetId<T>> {
                         "".to_owned()
                     }
                 } else {
-                    format!("📂 Select {}", T::NAME)
+                    format!("📂 {}", T::NAME)
                 },
                 |ui| {
-                    if let Some(id) = AssetTree::show_asset_selection(ui) {
+                    if let Some(id) =
+                        AssetTree::show_asset_selection(ui, ui.make_persistent_id(T::NAME))
+                    {
                         *self = Some(id);
+                        ui.data_mut(|d| {
+                            d.remove::<TreeViewState<usize>>(ui.make_persistent_id(T::NAME))
+                        });
                         ui.close_menu();
                         changed = true;
                     }

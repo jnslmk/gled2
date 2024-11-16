@@ -38,7 +38,7 @@ impl Effect {
             .unwrap_or_default();
         if animation_changed {
             changed = true;
-            state.update(&self);
+            state.update(self);
         }
 
         changed |= ui

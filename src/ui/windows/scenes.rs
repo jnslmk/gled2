@@ -4,14 +4,15 @@ use crate::{
     group::Groups,
     storage::{Asset, AssetId, Palette, Scene},
     ui::{
+        action::Action,
         asset_tree::{AssetTree, TreeSelection},
         ChangeButton,
     },
     wgpu_render_state,
 };
 use egui::{
-    load::SizedTexture, scroll_area::ScrollBarVisibility, Button, Color32, Context, Image, Margin,
-    Response, Rounding, Ui, Vec2, Widget,
+    epaint::RectShape, pos2, scroll_area::ScrollBarVisibility, Button, Color32, Context, Margin,
+    Rect, Response, Rounding, Sense, Shape, Ui, Vec2, Widget,
 };
 use std::{
     iter::once,
@@ -20,6 +21,7 @@ use std::{
 };
 use wgpu::CommandEncoderDescriptor;
 
+#[derive(Default)]
 pub struct ScenesWindow {
     open: bool,
     dirty: bool,
@@ -28,20 +30,6 @@ pub struct ScenesWindow {
     previous_selected_id: Option<AssetId<Scene>>,
     effect_states: Vec<EffectState>,
     selected_effect: usize,
-}
-
-impl Default for ScenesWindow {
-    fn default() -> Self {
-        Self {
-            open: true,
-            dirty: Default::default(),
-            tree: Default::default(),
-            palette: Default::default(),
-            previous_selected_id: Default::default(),
-            effect_states: Default::default(),
-            selected_effect: Default::default(),
-        }
-    }
 }
 
 impl ScenesWindow {
@@ -61,7 +49,7 @@ impl ScenesWindow {
                     .exact_width(200.0)
                     .resizable(false)
                     .show_inside(ui, |ui| {
-                        self.tree.show(ui);
+                        self.tree.show(ui, ui.make_persistent_id("scenes_tree"));
                     });
 
                 if self.previous_selected_id != self.tree.selected_id() {
@@ -152,6 +140,7 @@ impl ScenesWindow {
                                 .clicked()
                             {
                                 self.dirty = false;
+                                Action::InitGPU.enqueue();
                                 scene.clone().save();
                             }
                             if ui
@@ -260,10 +249,22 @@ impl<'a> Widget for EffectWidget<'a> {
             .inner_margin(Margin::from(10.0))
             .rounding(Rounding::from(4.0))
             .show(ui, |ui| {
-                let size = ui.available_size();
-                ui.add_sized(size, {
-                    Image::new(SizedTexture::new(self.effect_state.texture_id(), size))
-                });
+                let rect = ui.available_rect_before_wrap();
+                ui.allocate_rect(rect, Sense::hover());
+                ui.painter().add(Shape::Rect(RectShape::filled(
+                    rect,
+                    Rounding::default(),
+                    Color32::BLACK,
+                )));
+                ui.painter().add(Shape::Rect(RectShape {
+                    rect,
+                    rounding: Rounding::default(),
+                    blur_width: 0.0,
+                    fill_texture_id: self.effect_state.texture_id(),
+                    uv: Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                    fill: Color32::WHITE,
+                    stroke: Default::default(),
+                }));
             })
             .response;
 

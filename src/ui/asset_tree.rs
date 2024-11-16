@@ -1,5 +1,5 @@
 use crate::storage::{Asset, AssetId, AssetTrait};
-use egui::{Align, Button, Color32, Label, Layout, Rect, Ui, Vec2};
+use egui::{Align, Button, Color32, Id, Label, Layout, Rect, Ui, Vec2};
 use egui_ltreeview::{node::NodeBuilder, Action, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -189,7 +189,7 @@ impl<T: AssetTrait> AssetTree<T> {
         pos
     }
 
-    pub fn show(&mut self, ui: &mut Ui) {
+    pub fn show(&mut self, ui: &mut Ui, id: Id) {
         let entries = self.load();
         let mut tree_ids = vec![];
 
@@ -226,7 +226,7 @@ impl<T: AssetTrait> AssetTree<T> {
             });
         }
 
-        let actions = TreeView::new(ui.make_persistent_id("asset tree view"))
+        let actions = TreeView::new(id)
             .show(ui, |mut builder| {
                 for entry in entries.iter() {
                     entry.build(
@@ -346,12 +346,12 @@ impl<T: AssetTrait> AssetTree<T> {
         }
     }
 
-    pub fn show_asset_selection(ui: &mut Ui) -> Option<AssetId<T>> {
+    pub fn show_asset_selection(ui: &mut Ui, id: Id) -> Option<AssetId<T>> {
         let mut tree = AssetTree {
             only_asset_selection: true,
             ..Default::default()
         };
-        tree.show(ui);
+        tree.show(ui, id);
         match tree.selection {
             TreeSelection::Asset(asset) => Some(asset.id),
             _ => None,

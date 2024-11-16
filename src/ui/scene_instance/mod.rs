@@ -39,7 +39,7 @@ impl SceneInstance {
 
         ui.vertical_centered_justified(|ui| {
             if ui
-                .add(Button::new("🗐 Duplicate Scene Instance").fill(Color32::DARK_BLUE))
+                .add(Button::new("🗐 Duplicate Scene").fill(Color32::DARK_BLUE))
                 .clicked()
             {
                 Action::CloneSelectedSceneInstance.enqueue();
@@ -47,11 +47,7 @@ impl SceneInstance {
         });
         ui.vertical_centered_justified(|ui| {
             if ui
-                .add(
-                    Button::new("🗑 Remove Scene Instance")
-                        .fill(Color32::DARK_RED)
-                        .shortcut_text("Del"),
-                )
+                .add(Button::new("🗑 Remove Scene").fill(Color32::DARK_RED))
                 .clicked()
                 || {
                     !ctx.wants_keyboard_input()
