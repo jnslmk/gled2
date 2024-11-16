@@ -1,6 +1,7 @@
 use egui::{load::SizedTexture, CursorIcon, Image, Sense, TextureId, Ui, Vec2};
 
-pub fn set_center_button(ui: &mut Ui, center: &mut (f32, f32), rendered: TextureId) {
+pub fn set_center_button(ui: &mut Ui, center: &mut (f32, f32), rendered: TextureId) -> bool {
+    let mut changed = false;
     ui.vertical_centered_justified(|ui| {
         ui.menu_button("Select center of animation", |ui| {
             let size = 300.0;
@@ -14,10 +15,12 @@ pub fn set_center_button(ui: &mut Ui, center: &mut (f32, f32), rendered: Texture
             {
                 ui.output_mut(|o| o.cursor_icon = CursorIcon::Crosshair);
                 *center = (pos.x / size, 1.0 - pos.y / size);
+                changed = true;
             }
             if res.clicked() {
                 ui.close_menu();
             }
         });
     });
+    changed
 }

@@ -1,4 +1,4 @@
-use egui::{RichText, Slider, Ui};
+use egui::{Slider, Ui};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -67,43 +67,55 @@ pub struct CommonConfig {
 }
 
 impl CommonConfig {
-    pub fn ui(&mut self, ui: &mut Ui) {
+    pub fn ui(&mut self, ui: &mut Ui) -> bool {
+        let mut changed = false;
         ui.horizontal(|ui| {
-            ui.radio_value(&mut self.direction, Direction::Forward, "Forward");
-            ui.radio_value(&mut self.direction, Direction::Backward, "Backward");
-            ui.radio_value(&mut self.direction, Direction::Alternating, "Alternating");
+            changed |= ui
+                .radio_value(&mut self.direction, Direction::Forward, "Forward")
+                .changed();
+            changed |= ui
+                .radio_value(&mut self.direction, Direction::Backward, "Backward")
+                .changed();
+            changed |= ui
+                .radio_value(&mut self.direction, Direction::Alternating, "Alternating")
+                .changed();
         });
-        ui.add(
-            Slider::new(&mut self.speed_exponent, -8..=8)
-                .step_by(1.0)
-                .custom_formatter(|n, _| {
-                    format!(
-                        "{} x",
-                        if n > 0.0 {
-                            2i32.pow(n as u32).to_string()
-                        } else if n > -0.1 {
-                            "1".to_string()
-                        } else {
-                            format!("1/{}", 2i32.pow((-n) as u32))
-                        }
-                    )
-                })
-                .custom_parser(|s| {
-                    let s = s.split(' ').next().unwrap_or(s);
-                    let s = s.strip_suffix('x').unwrap_or(s);
-                    let n =
-                        if let Some(n) = s.strip_prefix("1/").and_then(|s| s.parse::<f32>().ok()) {
+        changed |= ui
+            .add(
+                Slider::new(&mut self.speed_exponent, -8..=8)
+                    .step_by(1.0)
+                    .custom_formatter(|n, _| {
+                        format!(
+                            "{} x",
+                            if n > 0.0 {
+                                2i32.pow(n as u32).to_string()
+                            } else if n > -0.1 {
+                                "1".to_string()
+                            } else {
+                                format!("1/{}", 2i32.pow((-n) as u32))
+                            }
+                        )
+                    })
+                    .custom_parser(|s| {
+                        let s = s.split(' ').next().unwrap_or(s);
+                        let s = s.strip_suffix('x').unwrap_or(s);
+                        let n = if let Some(n) =
+                            s.strip_prefix("1/").and_then(|s| s.parse::<f32>().ok())
+                        {
                             1f32 / n
                         } else {
                             s.parse::<f32>().ok()?
                         };
 
-                    Some(n.log2() as f64)
-                })
-                .text("Speed"),
-        );
+                        Some(n.log2() as f64)
+                    })
+                    .text("Speed"),
+            )
+            .changed();
         ui.separator();
 
-        ui.label(RichText::new("Settings").heading());
+        ui.label("Settings");
+
+        changed
     }
 }

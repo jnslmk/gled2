@@ -43,12 +43,15 @@ impl AnimationConfig for Spiral {
         }
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId) {
-        self.common.ui(ui);
-
-        ui.checkbox(&mut self.sharp, "Sharp");
-        ui.add(Slider::new(&mut self.count, 1..=100).text("Count"));
-        set_center_button(ui, &mut self.center, rendered);
+    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId) -> bool {
+        let mut changed = false;
+        changed |= self.common.ui(ui);
+        changed |= ui.checkbox(&mut self.sharp, "Sharp").changed();
+        changed |= ui
+            .add(Slider::new(&mut self.count, 1..=100).text("Count"))
+            .changed();
+        changed |= set_center_button(ui, &mut self.center, rendered);
+        changed
     }
 
     fn uses_multiple_colors(&self) -> bool {

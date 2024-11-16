@@ -43,25 +43,34 @@ impl AnimationConfig for Gradient {
         }
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId) {
-        self.common.ui(ui);
+    fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId) -> bool {
+        let mut changed = false;
+        changed |= self.common.ui(ui);
         ui.horizontal(|ui| {
-            ui.radio_value(
-                &mut self.gradient,
-                GradientType::LinearHorizontal,
-                "Linear Horizontal",
-            );
-            ui.radio_value(
-                &mut self.gradient,
-                GradientType::LinearVertical,
-                "Linear Vertical",
-            );
-            ui.radio_value(&mut self.gradient, GradientType::Radial, "Radial");
+            changed |= ui
+                .radio_value(
+                    &mut self.gradient,
+                    GradientType::LinearHorizontal,
+                    "Linear Horizontal",
+                )
+                .changed();
+            changed |= ui
+                .radio_value(
+                    &mut self.gradient,
+                    GradientType::LinearVertical,
+                    "Linear Vertical",
+                )
+                .changed();
+            changed |= ui
+                .radio_value(&mut self.gradient, GradientType::Radial, "Radial")
+                .changed();
         });
 
         if matches!(self.gradient, GradientType::Radial) {
-            set_center_button(ui, &mut self.center, rendered);
+            changed |= set_center_button(ui, &mut self.center, rendered);
         }
+
+        changed
     }
 
     fn uses_multiple_colors(&self) -> bool {

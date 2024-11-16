@@ -58,7 +58,7 @@ impl Effect {
             )
             .changed();
 
-        self.animation.ui(ui, state.texture_id());
+        changed |= self.animation.ui(ui, state.texture_id());
 
         ui.separator();
 

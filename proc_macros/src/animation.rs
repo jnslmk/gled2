@@ -71,7 +71,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
     quote!(
         impl AnimationConfig for Animation {
-            fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId) {
+            fn ui(&mut self, ui: &mut egui::Ui, rendered: egui::TextureId) -> bool {
                 match self {
                     #(#ui)*
                 }

@@ -15,9 +15,13 @@ pub struct RandomCircles {
 impl Eq for RandomCircles {}
 
 impl AnimationConfig for RandomCircles {
-    fn ui(&mut self, ui: &mut egui::Ui, _rendered: egui::TextureId) {
-        self.common.ui(ui);
-        ui.add(Slider::new(&mut self.count, 1..=10).text("Density"));
+    fn ui(&mut self, ui: &mut egui::Ui, _rendered: egui::TextureId) -> bool {
+        let mut changed = false;
+        changed |= self.common.ui(ui);
+        changed |= ui
+            .add(Slider::new(&mut self.count, 1..=10).text("Density"))
+            .changed();
+        changed
     }
 
     fn shader_code(&self) -> std::borrow::Cow<str> {

@@ -16,18 +16,26 @@ pub struct OpposingLines {
 impl Eq for OpposingLines {}
 
 impl AnimationConfig for OpposingLines {
-    fn ui(&mut self, ui: &mut egui::Ui, _rendered: egui::TextureId) {
-        self.common.ui(ui);
+    fn ui(&mut self, ui: &mut egui::Ui, _rendered: egui::TextureId) -> bool {
+        let mut changed = false;
+        changed |= self.common.ui(ui);
         ui.horizontal(|ui| {
-            ui.radio_value(&mut self.orientation, Orientation::Horizontal, "Horizontal");
-            ui.radio_value(&mut self.orientation, Orientation::Vertical, "Vertical");
+            changed |= ui
+                .radio_value(&mut self.orientation, Orientation::Horizontal, "Horizontal")
+                .changed();
+            changed |= ui
+                .radio_value(&mut self.orientation, Orientation::Vertical, "Vertical")
+                .changed();
         });
-        ui.add(
-            Slider::new(&mut self.thickness, 0.001..=1.0)
-                .text("Thickness")
-                .custom_formatter(|n, _| format!("{:.1} %", n * 100.0))
-                .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
-        );
+        changed |= ui
+            .add(
+                Slider::new(&mut self.thickness, 0.001..=1.0)
+                    .text("Thickness")
+                    .custom_formatter(|n, _| format!("{:.1} %", n * 100.0))
+                    .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
+            )
+            .changed();
+        changed
     }
 
     fn shader_code(&self) -> std::borrow::Cow<str> {
