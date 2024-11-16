@@ -24,55 +24,16 @@ impl Default for Curve {
 }
 
 impl Curve {
-    pub fn forward() -> Self {
-        Self {
-            linked: false,
-            points: Self::linear_points(vec![
-                (0.0, 100.0),
-                (1.0, 0.0),
-                (1.0, 100.0),
-                (2.0, 0.0),
-                (2.0, 100.0),
-                (3.0, 0.0),
-                (3.0, 100.0),
-                (4.0, 0.0),
-            ]),
-        }
-    }
-
-    pub fn backward() -> Self {
-        Self {
-            linked: false,
-            points: Self::linear_points(vec![
-                (0.0, 0.0),
-                (1.0, 100.0),
-                (1.0, 0.0),
-                (2.0, 100.0),
-                (2.0, 0.0),
-                (3.0, 100.0),
-                (3.0, 0.0),
-                (4.0, 100.0),
-            ]),
-        }
-    }
-
     pub fn alternating() -> Self {
         Self {
             linked: true,
             points: Self::linear_points(vec![
-                (0.0, 100.0),
+                (0.0, 1.0),
                 (1.0, 0.0),
-                (2.0, 100.0),
+                (2.0, 1.0),
                 (3.0, 0.0),
-                (4.0, 100.0),
+                (4.0, 1.0),
             ]),
-        }
-    }
-
-    pub fn fixed() -> Self {
-        Self {
-            linked: true,
-            points: Self::linear_points(vec![(0.0, 0.0), (4.0, 0.0)]),
         }
     }
 
@@ -105,7 +66,7 @@ impl Curve {
         let mut changed = false;
 
         let to_screen = emath::RectTransform::from_to(
-            Rect::from_min_size(Pos2::ZERO, Vec2::new(4.0, 100.0)),
+            Rect::from_min_size(Pos2::ZERO, Vec2::new(4.0, 1.0)),
             Rect::from_min_size(ui.next_widget_position(), ui.available_size()),
         );
 
@@ -126,14 +87,14 @@ impl Curve {
             painter.add(PathShape::line(
                 vec![
                     to_screen.transform_pos(Pos2::new(i as f32, 0.0)),
-                    to_screen.transform_pos(Pos2::new(i as f32, 100.0)),
+                    to_screen.transform_pos(Pos2::new(i as f32, 1.0)),
                 ],
                 stroke,
             ));
             painter.add(PathShape::line(
                 vec![
-                    to_screen.transform_pos(Pos2::new(0.0, (i * 25) as f32)),
-                    to_screen.transform_pos(Pos2::new(4.0, (i * 25) as f32)),
+                    to_screen.transform_pos(Pos2::new(0.0, i as f32 * 0.25)),
+                    to_screen.transform_pos(Pos2::new(4.0, i as f32 * 0.25)),
                 ],
                 stroke,
             ));
@@ -313,12 +274,12 @@ impl Curve {
             painter.add(PathShape::line(
                 vec![
                     to_screen.transform_pos(Pos2::new(beat_position, 0.0)),
-                    to_screen.transform_pos(Pos2::new(beat_position, 100.0)),
+                    to_screen.transform_pos(Pos2::new(beat_position, 1.0)),
                 ],
                 Stroke::new(1.0, Color32::from_rgb(160, 0, 150)),
             ));
 
-            let y = 100.0 - self.value(beat_position);
+            let y = 1.0 - self.value(beat_position);
             painter.add(PathShape::line(
                 vec![
                     to_screen.transform_pos(Pos2::new(0.0, y)),
@@ -390,7 +351,7 @@ impl Curve {
                     .pos()
                     .y
             });
-        100.0 - y
+        1.0 - y
     }
 }
 
