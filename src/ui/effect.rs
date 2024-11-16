@@ -3,21 +3,21 @@ use crate::{
     animation::{Animation, AnimationConfig},
     effect::{Effect, EffectState},
 };
-use egui::{Checkbox, RichText, Slider};
+use egui::{Checkbox, Slider};
 use strum::IntoEnumIterator;
 
 impl Effect {
     pub fn config_ui(&mut self, state: &mut EffectState, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
 
-        ui.label(RichText::new("Color Shift").heading());
+        ui.label("Color Shift");
         ui.vertical_centered_justified(|ui| {
             changed |= self.color_shift.change_button(ui);
         });
 
         ui.separator();
 
-        ui.label(RichText::new("Animation").heading());
+        ui.label("Animation");
         let animation_changed = egui::ComboBox::from_label("Animation")
             .selected_text(format!("{}", self.animation))
             .width(150.0)

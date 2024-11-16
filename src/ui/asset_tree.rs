@@ -1,5 +1,5 @@
 use crate::storage::{Asset, AssetId, AssetTrait};
-use egui::{Align, Button, Color32, Id, Label, Layout, Rect, Ui, Vec2};
+use egui::{Button, Color32, Id, Label, Margin, Rect, Stroke, Ui, Vec2};
 use egui_ltreeview::{node::NodeBuilder, Action, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -292,21 +292,86 @@ impl<T: AssetTrait> AssetTree<T> {
         &mut self.selection
     }
 
-    pub fn show_delete_button(&mut self, ui: &mut Ui) {
-        ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
-            if let TreeSelection::Asset(asset) = &self.selection {
-                if ui
-                    .add(Button::new("Delete").fill(Color32::DARK_RED))
-                    .clicked()
-                {
-                    asset.delete();
-                    self.selection = TreeSelection::None;
+    pub fn common_settings(&mut self, ui: &mut Ui, dirty: &mut bool) -> bool {
+        let mut changed = false;
+
+        egui::Frame::none()
+            .inner_margin(Margin::from(6.0))
+            .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
+            .show(ui, |ui| {
+                match &mut self.selection {
+                    TreeSelection::Asset(asset) => {
+                        ui.label("Name:");
+                        let mut name = asset.name().to_string();
+                        let res = ui.text_edit_singleline(&mut name);
+                        if res.changed() {
+                            *dirty = true;
+                            asset.path.pop();
+                            asset.path.push(name);
+                        }
+                    }
+                    TreeSelection::Dir { .. } => {
+                        self.show_folder_editor(ui);
+                        return;
+                    }
+                    _ => {
+                        ui.label("Please select an item from the tree");
+                        return;
+                    }
                 }
-            }
-        });
+
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    if ui
+                        .add_enabled(*dirty, Button::new("Save"))
+                        .on_hover_ui(|ui| {
+                            ui.label("Save to disk");
+                        })
+                        .clicked()
+                    {
+                        *dirty = false;
+
+                        if let TreeSelection::Asset(asset) = &self.selection {
+                            asset.clone().save();
+                        }
+
+                        changed = true;
+                    }
+                    if ui
+                        .add_enabled(*dirty, Button::new("Reset").fill(Color32::DARK_RED))
+                        .on_hover_ui(|ui| {
+                            ui.label("Reset to state on disk");
+                        })
+                        .clicked()
+                    {
+                        *dirty = false;
+                        if let TreeSelection::Asset(asset) = &mut self.selection {
+                            *asset = Arc::unwrap_or_clone(Asset::get(asset.id).unwrap_or_default());
+                        }
+
+                        changed = true;
+                    }
+                    if ui
+                        .add_enabled(
+                            matches!(self.selection, TreeSelection::Asset(_)),
+                            Button::new("Delete").fill(Color32::DARK_RED),
+                        )
+                        .clicked()
+                    {
+                        if let TreeSelection::Asset(asset) = &self.selection {
+                            asset.delete();
+                        }
+                        self.selection = TreeSelection::None;
+
+                        changed = true
+                    }
+                });
+            });
+
+        changed
     }
 
-    pub fn show_folder_editor(&mut self, ui: &mut Ui) {
+    fn show_folder_editor(&mut self, ui: &mut Ui) {
         let TreeSelection::Dir { current, new } = &mut self.selection else {
             return;
         };

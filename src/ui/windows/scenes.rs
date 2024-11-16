@@ -4,7 +4,6 @@ use crate::{
     group::Groups,
     storage::{Asset, AssetId, Palette, Scene},
     ui::{
-        action::Action,
         asset_tree::{AssetTree, TreeSelection},
         ChangeButton,
     },
@@ -16,7 +15,6 @@ use egui::{
 };
 use std::{
     iter::once,
-    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 use wgpu::CommandEncoderDescriptor;
@@ -65,25 +63,20 @@ impl ScenesWindow {
                     .exact_width(300.0)
                     .resizable(false)
                     .show_inside(ui, |ui| {
-                        let scene = match self.tree.selected() {
-                            TreeSelection::None => {
-                                ui.label("Please select an item from the tree");
-                                return;
-                            }
-                            TreeSelection::Asset(scene) => scene,
-                            TreeSelection::Dir { .. } => {
-                                self.tree.show_folder_editor(ui);
-                                return;
-                            }
+                        let asset_changed = self.tree.common_settings(ui, &mut self.dirty);
+
+                        let TreeSelection::Asset(scene) = self.tree.selected() else {
+                            return;
                         };
 
-                        ui.label("Name:");
-                        let mut name = scene.name().to_string();
-                        let res = ui.text_edit_singleline(&mut name);
-                        if res.changed() {
-                            self.dirty = true;
-                            scene.path.pop();
-                            scene.path.push(name);
+                        if asset_changed {
+                            crate::ui::action::Action::InitGPU.enqueue();
+                            if let (Some(effect), Some(state)) = (
+                                scene.data.effect(self.selected_effect),
+                                self.effect_states.get_mut(self.selected_effect),
+                            ) {
+                                state.update(effect);
+                            }
                         }
 
                         if let (Some(effect), Some(state)) = (
@@ -129,34 +122,6 @@ impl ScenesWindow {
                                 self.selected_effect = self.selected_effect.saturating_sub(1);
                             }
                         });
-
-                        ui.add_space(4.0);
-                        ui.horizontal(|ui| {
-                            if ui
-                                .add_enabled(self.dirty, Button::new("Save"))
-                                .on_hover_ui(|ui| {
-                                    ui.label("Save the scene to disk");
-                                })
-                                .clicked()
-                            {
-                                self.dirty = false;
-                                Action::InitGPU.enqueue();
-                                scene.clone().save();
-                            }
-                            if ui
-                                .add_enabled(self.dirty, Button::new("Reset"))
-                                .on_hover_ui(|ui| {
-                                    ui.label("Reset to state on disk");
-                                })
-                                .clicked()
-                            {
-                                self.dirty = false;
-                                *scene =
-                                    Arc::unwrap_or_clone(Asset::get(scene.id).unwrap_or_default());
-                            }
-                        });
-
-                        self.tree.show_delete_button(ui);
                     });
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {

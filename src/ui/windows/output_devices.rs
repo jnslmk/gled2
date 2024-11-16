@@ -2,8 +2,8 @@ use crate::{
     storage::{Asset, AssetId, OutputDevice},
     ui::asset_tree::{AssetTree, TreeSelection},
 };
-use egui::{Button, ComboBox, Margin, TextEdit, Ui};
-use std::{collections::HashMap, sync::Arc};
+use egui::{ComboBox, Margin, TextEdit, Ui};
+use std::collections::HashMap;
 use strum::{EnumIter, IntoEnumIterator, IntoStaticStr};
 
 #[derive(Clone, Copy, Debug, IntoStaticStr, PartialEq, Eq, EnumIter)]
@@ -60,26 +60,19 @@ impl OutputDevicesWindow {
                             .show(ui, ui.make_persistent_id("output_devices_tree"));
                     });
 
-                egui::Frame::default().outer_margin(Margin::same(4.0)).show(
-                    ui,
-                    |ui| match &mut self.tree.selected() {
-                        TreeSelection::None => {
-                            ui.label("Please select an item from the tree");
-                        }
-                        TreeSelection::Asset(palette) => {
+                egui::Frame::default()
+                    .outer_margin(Margin::same(4.0))
+                    .show(ui, |ui| {
+                        self.tree.common_settings(ui, &mut self.dirty);
+                        if let TreeSelection::Asset(palette) = &mut self.tree.selected() {
                             output_device_editor(
                                 ui,
                                 palette,
                                 &mut self.dirty,
                                 &mut self.device_strings,
                             );
-                            self.tree.show_delete_button(ui);
                         }
-                        TreeSelection::Dir { .. } => {
-                            self.tree.show_folder_editor(ui);
-                        }
-                    },
-                );
+                    });
             });
     }
 
@@ -96,15 +89,6 @@ fn output_device_editor(
 ) {
     let mut kind = output_device.data.kind();
     let id = output_device.id;
-
-    ui.label("Name:");
-    let mut name = output_device.name().to_string();
-    let res = ui.text_edit_singleline(&mut name);
-    if res.changed() {
-        *dirty = true;
-        output_device.path.pop();
-        output_device.path.push(name);
-    }
 
     ui.label("Kind");
     ComboBox::new(format!("{id}_kind"), "Kind")
@@ -228,28 +212,4 @@ fn output_device_editor(
             }
         }
     }
-
-    ui.add_space(4.0);
-    ui.horizontal(|ui| {
-        if ui
-            .add_enabled(*dirty, Button::new("Save"))
-            .on_hover_ui(|ui| {
-                ui.label("Save output device to disk");
-            })
-            .clicked()
-        {
-            *dirty = false;
-            output_device.clone().save();
-        }
-        if ui
-            .add_enabled(*dirty, Button::new("Reset"))
-            .on_hover_ui(|ui| {
-                ui.label("Reset to state on disk");
-            })
-            .clicked()
-        {
-            *dirty = false;
-            *output_device = Arc::unwrap_or_clone(Asset::get(output_device.id).unwrap_or_default());
-        }
-    });
 }
