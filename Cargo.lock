@@ -1498,6 +1498,8 @@ dependencies = [
  "egui",
  "egui_extras",
  "egui_ltreeview",
+ "emath",
+ "epaint",
  "fern",
  "gilrs",
  "git2",

@@ -16,6 +16,8 @@ eframe = { version = "0.29", features = [
 egui = { version = "0.29", features = ["persistence"] }
 egui_extras = { version = "0.29", features = ["image"] }
 egui_ltreeview.git = "https://github.com/elwerene/egui_ltreeview.git"
+emath = "0.29"
+epaint = "0.29"
 fern = { version = "0.7", features = ["colored"] }
 gilrs = "0.11"
 gled_proc_macros = { path = "proc_macros" }

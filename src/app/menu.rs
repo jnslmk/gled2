@@ -206,6 +206,10 @@ impl App {
 
                     ui.separator();
 
+                    if ui.button("Curves").clicked() {
+                        self.windows.curves.open();
+                        ui.close_menu();
+                    }
                     if ui.button("Palettes").clicked() {
                         self.windows.palettes.open();
                         ui.close_menu();
