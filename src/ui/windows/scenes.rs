@@ -1,8 +1,8 @@
 use crate::{
-    app::Timing,
+    app::{PersistantState, Timing},
     effect::{Effect, EffectState},
     group::Groups,
-    storage::{Asset, AssetId, Palette, Scene},
+    storage::{Asset, AssetId, Scene},
     ui::{
         asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
         ChangeButton,
@@ -13,8 +13,8 @@ use egui::{
     epaint::{CircleShape, RectShape},
     pos2,
     scroll_area::ScrollBarVisibility,
-    Button, Color32, Context, Label, Margin, Rect, Response, Rounding, Sense, Shape, Ui, Vec2,
-    Widget,
+    Button, Color32, Context, Label, Margin, Rect, Response, Rounding, Sense, Shape, Stroke, Ui,
+    Vec2, Widget,
 };
 use std::{
     iter::once,
@@ -27,7 +27,6 @@ pub struct ScenesWindow {
     open: bool,
     dirty: bool,
     tree: AssetTree<Scene>,
-    palette: Option<AssetId<Palette>>,
     previous_selected_id: Option<AssetId<Scene>>,
     effect_states: Vec<EffectState>,
     selected_effect: usize,
@@ -66,21 +65,9 @@ impl ScenesWindow {
                     .exact_width(300.0)
                     .resizable(false)
                     .show_inside(ui, |ui| {
-                        let asset_changed = self.tree.common_settings(ui, &mut self.dirty);
-
                         let TreeSelection::Asset(scene) = self.tree.selected() else {
                             return;
                         };
-
-                        if asset_changed {
-                            crate::ui::action::Action::InitGPU.enqueue();
-                            if let (Some(effect), Some(state)) = (
-                                scene.data.effect(self.selected_effect),
-                                self.effect_states.get_mut(self.selected_effect),
-                            ) {
-                                state.update(effect);
-                            }
-                        }
 
                         if let (Some(effect), Some(state)) = (
                             scene.data.effect(self.selected_effect),
@@ -131,10 +118,35 @@ impl ScenesWindow {
                     });
 
                 egui::CentralPanel::default().show_inside(ui, |ui| {
+                    let asset_changed: bool = self.tree.common_settings(ui, &mut self.dirty);
+
+                    ui.add_space(4.0);
+
                     if let TreeSelection::Asset(scene) = &mut self.tree.selected() {
-                        ui.vertical_centered_justified(|ui| {
-                            self.palette.change_button(ui);
-                        });
+                        if asset_changed {
+                            crate::ui::action::Action::InitGPU.enqueue();
+                            if let (Some(effect), Some(state)) = (
+                                scene.data.effect(self.selected_effect),
+                                self.effect_states.get_mut(self.selected_effect),
+                            ) {
+                                state.update(effect);
+                            }
+                        }
+
+                        egui::Frame::none()
+                            .inner_margin(Margin::from(6.0))
+                            .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
+                            .show(ui, |ui| {
+                                ui.label("Preview Palette");
+                                ui.vertical_centered_justified(|ui| {
+                                    let mut persistant_state = PersistantState::get();
+                                    if persistant_state.preview_palette.change_button(ui) {
+                                        persistant_state.save();
+                                    }
+                                });
+                            });
+
+                        ui.add_space(4.0);
 
                         {
                             for effect_state in self.effect_states.iter_mut() {
@@ -149,7 +161,7 @@ impl ScenesWindow {
                             scene.data.prepare(
                                 &mut self.effect_states,
                                 queue,
-                                self.palette.and_then(Asset::get),
+                                PersistantState::get().preview_palette.and_then(Asset::get),
                                 &Groups::None,
                                 1.0,
                             );

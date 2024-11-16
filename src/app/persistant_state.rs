@@ -1,4 +1,7 @@
-use crate::input::{GamepadEvent, InputEvent};
+use crate::{
+    input::{GamepadEvent, InputEvent},
+    storage::{AssetId, Palette},
+};
 use egui::mutex::Mutex;
 use log::{error, info};
 use once_cell::sync::Lazy;
@@ -22,6 +25,7 @@ pub struct PersistantState {
     pub tap_input_events: BTreeSet<InputEvent>,
     pub freeze_input_events: BTreeSet<InputEvent>,
     pub blackout_input_events: BTreeSet<InputEvent>,
+    pub preview_palette: Option<AssetId<Palette>>,
 }
 
 impl Default for PersistantState {
@@ -46,6 +50,7 @@ impl Default for PersistantState {
             blackout_input_events: std::iter::once(InputEvent::Key(egui::Key::B))
                 .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Start(0))))
                 .collect(),
+            preview_palette: Default::default(),
         }
     }
 }
