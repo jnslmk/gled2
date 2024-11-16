@@ -41,14 +41,11 @@ impl Effect {
             state.update(self);
         }
 
-        changed |= ui
-            .add(
-                Slider::new(&mut self.opacity, 0.0..=1.0)
-                    .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
-                    .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0))
-                    .text("Opacity"),
-            )
-            .changed();
+        ui.horizontal(|ui| {
+            changed |= self.opacity.change_button(ui);
+            ui.label("Opacity")
+        });
+
         changed |= ui
             .add(
                 Slider::new(&mut self.beat_progression_offset, 0.0..=1.0)

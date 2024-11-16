@@ -1,10 +1,13 @@
 mod point;
+mod static_or_curve;
 
 use self::point::CurvePoint;
 use super::AssetTrait;
 use egui::{epaint::QuadraticBezierShape, Color32, Pos2, Rect, Sense, Shape, Stroke, Ui, Vec2};
 use epaint::PathShape;
 use serde::{Deserialize, Serialize};
+
+pub use static_or_curve::StaticOrCurve;
 
 const PRECISION: f32 = 0.005; // 100 updates per second at 240 bpm
 

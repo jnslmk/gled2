@@ -5,7 +5,7 @@ use crate::{
     app::positions,
     color_shift::ColorShift,
     group::Groups,
-    storage::{Asset, Palette},
+    storage::{Asset, Palette, StaticOrCurve},
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -13,27 +13,15 @@ use wgpu::{Buffer, CommandEncoder, Queue};
 
 pub use state::EffectState;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Effect {
     pub color_shift: ColorShift,
-    pub opacity: f32,
+    pub opacity: StaticOrCurve,
     pub beat_progression_offset: f32,
     /// Whether it should use the primary or the secondary group
     pub use_secondary_group: bool,
     pub animation: Animation,
-}
-
-impl Default for Effect {
-    fn default() -> Self {
-        Self {
-            color_shift: Default::default(),
-            opacity: 1.0,
-            beat_progression_offset: Default::default(),
-            use_secondary_group: Default::default(),
-            animation: Default::default(),
-        }
-    }
 }
 
 impl PartialEq for Effect {
@@ -64,7 +52,6 @@ impl Effect {
     pub fn new(animation: Animation) -> Self {
         Self {
             animation,
-            opacity: 1.0,
             ..Default::default()
         }
     }
@@ -82,8 +69,8 @@ impl Effect {
         groups: &Groups,
         main_opacity: f32,
     ) {
-        effect_state.opacity = self.opacity * main_opacity;
         effect_state.beat_progression += self.beat_progression_offset;
+        effect_state.opacity = self.opacity.value(effect_state.beat_progression) * main_opacity;
         effect_state.color_shift = self.color_shift;
 
         let group = groups.get(self.use_secondary_group);

@@ -99,6 +99,7 @@ impl ScenesWindow {
                                 self.selected_effect = scene
                                     .data
                                     .add_effect(&mut self.effect_states, Effect::default());
+                                self.dirty = true;
                             }
                         });
                         ui.vertical_centered_justified(|ui| {
@@ -111,6 +112,7 @@ impl ScenesWindow {
                                 {
                                     self.selected_effect =
                                         scene.data.add_effect(&mut self.effect_states, effect);
+                                    self.dirty = true;
                                 }
                             }
                         });
@@ -123,6 +125,7 @@ impl ScenesWindow {
                                     .data
                                     .remove_effect(&mut self.effect_states, self.selected_effect);
                                 self.selected_effect = self.selected_effect.saturating_sub(1);
+                                self.dirty = true;
                             }
                         });
                     });

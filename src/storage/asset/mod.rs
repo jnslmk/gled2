@@ -9,7 +9,7 @@ use egui::Rect;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
-pub use curve::Curve;
+pub use curve::{Curve, StaticOrCurve};
 pub use output_device::OutputDevice;
 pub use palette::Palette;
 pub use project::Project;
