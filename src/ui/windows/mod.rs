@@ -1,3 +1,7 @@
+use egui::Context;
+
+use crate::app::Timing;
+
 mod about;
 mod artnet_input;
 mod output_devices;
@@ -18,13 +22,13 @@ pub struct Windows {
 }
 
 impl Windows {
-    pub fn update(&mut self, ctx: &egui::Context) {
+    pub fn update(&mut self, ctx: &Context, timing: &Timing) {
         self.about.update(ctx);
         self.artnet_input.update(ctx);
         self.output_devices.update(ctx);
         self.output_routings.update(ctx);
         self.palettes.update(ctx);
-        self.scenes.update(ctx);
+        self.scenes.update(ctx, timing);
         self.shortcuts.update(ctx);
     }
 }

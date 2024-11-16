@@ -1,5 +1,5 @@
 use crate::{
-    app::PersistantState,
+    app::{PersistantState, Timing},
     effect::EffectState,
     group::Groups,
     input::InputEvent,
@@ -83,11 +83,12 @@ impl SceneInstance {
         }
     }
 
-    pub fn set_state(&mut self, beat_progression: f32, beats_per_minute: f32, framerate: f32) {
+    pub fn set_state_timing(&mut self, timing: &Timing) {
         for effect_state in self.effect_states.iter_mut() {
-            effect_state.beat_progression = beat_progression + self.beat_progression_offset;
-            effect_state.beats_per_minute = beats_per_minute;
-            effect_state.framerate = framerate;
+            effect_state.beat_progression =
+                timing.beat_progression() + self.beat_progression_offset;
+            effect_state.beats_per_minute = timing.beats_per_minute;
+            effect_state.framerate = timing.framerate().unwrap_or_default();
         }
     }
 

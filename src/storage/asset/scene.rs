@@ -28,6 +28,14 @@ impl Scene {
         }
     }
 
+    pub fn effect(&mut self, index: usize) -> Option<&mut Effect> {
+        self.effects.get_mut(index)
+    }
+
+    pub fn effects(&mut self) -> Vec<(usize, &mut Effect)> {
+        self.effects.iter_mut().enumerate().collect()
+    }
+
     pub fn add_effect(&mut self, effect_states: &mut Vec<EffectState>, effect: Effect) -> usize {
         effect_states.push(EffectState::new(&effect));
         self.effects.push(effect);

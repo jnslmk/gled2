@@ -1,6 +1,7 @@
 use super::Effect;
 use crate::{
     animation::{AnimationConfig, AnimationRenderer},
+    color_shift::ColorShift,
     group::Group,
     output_mix::OutputMix,
     texture_to_output::TextureToOutput,
@@ -19,7 +20,7 @@ pub struct EffectState {
     /// Opacity of animation: 0.0 -> 1.0
     pub opacity: f32,
     /// Color shift in full circles. (0.5 = 180 degrees)
-    pub color_shift: f32,
+    pub color_shift: ColorShift,
 
     pub sent_group: Option<Group>,
     pub texture_to_output: TextureToOutput,
@@ -38,7 +39,7 @@ impl EffectState {
             beats_per_minute: 0.0,
             framerate: 0.0,
             opacity: 0.0,
-            color_shift: 0.0,
+            color_shift: ColorShift::default(),
             sent_group: None,
             texture_to_output,
             texture_id,
@@ -69,7 +70,7 @@ impl EffectState {
         data[4..8].copy_from_slice(&self.beats_per_minute.to_le_bytes());
         data[8..12].copy_from_slice(&self.framerate.to_le_bytes());
         data[12..16].copy_from_slice(&self.opacity.to_le_bytes());
-        data[16..20].copy_from_slice(&self.color_shift.to_le_bytes());
+        data[16..20].copy_from_slice(&self.color_shift.0.to_le_bytes());
     }
 
     /// must be a multiple of 16

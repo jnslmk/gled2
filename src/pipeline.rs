@@ -1,4 +1,5 @@
 use crate::{
+    app::Timing,
     constants::{GPU_NOT_INIT, OUTPUT_BUFFER_SIZE},
     extract_output::ExtractOutput,
     output_clear::OutputClear,
@@ -16,6 +17,7 @@ use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
+    iter::once,
     time::{Duration, Instant},
 };
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
@@ -156,9 +158,7 @@ impl Pipeline {
         &mut self,
         output_sender: &mut OutputSender,
         gpu_ready_receiver: &mut GpuReadyReceiver,
-        beat_progression: f32,
-        beats_per_minute: f32,
-        framerate: f32,
+        timing: &Timing,
         blackout: bool,
         render_deactivated_scenes: RenderDeactivatedScenes,
         fade_duration: Duration,
@@ -168,7 +168,7 @@ impl Pipeline {
         let queue = &wgpu_render_state.queue;
 
         for scene_instance in self.scenes_instances.iter_mut() {
-            scene_instance.set_state(beat_progression, beats_per_minute, framerate);
+            scene_instance.set_state_timing(timing);
         }
 
         if self.auto_mode_active {
@@ -260,7 +260,7 @@ impl Pipeline {
 
         //wait for gpu to be ready for the next queue submission
         gpu_ready_receiver.recv().ok();
-        queue.submit(std::iter::once(encoder.finish()));
+        queue.submit(once(encoder.finish()));
 
         output_sender
             .send(())

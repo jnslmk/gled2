@@ -145,7 +145,6 @@ impl AnimationRenderer {
             &mut contents[EffectState::size() + Palette::size()
                 ..EffectState::size() + Palette::size() + Config::size()],
         );
-        dbg!(&contents);
         queue.write_buffer(&self.uniform, 0, &contents);
     }
 

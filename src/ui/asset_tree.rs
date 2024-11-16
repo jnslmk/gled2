@@ -122,7 +122,7 @@ pub enum TreeId<T: AssetTrait> {
     File(AssetId<T>),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 #[allow(clippy::large_enum_variant)]
 pub enum TreeSelection<T: AssetTrait> {
     #[default]
@@ -278,6 +278,13 @@ impl<T: AssetTrait> AssetTree<T> {
                 }
                 _ => {}
             }
+        }
+    }
+
+    pub fn selected_id(&self) -> Option<AssetId<T>> {
+        match &self.selection {
+            TreeSelection::Asset(asset) => Some(asset.id),
+            _ => None,
         }
     }
 

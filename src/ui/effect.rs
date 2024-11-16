@@ -1,10 +1,13 @@
-use super::{action::Action, ChangeButton};
-use crate::{animation::Animation, effect::Effect};
-use egui::{Button, Checkbox, Color32, RichText, Slider};
+use super::ChangeButton;
+use crate::{
+    animation::{Animation, AnimationConfig},
+    effect::{Effect, EffectState},
+};
+use egui::{Checkbox, RichText, Slider};
 use strum::IntoEnumIterator;
 
 impl Effect {
-    pub fn config_ui(&mut self, ui: &mut egui::Ui) -> bool {
+    pub fn config_ui(&mut self, state: &mut EffectState, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
 
         ui.label(RichText::new("Color Shift").heading());
@@ -35,9 +38,7 @@ impl Effect {
             .unwrap_or_default();
         if animation_changed {
             changed = true;
-            //TODO: reset state of preview (we need a preview to change effect settings)
-            //self.reset_gpu_state();
-            Action::InitGpu.enqueue();
+            state.update(&self);
         }
 
         changed |= ui
@@ -57,8 +58,7 @@ impl Effect {
             )
             .changed();
 
-        //TODO: add animation settings back with texture_id of preview (we need a preview for the animation settings)
-        //self.animation.ui(ui, self.texture_id());
+        self.animation.ui(ui, state.texture_id());
 
         ui.separator();
 
@@ -68,29 +68,6 @@ impl Effect {
                 "Use Secondary Group",
             ))
             .changed();
-
-        ui.separator();
-
-        ui.vertical_centered_justified(|ui| {
-            if ui
-                .add(Button::new("🗐 Duplicate Effect").fill(Color32::DARK_BLUE))
-                .clicked()
-            {
-                Action::CloneSelectedSceneInstance.enqueue();
-            }
-        });
-        ui.vertical_centered_justified(|ui| {
-            if ui
-                .add(
-                    Button::new("🗑 Remove Effect")
-                        .fill(Color32::DARK_RED)
-                        .shortcut_text("Del"),
-                )
-                .clicked()
-            {
-                Action::DeleteSelectedSceneInstance.enqueue();
-            }
-        });
 
         changed
     }

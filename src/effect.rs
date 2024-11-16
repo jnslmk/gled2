@@ -3,6 +3,7 @@ mod state;
 use crate::{
     animation::{Animation, AnimationConfig},
     app::positions,
+    color_shift::ColorShift,
     group::Groups,
     storage::{Asset, Palette},
 };
@@ -12,15 +13,27 @@ use wgpu::{Buffer, CommandEncoder, Queue};
 
 pub use state::EffectState;
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Effect {
-    pub color_shift: f32,
+    pub color_shift: ColorShift,
     pub opacity: f32,
     pub beat_progression_offset: f32,
     /// Whether it should use the primary or the secondary group
     pub use_secondary_group: bool,
     pub animation: Animation,
+}
+
+impl Default for Effect {
+    fn default() -> Self {
+        Self {
+            color_shift: Default::default(),
+            opacity: 1.0,
+            beat_progression_offset: Default::default(),
+            use_secondary_group: Default::default(),
+            animation: Default::default(),
+        }
+    }
 }
 
 impl PartialEq for Effect {

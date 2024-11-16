@@ -16,10 +16,10 @@ use crate::{
 };
 use egui::Modifiers;
 use std::path::PathBuf;
-use timing::Timing;
 
 pub use persistant_state::PersistantState;
 pub use svg::{positions, preview_positions, preview_uv, Svg};
+pub use timing::Timing;
 
 pub struct App {
     windows: Windows,
@@ -103,9 +103,7 @@ impl eframe::App for App {
         self.pipeline.render(
             &mut self.output_sender,
             &mut self.gpu_ready_receiver,
-            self.timing.beat_progression(),
-            self.timing.beats_per_minute,
-            self.timing.framerate().unwrap_or_default(),
+            &self.timing,
             self.blackout,
             if PersistantState::effects_always_render() {
                 RenderDeactivatedScenes::Always
@@ -115,7 +113,7 @@ impl eframe::App for App {
             self.timing.fade_duration(),
         );
 
-        self.windows.update(ctx);
+        self.windows.update(ctx, &self.timing);
         self.menu(ctx);
         self.config(ctx);
         self.preview(ctx);
