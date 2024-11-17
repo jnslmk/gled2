@@ -338,6 +338,8 @@ impl Curve {
 impl AssetTrait for Curve {
     const DIR_NAME: &'static str = "curves";
     const NAME: &'static str = "Curve";
+    const SHOW_NAME_IF_SELECTED: bool = false;
+
     fn show(&self, ui: &mut egui::Ui, rect: Rect) {
         let mut min = rect.min;
         min.x = rect.max.x - 64.0;

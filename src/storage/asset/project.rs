@@ -32,4 +32,5 @@ pub struct SceneGroup {
 impl AssetTrait for Project {
     const DIR_NAME: &'static str = "projects";
     const NAME: &'static str = "Project";
+    const SHOW_NAME_IF_SELECTED: bool = true;
 }

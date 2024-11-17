@@ -138,4 +138,5 @@ impl Animation {
 impl AssetTrait for Animation {
     const DIR_NAME: &'static str = "animations";
     const NAME: &'static str = "Animation";
+    const SHOW_NAME_IF_SELECTED: bool = true;
 }

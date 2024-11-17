@@ -134,6 +134,7 @@ impl Scene {
 impl AssetTrait for Scene {
     const DIR_NAME: &'static str = "scenes";
     const NAME: &'static str = "Scene";
+    const SHOW_NAME_IF_SELECTED: bool = true;
 
     fn show(&self, ui: &mut egui::Ui, rect: egui::Rect) {
         let groups_selection = self.groups_selection();

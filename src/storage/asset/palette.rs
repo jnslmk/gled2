@@ -16,6 +16,7 @@ pub struct Palette {
 impl AssetTrait for Palette {
     const DIR_NAME: &'static str = "palettes";
     const NAME: &'static str = "Palette";
+    const SHOW_NAME_IF_SELECTED: bool = false;
 
     fn show(&self, ui: &mut egui::Ui, rect: Rect) {
         let mesh = {

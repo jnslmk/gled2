@@ -22,7 +22,7 @@ pub trait AssetTrait:
 {
     const DIR_NAME: &'static str;
     const NAME: &'static str;
-    const SHOW_NAME_IF_SELECTED: bool = false;
+    const SHOW_NAME_IF_SELECTED: bool;
 
     fn show(&self, ui: &mut egui::Ui, rect: Rect) {
         let _ = ui;
