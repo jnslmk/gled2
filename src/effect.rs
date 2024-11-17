@@ -24,6 +24,10 @@ pub struct Effect {
     /// Whether it should use the primary or the secondary group
     pub use_secondary_group: bool,
     pub animation: Option<AssetId<Animation>>,
+
+    /// Overwrite the animation with this one, must be only used in the code editor/preview
+    #[serde(skip)]
+    pub animation_overwrite: Option<Asset<Animation>>,
 }
 
 impl Default for Effect {
@@ -39,14 +43,15 @@ impl Default for Effect {
             speed_exponent: 0,
             use_secondary_group: Default::default(),
             animation: Default::default(),
+            animation_overwrite: Default::default(),
         }
     }
 }
 
 impl Effect {
     pub fn shader_code(&self) -> String {
-        self.animation
-            .and_then(Asset::get)
+        self.animation_overwrite
+            .as_ref()
             .map(|animation| {
                 format!(
                     "{}\n\n{}\n\n{}",
@@ -54,6 +59,16 @@ impl Effect {
                     animation.data.shader_code_for_getters(),
                     animation.data.shader_code
                 )
+            })
+            .or_else(|| {
+                self.animation.and_then(Asset::get).map(|animation| {
+                    format!(
+                        "{}\n\n{}\n\n{}",
+                        include_str!("shaders/common.wgsl"),
+                        animation.data.shader_code_for_getters(),
+                        animation.data.shader_code
+                    )
+                })
             })
             .unwrap_or_else(|| {
                 format!(

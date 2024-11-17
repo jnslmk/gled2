@@ -2,7 +2,7 @@ use super::Effect;
 use crate::{
     group::Group,
     output_mix::OutputMix,
-    storage::{AnimationConfig, AnimationRenderer, Asset},
+    storage::{AnimationConfig, AnimationRenderer},
     texture_to_output::TextureToOutput,
     wgpu_render_state,
 };

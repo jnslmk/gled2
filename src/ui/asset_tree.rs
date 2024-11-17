@@ -393,37 +393,44 @@ impl<T: AssetTrait> AssetTree<T> {
 
         ui.label("Name:");
         let mut name = new.last().cloned().unwrap_or_default();
-        let res = ui.text_edit_singleline(&mut name);
+        let res = ui
+            .vertical_centered_justified(|ui| ui.text_edit_singleline(&mut name))
+            .response;
         if res.changed() {
             self.folder_dirty = true;
             new.pop();
             new.push(name);
         }
 
-        if self.folder_dirty
-            && ui
-                .button("Save")
-                .on_hover_ui(|ui| {
-                    ui.label("Save all assets in this folder with new name to disk");
-                })
-                .clicked()
-        {
-            self.folder_dirty = false;
-            let assets = Asset::<T>::all();
-            for asset in assets {
-                if &asset.dir() == current {
-                    let mut asset = Arc::unwrap_or_clone(asset);
-                    asset.change_dir(new);
-                    asset.save();
+        ui.add_enabled_ui(self.folder_dirty, |ui| {
+            ui.vertical_centered_justified(|ui| {
+                if ui
+                    .button("Save")
+                    .on_hover_ui(|ui| {
+                        ui.label("Save all assets in this folder with new name to disk");
+                    })
+                    .clicked()
+                {
+                    self.folder_dirty = false;
+                    let assets = Asset::<T>::all();
+                    for asset in assets {
+                        if &asset.dir() == current {
+                            let mut asset = Arc::unwrap_or_clone(asset);
+                            asset.change_dir(new);
+                            asset.save();
+                        }
+                    }
+                    for empty_dir in self.empty_dirs.iter_mut() {
+                        if empty_dir.len() >= current.len()
+                            && empty_dir[..current.len()] == current[..]
+                        {
+                            empty_dir[..current.len()].clone_from_slice(&new[..]);
+                        }
+                    }
+                    *current = new.clone();
                 }
-            }
-            for empty_dir in self.empty_dirs.iter_mut() {
-                if empty_dir.len() >= current.len() && empty_dir[..current.len()] == current[..] {
-                    empty_dir[..current.len()].clone_from_slice(&new[..]);
-                }
-            }
-            *current = new.clone();
-        }
+            });
+        });
     }
 
     pub fn show_asset_selection(ui: &mut Ui, id: Id) -> Option<AssetId<T>> {

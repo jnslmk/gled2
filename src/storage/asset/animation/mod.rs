@@ -47,7 +47,7 @@ impl Animation {
                 ui.style(),
                 &CodeTheme::default(),
                 string,
-                "wgsl",
+                "rust",
             );
             layout_job.wrap.max_width = wrap_width;
             ui.fonts(|f| f.layout_job(layout_job))
@@ -59,7 +59,7 @@ impl Animation {
                     egui::TextEdit::multiline(&mut self.shader_code)
                         .font(egui::TextStyle::Monospace) // for cursor height
                         .code_editor()
-                        .desired_rows(10)
+                        .desired_rows(20)
                         .lock_focus(true)
                         .desired_width(f32::INFINITY)
                         .layouter(&mut layouter),
@@ -85,7 +85,7 @@ impl Animation {
                     .stroke(Stroke::new(2.0, Color32::RED))
                     .fill(Color32::DARK_RED)
                     .show(ui, |ui| {
-                        ui.heading("Too many variables!");
+                        ui.heading("Too many variables");
                         ui.label(format!("u32: {}/{}", count.u32, 3));
                         ui.label(format!("f32: {}/{}", count.f32, 7));
                     });

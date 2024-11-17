@@ -1,6 +1,6 @@
 use super::{Animation, Asset, AssetTrait, Palette};
 use crate::{
-    effect::{self, Effect, EffectState},
+    effect::{Effect, EffectState},
     group::Groups,
     storage::AssetId,
 };
