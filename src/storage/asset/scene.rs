@@ -55,17 +55,17 @@ impl Scene {
             if effect_states.len() > self.effects.len() {
                 effect_states.truncate(self.effects.len());
             } else {
-                effect_states.extend(
-                    self.effects
-                        .iter()
-                        .skip(effect_states.len())
-                        .map(EffectState::new),
-                );
+                let previous_len = effect_states.len();
+                effect_states.extend(self.effects.iter().skip(previous_len).map(EffectState::new));
+                for (effect, state) in self
+                    .effects
+                    .iter()
+                    .zip(effect_states.iter_mut())
+                    .skip(previous_len)
+                {
+                    state.update(effect);
+                }
             }
-        }
-
-        for (effect, state) in self.effects.iter().zip(effect_states.iter_mut()) {
-            state.update(effect);
         }
     }
 
