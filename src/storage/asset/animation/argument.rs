@@ -80,27 +80,41 @@ impl Argument {
                 }
             });
 
-        if let ArgumentKind::Selection { variants } = &mut self.kind {
-            ui.label("Variants");
-            ui.vertical_centered_justified(|ui| {
-                if ui.button("+ Add Variant").clicked() {
-                    variants.push("New Variant".to_string());
+        match &mut self.kind {
+            ArgumentKind::Center | ArgumentKind::Percentage | ArgumentKind::Degrees => (),
+            ArgumentKind::Selection { variants } => {
+                ui.label("Variants");
+                ui.vertical_centered_justified(|ui| {
+                    if ui.button("+ Add Variant").clicked() {
+                        variants.push("New Variant".to_string());
+                        changed = true;
+                    }
+                });
+                let mut remove = None;
+                for (index, variant) in variants.iter_mut().enumerate() {
+                    ui.horizontal(|ui| {
+                        if ui.add(Button::new("🗑").fill(Color32::DARK_RED)).clicked() {
+                            remove = Some(index);
+                        }
+                        ui.label(format!("{index}"));
+                        changed |= ui.text_edit_singleline(variant).changed();
+                    });
+                }
+                if let Some(index) = remove {
+                    variants.remove(index);
                     changed = true;
                 }
-            });
-            let mut remove = None;
-            for (index, variant) in variants.iter_mut().enumerate() {
-                ui.horizontal(|ui| {
-                    if ui.add(Button::new("🗑").fill(Color32::DARK_RED)).clicked() {
-                        remove = Some(index);
-                    }
-                    ui.label(format!("{index}"));
-                    changed |= ui.text_edit_singleline(variant).changed();
-                });
             }
-            if let Some(index) = remove {
-                variants.remove(index);
-                changed = true;
+            ArgumentKind::Slider { min, max } => {
+                ui.label("Min");
+                ui.vertical_centered_justified(|ui| {
+                    changed |= ui.add(egui::DragValue::new(min)).changed();
+                });
+
+                ui.label("Max");
+                ui.vertical_centered_justified(|ui| {
+                    changed |= ui.add(egui::DragValue::new(max)).changed();
+                });
             }
         }
 
@@ -175,6 +189,15 @@ impl Argument {
                     changed |= value.degrees().change_button(ui);
                 });
             }
+            ArgumentKind::Slider { min, max } => {
+                let Some(value) = config.u32(count.u32) else {
+                    return false;
+                };
+
+                ui.vertical_centered_justified(|ui| {
+                    changed |= ui.add(egui::Slider::new(value, *min..=*max)).changed();
+                });
+            }
         }
         changed
     }
@@ -186,6 +209,10 @@ pub enum ArgumentKind {
     Selection {
         variants: Vec<String>,
     },
+    Slider {
+        min: u32,
+        max: u32,
+    },
     #[default]
     Percentage,
     Degrees,
@@ -196,6 +223,7 @@ impl ArgumentKind {
         match self {
             Self::Center => Variables::Vec2F32,
             Self::Selection { .. } => Variables::U32,
+            Self::Slider { .. } => Variables::U32,
             Self::Percentage => Variables::F32,
             Self::Degrees => Variables::F32,
         }
@@ -208,6 +236,7 @@ impl ArgumentKind {
 pub enum ArgumentKindId {
     Center,
     Selection,
+    Slider,
     #[default]
     Percentage,
     Degrees,
@@ -218,6 +247,7 @@ impl From<&ArgumentKind> for ArgumentKindId {
         match kind {
             ArgumentKind::Center => Self::Center,
             ArgumentKind::Selection { .. } => Self::Selection,
+            ArgumentKind::Slider { .. } => Self::Slider,
             ArgumentKind::Percentage => Self::Percentage,
             ArgumentKind::Degrees => Self::Degrees,
         }
@@ -229,6 +259,7 @@ impl From<ArgumentKindId> for ArgumentKind {
         match kind {
             ArgumentKindId::Center => Self::Center,
             ArgumentKindId::Selection => Self::Selection { variants: vec![] },
+            ArgumentKindId::Slider => Self::Slider { min: 0, max: 100 },
             ArgumentKindId::Percentage => Self::Percentage,
             ArgumentKindId::Degrees => Self::Degrees,
         }

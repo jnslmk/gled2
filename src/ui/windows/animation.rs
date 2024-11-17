@@ -15,7 +15,7 @@ use naga::{
     front::wgsl::parse_str,
     valid::{Capabilities, ValidationFlags, Validator},
 };
-use std::iter::once;
+use std::{iter::once, sync::Arc};
 use wgpu::CommandEncoderDescriptor;
 
 #[derive(Default)]
@@ -33,7 +33,7 @@ impl AnimationWindow {
     fn validate(&mut self) {
         if let TreeSelection::Asset(animation) = &self.tree.selected() {
             if let Some(effect) = self.effect.as_mut() {
-                effect.animation_overwrite = Some(animation.clone());
+                effect.animation_overwrite = Some(Arc::new(animation.clone()));
                 let mut validator = Validator::new(ValidationFlags::all(), Capabilities::all());
                 match parse_str(&effect.shader_code())
                     .map_err(|err| err.emit_to_string(&effect.shader_code()))
@@ -127,7 +127,10 @@ impl AnimationWindow {
                                     self.preview = true;
                                 }
                             });
-                            self.dirty |= animation.data.change_arguments_ui(ui);
+                            if animation.data.change_arguments_ui(ui) {
+                                validate = true;
+                                self.dirty = true;
+                            }
                         }
                     });
 
@@ -143,31 +146,29 @@ impl AnimationWindow {
                         }
 
                         if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
+                            if let Some(error) = self.error.as_mut() {
+                                let lines = error.lines().count().max(1);
+                                egui::Frame::none()
+                                    .inner_margin(Margin::from(3.0))
+                                    .stroke(Stroke::new(2.0, Color32::RED))
+                                    .fill(Color32::DARK_RED)
+                                    .show(ui, |ui| {
+                                        ui.heading("Error compiling shader code:");
+                                        ui.add_enabled(
+                                            false,
+                                            egui::TextEdit::multiline(error)
+                                                .font(egui::TextStyle::Monospace)
+                                                .code_editor()
+                                                .desired_rows(lines)
+                                                .lock_focus(true)
+                                                .desired_width(f32::INFINITY),
+                                        );
+                                    });
+                            }
+
                             if animation.data.change_shader_code_ui(ui) {
                                 validate = true;
                                 self.dirty = true;
-                            }
-
-                            if let Some(error) = self.error.as_mut() {
-                                let lines = error.lines().count().max(1);
-                                ui.vertical_centered_justified(|ui| {
-                                    egui::Frame::none()
-                                        .inner_margin(Margin::from(3.0))
-                                        .stroke(Stroke::new(2.0, Color32::RED))
-                                        .fill(Color32::DARK_RED)
-                                        .show(ui, |ui| {
-                                            ui.heading("Error compiling shader code:");
-                                            ui.add_enabled(
-                                                true,
-                                                egui::TextEdit::multiline(error)
-                                                    .font(egui::TextStyle::Monospace)
-                                                    .code_editor()
-                                                    .desired_rows(lines)
-                                                    .lock_focus(true)
-                                                    .desired_width(f32::INFINITY),
-                                            );
-                                        });
-                                });
                             }
                         }
                     });

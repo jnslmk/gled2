@@ -27,7 +27,7 @@ pub struct Effect {
 
     /// Overwrite the animation with this one, must be only used in the code editor/preview
     #[serde(skip)]
-    pub animation_overwrite: Option<Asset<Animation>>,
+    pub animation_overwrite: Option<Arc<Asset<Animation>>>,
 }
 
 impl Default for Effect {
@@ -51,7 +51,8 @@ impl Default for Effect {
 impl Effect {
     pub fn shader_code(&self) -> String {
         self.animation_overwrite
-            .as_ref()
+            .clone()
+            .or_else(|| self.animation.and_then(Asset::get))
             .map(|animation| {
                 format!(
                     "{}\n\n{}\n\n{}",
@@ -59,16 +60,6 @@ impl Effect {
                     animation.data.shader_code_for_getters(),
                     animation.data.shader_code
                 )
-            })
-            .or_else(|| {
-                self.animation.and_then(Asset::get).map(|animation| {
-                    format!(
-                        "{}\n\n{}\n\n{}",
-                        include_str!("shaders/common.wgsl"),
-                        animation.data.shader_code_for_getters(),
-                        animation.data.shader_code
-                    )
-                })
             })
             .unwrap_or_else(|| {
                 format!(

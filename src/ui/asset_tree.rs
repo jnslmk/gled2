@@ -395,7 +395,7 @@ impl<T: AssetTrait> AssetTree<T> {
         let mut name = new.last().cloned().unwrap_or_default();
         let res = ui
             .vertical_centered_justified(|ui| ui.text_edit_singleline(&mut name))
-            .response;
+            .inner;
         if res.changed() {
             self.folder_dirty = true;
             new.pop();

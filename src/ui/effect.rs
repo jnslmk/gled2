@@ -18,14 +18,14 @@ impl Effect {
     ) -> bool {
         let mut changed = false;
 
-        ui.label("Animation");
-        ui.add_enabled_ui(allow_animation_change, |ui| {
+        if allow_animation_change {
+            ui.label("Animation");
             ui.vertical_centered_justified(|ui| {
                 if self.animation.change_button(ui) {
                     state.update(self);
                 }
             });
-        });
+        }
 
         ui.label("Progression");
         ui.vertical_centered_justified(|ui| {
@@ -83,7 +83,11 @@ impl Effect {
                 .changed();
         });
 
-        if let Some(animation) = self.animation.and_then(Asset::get) {
+        if let Some(animation) = self
+            .animation_overwrite
+            .clone()
+            .or_else(|| self.animation.and_then(Asset::get))
+        {
             let rendered = state.texture_id();
             changed |= animation
                 .data
