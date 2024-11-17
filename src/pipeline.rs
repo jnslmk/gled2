@@ -1,18 +1,20 @@
 use crate::{
     app::Timing,
-    constants::{GPU_NOT_INIT, OUTPUT_BUFFER_SIZE},
+    constants::OUTPUT_BUFFER_SIZE,
     extract_output::ExtractOutput,
-    output_clear::OutputClear,
+    group::Groups,
+    output_clear::OUTPUT_CLEAR,
     output_sender::{GpuReadyReceiver, OutputSender},
-    preview::Preview,
-    preview_indices::PreviewIndices,
+    preview::PREVIEW,
+    preview_indices::PREVIEW_INDICES,
     scene_instance::SceneInstance,
     storage::{Asset, AssetId, Palette, Scene},
     svg::Universes,
     transition::{Transition, TransitionGoal},
     wgpu_render_state,
 };
-use egui::TextureId;
+use egui::{mutex::Mutex, TextureId};
+use once_cell::sync::Lazy;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -22,42 +24,25 @@ use std::{
 };
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 
-#[derive(Debug, Serialize, Deserialize)]
+pub static AUTO_MODE_LAST_CHANGE: Lazy<Mutex<Option<Instant>>> = Lazy::new(|| Mutex::new(None));
+pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
+    wgpu_render_state().device.create_buffer(&BufferDescriptor {
+        size: OUTPUT_BUFFER_SIZE,
+        usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+        label: Some("Output buffer"),
+        mapped_at_creation: false,
+    })
+});
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct Pipeline {
     pub scenes_instances: Vec<SceneInstance>,
     pub palette: Option<AssetId<Palette>>,
+    pub groups: Groups,
     pub auto_mode_active: bool,
     pub auto_mode_seconds: u64,
     pub auto_mode_max_scenes: usize,
-
-    #[serde(skip)]
-    auto_mode_last_change: Option<Instant>,
-    #[serde(skip)]
-    start: Option<Instant>,
-    #[serde(skip)]
-    preview_indices: Option<PreviewIndices>,
-    #[serde(skip)]
-    preview: Option<Preview>,
-    #[serde(skip)]
-    output: Option<Buffer>,
-    #[serde(skip)]
-    output_clear: Option<OutputClear>,
-}
-
-impl Clone for Pipeline {
-    fn clone(&self) -> Self {
-        Self {
-            scenes_instances: self.scenes_instances.clone(),
-            palette: self.palette,
-            auto_mode_active: self.auto_mode_active,
-            auto_mode_seconds: self.auto_mode_seconds,
-            auto_mode_max_scenes: self.auto_mode_max_scenes,
-            auto_mode_last_change: self.auto_mode_last_change,
-            start: self.start,
-            ..Default::default()
-        }
-    }
 }
 
 impl Default for Pipeline {
@@ -65,32 +50,16 @@ impl Default for Pipeline {
         Self {
             scenes_instances: Default::default(),
             palette: Default::default(),
-            auto_mode_last_change: Default::default(),
+            groups: Default::default(),
             auto_mode_active: false,
             auto_mode_seconds: 45,
             auto_mode_max_scenes: 3,
-            start: Default::default(),
-            preview_indices: Default::default(),
-            preview: Default::default(),
-            output: Default::default(),
-            output_clear: Default::default(),
         }
     }
 }
 
 impl Pipeline {
     pub fn init_gpu(&mut self) {
-        self.output_clear.get_or_insert_with(OutputClear::init);
-        self.output.get_or_insert_with(|| {
-            wgpu_render_state().device.create_buffer(&BufferDescriptor {
-                size: OUTPUT_BUFFER_SIZE,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-                label: Some("Output buffer"),
-                mapped_at_creation: false,
-            })
-        });
-        self.preview_indices.get_or_insert_with(PreviewIndices::new);
-        self.preview.get_or_insert_with(Preview::new);
         for scene_instance in self.scenes_instances.iter_mut() {
             scene_instance.init_states();
         }
@@ -113,21 +82,12 @@ impl Pipeline {
     }
 
     pub fn set_buffers(&mut self) {
-        let output = self.output.as_ref().expect(GPU_NOT_INIT);
-
         for scene in self.scenes_instances.iter_mut() {
-            scene.set_buffers(output);
+            scene.set_buffers();
         }
 
-        self.preview.as_mut().expect(GPU_NOT_INIT).set_buffers(
-            self.preview_indices.as_ref().expect(GPU_NOT_INIT).indices(),
-            output,
-        );
-
-        self.output_clear
-            .as_mut()
-            .expect(GPU_NOT_INIT)
-            .set_buffers(output)
+        PREVIEW.lock().set_buffers(PREVIEW_INDICES.lock().indices());
+        OUTPUT_CLEAR.lock().set_buffers();
     }
 
     pub fn scene_instances(&mut self) -> Vec<(usize, &mut SceneInstance)> {
@@ -142,15 +102,13 @@ impl Pipeline {
         for scene_instance in self.scenes_instances.iter_mut() {
             scene_instance.send_positions();
         }
-        self.preview_indices
-            .as_mut()
-            .expect(GPU_NOT_INIT)
-            .send_positions();
+
+        PREVIEW_INDICES.lock().send_positions();
         *ExtractOutput::get().universes.lock() = universes;
     }
 
     pub fn preview_texture_id(&self) -> TextureId {
-        self.preview.as_ref().expect(GPU_NOT_INIT).texture_id()
+        PREVIEW.lock().texture_id()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -168,8 +126,8 @@ impl Pipeline {
         let queue = &wgpu_render_state.queue;
 
         if self.auto_mode_active {
-            if self
-                .auto_mode_last_change
+            if AUTO_MODE_LAST_CHANGE
+                .lock()
                 .get_or_insert_with(Instant::now)
                 .elapsed()
                 .as_secs()
@@ -211,34 +169,30 @@ impl Pipeline {
                     scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
                 }
 
-                self.auto_mode_last_change.take();
+                AUTO_MODE_LAST_CHANGE.lock().take();
             }
         } else {
-            self.auto_mode_last_change.take();
+            AUTO_MODE_LAST_CHANGE.lock().take();
         }
 
         let palette = self.palette.and_then(Asset::get);
+        let groups = self.groups.clone();
         for (index, scene_instance) in self.scene_instances() {
             scene_instance.prepare(
                 queue,
                 render_deactivated_scenes.should_render(index),
                 palette.clone(),
+                &groups,
                 timing,
             );
         }
-        self.preview_indices
-            .as_mut()
-            .expect(GPU_NOT_INIT)
-            .prepare(queue);
+        PREVIEW_INDICES.lock().prepare(queue);
 
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations"),
         });
 
-        self.output_clear
-            .as_ref()
-            .expect(GPU_NOT_INIT)
-            .run(&mut encoder);
+        OUTPUT_CLEAR.lock().run(&mut encoder);
 
         for (index, scene) in self.scene_instances() {
             scene.render(
@@ -248,12 +202,9 @@ impl Pipeline {
             );
         }
 
-        ExtractOutput::get().run(&mut encoder, self.output.as_ref().expect(GPU_NOT_INIT));
-        self.preview_indices
-            .as_mut()
-            .expect(GPU_NOT_INIT)
-            .run(&mut encoder);
-        self.preview.as_mut().expect(GPU_NOT_INIT).run(&mut encoder);
+        ExtractOutput::get().run(&mut encoder);
+        PREVIEW_INDICES.lock().run(&mut encoder);
+        PREVIEW.lock().run(&mut encoder);
 
         //wait for gpu to be ready for the next queue submission
         gpu_ready_receiver.recv().ok();

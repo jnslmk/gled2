@@ -58,7 +58,7 @@ impl OutputMix {
         });
 
         let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            cache: None, //TODO: Cache
+            cache: None,
             label: Some("OutputMix pipeline"),
             layout: Some(&pipeline_layout),
             module: &module,

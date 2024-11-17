@@ -10,12 +10,17 @@ use crate::{
     },
     wgpu_render_state,
 };
+use egui::mutex::Mutex;
 use log::debug;
+use once_cell::sync::Lazy;
 use std::num::NonZeroU64;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     *,
 };
+
+pub static PREVIEW_INDICES: Lazy<Mutex<PreviewIndices>> =
+    Lazy::new(|| Mutex::new(PreviewIndices::new()));
 
 #[derive(Debug)]
 pub struct PreviewIndices {
@@ -75,7 +80,7 @@ impl PreviewIndices {
         });
 
         let clear_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            cache: None, //TODO: Cache
+            cache: None,
             label: Some("preview clear indices pipeline"),
             layout: Some(&clear_pipeline_layout),
             module: &module,
@@ -130,7 +135,7 @@ impl PreviewIndices {
         });
 
         let index_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            cache: None, //TODO: Cache
+            cache: None,
             label: Some("preview index indices pipeline"),
             layout: Some(&index_pipeline_layout),
             module: &module,

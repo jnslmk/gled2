@@ -1,11 +1,15 @@
 //! Render preview circles.
 use crate::{
     constants::{OUTPUT_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, PREVIEW_TEXTURE_SIZE},
+    pipeline::OUTPUT_BUFFER,
     wgpu_render_state,
 };
-use egui::TextureId;
+use egui::{mutex::Mutex, TextureId};
+use once_cell::sync::Lazy;
 use std::num::NonZeroU64;
 use wgpu::*;
+
+pub static PREVIEW: Lazy<Mutex<Preview>> = Lazy::new(|| Mutex::new(Preview::new()));
 
 #[derive(Debug)]
 pub struct Preview {
@@ -84,7 +88,7 @@ impl Preview {
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            cache: None, //TODO: Cache
+            cache: None,
             label: Some("preview pipeline"),
             layout: Some(&pipeline_layout),
             vertex: VertexState {
@@ -120,7 +124,7 @@ impl Preview {
         }
     }
 
-    pub fn set_buffers(&mut self, preview_indices: &Buffer, output: &Buffer) {
+    pub fn set_buffers(&mut self, preview_indices: &Buffer) {
         let device = wgpu_render_state().device;
         self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
             label: Some("Preview bind group"),
@@ -132,7 +136,7 @@ impl Preview {
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: output.as_entire_binding(),
+                    resource: OUTPUT_BUFFER.as_entire_binding(),
                 },
             ],
         }));

@@ -1,24 +1,30 @@
-use super::{AssetId, AssetTrait, Palette, Scene};
-use crate::group::Groups;
+use super::{AssetId, AssetTrait, Palette};
+use crate::{app::Svg, group::Groups, project::OutputRoutings, scene_instance::SceneInstance};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Project {
     pub a: Deck,
     pub b: Deck,
+    /// -1.0 = A, 0.0 = A + B, 1.0 = B
+    pub cross_fader: f32,
+    pub auto_mode_active: bool,
+    pub auto_mode_seconds: u64,
+    pub auto_mode_max_scenes: usize,
+    pub svg: Option<Svg>,
+    pub output_routings: OutputRoutings,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Deck {
-    /// The palette is set into the deck once it is selected and can also be changed on the fly without changing the original palette
-    pub palette: Palette,
+    pub palette: Option<AssetId<Palette>>,
     pub scene_groups: Vec<SceneGroup>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct SceneGroup {
     pub groups: Groups,
-    pub scenes: Vec<AssetId<Scene>>,
+    pub scenes_instances: Vec<SceneInstance>,
 }
 
 impl AssetTrait for Project {

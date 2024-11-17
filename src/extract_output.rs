@@ -2,6 +2,7 @@
 
 use crate::{
     constants::{OUTPUT_BUFFER_SIZE, UNIVERSES, UNIVERSE_BUFFER_SIZE},
+    pipeline::OUTPUT_BUFFER,
     project::OutputRoutings,
     svg::Universes,
     wgpu_render_state,
@@ -39,8 +40,8 @@ impl ExtractOutput {
         })
     }
 
-    pub fn run(&self, encoder: &mut CommandEncoder, output: &Buffer) {
-        encoder.copy_buffer_to_buffer(output, 0, &self.output_cpu, 0, OUTPUT_BUFFER_SIZE);
+    pub fn run(&self, encoder: &mut CommandEncoder) {
+        encoder.copy_buffer_to_buffer(&OUTPUT_BUFFER, 0, &self.output_cpu, 0, OUTPUT_BUFFER_SIZE);
     }
 
     pub fn poll_output_buffer(&self) -> Vec<u8> {

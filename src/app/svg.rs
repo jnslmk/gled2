@@ -18,6 +18,14 @@ pub struct Svg {
     image: Option<RetainedImage>,
 }
 
+impl std::fmt::Debug for Svg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Svg")
+            .field("svg_contents", &self.svg_contents)
+            .finish()
+    }
+}
+
 impl Clone for Svg {
     fn clone(&self) -> Self {
         Self {

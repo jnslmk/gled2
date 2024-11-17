@@ -9,4 +9,3 @@ pub const UNIVERSE_BUFFER_SIZE: u64 = 512;
 pub const OUTPUT_BUFFER_SIZE: u64 = UNIVERSES * UNIVERSE_BUFFER_SIZE;
 pub const PREVIEW_INDICES_BUFFER_SIZE: u64 =
     PREVIEW_TEXTURE_SIZE as u64 * PREVIEW_TEXTURE_SIZE as u64 * 2;
-pub const GPU_NOT_INIT: &str = "init_gpu was not yet run :/";

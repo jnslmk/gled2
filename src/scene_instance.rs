@@ -9,12 +9,10 @@ use crate::{
 use egui::TextureId;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use wgpu::{Buffer, CommandEncoder, Queue};
+use wgpu::{CommandEncoder, Queue};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SceneInstance {
-    ///TODO: Remove as this should eventually come frome the SceneGroup
-    pub groups: Groups,
     pub active: bool,
     pub opacity: StaticOrCurve<RangePercentage>,
     pub input_dimmer: f32,
@@ -37,7 +35,6 @@ pub struct SceneInstance {
 impl Clone for SceneInstance {
     fn clone(&self) -> Self {
         Self {
-            groups: self.groups.clone(),
             active: self.active,
             opacity: self.opacity,
             input_dimmer: self.input_dimmer,
@@ -57,7 +54,6 @@ impl From<AssetId<Scene>> for SceneInstance {
     fn from(scene: AssetId<Scene>) -> Self {
         Self {
             scene,
-            groups: Default::default(),
             active: Default::default(),
             opacity: StaticOrCurve::new_static(1.0),
             input_dimmer: 1.0,
@@ -84,6 +80,7 @@ impl SceneInstance {
         queue: &Queue,
         always_render: bool,
         palette: Option<Arc<Asset<Palette>>>,
+        groups: &Groups,
         timing: &Timing,
     ) {
         let mut beat_progression = timing.beat_progression();
@@ -117,7 +114,7 @@ impl SceneInstance {
                     &mut self.effect_states,
                     queue,
                     palette.clone(),
-                    &self.groups,
+                    groups,
                     main_opacity,
                 );
             }
@@ -137,9 +134,9 @@ impl SceneInstance {
         }
     }
 
-    pub fn set_buffers(&mut self, output: &Buffer) {
+    pub fn set_buffers(&mut self) {
         if let Some(scene) = Asset::get(self.scene) {
-            scene.data.set_buffers(&mut self.effect_states, output);
+            scene.data.set_buffers(&mut self.effect_states);
         }
     }
 

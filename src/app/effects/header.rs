@@ -19,7 +19,10 @@ impl App {
             scene.change_button(ui);
             if let Some(scene) = scene {
                 self.selected_scene_instance = self.pipeline.add_scene(scene);
-                ui.close_menu();
+            }
+
+            if self.pipeline.groups.change_button(ui) {
+                self.pipeline.set_buffers();
             }
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {

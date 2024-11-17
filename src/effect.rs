@@ -4,11 +4,12 @@ use crate::{
     animation::{Animation, AnimationConfig},
     app::positions,
     group::Groups,
+    pipeline::OUTPUT_BUFFER,
     storage::{Asset, Palette, RangeDegrees, RangePercentage, StaticOrCurve},
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use wgpu::{Buffer, CommandEncoder, Queue};
+use wgpu::{CommandEncoder, Queue};
 
 pub use state::EffectState;
 
@@ -60,9 +61,9 @@ impl Effect {
         }
     }
 
-    pub fn set_buffers(&self, state: &mut EffectState, main: &Buffer) {
+    pub fn set_buffers(&self, state: &mut EffectState) {
         let other = state.texture_to_output.output_buffer();
-        state.output_mix.set_buffers(main, other);
+        state.output_mix.set_buffers(&OUTPUT_BUFFER, other);
     }
 
     pub fn prepare(

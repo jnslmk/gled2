@@ -1,7 +1,11 @@
 //! Clear output buffer.
-use crate::{constants::OUTPUT_BUFFER_SIZE, wgpu_render_state};
+use crate::{constants::OUTPUT_BUFFER_SIZE, pipeline::OUTPUT_BUFFER, wgpu_render_state};
+use egui::mutex::Mutex;
+use once_cell::sync::Lazy;
 use std::num::NonZeroU64;
 use wgpu::*;
+
+pub static OUTPUT_CLEAR: Lazy<Mutex<OutputClear>> = Lazy::new(|| Mutex::new(OutputClear::init()));
 
 #[derive(Debug)]
 pub struct OutputClear {
@@ -40,7 +44,7 @@ impl OutputClear {
         });
 
         let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            cache: None, //TODO: Cache
+            cache: None,
             label: Some("OutputClear pipeline"),
             layout: Some(&pipeline_layout),
             module: &module,
@@ -55,14 +59,14 @@ impl OutputClear {
         }
     }
 
-    pub fn set_buffers(&mut self, output: &Buffer) {
+    pub fn set_buffers(&mut self) {
         let device = wgpu_render_state().device;
         self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
             label: Some("OutputClear bind group"),
             layout: &self.bind_group_layout,
             entries: &[BindGroupEntry {
                 binding: 0,
-                resource: output.as_entire_binding(),
+                resource: OUTPUT_BUFFER.as_entire_binding(),
             }],
         }));
     }

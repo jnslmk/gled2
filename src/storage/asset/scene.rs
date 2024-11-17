@@ -6,7 +6,7 @@ use crate::{
 use egui::{epaint::CircleShape, Color32, Label, Rect, Shape, Vec2};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use wgpu::{Buffer, CommandEncoder, Queue};
+use wgpu::{CommandEncoder, Queue};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 pub struct Scene {
@@ -14,9 +14,9 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn set_buffers(&self, effect_states: &mut [EffectState], output: &Buffer) {
+    pub fn set_buffers(&self, effect_states: &mut [EffectState]) {
         for (effect, effect_state) in self.effects.iter().zip(effect_states.iter_mut()) {
-            effect.set_buffers(effect_state, output);
+            effect.set_buffers(effect_state);
         }
     }
 
