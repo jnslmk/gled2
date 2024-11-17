@@ -25,8 +25,11 @@ pub enum State {
     Error(String),
     Opened {
         synced: bool,
+        #[allow(unused)]
         branches: Vec<String>,
+        #[allow(unused)]
         current_branch: String,
+        #[allow(unused)]
         folder: PathBuf,
         collections: ShareDebugMap,
     },

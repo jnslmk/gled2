@@ -13,7 +13,7 @@ use crate::{
 use egui::{Color32, Context, Margin, Stroke, Vec2};
 use naga::{
     front::wgsl::parse_str,
-    valid::{self, Capabilities, ValidationFlags, Validator},
+    valid::{Capabilities, ValidationFlags, Validator},
 };
 use std::iter::once;
 use wgpu::CommandEncoderDescriptor;

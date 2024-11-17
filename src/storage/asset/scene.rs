@@ -72,7 +72,7 @@ impl Scene {
 
     pub fn reload_shader_code(
         &self,
-        effect_states: &mut Vec<EffectState>,
+        effect_states: &mut [EffectState],
         animation: AssetId<Animation>,
     ) {
         for (effect, state) in self.effects.iter().zip(effect_states.iter_mut()) {
