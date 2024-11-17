@@ -71,68 +71,76 @@ impl<R: Range> ChangeButton for StaticOrCurve<R> {
     fn change_button(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
 
-        ui.menu_button(
-            match self {
-                Self::Static(value, ..) => format!("Static: {}", R::format(*value)),
-                Self::Curve(curve, ..) => match Asset::get(*curve) {
-                    Some(curve) => format!("Curve: {}", curve.name()),
-                    None => "Curve: Not found".to_string(),
-                },
-            },
-            |ui| {
-                ui.horizontal(|ui| {
-                    let mut use_static = matches!(self, Self::Static(..));
-                    if ui
-                        .radio_value(&mut use_static, true, "Static")
-                        .on_hover_text("Use a static value")
-                        .changed()
-                    {
-                        *self = Self::Static(R::MAX, PhantomData);
-                        changed = true;
-                    }
-
-                    let mut use_curve = matches!(self, Self::Curve(..));
-                    if ui
-                        .radio_value(&mut use_curve, true, "Curve")
-                        .on_hover_text("Use a curve to animate the value")
-                        .changed()
-                    {
-                        *self = Self::Curve(AssetId::new(), PhantomData);
-                        changed = true;
-                    }
-                });
-
+        let rect = ui
+            .menu_button(
                 match self {
-                    Self::Static(value, ..) => {
-                        ui.horizontal(|ui| {
-                            changed |= ui
-                                .add(
-                                    egui::Slider::new(value, 0.0..=R::MAX)
-                                        .custom_formatter(|n, _| R::format(n as f32)),
-                                )
-                                .changed();
-                        });
-                    }
-                    Self::Curve(curve, ..) => {
-                        ui.horizontal(|ui| {
-                            if let Some(id) = AssetTree::show_asset_selection(
-                                ui,
-                                ui.make_persistent_id(Curve::NAME),
-                            ) {
-                                *curve = id;
-                                ui.data_mut(|d| {
-                                    d.remove::<TreeViewState<usize>>(
-                                        ui.make_persistent_id(Curve::NAME),
+                    Self::Static(value, ..) => format!("Static: {}", R::format(*value)),
+                    Self::Curve(curve, ..) => match Asset::get(*curve) {
+                        Some(curve) => format!("Curve: {}", curve.path.join("/")),
+                        None => "Curve: Not found".to_string(),
+                    },
+                },
+                |ui| {
+                    ui.horizontal(|ui| {
+                        let mut use_static = matches!(self, Self::Static(..));
+                        if ui
+                            .radio_value(&mut use_static, true, "Static")
+                            .on_hover_text("Use a static value")
+                            .changed()
+                        {
+                            *self = Self::Static(R::MAX, PhantomData);
+                            changed = true;
+                        }
+
+                        let mut use_curve = matches!(self, Self::Curve(..));
+                        if ui
+                            .radio_value(&mut use_curve, true, "Curve")
+                            .on_hover_text("Use a curve to animate the value")
+                            .changed()
+                        {
+                            *self = Self::Curve(AssetId::new(), PhantomData);
+                            changed = true;
+                        }
+                    });
+
+                    match self {
+                        Self::Static(value, ..) => {
+                            ui.horizontal(|ui| {
+                                changed |= ui
+                                    .add(
+                                        egui::Slider::new(value, 0.0..=R::MAX)
+                                            .custom_formatter(|n, _| R::format(n as f32)),
                                     )
-                                });
-                                ui.close_menu();
-                                changed = true;
-                            }
-                        });
+                                    .changed();
+                            });
+                        }
+                        Self::Curve(curve, ..) => {
+                            ui.horizontal(|ui| {
+                                if let Some(id) = AssetTree::show_asset_selection(
+                                    ui,
+                                    ui.make_persistent_id(Curve::NAME),
+                                ) {
+                                    *curve = id;
+                                    ui.data_mut(|d| {
+                                        d.remove::<TreeViewState<usize>>(
+                                            ui.make_persistent_id(Curve::NAME),
+                                        )
+                                    });
+                                    ui.close_menu();
+                                    changed = true;
+                                }
+                            });
+                        }
                     }
-                }
-            },
-        );
+                },
+            )
+            .response
+            .rect;
+        if let Self::Curve(curve, ..) = self {
+            if let Some(curve) = Asset::get(*curve) {
+                curve.data.show(ui, rect);
+            }
+        }
 
         changed
     }

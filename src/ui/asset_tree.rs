@@ -1,5 +1,5 @@
 use crate::storage::{Asset, AssetId, AssetTrait};
-use egui::{Button, Color32, Id, Label, Margin, Rect, Stroke, Ui, Vec2};
+use egui::{Button, Color32, Id, Label, Margin, Pos2, Rect, Stroke, Ui, Vec2};
 use egui_flex::{item, Flex};
 use egui_ltreeview::{node::NodeBuilder, Action, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
@@ -107,11 +107,13 @@ impl<T: AssetTrait> TreeEntry<T> {
                 builder.node(NodeBuilder::leaf(tree_ids.len() - 1).label(|ui| {
                     ui.add(Label::new(asset.name()).selectable(false));
 
-                    let max = ui.next_widget_position() + Vec2::new(ui.available_width(), 0.0);
-                    let rect = Rect::from_min_max(
-                        ui.next_widget_position().max(max - Vec2::new(150.0, 0.0)),
-                        max,
+                    let min = Pos2::new(
+                        ui.next_widget_position().x + ui.available_width() - 150.0,
+                        ui.next_widget_position().y - 8.0,
                     );
+                    let max =
+                        ui.next_widget_position() + Vec2::new(ui.available_width() - 4.0, 8.0);
+                    let rect = Rect::from_min_max(min, max);
                     asset.data.show(ui, rect);
                 }));
             }
@@ -329,7 +331,10 @@ impl<T: AssetTrait> AssetTree<T> {
 
                 Flex::horizontal().show(ui, |flex| {
                     if flex
-                        .add(item().grow(1.0), Button::new("Save"))
+                        .add(
+                            item().grow(1.0),
+                            Button::new(format!("Save{}", if *dirty { "*" } else { "" })),
+                        )
                         .inner
                         .on_hover_ui(|ui| {
                             ui.label("Save to disk");
@@ -347,7 +352,8 @@ impl<T: AssetTrait> AssetTree<T> {
                     if flex
                         .add(
                             item().grow(1.0),
-                            Button::new("Reset").fill(Color32::DARK_RED),
+                            Button::new(format!("Reset{}", if *dirty { "*" } else { "" }))
+                                .fill(Color32::DARK_RED),
                         )
                         .inner
                         .on_hover_ui(|ui| {

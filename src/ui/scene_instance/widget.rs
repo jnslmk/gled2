@@ -165,7 +165,8 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
                                             GroupsSelection::Secondary => "S",
                                         })
                                         .color(Color32::BLACK),
-                                    ),
+                                    )
+                                    .selectable(false),
                                 );
                                 if let GroupsSelection::Both = groups_selection {
                                     ui.painter().add(Shape::Circle(CircleShape::filled(
@@ -178,7 +179,8 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
                                             rect.left_top() + Vec2::new(11.0, 0.5),
                                             Vec2::splat(20.0),
                                         ),
-                                        Label::new(egui::RichText::new("S").color(Color32::BLACK)),
+                                        Label::new(egui::RichText::new("S").color(Color32::BLACK))
+                                            .selectable(false),
                                     );
                                 }
                             });

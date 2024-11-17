@@ -62,19 +62,19 @@ impl Curve {
         linear_points
     }
 
-    pub fn draw(&mut self, ui: &mut Ui, edit_mode: bool) -> bool {
+    pub fn draw(&mut self, ui: &mut Ui, edit_mode: bool, rect: Rect) -> bool {
         let mut changed = false;
 
         let to_screen = emath::RectTransform::from_to(
             Rect::from_min_size(Pos2::ZERO, Vec2::new(4.0, 1.0)),
-            Rect::from_min_size(ui.next_widget_position(), ui.available_size()),
+            rect,
         );
 
         let mut outer_change = None;
         let mut bezier_to_line = None;
         let mut remove_point = None;
 
-        let (response, painter) = ui.allocate_painter(to_screen.to().size(), Sense::hover());
+        let painter = ui.painter().with_clip_rect(rect);
 
         for i in 0..=4 {
             let stroke = Stroke::new(
@@ -101,7 +101,7 @@ impl Curve {
         }
 
         if edit_mode {
-            let new_point_id = response.id.with(self.points.len());
+            let new_point_id = ui.make_persistent_id(format!("points: {}", self.points.len()));
             let new_point_response = ui.interact(*to_screen.to(), new_point_id, Sense::click());
             if new_point_response.double_clicked()
                 || new_point_response.clicked_by(egui::PointerButton::Secondary)
@@ -169,7 +169,7 @@ impl Curve {
                 .iter_mut()
                 .enumerate()
                 .map(|(i, point)| {
-                    let point_id = response.id.with(i);
+                    let point_id = ui.make_persistent_id(format!("point: {i}"));
                     let point_response = ui.interact(
                         point.point_rect(to_screen),
                         point_id,
@@ -338,4 +338,12 @@ impl Curve {
 impl AssetTrait for Curve {
     const DIR_NAME: &'static str = "curves";
     const NAME: &'static str = "Curve";
+    fn show(&self, ui: &mut egui::Ui, rect: Rect) {
+        let mut min = rect.min;
+        min.x = rect.max.x - 64.0;
+        let rect = Rect::from_min_max(min, rect.max);
+
+        let mut curve = self.clone();
+        curve.draw(ui, false, rect);
+    }
 }

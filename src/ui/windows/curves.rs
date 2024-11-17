@@ -2,7 +2,7 @@ use crate::{
     storage::{Asset, Curve},
     ui::asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
 };
-use egui::{Context, Margin, Ui};
+use egui::{Context, Margin, Rect, Ui};
 
 #[derive(Default)]
 pub struct CurvesWindow {
@@ -50,5 +50,9 @@ impl CurvesWindow {
 }
 
 fn curve_editor(ui: &mut Ui, curve: &mut Asset<Curve>, dirty: &mut bool) {
-    *dirty |= curve.data.draw(ui, true);
+    *dirty |= curve.data.draw(
+        ui,
+        true,
+        Rect::from_min_size(ui.next_widget_position(), ui.available_size()),
+    );
 }

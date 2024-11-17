@@ -274,7 +274,8 @@ impl<'a> Widget for EffectWidget<'a> {
                             "P"
                         })
                         .color(Color32::BLACK),
-                    ),
+                    )
+                    .selectable(false),
                 );
             })
             .response;

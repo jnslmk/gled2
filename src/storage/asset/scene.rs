@@ -125,7 +125,7 @@ impl AssetTrait for Scene {
     fn show(&self, ui: &mut egui::Ui, rect: egui::Rect) {
         let groups_selection = self.groups_selection();
         ui.painter().add(Shape::Circle(CircleShape::filled(
-            rect.left_top() + Vec2::new(10.0, 0.0),
+            rect.left_top() + Vec2::new(10.0, 8.0),
             5.5,
             match groups_selection {
                 GroupsSelection::None => Color32::RED,
@@ -134,7 +134,7 @@ impl AssetTrait for Scene {
             },
         )));
         ui.put(
-            Rect::from_min_size(rect.left_top() + Vec2::new(0.0, -9.5), Vec2::splat(20.0)),
+            Rect::from_min_size(rect.left_top() + Vec2::new(2.0, 0.0), Vec2::splat(16.0)),
             Label::new(
                 egui::RichText::new(match groups_selection {
                     GroupsSelection::None => "N",
@@ -142,17 +142,18 @@ impl AssetTrait for Scene {
                     GroupsSelection::Secondary => "S",
                 })
                 .color(Color32::BLACK),
-            ),
+            )
+            .selectable(false),
         );
         if let GroupsSelection::Both = groups_selection {
             ui.painter().add(Shape::Circle(CircleShape::filled(
-                rect.left_top() + Vec2::new(21.0, 0.0),
+                rect.left_top() + Vec2::new(21.0, 8.0),
                 5.5,
                 Color32::GOLD,
             )));
             ui.put(
-                Rect::from_min_size(rect.left_top() + Vec2::new(11.0, -9.5), Vec2::splat(20.0)),
-                Label::new(egui::RichText::new("S").color(Color32::BLACK)),
+                Rect::from_min_size(rect.left_top() + Vec2::new(13.0, 0.0), Vec2::splat(16.0)),
+                Label::new(egui::RichText::new("S").color(Color32::BLACK)).selectable(false),
             );
         }
     }
