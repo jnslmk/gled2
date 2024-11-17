@@ -1,5 +1,6 @@
 use super::{timing::FadeMode, App};
-use egui::{Color32, Context, Layout, Margin, Stroke};
+use crate::temperature::temperature;
+use egui::{Color32, Context, Label, Layout, Margin, Stroke};
 
 impl App {
     pub fn config(&mut self, ctx: &Context) {
@@ -23,16 +24,21 @@ impl App {
                 ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
                     ui.add_space(6.0);
 
+                    if let Some(framerate) = self.timing.framerate() {
+                        ui.horizontal(|ui| {
+                            ui.add(Label::new(format!("{framerate:.0} fps")));
+                            ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
+                                ui.add(Label::new(temperature()))
+                            });
+                        });
+                    }
+
+                    ui.add_space(4.0);
+
                     egui::Frame::none()
                         .inner_margin(Margin::from(6.0))
                         .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
                         .show(ui, |ui| {
-                            if let Some(framerate) = self.timing.framerate() {
-                                ui.label(format!("{framerate:.01} fps"));
-                            }
-
-                            ui.separator();
-
                             ui.horizontal(|ui| {
                                 ui.radio_value(
                                     &mut self.timing.fade_mode,

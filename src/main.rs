@@ -21,6 +21,7 @@ mod project;
 mod scene_instance;
 mod storage;
 mod svg;
+mod temperature;
 mod texture_to_output;
 mod transition;
 mod ui;
@@ -38,6 +39,7 @@ pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
 fn main() {
     logging::init();
     storage::start_thread();
+    temperature::start_thread();
 
     let options = eframe::NativeOptions {
         viewport: ViewportBuilder::default()
