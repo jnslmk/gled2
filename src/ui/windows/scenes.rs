@@ -31,7 +31,7 @@ impl ScenesWindow {
 
         egui::Window::new("Scenes")
             .collapsible(false)
-            .min_width(755.0)
+            .min_width(810.0)
             .resizable(true)
             .default_pos(ctx.available_rect().center())
             .open(&mut self.open)
