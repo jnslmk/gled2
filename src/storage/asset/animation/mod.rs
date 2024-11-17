@@ -29,6 +29,15 @@ impl Default for Animation {
 }
 
 impl Animation {
+    pub fn shader_code_for_getters(&self) -> String {
+        let mut count = VariablesCount::default();
+        let mut code = String::new();
+        for argument in self.arguments.iter() {
+            code += &argument.shader_code_for_getter(count);
+            count += argument.kind.variables().count();
+        }
+        code
+    }
     pub fn change_shader_code_ui(&mut self, ui: &mut Ui) -> bool {
         let mut changed = false;
 

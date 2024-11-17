@@ -44,6 +44,26 @@ impl Default for Effect {
 }
 
 impl Effect {
+    pub fn shader_code(&self) -> String {
+        self.animation
+            .and_then(Asset::get)
+            .map(|animation| {
+                format!(
+                    "{}\n\n{}\n\n{}",
+                    include_str!("shaders/common.wgsl"),
+                    animation.data.shader_code_for_getters(),
+                    animation.data.shader_code
+                )
+            })
+            .unwrap_or_else(|| {
+                format!(
+                    "{}\n\n{}",
+                    include_str!("shaders/common.wgsl"),
+                    include_str!("shaders/red.wgsl")
+                )
+            })
+    }
+
     pub fn set_output_mix_buffers(&self, state: &mut EffectState) {
         let other = state.texture_to_output.output_buffer();
         state.output_mix.set_buffers(&OUTPUT_BUFFER, other);

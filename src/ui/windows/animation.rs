@@ -30,6 +30,19 @@ impl AnimationWindow {
             return;
         }
 
+        if let TreeSelection::Asset(animation) = &self.tree.selected() {
+            if let Some(effect) = self.effect.as_ref() {
+                if self.effect_state.is_none() {
+                    self.effect_state = Some(EffectState::new(effect));
+                }
+            } else {
+                self.effect = Some(Effect {
+                    animation: Some(animation.id),
+                    ..Default::default()
+                });
+            }
+        }
+
         if self.preview {
             self.show_preview_window(ctx, timing);
         }
@@ -47,15 +60,6 @@ impl AnimationWindow {
                     .show_inside(ui, |ui| {
                         if self.tree.show(ui, ui.make_persistent_id("animations_tree")) {
                             self.dirty = false;
-
-                            if let TreeSelection::Asset(animation) = &self.tree.selected() {
-                                let effect = Effect {
-                                    animation: Some(animation.id),
-                                    ..Default::default()
-                                };
-                                self.effect_state = Some(EffectState::new(&effect));
-                                self.effect = Some(effect);
-                            }
                         }
                     });
 
@@ -77,11 +81,7 @@ impl AnimationWindow {
                     .outer_margin(Margin::same(4.0))
                     .show(ui, |ui| {
                         if self.tree.common_settings(ui, &mut self.dirty) {
-                            if let (Some(effect), Some(effect_state)) =
-                                (&mut self.effect, &mut self.effect_state)
-                            {
-                                effect_state.update(effect);
-                            };
+                            self.effect_state.take();
                         }
 
                         if let TreeSelection::Asset(animation) = &mut self.tree.selected() {

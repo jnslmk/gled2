@@ -34,9 +34,9 @@ pub struct EffectState {
 
 impl EffectState {
     pub fn new(effect: &Effect) -> Self {
-        let output_mix = OutputMix::new();
-        let (renderer, texture_to_output, texture_id) = effect.into();
+        let (renderer, texture_to_output, texture_id) = compile(&effect.shader_code());
 
+        let output_mix = OutputMix::new();
         Self {
             beat_progression: 0.0,
             beats_per_minute: 0.0,
@@ -54,7 +54,12 @@ impl EffectState {
     }
 
     pub fn update(&mut self, effect: &Effect) {
-        let (renderer, texture_to_output, texture_id) = effect.into();
+        let shader_code = effect
+            .animation
+            .and_then(Asset::get)
+            .map(|animation| animation.data.shader_code.clone())
+            .unwrap_or_else(|| include_str!("../shaders/red.wgsl").into());
+        let (renderer, texture_to_output, texture_id) = compile(&shader_code);
         self.renderer = renderer;
         self.texture_to_output = texture_to_output;
         self.texture_id = texture_id;
@@ -98,26 +103,19 @@ impl Drop for OwnedTextureId {
     }
 }
 
-impl From<&Effect> for (AnimationRenderer, TextureToOutput, OwnedTextureId) {
-    fn from(effect: &Effect) -> Self {
-        let shader_code = effect
-            .animation
-            .and_then(Asset::get)
-            .map(|animation| animation.data.shader_code.clone())
-            .unwrap_or_else(|| include_str!("../shaders/black.wgsl").into());
-        let renderer = AnimationRenderer::new(&shader_code);
-        let texture_to_output = TextureToOutput::init(renderer.texture());
-        let texture_id = OwnedTextureId(
-            wgpu_render_state()
-                .renderer
-                .write()
-                .register_native_texture(
-                    &wgpu_render_state().device,
-                    renderer.view(),
-                    wgpu::FilterMode::Nearest,
-                ),
-        );
+fn compile(shader_code: &str) -> (AnimationRenderer, TextureToOutput, OwnedTextureId) {
+    let renderer = AnimationRenderer::new(shader_code);
+    let texture_to_output = TextureToOutput::init(renderer.texture());
+    let texture_id = OwnedTextureId(
+        wgpu_render_state()
+            .renderer
+            .write()
+            .register_native_texture(
+                &wgpu_render_state().device,
+                renderer.view(),
+                wgpu::FilterMode::Nearest,
+            ),
+    );
 
-        (renderer, texture_to_output, texture_id)
-    }
+    (renderer, texture_to_output, texture_id)
 }
