@@ -12,8 +12,6 @@ use std::{
 };
 use wgpu::{util::DeviceExt, *};
 
-static COMMON_SHADER_CODE: &str = include_str!("../../../shaders/common.wgsl");
-
 #[derive(Debug)]
 pub struct AnimationRenderer {
     pipeline: RenderPipeline,
@@ -24,7 +22,7 @@ pub struct AnimationRenderer {
 }
 
 impl AnimationRenderer {
-    pub fn new(animation_shader: &str) -> Self {
+    pub fn new(fragment_shader: &str) -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE as u32,
@@ -52,9 +50,6 @@ impl AnimationRenderer {
             label: Some("animation vertex shader"),
             source: ShaderSource::Wgsl(include_str!("../../../shaders/vertex.wgsl").into()),
         });
-
-        let mut fragment_shader = COMMON_SHADER_CODE.to_owned();
-        fragment_shader.push_str(animation_shader);
 
         let fragment_shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("animation fragment shader"),
