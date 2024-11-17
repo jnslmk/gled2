@@ -8,6 +8,8 @@ pub enum FloatValue {
     Degrees(StaticOrCurve<RangeDegrees>),
 }
 
+impl Eq for FloatValue {}
+
 impl Default for FloatValue {
     fn default() -> Self {
         Self::F32(0.0)

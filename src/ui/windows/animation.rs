@@ -114,6 +114,8 @@ impl AnimationWindow {
                     .show_inside(ui, |ui| {
                         if self.tree.show(ui, ui.make_persistent_id("animations_tree")) {
                             self.dirty = false;
+                            validate = true;
+                            self.effect_state.take();
                         }
                     });
 
@@ -139,7 +141,7 @@ impl AnimationWindow {
                     .show(ui, |ui| {
                         if self.tree.common_settings(ui, &mut self.dirty) {
                             self.effect_state.take();
-                            self.error.take();
+                            validate = true;
                             if let TreeSelection::Asset(animation) = &self.tree.selected() {
                                 Action::ReloadShaderCode(animation.id).enqueue();
                             }

@@ -4,7 +4,10 @@ use crate::{
     app::positions,
     group::Groups,
     pipeline::OUTPUT_BUFFER,
-    storage::{Animation, Asset, AssetId, Palette, RangeDegrees, RangePercentage, StaticOrCurve},
+    storage::{
+        Animation, AnimationConfig, Asset, AssetId, Palette, RangeDegrees, RangePercentage,
+        StaticOrCurve,
+    },
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -24,6 +27,7 @@ pub struct Effect {
     /// Whether it should use the primary or the secondary group
     pub use_secondary_group: bool,
     pub animation: Option<AssetId<Animation>>,
+    pub animation_config: AnimationConfig,
 
     /// Overwrite the animation with this one, must be only used in the code editor/preview
     #[serde(skip)]
@@ -43,6 +47,7 @@ impl Default for Effect {
             speed_exponent: 0,
             use_secondary_group: Default::default(),
             animation: Default::default(),
+            animation_config: Default::default(),
             animation_overwrite: Default::default(),
         }
     }
@@ -91,6 +96,7 @@ impl Effect {
         effect_state.opacity = self.opacity.value(beat_progression) * main_opacity;
         effect_state.color_shift = self.color_shift.value(beat_progression);
         effect_state.speed_exponent = self.speed_exponent;
+        effect_state.animation_config = self.animation_config.clone();
 
         let group = groups.get(self.use_secondary_group);
         if effect_state.sent_group.as_ref() != group {

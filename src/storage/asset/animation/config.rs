@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 pub use float_value::FloatValue;
 
-#[derive(Serialize, Deserialize, Default, Clone, Copy, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq)]
 #[serde(default)]
 pub struct AnimationConfig {
     pub u32_0: u32,

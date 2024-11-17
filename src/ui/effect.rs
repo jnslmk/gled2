@@ -91,7 +91,7 @@ impl Effect {
             let rendered = state.texture_id();
             changed |= animation
                 .data
-                .config_ui(&mut state.animation_config, ui, rendered);
+                .config_ui(&mut self.animation_config, ui, rendered);
         }
 
         ui.separator();

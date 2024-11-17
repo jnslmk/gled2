@@ -139,21 +139,21 @@ impl AssetTrait for Scene {
     fn show(&self, ui: &mut egui::Ui, rect: egui::Rect) {
         let groups_selection = self.groups_selection();
         ui.painter().add(Shape::Circle(CircleShape::filled(
-            rect.left_top() + Vec2::new(10.0, 8.0),
+            rect.right_top() + Vec2::new(-10.0, 8.0),
             5.5,
             match groups_selection {
                 GroupsSelection::None => Color32::RED,
-                GroupsSelection::Primary | GroupsSelection::Both => Color32::GREEN,
-                GroupsSelection::Secondary => Color32::GOLD,
+                GroupsSelection::Secondary | GroupsSelection::Both => Color32::GOLD,
+                GroupsSelection::Primary => Color32::GREEN,
             },
         )));
         ui.put(
-            Rect::from_min_size(rect.left_top() + Vec2::new(2.0, 0.0), Vec2::splat(16.0)),
+            Rect::from_min_size(rect.right_top() + Vec2::new(-15.0, 1.0), Vec2::splat(10.0)),
             Label::new(
                 egui::RichText::new(match groups_selection {
                     GroupsSelection::None => "N",
-                    GroupsSelection::Primary | GroupsSelection::Both => "P",
-                    GroupsSelection::Secondary => "S",
+                    GroupsSelection::Secondary | GroupsSelection::Both => "S",
+                    GroupsSelection::Primary => "P",
                 })
                 .color(Color32::BLACK),
             )
@@ -161,13 +161,13 @@ impl AssetTrait for Scene {
         );
         if let GroupsSelection::Both = groups_selection {
             ui.painter().add(Shape::Circle(CircleShape::filled(
-                rect.left_top() + Vec2::new(21.0, 8.0),
+                rect.right_top() + Vec2::new(-21.0, 8.0),
                 5.5,
-                Color32::GOLD,
+                Color32::GREEN,
             )));
             ui.put(
-                Rect::from_min_size(rect.left_top() + Vec2::new(13.0, 0.0), Vec2::splat(16.0)),
-                Label::new(egui::RichText::new("S").color(Color32::BLACK)).selectable(false),
+                Rect::from_min_size(rect.right_top() + Vec2::new(-26.0, 1.0), Vec2::splat(10.0)),
+                Label::new(egui::RichText::new("P").color(Color32::BLACK)).selectable(false),
             );
         }
     }

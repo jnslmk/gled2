@@ -81,7 +81,10 @@ impl Argument {
             });
 
         match &mut self.kind {
-            ArgumentKind::Center | ArgumentKind::Percentage | ArgumentKind::Degrees => (),
+            ArgumentKind::Center
+            | ArgumentKind::Percentage
+            | ArgumentKind::Degrees
+            | ArgumentKind::Checkbox => (),
             ArgumentKind::Selection { variants } => {
                 ui.label("Variants");
                 ui.vertical_centered_justified(|ui| {
@@ -198,6 +201,18 @@ impl Argument {
                     changed |= ui.add(egui::Slider::new(value, *min..=*max)).changed();
                 });
             }
+            ArgumentKind::Checkbox => {
+                let Some(value) = config.u32(count.u32) else {
+                    return false;
+                };
+
+                let mut bool_value = *value != 0;
+
+                if ui.checkbox(&mut bool_value, "").changed() {
+                    *value = bool_value as u32;
+                    changed = true;
+                }
+            }
         }
         changed
     }
@@ -213,6 +228,7 @@ pub enum ArgumentKind {
         min: u32,
         max: u32,
     },
+    Checkbox,
     #[default]
     Percentage,
     Degrees,
@@ -224,6 +240,7 @@ impl ArgumentKind {
             Self::Center => Variables::Vec2F32,
             Self::Selection { .. } => Variables::U32,
             Self::Slider { .. } => Variables::U32,
+            Self::Checkbox => Variables::U32,
             Self::Percentage => Variables::F32,
             Self::Degrees => Variables::F32,
         }
@@ -237,6 +254,7 @@ pub enum ArgumentKindId {
     Center,
     Selection,
     Slider,
+    Checkbox,
     #[default]
     Percentage,
     Degrees,
@@ -248,6 +266,7 @@ impl From<&ArgumentKind> for ArgumentKindId {
             ArgumentKind::Center => Self::Center,
             ArgumentKind::Selection { .. } => Self::Selection,
             ArgumentKind::Slider { .. } => Self::Slider,
+            ArgumentKind::Checkbox => Self::Checkbox,
             ArgumentKind::Percentage => Self::Percentage,
             ArgumentKind::Degrees => Self::Degrees,
         }
@@ -260,6 +279,7 @@ impl From<ArgumentKindId> for ArgumentKind {
             ArgumentKindId::Center => Self::Center,
             ArgumentKindId::Selection => Self::Selection { variants: vec![] },
             ArgumentKindId::Slider => Self::Slider { min: 0, max: 100 },
+            ArgumentKindId::Checkbox => Self::Checkbox,
             ArgumentKindId::Percentage => Self::Percentage,
             ArgumentKindId::Degrees => Self::Degrees,
         }
