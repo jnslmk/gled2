@@ -10,8 +10,7 @@ pub static OUTPUT_CLEAR: Lazy<Mutex<OutputClear>> = Lazy::new(|| Mutex::new(Outp
 #[derive(Debug)]
 pub struct OutputClear {
     pipeline: ComputePipeline,
-    bind_group_layout: BindGroupLayout,
-    bind_group: Option<BindGroup>,
+    bind_group: BindGroup,
 }
 
 impl OutputClear {
@@ -52,33 +51,29 @@ impl OutputClear {
             compilation_options: Default::default(),
         });
 
-        Self {
-            pipeline,
-            bind_group_layout,
-            bind_group: None,
-        }
-    }
-
-    pub fn set_buffers(&mut self) {
         let device = wgpu_render_state().device;
-        self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("OutputClear bind group"),
-            layout: &self.bind_group_layout,
+            layout: &bind_group_layout,
             entries: &[BindGroupEntry {
                 binding: 0,
                 resource: OUTPUT_BUFFER.as_entire_binding(),
             }],
-        }));
-    }
-    pub fn run(&self, encoder: &mut CommandEncoder) {
-        if let Some(bind_group) = self.bind_group.as_ref() {
-            let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("OutputClear compute pass"),
-                timestamp_writes: None,
-            });
-            compute_pass.set_pipeline(&self.pipeline);
-            compute_pass.set_bind_group(0, bind_group, &[]);
-            compute_pass.dispatch_workgroups(OUTPUT_BUFFER_SIZE as u32 / 4, 1, 1);
+        });
+
+        Self {
+            pipeline,
+            bind_group,
         }
+    }
+
+    pub fn run(&self, encoder: &mut CommandEncoder) {
+        let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: Some("OutputClear compute pass"),
+            timestamp_writes: None,
+        });
+        compute_pass.set_pipeline(&self.pipeline);
+        compute_pass.set_bind_group(0, &self.bind_group, &[]);
+        compute_pass.dispatch_workgroups(OUTPUT_BUFFER_SIZE as u32 / 4, 1, 1);
     }
 }

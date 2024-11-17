@@ -1,5 +1,5 @@
 //! Parameters as set in a SVG file.
-use crate::group::Group;
+use crate::{constants::LAMPS_PER_UNIVERSE, group::Group};
 
 use super::Led;
 use serde::{Deserialize, Serialize};
@@ -7,11 +7,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct Parameter {
-    pub start: u32,
+    pub start: usize,
     pub universe: u16,
     #[serde(alias = "render_groups")]
     pub groups: Vec<Group>,
-    pub count: u32,
+    pub count: usize,
 
     #[serde(skip)]
     pub leds: Vec<Led>,
@@ -25,15 +25,14 @@ impl Parameter {
 
         { 0..self.count }
             .map(|led| {
-                let full_address = self.start + led * 3;
-                let mut universe: u16 = self.universe;
-                let mut start: usize = full_address as usize;
-                while start > 510 {
+                let mut num = self.start + led;
+                let mut universe = self.universe;
+                while num > LAMPS_PER_UNIVERSE as usize {
                     universe += 1;
-                    start -= 510;
+                    num -= LAMPS_PER_UNIVERSE as usize;
                 }
 
-                Led { universe, start }
+                Led { universe, num }
             })
             .collect()
     }

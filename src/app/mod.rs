@@ -63,6 +63,7 @@ impl eframe::App for App {
                     .first()
                     .map(|(index, _scene_instance)| *index)
                     .unwrap_or_default();
+                self.pipeline.init_gpu();
             }
             Some(Action::CloneSelectedSceneInstance) => {
                 if let Some(scene) = self
@@ -72,6 +73,7 @@ impl eframe::App for App {
                 {
                     let index = self.pipeline.add_scene(scene);
                     self.selected_scene_instance = index;
+                    self.pipeline.init_gpu();
                 }
             }
             Some(Action::InitGPU) => {

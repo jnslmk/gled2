@@ -134,9 +134,9 @@ impl SceneInstance {
         }
     }
 
-    pub fn set_buffers(&mut self) {
+    pub fn set_output_mix_buffers(&mut self) {
         if let Some(scene) = Asset::get(self.scene) {
-            scene.data.set_buffers(&mut self.effect_states);
+            scene.data.set_output_mix_buffers(&mut self.effect_states);
         }
     }
 

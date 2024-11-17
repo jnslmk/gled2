@@ -61,7 +61,7 @@ impl Effect {
         }
     }
 
-    pub fn set_buffers(&self, state: &mut EffectState) {
+    pub fn set_output_mix_buffers(&self, state: &mut EffectState) {
         let other = state.texture_to_output.output_buffer();
         state.output_mix.set_buffers(&OUTPUT_BUFFER, other);
     }

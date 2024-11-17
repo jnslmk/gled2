@@ -83,11 +83,9 @@ impl Pipeline {
 
     pub fn set_buffers(&mut self) {
         for scene in self.scenes_instances.iter_mut() {
-            scene.set_buffers();
+            scene.set_output_mix_buffers();
         }
-
         PREVIEW.lock().set_buffers(PREVIEW_INDICES.lock().indices());
-        OUTPUT_CLEAR.lock().set_buffers();
     }
 
     pub fn scene_instances(&mut self) -> Vec<(usize, &mut SceneInstance)> {

@@ -2,7 +2,7 @@ use super::App;
 use crate::{
     app::PersistantState,
     storage::{AssetId, Scene},
-    ui::ChangeButton,
+    ui::{action, ChangeButton},
 };
 use egui::{Align, Checkbox, Layout, RichText, Slider, Ui};
 
@@ -22,7 +22,7 @@ impl App {
             }
 
             if self.pipeline.groups.change_button(ui) {
-                self.pipeline.set_buffers();
+                action::Action::InitGPU.enqueue();
             }
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {

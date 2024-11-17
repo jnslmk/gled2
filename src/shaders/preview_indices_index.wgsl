@@ -20,7 +20,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let lamp: u32 = global_id.y;
     let start_idx: u32 = universe * LAMPS_PER_UNIVERSE * 2u + lamp * 2u;
 
-
     let x: u32 = u32(round(positions[start_idx] * TEXTURE_SIZE_F));
     let y: u32 = u32(round(positions[start_idx + 1u] * TEXTURE_SIZE_F));
 

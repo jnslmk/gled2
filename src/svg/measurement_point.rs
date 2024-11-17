@@ -47,14 +47,7 @@ impl MeasurementPoints {
                 };
 
                 for led in point.leds.iter() {
-                    if led.start % 3 != 1 {
-                        panic!(
-                            "Unsupported led alignment: {} ({:?}). supported: 1",
-                            led.start % 3,
-                            led
-                        );
-                    }
-                    let i = led.start / 3;
+                    let i = led.num;
 
                     let universe = universes
                         .entry(led.universe)
@@ -168,7 +161,7 @@ impl From<&ParsedSvg> for MeasurementPoints {
                                     .unwrap_or_else(|| path.data().clone());
                                 leds_on_path(
                                     max,
-                                    parameter.count as usize,
+                                    parameter.count,
                                     path_data,
                                     parameter,
                                     measurement_points,
@@ -214,16 +207,9 @@ impl From<&ParsedSvg> for MeasurementPoints {
                     .leds
                     .first()
                     .expect("Could not find first led");
-                if led.start % 3 != 1 {
-                    panic!(
-                        "Unsupported led alignment: {} ({:?}). supported: 1",
-                        led.start % 3,
-                        led
-                    );
-                }
-                let i = led.start / 3;
+                let num = led.num;
                 if let Some(universe_index) = universes.get(&led.universe) {
-                    measurement_points.preview_positions.universes[*universe_index].lamps[i] =
+                    measurement_points.preview_positions.universes[*universe_index].lamps[num] =
                         Lamp::Position {
                             x: measurement_point.x,
                             y: measurement_point.y,

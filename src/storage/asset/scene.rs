@@ -14,9 +14,9 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn set_buffers(&self, effect_states: &mut [EffectState]) {
+    pub fn set_output_mix_buffers(&self, effect_states: &mut [EffectState]) {
         for (effect, effect_state) in self.effects.iter().zip(effect_states.iter_mut()) {
-            effect.set_buffers(effect_state);
+            effect.set_output_mix_buffers(effect_state);
         }
     }
 

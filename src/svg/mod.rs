@@ -51,7 +51,7 @@ impl ParsedSvg {
 fn traverse_node(
     parameters: &mut HashMap<String, Parameter>,
     node: &Node,
-    start: u32,
+    start: usize,
     universe: u16,
     parents: &HashSet<String>,
 ) {

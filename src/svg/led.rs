@@ -4,5 +4,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub struct Led {
     pub universe: u16,
-    pub start: usize,
+    /// Nth LED in the universe (Address is `num * 3`).
+    pub num: usize,
 }
