@@ -2,7 +2,10 @@ mod variables;
 
 use super::{config::FloatValue::F32, AnimationConfig};
 use crate::ui::ChangeButton;
-use egui::{load::SizedTexture, ComboBox, CursorIcon, Image, Layout, Sense, TextureId, Ui, Vec2};
+use egui::{
+    load::SizedTexture, Button, Color32, ComboBox, CursorIcon, Image, Layout, Sense, TextureId, Ui,
+    Vec2,
+};
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, EnumIter, IntoEnumIterator};
 
@@ -44,7 +47,10 @@ impl Argument {
         ui.horizontal(|ui| {
             ui.label("Name");
             ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("🗑 Remove").clicked() {
+                if ui
+                    .add(Button::new("🗑 Remove Argument").fill(Color32::DARK_RED))
+                    .clicked()
+                {
                     *remove = Some(index);
                 }
             });
@@ -76,22 +82,24 @@ impl Argument {
 
         if let ArgumentKind::Selection { variants } = &mut self.kind {
             ui.label("Variants");
+            ui.vertical_centered_justified(|ui| {
+                if ui.button("+ Add Variant").clicked() {
+                    variants.push("New Variant".to_string());
+                    changed = true;
+                }
+            });
             let mut remove = None;
             for (index, variant) in variants.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
-                    ui.label(format!("Variant {}", index));
-                    changed |= ui.text_edit_singleline(variant).changed();
-                    if ui.button("🗑 Remove").clicked() {
+                    if ui.add(Button::new("🗑").fill(Color32::DARK_RED)).clicked() {
                         remove = Some(index);
                     }
+                    ui.label(format!("{index}"));
+                    changed |= ui.text_edit_singleline(variant).changed();
                 });
             }
             if let Some(index) = remove {
                 variants.remove(index);
-                changed = true;
-            }
-            if ui.button("Add Variant").clicked() {
-                variants.push("New Variant".to_string());
                 changed = true;
             }
         }

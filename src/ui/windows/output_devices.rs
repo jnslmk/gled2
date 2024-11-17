@@ -1,9 +1,8 @@
 use crate::{
-    storage::{Asset, AssetId, OutputDevice},
+    storage::{Asset, OutputDevice},
     ui::asset_tree::{AssetTree, TreeSelection},
 };
 use egui::{ComboBox, Margin, TextEdit, Ui};
-use std::collections::HashMap;
 use strum::{EnumIter, IntoEnumIterator, IntoStaticStr};
 
 #[derive(Clone, Copy, Debug, IntoStaticStr, PartialEq, Eq, EnumIter)]
@@ -28,7 +27,7 @@ pub struct OutputDevicesWindow {
     open: bool,
     dirty: bool,
     tree: AssetTree<OutputDevice>,
-    device_strings: HashMap<AssetId<OutputDevice>, DeviceStrings>,
+    device_strings: DeviceStrings,
 }
 
 #[derive(Default)]
@@ -56,8 +55,13 @@ impl OutputDevicesWindow {
                     .exact_width(200.0)
                     .resizable(false)
                     .show_inside(ui, |ui| {
-                        self.tree
-                            .show(ui, ui.make_persistent_id("output_devices_tree"));
+                        if self
+                            .tree
+                            .show(ui, ui.make_persistent_id("output_devices_tree"))
+                        {
+                            self.dirty = false;
+                            self.device_strings = Default::default();
+                        }
                     });
 
                 egui::Frame::default()
@@ -85,7 +89,7 @@ fn output_device_editor(
     ui: &mut Ui,
     output_device: &mut Asset<OutputDevice>,
     dirty: &mut bool,
-    device_strings: &mut HashMap<AssetId<OutputDevice>, DeviceStrings>,
+    device_strings: &mut DeviceStrings,
 ) {
     let mut kind = output_device.data.kind();
     let id = output_device.id;
@@ -127,13 +131,11 @@ fn output_device_editor(
                             }
                         }
                     }
-                    device_strings.remove(&id);
+                    *device_strings = Default::default();
                     *dirty = true;
                 }
             }
         });
-
-    let device_strings = device_strings.entry(id).or_default();
 
     ui.heading("IP-Address");
     let ip = device_strings

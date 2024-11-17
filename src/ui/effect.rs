@@ -1,3 +1,5 @@
+mod widget;
+
 use super::ChangeButton;
 use crate::{
     effect::{Effect, EffectState},
@@ -5,15 +7,24 @@ use crate::{
 };
 use egui::{Checkbox, Slider};
 
+pub use widget::EffectWidget;
+
 impl Effect {
-    pub fn config_ui(&mut self, state: &mut EffectState, ui: &mut egui::Ui) -> bool {
+    pub fn config_ui(
+        &mut self,
+        state: &mut EffectState,
+        ui: &mut egui::Ui,
+        allow_animation_change: bool,
+    ) -> bool {
         let mut changed = false;
 
         ui.label("Animation");
-        ui.vertical_centered_justified(|ui| {
-            if self.animation.change_button(ui) {
-                state.update(self);
-            }
+        ui.add_enabled_ui(allow_animation_change, |ui| {
+            ui.vertical_centered_justified(|ui| {
+                if self.animation.change_button(ui) {
+                    state.update(self);
+                }
+            });
         });
 
         ui.label("Progression");

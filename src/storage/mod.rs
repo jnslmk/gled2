@@ -98,6 +98,9 @@ pub fn start_thread() {
 
             let root = git.folder().to_owned();
             let mut collections = ShareDebugMap::custom();
+
+            collections.insert::<Collection<Animation>>(Collection::<Animation>::load(&root));
+            *STATE.lock() = State::Loading(0.5);
             collections.insert::<Collection<Curve>>(Collection::<Curve>::load(&root));
             *STATE.lock() = State::Loading(0.6);
             collections.insert::<Collection<OutputDevice>>(Collection::<OutputDevice>::load(&root));

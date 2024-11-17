@@ -2,24 +2,16 @@ use crate::{
     app::{PersistantState, Timing},
     effect::{Effect, EffectState},
     group::Groups,
-    storage::{Asset, AssetId, Scene},
+    storage::{Asset, Scene},
     ui::{
         asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
+        effect::EffectWidget,
         ChangeButton,
     },
     wgpu_render_state,
 };
-use egui::{
-    epaint::{CircleShape, RectShape},
-    pos2,
-    scroll_area::ScrollBarVisibility,
-    Button, Color32, Context, Label, Margin, Rect, Response, Rounding, Sense, Shape, Stroke, Ui,
-    Vec2, Widget,
-};
-use std::{
-    iter::once,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use egui::{scroll_area::ScrollBarVisibility, Button, Color32, Context, Margin, Stroke, Vec2};
+use std::iter::once;
 use wgpu::CommandEncoderDescriptor;
 
 #[derive(Default)]
@@ -27,7 +19,6 @@ pub struct ScenesWindow {
     open: bool,
     dirty: bool,
     tree: AssetTree<Scene>,
-    previous_selected_id: Option<AssetId<Scene>>,
     effect_states: Vec<EffectState>,
     selected_effect: usize,
 }
@@ -49,17 +40,15 @@ impl ScenesWindow {
                     .exact_width(TREE_WIDTH)
                     .resizable(false)
                     .show_inside(ui, |ui| {
-                        self.tree.show(ui, ui.make_persistent_id("scenes_tree"));
+                        if self.tree.show(ui, ui.make_persistent_id("scenes_tree")) {
+                            self.dirty = false;
+                            self.selected_effect = 0;
+                            self.effect_states.clear();
+                            if let TreeSelection::Asset(scene) = self.tree.selected() {
+                                scene.data.init_states(&mut self.effect_states);
+                            }
+                        }
                     });
-
-                if self.previous_selected_id != self.tree.selected_id() {
-                    self.previous_selected_id = self.tree.selected_id();
-                    self.selected_effect = 0;
-                    self.effect_states.clear();
-                    if let TreeSelection::Asset(scene) = self.tree.selected() {
-                        scene.data.init_states(&mut self.effect_states);
-                    }
-                }
 
                 egui::SidePanel::right("scene editor")
                     .exact_width(300.0)
@@ -73,7 +62,7 @@ impl ScenesWindow {
                             scene.data.effect(self.selected_effect),
                             self.effect_states.get_mut(self.selected_effect),
                         ) {
-                            self.dirty |= effect.config_ui(state, ui);
+                            self.dirty |= effect.config_ui(state, ui, true);
                         }
 
                         ui.separator();
@@ -193,8 +182,11 @@ impl ScenesWindow {
                                             ui.add_sized(
                                                 Vec2::splat(100.0),
                                                 EffectWidget {
-                                                    selected_effect: &mut self.selected_effect,
-                                                    index,
+                                                    show_group: true,
+                                                    selectable: Some((
+                                                        &mut self.selected_effect,
+                                                        index,
+                                                    )),
                                                     effect,
                                                     effect_state,
                                                 },
@@ -210,81 +202,5 @@ impl ScenesWindow {
 
     pub fn open(&mut self) {
         self.open = true;
-    }
-}
-
-struct EffectWidget<'a> {
-    selected_effect: &'a mut usize,
-    index: usize,
-    effect: &'a Effect,
-    effect_state: &'a EffectState,
-}
-
-impl<'a> Widget for EffectWidget<'a> {
-    fn ui(self, ui: &mut Ui) -> Response {
-        let response = egui::Frame::none()
-            .fill(if *self.selected_effect == self.index {
-                Color32::GOLD.linear_multiply(
-                    ((SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Could not get time")
-                        .subsec_millis()
-                        / 100) as f32
-                        / 5.0
-                        - 1.0)
-                        .abs(),
-                )
-            } else {
-                Color32::TRANSPARENT
-            })
-            .inner_margin(Margin::from(10.0))
-            .rounding(Rounding::from(4.0))
-            .show(ui, |ui| {
-                let rect = ui.available_rect_before_wrap();
-                ui.allocate_rect(rect, Sense::hover());
-                ui.painter().add(Shape::Rect(RectShape::filled(
-                    rect,
-                    Rounding::default(),
-                    Color32::BLACK,
-                )));
-                ui.painter().add(Shape::Rect(RectShape {
-                    rect,
-                    rounding: Rounding::default(),
-                    blur_width: 0.0,
-                    fill_texture_id: self.effect_state.texture_id(),
-                    uv: Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-                    fill: Color32::WHITE,
-                    stroke: Default::default(),
-                }));
-                ui.painter().add(Shape::Circle(CircleShape::filled(
-                    rect.left_top() + Vec2::splat(10.0),
-                    5.5,
-                    if self.effect.use_secondary_group {
-                        Color32::GOLD
-                    } else {
-                        Color32::GREEN
-                    },
-                )));
-                ui.put(
-                    Rect::from_min_size(rect.left_top() + Vec2::new(0.0, 0.5), Vec2::splat(20.0)),
-                    Label::new(
-                        egui::RichText::new(if self.effect.use_secondary_group {
-                            "S"
-                        } else {
-                            "P"
-                        })
-                        .color(Color32::BLACK),
-                    )
-                    .selectable(false),
-                );
-            })
-            .response;
-
-        let res = ui.put(response.rect, Button::new("").fill(Color32::TRANSPARENT));
-        if res.clicked() {
-            *self.selected_effect = self.index;
-        }
-
-        response
     }
 }

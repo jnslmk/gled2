@@ -29,7 +29,9 @@ impl PalettesWindow {
                     .exact_width(TREE_WIDTH)
                     .resizable(false)
                     .show_inside(ui, |ui| {
-                        self.tree.show(ui, ui.make_persistent_id("palettes_tree"));
+                        if self.tree.show(ui, ui.make_persistent_id("palettes_tree")) {
+                            self.dirty = false;
+                        }
                     });
 
                 egui::Frame::default()

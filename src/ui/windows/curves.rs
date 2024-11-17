@@ -29,7 +29,9 @@ impl CurvesWindow {
                     .exact_width(TREE_WIDTH)
                     .resizable(false)
                     .show_inside(ui, |ui| {
-                        self.tree.show(ui, ui.make_persistent_id("curves_tree"));
+                        if self.tree.show(ui, ui.make_persistent_id("curves_tree")) {
+                            self.dirty = false;
+                        }
                     });
 
                 egui::Frame::default()

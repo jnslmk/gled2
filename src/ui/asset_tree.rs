@@ -194,7 +194,8 @@ impl<T: AssetTrait> AssetTree<T> {
         pos
     }
 
-    pub fn show(&mut self, ui: &mut Ui, id: Id) {
+    pub fn show(&mut self, ui: &mut Ui, id: Id) -> bool {
+        let mut selection_changed = false;
         let entries = self.load();
         let mut tree_ids = vec![];
 
@@ -258,6 +259,7 @@ impl<T: AssetTrait> AssetTree<T> {
                             }),
                         })
                         .unwrap_or_default();
+                    selection_changed = true;
                 }
                 Action::Move {
                     source, mut target, ..
@@ -284,13 +286,8 @@ impl<T: AssetTrait> AssetTree<T> {
                 _ => {}
             }
         }
-    }
 
-    pub fn selected_id(&self) -> Option<AssetId<T>> {
-        match &self.selection {
-            TreeSelection::Asset(asset) => Some(asset.id),
-            _ => None,
-        }
+        selection_changed
     }
 
     pub fn selected(&mut self) -> &mut TreeSelection<T> {
