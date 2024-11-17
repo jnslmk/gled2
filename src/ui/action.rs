@@ -1,3 +1,4 @@
+use crate::storage::{Animation, AssetId};
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use std::collections::VecDeque;
@@ -8,6 +9,7 @@ pub enum Action {
     DeleteSelectedSceneInstance,
     CloneSelectedSceneInstance,
     InitGPU,
+    ReloadShaderCode(AssetId<Animation>),
 }
 
 impl Action {

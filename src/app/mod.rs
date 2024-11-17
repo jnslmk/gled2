@@ -79,6 +79,9 @@ impl eframe::App for App {
             Some(Action::InitGPU) => {
                 self.pipeline.init_gpu();
             }
+            Some(Action::ReloadShaderCode(animation)) => {
+                self.pipeline.reload_shader_code(animation);
+            }
         }
 
         if ctx.input_mut(|i| i.consume_key(Modifiers::ALT, egui::Key::Enter)) {

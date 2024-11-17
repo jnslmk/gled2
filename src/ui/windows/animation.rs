@@ -4,12 +4,17 @@ use crate::{
     group::Groups,
     storage::{Animation, Asset},
     ui::{
+        action::Action,
         asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
         effect::EffectWidget,
     },
     wgpu_render_state,
 };
 use egui::{Context, Margin, Vec2};
+use naga::{
+    valid::{Capabilities, ValidationFlags, Validator},
+    Module,
+};
 use std::iter::once;
 use wgpu::CommandEncoderDescriptor;
 
@@ -28,19 +33,6 @@ impl AnimationWindow {
         if !self.open {
             self.dirty = false;
             return;
-        }
-
-        if let TreeSelection::Asset(animation) = &self.tree.selected() {
-            if let Some(effect) = self.effect.as_ref() {
-                if self.effect_state.is_none() {
-                    self.effect_state = Some(EffectState::new(effect));
-                }
-            } else {
-                self.effect = Some(Effect {
-                    animation: Some(animation.id),
-                    ..Default::default()
-                });
-            }
         }
 
         if self.preview {
@@ -63,7 +55,7 @@ impl AnimationWindow {
                         }
                     });
 
-                egui::SidePanel::right("scene editor")
+                egui::SidePanel::right("animation editor")
                     .exact_width(300.0)
                     .resizable(false)
                     .show_inside(ui, |ui| {
@@ -82,6 +74,9 @@ impl AnimationWindow {
                     .show(ui, |ui| {
                         if self.tree.common_settings(ui, &mut self.dirty) {
                             self.effect_state.take();
+                            if let TreeSelection::Asset(animation) = &self.tree.selected() {
+                                Action::ReloadShaderCode(animation.id).enqueue();
+                            }
                         }
 
                         if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
@@ -96,6 +91,23 @@ impl AnimationWindow {
     }
 
     pub fn show_preview_window(&mut self, ctx: &Context, timing: &Timing) {
+        if let TreeSelection::Asset(animation) = &self.tree.selected() {
+            if let Some(effect) = self.effect.as_ref() {
+                /*let mut validator = Validator::new(ValidationFlags::all(), Capabilities::all());
+                let module = Module::from_buffer(animation.data.shader_code.as_bytes()).unwrap();
+                let res = validator.validate(module);*/
+
+                if self.effect_state.is_none() {
+                    self.effect_state = Some(EffectState::new(effect));
+                }
+            } else {
+                self.effect = Some(Effect {
+                    animation: Some(animation.id),
+                    ..Default::default()
+                });
+            }
+        }
+
         let (Some(effect), Some(effect_state)) = (&mut self.effect, &mut self.effect_state) else {
             return;
         };

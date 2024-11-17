@@ -1473,6 +1473,7 @@ dependencies = [
  "kurbo",
  "log",
  "mkdirp",
+ "naga",
  "network-interface",
  "once_cell",
  "rand",

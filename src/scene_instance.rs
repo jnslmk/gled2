@@ -3,7 +3,9 @@ use crate::{
     effect::EffectState,
     group::Groups,
     input::InputEvent,
-    storage::{Asset, AssetId, GroupsSelection, Palette, RangePercentage, Scene, StaticOrCurve},
+    storage::{
+        Animation, Asset, AssetId, GroupsSelection, Palette, RangePercentage, Scene, StaticOrCurve,
+    },
     transition::Transition,
 };
 use egui::TextureId;
@@ -72,6 +74,14 @@ impl SceneInstance {
     pub fn init_states(&mut self) {
         if let Some(scene) = Asset::get(self.scene) {
             scene.data.init_states(&mut self.effect_states);
+        }
+    }
+
+    pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
+        if let Some(scene) = Asset::get(self.scene) {
+            scene
+                .data
+                .reload_shader_code(&mut self.effect_states, animation);
         }
     }
 

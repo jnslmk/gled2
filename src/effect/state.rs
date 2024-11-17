@@ -54,12 +54,7 @@ impl EffectState {
     }
 
     pub fn update(&mut self, effect: &Effect) {
-        let shader_code = effect
-            .animation
-            .and_then(Asset::get)
-            .map(|animation| animation.data.shader_code.clone())
-            .unwrap_or_else(|| include_str!("../shaders/red.wgsl").into());
-        let (renderer, texture_to_output, texture_id) = compile(&shader_code);
+        let (renderer, texture_to_output, texture_id) = compile(&effect.shader_code());
         self.renderer = renderer;
         self.texture_to_output = texture_to_output;
         self.texture_id = texture_id;

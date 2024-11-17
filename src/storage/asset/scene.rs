@@ -1,7 +1,8 @@
-use super::{Asset, AssetTrait, Palette};
+use super::{Animation, Asset, AssetTrait, Palette};
 use crate::{
-    effect::{Effect, EffectState},
+    effect::{self, Effect, EffectState},
     group::Groups,
+    storage::AssetId,
 };
 use egui::{epaint::CircleShape, Color32, Label, Rect, Shape, Vec2};
 use serde::{Deserialize, Serialize};
@@ -65,6 +66,18 @@ impl Scene {
                 {
                     state.update(effect);
                 }
+            }
+        }
+    }
+
+    pub fn reload_shader_code(
+        &self,
+        effect_states: &mut Vec<EffectState>,
+        animation: AssetId<Animation>,
+    ) {
+        for (effect, state) in self.effects.iter().zip(effect_states.iter_mut()) {
+            if effect.animation == Some(animation) {
+                state.update(effect);
             }
         }
     }

@@ -8,7 +8,7 @@ use crate::{
     preview::PREVIEW,
     preview_indices::PREVIEW_INDICES,
     scene_instance::SceneInstance,
-    storage::{Asset, AssetId, Palette, Scene},
+    storage::{Animation, Asset, AssetId, Palette, Scene},
     svg::Universes,
     transition::{Transition, TransitionGoal},
     wgpu_render_state,
@@ -64,6 +64,12 @@ impl Pipeline {
             scene_instance.init_states();
         }
         self.set_buffers();
+    }
+
+    pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
+        for scene_instance in self.scenes_instances.iter_mut() {
+            scene_instance.reload_shader_code(animation);
+        }
     }
 
     pub fn add_scene(&mut self, scene: AssetId<Scene>) -> usize {
