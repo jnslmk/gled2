@@ -1,5 +1,7 @@
 use super::{AssetId, AssetTrait, Palette};
-use crate::{app::Svg, group::Groups, project::OutputRoutings, scene_instance::SceneInstance};
+use crate::{
+    app::Svg, group::Groups, output_routings::OutputRoutings, scene_instance::SceneInstance,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]

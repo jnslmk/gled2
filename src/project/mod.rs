@@ -1,11 +1,7 @@
-mod output_routings;
-
-use crate::{app::Svg, pipeline::Pipeline};
+use crate::{app::Svg, output_routings::OutputRoutings, pipeline::Pipeline};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-
-pub use output_routings::OutputRoutings;
 
 #[derive(Serialize, Deserialize, Default)]
 #[serde(default)]

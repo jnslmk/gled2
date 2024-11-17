@@ -12,6 +12,7 @@ mod logging;
 mod opts;
 mod output_clear;
 mod output_mix;
+mod output_routings;
 mod output_sender;
 mod pipeline;
 mod preview;

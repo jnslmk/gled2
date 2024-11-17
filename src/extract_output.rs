@@ -2,8 +2,8 @@
 
 use crate::{
     constants::{OUTPUT_BUFFER_SIZE, UNIVERSES, UNIVERSE_BUFFER_SIZE},
+    output_routings::OutputRoutings,
     pipeline::OUTPUT_BUFFER,
-    project::OutputRoutings,
     svg::Universes,
     wgpu_render_state,
 };
