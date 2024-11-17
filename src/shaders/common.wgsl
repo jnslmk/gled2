@@ -1,26 +1,26 @@
 struct Uniforms {
-    // state: 32 bytes
-    beat_progression: f32,
-    beats_per_minute: f32,
-    frame_rate: f32,
-    opacity: f32,
-    color_shift: f32,
-    _not_used_0: f32,
-    _not_used_1: f32,
-    _not_used_2: f32,
-
     // colors: 288 bytes
     primary_color: vec3<f32>,
     secondary_color: vec3<f32>,
     gradient_colors: array<vec3<f32>, 16>,
 
-    // config: 32 bytes
-    center_coord: vec2<f32>,
-    thickness: f32,
-    count: u32,
-    mode: u32,
+    // state: 64 bytes
+    beat_progression: f32,
+    beats_per_minute: f32,
+    frame_rate: f32,
+    opacity: f32,
+    color_shift: f32,
     speed: f32,
-    size: f32,
+    u32_0: u32,
+    u32_1: u32,
+    u32_2: u32,
+    f32_0: f32,
+    f32_1: f32,
+    f32_2: f32,
+    f32_3: f32,
+    f32_4: f32,
+    f32_5: f32,
+    f32_6: f32,
 };
 
 @group(0) @binding(0)

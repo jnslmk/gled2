@@ -159,18 +159,6 @@ impl TextureToOutput {
         }
     }
 
-    pub fn clear_output(&self, queue: &Queue) {
-        debug!("Clearing output buffer");
-
-        if let Some(mut view) = queue.write_buffer_with(
-            &self.output,
-            0,
-            NonZero::new(OUTPUT_BUFFER_SIZE).expect("OUTPUT_BUFFER_SIZE is zero"),
-        ) {
-            view.copy_from_slice(&[0u8; OUTPUT_BUFFER_SIZE as usize]);
-        }
-    }
-
     pub fn run(&self, encoder: &mut CommandEncoder) {
         let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
             label: Some("TextureToArtnet compute pass"),

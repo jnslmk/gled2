@@ -1,7 +1,6 @@
 #![windows_subsystem = "windows"]
 #![allow(deprecated)]
 
-mod animation;
 mod app;
 mod constants;
 mod effect;

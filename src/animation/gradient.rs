@@ -30,7 +30,7 @@ impl AnimationConfig for Gradient {
         include_str!("../shaders/gradient.wgsl").into()
     }
 
-    fn config(&self) -> Config {
+    fn config(&self) -> AnimationConfig {
         Config {
             common: self.common,
             mode: match self.gradient {
@@ -71,10 +71,6 @@ impl AnimationConfig for Gradient {
         }
 
         changed
-    }
-
-    fn uses_multiple_colors(&self) -> bool {
-        true
     }
 }
 

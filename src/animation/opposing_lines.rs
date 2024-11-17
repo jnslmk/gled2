@@ -45,7 +45,7 @@ impl AnimationConfig for OpposingLines {
         include_str!("../shaders/opposing_lines.wgsl").into()
     }
 
-    fn config(&self) -> Config {
+    fn config(&self) -> AnimationConfig {
         Config {
             common: self.common,
             thickness: self.thickness,
@@ -55,10 +55,6 @@ impl AnimationConfig for OpposingLines {
             },
             ..Default::default()
         }
-    }
-
-    fn uses_multiple_colors(&self) -> bool {
-        true
     }
 }
 

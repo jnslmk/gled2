@@ -1,0 +1,228 @@
+mod variables;
+
+use super::{config::FloatValue::F32, AnimationConfig};
+use crate::ui::ChangeButton;
+use egui::{load::SizedTexture, ComboBox, CursorIcon, Image, Layout, Sense, TextureId, Ui, Vec2};
+use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, EnumIter, IntoEnumIterator};
+
+pub use variables::{Variables, VariablesCount};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Argument {
+    pub name: String,
+    pub kind: ArgumentKind,
+}
+
+impl Default for Argument {
+    fn default() -> Self {
+        Self {
+            name: "New Argument".to_string(),
+            kind: ArgumentKind::default(),
+        }
+    }
+}
+
+impl Argument {
+    pub fn function_name(&self) -> String {
+        self.name.to_ascii_lowercase().replace(" ", "_")
+    }
+
+    pub fn function(&self) -> String {
+        self.kind.variables().function(&self.function_name())
+    }
+
+    pub fn shader_code_for_getter(&self, count: VariablesCount) -> String {
+        self.kind
+            .variables()
+            .shader_code_for_getter(&self.function_name(), count)
+    }
+
+    pub fn change_ui(&mut self, ui: &mut Ui, index: usize, remove: &mut Option<usize>) -> bool {
+        let mut changed = false;
+
+        ui.horizontal(|ui| {
+            ui.label("Name");
+            ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.button("🗑 Remove").clicked() {
+                    *remove = Some(index);
+                }
+            });
+        });
+        ui.vertical_centered_justified(|ui| {
+            changed |= ui.text_edit_singleline(&mut self.name).changed();
+        });
+
+        ui.label("Generated Function");
+        ui.vertical_centered_justified(|ui| {
+            ui.add_enabled_ui(false, |ui| ui.text_edit_singleline(&mut self.function()));
+        });
+
+        ui.label("Kind");
+        ComboBox::from_id_salt(format!("AnimationKind:{index}"))
+            .selected_text(ArgumentKindId::from(&self.kind).as_ref())
+            .show_ui(ui, |ui| {
+                let mut id = ArgumentKindId::from(&self.kind);
+                for new_id in ArgumentKindId::iter() {
+                    if ui
+                        .selectable_value(&mut id, new_id, new_id.as_ref())
+                        .clicked()
+                    {
+                        self.kind = ArgumentKind::from(new_id);
+                        changed = true;
+                    }
+                }
+            });
+
+        if let ArgumentKind::Selection { variants } = &mut self.kind {
+            ui.label("Variants");
+            let mut remove = None;
+            for (index, variant) in variants.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    ui.label(format!("Variant {}", index));
+                    changed |= ui.text_edit_singleline(variant).changed();
+                    if ui.button("🗑 Remove").clicked() {
+                        remove = Some(index);
+                    }
+                });
+            }
+            if let Some(index) = remove {
+                variants.remove(index);
+                changed = true;
+            }
+            if ui.button("Add Variant").clicked() {
+                variants.push("New Variant".to_string());
+                changed = true;
+            }
+        }
+
+        changed
+    }
+
+    pub fn config_ui(
+        &self,
+        config: &mut AnimationConfig,
+        ui: &mut Ui,
+        count: VariablesCount,
+        rendered: TextureId,
+    ) -> bool {
+        let mut changed = false;
+        ui.label(&self.name);
+        match &self.kind {
+            ArgumentKind::Center => {
+                ui.vertical_centered_justified(|ui| {
+                    ui.menu_button("Select center of animation", |ui| {
+                        let size = 300.0;
+                        let res = ui.add(
+                            Image::new(SizedTexture::new(rendered, Vec2::splat(size)))
+                                .sense(Sense::click()),
+                        );
+                        if let Some(pos) =
+                            res.hover_pos().map(|pos| pos - res.rect.min).filter(|pos| {
+                                pos.x > 0.0 || pos.y > 0.0 || pos.x < size || pos.y < size
+                            })
+                        {
+                            ui.output_mut(|o| o.cursor_icon = CursorIcon::Crosshair);
+                            if let Some(float) = config.float(count.f32) {
+                                *float = F32(pos.x / size);
+                            }
+                            if let Some(float) = config.float(count.f32 + 1) {
+                                *float = F32(1.0 - pos.y / size);
+                            }
+                            changed = true;
+                        }
+                        if res.clicked() {
+                            ui.close_menu();
+                        }
+                    });
+                });
+            }
+            ArgumentKind::Selection { variants } => {
+                let Some(value) = config.u32(count.u32) else {
+                    return false;
+                };
+                ui.horizontal(|ui| {
+                    for (i, variant) in variants.iter().enumerate() {
+                        if ui.radio_value(value, i as u32, variant).changed() {
+                            changed = true;
+                        }
+                    }
+                });
+            }
+            ArgumentKind::Percentage => {
+                let Some(value) = config.float(count.f32) else {
+                    return false;
+                };
+
+                ui.vertical_centered_justified(|ui| {
+                    changed |= value.percentage().change_button(ui);
+                });
+            }
+            ArgumentKind::Degrees => {
+                let Some(value) = config.float(count.f32) else {
+                    return false;
+                };
+
+                ui.vertical_centered_justified(|ui| {
+                    changed |= value.degrees().change_button(ui);
+                });
+            }
+        }
+        changed
+    }
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ArgumentKind {
+    Center,
+    Selection {
+        variants: Vec<String>,
+    },
+    #[default]
+    Percentage,
+    Degrees,
+}
+
+impl ArgumentKind {
+    pub fn variables(&self) -> Variables {
+        match self {
+            Self::Center => Variables::Vec2F32,
+            Self::Selection { .. } => Variables::U32,
+            Self::Percentage => Variables::F32,
+            Self::Degrees => Variables::F32,
+        }
+    }
+}
+
+#[derive(
+    Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, AsRefStr, EnumIter,
+)]
+pub enum ArgumentKindId {
+    Center,
+    Selection,
+    #[default]
+    Percentage,
+    Degrees,
+}
+
+impl From<&ArgumentKind> for ArgumentKindId {
+    fn from(kind: &ArgumentKind) -> Self {
+        match kind {
+            ArgumentKind::Center => Self::Center,
+            ArgumentKind::Selection { .. } => Self::Selection,
+            ArgumentKind::Percentage => Self::Percentage,
+            ArgumentKind::Degrees => Self::Degrees,
+        }
+    }
+}
+
+impl From<ArgumentKindId> for ArgumentKind {
+    fn from(kind: ArgumentKindId) -> Self {
+        match kind {
+            ArgumentKindId::Center => Self::Center,
+            ArgumentKindId::Selection => Self::Selection { variants: vec![] },
+            ArgumentKindId::Percentage => Self::Percentage,
+            ArgumentKindId::Degrees => Self::Degrees,
+        }
+    }
+}

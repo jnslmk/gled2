@@ -1,11 +1,10 @@
 mod state;
 
 use crate::{
-    animation::{Animation, AnimationConfig},
     app::positions,
     group::Groups,
     pipeline::OUTPUT_BUFFER,
-    storage::{Asset, Palette, RangeDegrees, RangePercentage, StaticOrCurve},
+    storage::{Animation, Asset, AssetId, Palette, RangeDegrees, RangePercentage, StaticOrCurve},
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -13,16 +12,18 @@ use wgpu::{CommandEncoder, Queue};
 
 pub use state::EffectState;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
 pub struct Effect {
     pub color_shift: StaticOrCurve<RangeDegrees>,
     pub opacity: StaticOrCurve<RangePercentage>,
     pub beat_progression: StaticOrCurve<RangePercentage>,
     pub beat_progression_offset: StaticOrCurve<RangePercentage>,
+    /// In 2^n of bpm
+    pub speed_exponent: i32,
     /// Whether it should use the primary or the secondary group
     pub use_secondary_group: bool,
-    pub animation: Animation,
+    pub animation: Option<AssetId<Animation>>,
 }
 
 impl Default for Effect {
@@ -35,32 +36,14 @@ impl Default for Effect {
                 0x99, 0xA6,
             ]),
             beat_progression_offset: StaticOrCurve::new_static(0.0),
+            speed_exponent: 0,
             use_secondary_group: Default::default(),
             animation: Default::default(),
         }
     }
 }
 
-impl PartialEq for Effect {
-    fn eq(&self, other: &Self) -> bool {
-        self.color_shift == other.color_shift
-            && self.opacity == other.opacity
-            && self.beat_progression_offset == other.beat_progression_offset
-            && self.use_secondary_group == other.use_secondary_group
-            && self.animation == other.animation
-    }
-}
-
-impl Eq for Effect {}
-
 impl Effect {
-    pub fn new(animation: Animation) -> Self {
-        Self {
-            animation,
-            ..Default::default()
-        }
-    }
-
     pub fn set_output_mix_buffers(&self, state: &mut EffectState) {
         let other = state.texture_to_output.output_buffer();
         state.output_mix.set_buffers(&OUTPUT_BUFFER, other);
@@ -81,6 +64,7 @@ impl Effect {
         effect_state.beat_progression = self.beat_progression.value(beat_progression);
         effect_state.opacity = self.opacity.value(beat_progression) * main_opacity;
         effect_state.color_shift = self.color_shift.value(beat_progression);
+        effect_state.speed_exponent = self.speed_exponent;
 
         let group = groups.get(self.use_secondary_group);
         if effect_state.sent_group.as_ref() != group {
@@ -94,9 +78,7 @@ impl Effect {
 
         effect_state
             .renderer
-            .set_buffers(queue, effect_state, palette, &self.animation.config());
-
-        effect_state.texture_to_output.clear_output(queue);
+            .set_buffers(queue, effect_state, palette);
     }
 
     pub fn render(

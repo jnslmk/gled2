@@ -21,7 +21,6 @@ emath = "0.29"
 epaint = "0.29"
 fern = { version = "0.7", features = ["colored"] }
 gilrs = "0.11"
-gled_proc_macros = { path = "proc_macros" }
 home = "0.5"
 image = { version = "0.25", default-features = false, features = ["png"] }
 kurbo = "0.11"
@@ -34,6 +33,7 @@ serde = { version = "1", features = ["derive"] }
 serde-hjson = "1"
 serde_json = "1"
 svgdom = "0.18"
+static_assertions = "1"
 strum = { version = "0.26", features = ["derive"] }
 sysinfo = "0.32"
 tiny-skia = { version = "0.11", default-features = false, features = [

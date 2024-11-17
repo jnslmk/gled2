@@ -1,3 +1,4 @@
+mod animation;
 mod curve;
 mod output_device;
 mod palette;
@@ -9,6 +10,7 @@ use egui::Rect;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
+pub use animation::{Animation, AnimationConfig, AnimationRenderer};
 pub use curve::{Curve, RangeDegrees, RangePercentage, StaticOrCurve};
 pub use output_device::OutputDevice;
 pub use palette::Palette;

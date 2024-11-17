@@ -1,8 +1,8 @@
 use super::Effect;
 use crate::{
-    animation::{AnimationConfig, AnimationRenderer},
     group::Group,
     output_mix::OutputMix,
+    storage::{AnimationConfig, AnimationRenderer, Asset},
     texture_to_output::TextureToOutput,
     wgpu_render_state,
 };
@@ -20,6 +20,10 @@ pub struct EffectState {
     pub opacity: f32,
     /// Color shift in full circles. (0.5 = 180 degrees)
     pub color_shift: f32,
+    /// In 2^n of bpm
+    pub speed_exponent: i32,
+
+    pub animation_config: AnimationConfig,
 
     pub sent_group: Option<Group>,
     pub texture_to_output: TextureToOutput,
@@ -39,6 +43,8 @@ impl EffectState {
             framerate: 0.0,
             opacity: 0.0,
             color_shift: 0.0,
+            speed_exponent: 0,
+            animation_config: Default::default(),
             sent_group: None,
             texture_to_output,
             texture_id,
@@ -63,18 +69,23 @@ impl EffectState {
         self.texture_id.0
     }
 
-    /// must be aligned by 16 bytes
     pub fn write_data(&self, data: &mut [u8]) {
         data[0..4].copy_from_slice(&self.beat_progression.to_le_bytes());
         data[4..8].copy_from_slice(&self.beats_per_minute.to_le_bytes());
         data[8..12].copy_from_slice(&self.framerate.to_le_bytes());
         data[12..16].copy_from_slice(&self.opacity.to_le_bytes());
         data[16..20].copy_from_slice(&self.color_shift.to_le_bytes());
+        data[20..24].copy_from_slice(&2f32.powi(self.speed_exponent).to_le_bytes());
+        self.animation_config.write_data(
+            &mut data[24..24 + AnimationConfig::size()],
+            self.beat_progression,
+        );
     }
 
-    /// must be a multiple of 16
     pub const fn size() -> usize {
-        32
+        const SIZE: usize = 24 + AnimationConfig::size();
+        static_assertions::const_assert_eq!(SIZE % 16, 0);
+        SIZE
     }
 }
 
@@ -89,8 +100,12 @@ impl Drop for OwnedTextureId {
 
 impl From<&Effect> for (AnimationRenderer, TextureToOutput, OwnedTextureId) {
     fn from(effect: &Effect) -> Self {
-        let animation_shader = effect.animation.shader_code();
-        let renderer = AnimationRenderer::new(&animation_shader);
+        let shader_code = effect
+            .animation
+            .and_then(Asset::get)
+            .map(|animation| animation.data.shader_code.clone())
+            .unwrap_or_else(|| include_str!("../shaders/black.wgsl").into());
+        let renderer = AnimationRenderer::new(&shader_code);
         let texture_to_output = TextureToOutput::init(renderer.texture());
         let texture_id = OwnedTextureId(
             wgpu_render_state()

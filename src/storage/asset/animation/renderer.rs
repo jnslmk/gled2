@@ -1,5 +1,5 @@
 //! Renders to a texture
-use super::config::Config;
+use super::AnimationConfig;
 use crate::{
     constants::TEXTURE_SIZE,
     effect::EffectState,
@@ -12,7 +12,7 @@ use std::{
 };
 use wgpu::{util::DeviceExt, *};
 
-static COMMON_SHADER_CODE: &str = include_str!("../shaders/common.wgsl");
+static COMMON_SHADER_CODE: &str = include_str!("../../../shaders/common.wgsl");
 
 #[derive(Debug)]
 pub struct AnimationRenderer {
@@ -50,7 +50,7 @@ impl AnimationRenderer {
 
         let vertex_shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("animation vertex shader"),
-            source: ShaderSource::Wgsl(include_str!("../shaders/vertex.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("../../../shaders/vertex.wgsl").into()),
         });
 
         let mut fragment_shader = COMMON_SHADER_CODE.to_owned();
@@ -70,7 +70,7 @@ impl AnimationRenderer {
                     ty: BufferBindingType::Uniform,
                     has_dynamic_offset: false,
                     min_binding_size: NonZeroU64::new(
-                        (EffectState::size() + Palette::size() + Config::size()) as u64,
+                        { EffectState::size() + Palette::size() } as u64
                     ),
                 },
                 count: None,
@@ -105,7 +105,7 @@ impl AnimationRenderer {
             multiview: None,
         });
 
-        let contents = [0u8; EffectState::size() + Palette::size() + Config::size()];
+        let contents = [0u8; EffectState::size() + Palette::size() + AnimationConfig::size()];
         let uniform = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("animation uniform buffer"),
             contents: &contents,
@@ -135,19 +135,12 @@ impl AnimationRenderer {
         queue: &Queue,
         state: &EffectState,
         palette: Option<Arc<Asset<Palette>>>,
-        config: &Config,
     ) {
-        let mut contents = [0; EffectState::size() + Palette::size() + Config::size()];
-        state.write_data(&mut contents[..EffectState::size()]);
+        let mut contents = [0; Palette::size() + EffectState::size()];
         if let Some(palette) = palette {
-            palette.data.write_data(
-                &mut contents[EffectState::size()..EffectState::size() + Palette::size()],
-            );
+            palette.data.write_data(&mut contents[..Palette::size()]);
         }
-        config.write_data(
-            &mut contents[EffectState::size() + Palette::size()
-                ..EffectState::size() + Palette::size() + Config::size()],
-        );
+        state.write_data(&mut contents[Palette::size()..Palette::size() + EffectState::size()]);
 
         if let Some(mut view) = queue.write_buffer_with(
             &self.uniform,

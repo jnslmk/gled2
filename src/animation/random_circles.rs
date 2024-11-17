@@ -30,16 +30,12 @@ impl AnimationConfig for RandomCircles {
         include_str!("../shaders/random_circles.wgsl").into()
     }
 
-    fn config(&self) -> Config {
+    fn config(&self) -> AnimationConfig {
         Config {
             common: self.common,
             count: self.count,
             ..Default::default()
         }
-    }
-
-    fn uses_multiple_colors(&self) -> bool {
-        true
     }
 }
 

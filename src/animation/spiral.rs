@@ -33,7 +33,7 @@ impl AnimationConfig for Spiral {
         include_str!("../shaders/spiral.wgsl").into()
     }
 
-    fn config(&self) -> Config {
+    fn config(&self) -> AnimationConfig {
         Config {
             common: self.common,
             count: self.count,
@@ -59,10 +59,6 @@ impl AnimationConfig for Spiral {
 
         changed |= set_center_button(ui, &mut self.center, rendered);
         changed
-    }
-
-    fn uses_multiple_colors(&self) -> bool {
-        false
     }
 }
 

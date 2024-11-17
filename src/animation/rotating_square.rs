@@ -33,7 +33,7 @@ impl AnimationConfig for RotatingSquare {
         include_str!("../shaders/rotating_square.wgsl").into()
     }
 
-    fn config(&self) -> Config {
+    fn config(&self) -> AnimationConfig {
         Config {
             common: self.common,
             thickness: self.thickness,
@@ -71,10 +71,6 @@ impl AnimationConfig for RotatingSquare {
 
         changed |= set_center_button(ui, &mut self.center, rendered);
         changed
-    }
-
-    fn uses_multiple_colors(&self) -> bool {
-        false
     }
 }
 

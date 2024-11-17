@@ -53,7 +53,7 @@ impl AnimationConfig for Stripes {
         include_str!("../shaders/stripes.wgsl").into()
     }
 
-    fn config(&self) -> Config {
+    fn config(&self) -> AnimationConfig {
         Config {
             common: self.common,
             thickness: self.thickness,
@@ -64,10 +64,6 @@ impl AnimationConfig for Stripes {
             },
             ..Default::default()
         }
-    }
-
-    fn uses_multiple_colors(&self) -> bool {
-        true
     }
 }
 

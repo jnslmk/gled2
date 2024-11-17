@@ -1,8 +1,4 @@
-use super::{
-    config::{CommonConfig, Config},
-    set_center::set_center_button,
-    Animation, AnimationConfig,
-};
+use super::{set_center::set_center_button, Animation, AnimationConfig};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -28,7 +24,7 @@ impl AnimationConfig for Blob {
         include_str!("../shaders/blob.wgsl").into()
     }
 
-    fn config(&self) -> Config {
+    fn config(&self) -> AnimationConfig {
         Config {
             common: self.common,
             center: self.center,
@@ -40,10 +36,6 @@ impl AnimationConfig for Blob {
         let mut changed = self.common.ui(ui);
         changed |= set_center_button(ui, &mut self.center, rendered);
         changed
-    }
-
-    fn uses_multiple_colors(&self) -> bool {
-        false
     }
 }
 
