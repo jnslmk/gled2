@@ -20,7 +20,7 @@ impl CurvesWindow {
 
         egui::Window::new("Curves")
             .collapsible(false)
-            .min_width(500.0)
+            .min_width(600.0)
             .resizable(true)
             .default_pos(ctx.available_rect().center())
             .open(&mut self.open)
