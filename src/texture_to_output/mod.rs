@@ -7,7 +7,7 @@ use crate::{
     wgpu_render_state,
 };
 use log::debug;
-use std::num::NonZeroU64;
+use std::num::{NonZero, NonZeroU64};
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     *,
@@ -148,12 +148,27 @@ impl TextureToOutput {
     pub fn set_positions(&self, queue: &Queue, positions: Positions) {
         debug!("Sending positions to gpu");
         let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
-        queue.write_buffer(&self.positions, 0, &positions_contents);
+
+        if let Some(mut view) = queue.write_buffer_with(
+            &self.positions,
+            0,
+            NonZero::new(positions_contents.len() as u64)
+                .expect("positions_contents length is zero"),
+        ) {
+            view.copy_from_slice(&positions_contents);
+        }
     }
 
     pub fn clear_output(&self, queue: &Queue) {
         debug!("Clearing output buffer");
-        queue.write_buffer(&self.output, 0, &[0u8; OUTPUT_BUFFER_SIZE as usize]);
+
+        if let Some(mut view) = queue.write_buffer_with(
+            &self.output,
+            0,
+            NonZero::new(OUTPUT_BUFFER_SIZE).expect("OUTPUT_BUFFER_SIZE is zero"),
+        ) {
+            view.copy_from_slice(&[0u8; OUTPUT_BUFFER_SIZE as usize]);
+        }
     }
 
     pub fn run(&self, encoder: &mut CommandEncoder) {

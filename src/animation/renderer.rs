@@ -6,7 +6,10 @@ use crate::{
     storage::{Asset, Palette},
     wgpu_render_state,
 };
-use std::{num::NonZeroU64, sync::Arc};
+use std::{
+    num::{NonZero, NonZeroU64},
+    sync::Arc,
+};
 use wgpu::{util::DeviceExt, *};
 
 static COMMON_SHADER_CODE: &str = include_str!("../shaders/common.wgsl");
@@ -145,7 +148,14 @@ impl AnimationRenderer {
             &mut contents[EffectState::size() + Palette::size()
                 ..EffectState::size() + Palette::size() + Config::size()],
         );
-        queue.write_buffer(&self.uniform, 0, &contents);
+
+        if let Some(mut view) = queue.write_buffer_with(
+            &self.uniform,
+            0,
+            NonZero::new(contents.len() as u64).expect("Contents length is zero"),
+        ) {
+            view.copy_from_slice(&contents);
+        }
     }
 
     pub fn render(&self, encoder: &mut CommandEncoder) {

@@ -13,7 +13,7 @@ use crate::{
 use egui::mutex::Mutex;
 use log::debug;
 use once_cell::sync::Lazy;
-use std::num::NonZeroU64;
+use std::num::{NonZero, NonZeroU64};
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     *,
@@ -177,7 +177,15 @@ impl PreviewIndices {
         debug!("Sending positions to gpu");
         let positions = preview_positions();
         let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
-        queue.write_buffer(&self.positions, 0, &positions_contents);
+
+        if let Some(mut view) = queue.write_buffer_with(
+            &self.positions,
+            0,
+            NonZero::new(positions_contents.len() as u64)
+                .expect("positions_contents length is zero"),
+        ) {
+            view.copy_from_slice(&positions_contents);
+        }
     }
 
     pub fn run(&mut self, encoder: &mut CommandEncoder) {
