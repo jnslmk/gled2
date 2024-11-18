@@ -60,6 +60,15 @@ impl<T: AssetTrait> Asset<T> {
         }
     }
 
+    /// Create a copy of an asset with a new uuid
+    pub fn copy(&self) -> Self {
+        Self {
+            id: AssetId::<T>::new(),
+            path: self.path.clone(),
+            data: self.data.clone(),
+        }
+    }
+
     pub fn get(id: AssetId<T>) -> Option<Arc<Self>> {
         let state: &State = &STATE.lock();
         let State::Opened { collections, .. } = state else {

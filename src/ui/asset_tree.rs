@@ -347,6 +347,22 @@ impl<T: AssetTrait> AssetTree<T> {
                         changed = true;
                     }
                     if flex
+                        .add(item().grow(1.0), Button::new("Save Copy"))
+                        .inner
+                        .on_hover_ui(|ui| {
+                            ui.label("Save copy to disk");
+                        })
+                        .clicked()
+                    {
+                        *dirty = false;
+
+                        if let TreeSelection::Asset(asset) = &self.selection {
+                            asset.copy().save();
+                        }
+
+                        changed = true;
+                    }
+                    if flex
                         .add(
                             item().grow(1.0),
                             Button::new(format!("Reset{}", if *dirty { "*" } else { "" }))

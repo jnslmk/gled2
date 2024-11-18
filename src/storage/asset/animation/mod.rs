@@ -53,19 +53,24 @@ impl Animation {
             ui.fonts(|f| f.layout_job(layout_job))
         };
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            changed = ui
-                .add(
-                    egui::TextEdit::multiline(&mut self.shader_code)
-                        .font(egui::TextStyle::Monospace) // for cursor height
-                        .code_editor()
-                        .desired_rows(20)
-                        .lock_focus(true)
-                        .desired_width(f32::INFINITY)
-                        .layouter(&mut layouter),
-                )
-                .changed();
-        });
+        ui.with_layout(
+            egui::Layout::left_to_right(egui::Align::Min).with_cross_justify(true),
+            |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    changed = ui
+                        .add(
+                            egui::TextEdit::multiline(&mut self.shader_code)
+                                .font(egui::TextStyle::Monospace) // for cursor height
+                                .code_editor()
+                                .desired_rows(20)
+                                .lock_focus(true)
+                                .desired_width(f32::INFINITY)
+                                .layouter(&mut layouter),
+                        )
+                        .changed();
+                });
+            },
+        );
 
         changed
     }
