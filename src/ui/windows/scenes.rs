@@ -8,9 +8,13 @@ use crate::{
         effect::EffectWidget,
         ChangeButton,
     },
+    viewport_builder::default_viewport_builder,
     wgpu_render_state,
 };
-use egui::{scroll_area::ScrollBarVisibility, Button, Color32, Context, Margin, Stroke, Vec2};
+use egui::{
+    scroll_area::ScrollBarVisibility, Button, Color32, Context, Id, Margin, Stroke, Vec2,
+    ViewportId,
+};
 use std::iter::once;
 use wgpu::CommandEncoderDescriptor;
 
@@ -29,17 +33,23 @@ impl ScenesWindow {
             return;
         }
 
-        egui::Window::new("Scenes")
-            .collapsible(false)
-            .min_width(810.0)
-            .resizable(true)
-            .default_pos(ctx.available_rect().center())
-            .open(&mut self.open)
-            .show(ctx, |ui| {
+        ctx.show_viewport_immediate(
+            ViewportId(Id::new("scenes window")),
+            default_viewport_builder()
+                .with_title("Gled: Scenes")
+                .with_inner_size(Vec2::new(810.0, 500.0))
+                .with_min_inner_size(Vec2::new(810.0, 500.0)),
+            |ctx, _viewport_class| {
+                ctx.input(|input| {
+                    if input.viewport().close_requested() {
+                        self.open = false;
+                    }
+                });
+
                 egui::SidePanel::left("scenes tree")
                     .exact_width(TREE_WIDTH)
                     .resizable(false)
-                    .show_inside(ui, |ui| {
+                    .show(ctx, |ui| {
                         if self.tree.show(ui, ui.make_persistent_id("scenes_tree")) {
                             self.dirty = false;
                             self.selected_effect = 0;
@@ -53,7 +63,7 @@ impl ScenesWindow {
                 egui::SidePanel::right("scene editor")
                     .exact_width(300.0)
                     .resizable(false)
-                    .show_inside(ui, |ui| {
+                    .show(ctx, |ui| {
                         let TreeSelection::Asset(scene) = self.tree.selected() else {
                             return;
                         };
@@ -106,7 +116,7 @@ impl ScenesWindow {
                         });
                     });
 
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ctx, |ui| {
                     let asset_changed: bool = self.tree.common_settings(ui, &mut self.dirty);
 
                     ui.add_space(4.0);
@@ -197,7 +207,8 @@ impl ScenesWindow {
                             });
                     }
                 });
-            });
+            },
+        );
     }
 
     pub fn open(&mut self) {

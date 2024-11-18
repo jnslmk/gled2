@@ -8,9 +8,10 @@ use crate::{
         asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
         effect::EffectWidget,
     },
+    viewport_builder::default_viewport_builder,
     wgpu_render_state,
 };
-use egui::{Color32, Context, Margin, Stroke, Vec2};
+use egui::{Color32, Context, Id, Margin, Stroke, Vec2, ViewportId};
 use naga::{
     front::wgsl::parse_str,
     valid::{Capabilities, ValidationFlags, Validator},
@@ -101,17 +102,23 @@ impl AnimationWindow {
             self.show_preview_window(ctx);
         }
 
-        egui::Window::new("Animations")
-            .collapsible(false)
-            .min_width(1000.0)
-            .resizable(true)
-            .default_pos(ctx.available_rect().center())
-            .open(&mut self.open)
-            .show(ctx, |ui| {
+        ctx.show_viewport_immediate(
+            ViewportId(Id::new("animations window")),
+            default_viewport_builder()
+                .with_title("Gled: Animations")
+                .with_inner_size(Vec2::new(1000.0, 500.0))
+                .with_min_inner_size(Vec2::new(1000.0, 500.0)),
+            |ctx, _viewport_class| {
+                ctx.input(|input| {
+                    if input.viewport().close_requested() {
+                        self.open = false;
+                    }
+                });
+
                 egui::SidePanel::left("animations tree")
                     .exact_width(TREE_WIDTH)
                     .resizable(false)
-                    .show_inside(ui, |ui| {
+                    .show(ctx, |ui| {
                         if self.tree.show(ui, ui.make_persistent_id("animations_tree")) {
                             self.dirty = false;
                             validate = true;
@@ -122,10 +129,14 @@ impl AnimationWindow {
                 egui::SidePanel::right("animation editor")
                     .exact_width(300.0)
                     .resizable(false)
-                    .show_inside(ui, |ui| {
+                    .show(ctx, |ui| {
                         if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
                             ui.vertical_centered_justified(|ui| {
-                                if ui.button("👁 Open Preview").clicked() {
+                                if self.preview {
+                                    if ui.button("👁 Close Preview").clicked() {
+                                        self.preview = false;
+                                    }
+                                } else if ui.button("👁 Open Preview").clicked() {
                                     self.preview = true;
                                 }
                             });
@@ -136,45 +147,44 @@ impl AnimationWindow {
                         }
                     });
 
-                egui::Frame::default()
-                    .outer_margin(Margin::same(4.0))
-                    .show(ui, |ui| {
-                        if self.tree.common_settings(ui, &mut self.dirty) {
-                            self.effect_state.take();
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    if self.tree.common_settings(ui, &mut self.dirty) {
+                        self.effect_state.take();
+                        validate = true;
+                        if let TreeSelection::Asset(animation) = &self.tree.selected() {
+                            Action::ReloadShaderCode(animation.id).enqueue();
+                        }
+                    }
+
+                    if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
+                        if let Some(error) = self.error.as_mut() {
+                            let lines = error.lines().count().max(1);
+                            egui::Frame::none()
+                                .inner_margin(Margin::from(3.0))
+                                .stroke(Stroke::new(2.0, Color32::RED))
+                                .fill(Color32::DARK_RED)
+                                .show(ui, |ui| {
+                                    ui.heading("Error compiling shader code:");
+                                    ui.add_enabled(
+                                        false,
+                                        egui::TextEdit::multiline(error)
+                                            .font(egui::TextStyle::Monospace)
+                                            .code_editor()
+                                            .desired_rows(lines)
+                                            .lock_focus(true)
+                                            .desired_width(f32::INFINITY),
+                                    );
+                                });
+                        }
+
+                        if animation.data.change_shader_code_ui(ui) {
                             validate = true;
-                            if let TreeSelection::Asset(animation) = &self.tree.selected() {
-                                Action::ReloadShaderCode(animation.id).enqueue();
-                            }
+                            self.dirty = true;
                         }
-
-                        if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
-                            if let Some(error) = self.error.as_mut() {
-                                let lines = error.lines().count().max(1);
-                                egui::Frame::none()
-                                    .inner_margin(Margin::from(3.0))
-                                    .stroke(Stroke::new(2.0, Color32::RED))
-                                    .fill(Color32::DARK_RED)
-                                    .show(ui, |ui| {
-                                        ui.heading("Error compiling shader code:");
-                                        ui.add_enabled(
-                                            false,
-                                            egui::TextEdit::multiline(error)
-                                                .font(egui::TextStyle::Monospace)
-                                                .code_editor()
-                                                .desired_rows(lines)
-                                                .lock_focus(true)
-                                                .desired_width(f32::INFINITY),
-                                        );
-                                    });
-                            }
-
-                            if animation.data.change_shader_code_ui(ui) {
-                                validate = true;
-                                self.dirty = true;
-                            }
-                        }
-                    });
-            });
+                    }
+                });
+            },
+        );
 
         if validate {
             self.validate();
@@ -186,35 +196,44 @@ impl AnimationWindow {
     }
 
     pub fn show_preview_window(&mut self, ctx: &Context) {
-        egui::Window::new("Animation Preview")
-            .collapsible(false)
-            .min_width(600.0)
-            .resizable(true)
-            .default_pos(ctx.available_rect().center())
-            .open(&mut self.preview)
-            .show(ctx, |ui| {
-                if let (Some(effect), Some(effect_state)) =
-                    (&mut self.effect, &mut self.effect_state)
-                {
-                    egui::SidePanel::right("animation preview right side")
-                        .exact_width(300.0)
-                        .resizable(false)
-                        .show_inside(ui, |ui| effect.config_ui(effect_state, ui, false));
+        ctx.show_viewport_immediate(
+            ViewportId(Id::new("animation preview window")),
+            default_viewport_builder()
+                .with_title("Gled: Animation Preview")
+                .with_inner_size(Vec2::new(600.0, 500.0))
+                .with_min_inner_size(Vec2::new(600.0, 500.0)),
+            |ctx, _viewport_class| {
+                ctx.input(|input| {
+                    if input.viewport().close_requested() {
+                        self.preview = false;
+                    }
+                });
 
-                    egui::Frame::default()
-                        .outer_margin(Margin::same(4.0))
-                        .show(ui, |ui| {
-                            ui.add_sized(
-                                Vec2::splat(300.0),
-                                EffectWidget {
-                                    show_group: false,
-                                    selectable: None,
-                                    effect,
-                                    effect_state,
-                                },
-                            );
-                        });
-                }
-            });
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    if let (Some(effect), Some(effect_state)) =
+                        (&mut self.effect, &mut self.effect_state)
+                    {
+                        egui::SidePanel::right("animation preview right side")
+                            .exact_width(300.0)
+                            .resizable(false)
+                            .show(ctx, |ui| effect.config_ui(effect_state, ui, false));
+
+                        egui::Frame::default()
+                            .outer_margin(Margin::same(4.0))
+                            .show(ui, |ui| {
+                                ui.add_sized(
+                                    Vec2::splat(300.0),
+                                    EffectWidget {
+                                        show_group: false,
+                                        selectable: None,
+                                        effect,
+                                        effect_state,
+                                    },
+                                );
+                            });
+                    }
+                });
+            },
+        );
     }
 }

@@ -1,10 +1,11 @@
 use super::{svg::Svg, App, PersistantState};
 use crate::{extract_output::ExtractOutput, project::Project, ui::logo::logo_image};
 use egui::{
-    load::SizedTexture, text::LayoutJob, Button, Color32, Context, ImageButton, Key, Modifiers,
-    Slider, Stroke, TextFormat, Vec2,
+    load::SizedTexture, text::LayoutJob, Button, Color32, Context, Id, ImageButton, Key, Modifiers,
+    Slider, Stroke, TextFormat, Vec2, ViewportId,
 };
 use log::{debug, error};
+use rand::Rng;
 
 impl App {
     pub fn menu(&mut self, ctx: &Context) {
@@ -35,6 +36,14 @@ impl App {
 
                 ui.menu_button("File", |ui| {
                     ui.set_min_width(300.0);
+
+                    if ui.button("Create new window").clicked() {
+                        self.other_main_windows.insert(ViewportId(Id::new(format!(
+                            "Second Window {}",
+                            rand::thread_rng().gen::<u64>()
+                        ))));
+                        ui.close_menu();
+                    }
 
                     if ui
                         .add(Button::new("Create new project").shortcut_text("Ctrl + N"))

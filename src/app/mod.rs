@@ -13,8 +13,9 @@ use crate::{
     pipeline::{Pipeline, RenderDeactivatedScenes},
     project::Project,
     ui::{action::Action, windows::Windows},
+    viewport_builder::default_viewport_builder,
 };
-use egui::Modifiers;
+use egui::{ahash::HashSet, Modifiers, ViewportId};
 use std::path::PathBuf;
 
 pub use persistant_state::PersistantState;
@@ -29,6 +30,7 @@ pub struct App {
     timing: Timing,
     project_path: Option<PathBuf>,
     pipeline: Pipeline,
+    other_main_windows: HashSet<ViewportId>,
 
     blackout: bool,
     svg: Option<Svg>,
@@ -118,17 +120,40 @@ impl eframe::App for App {
             self.timing.fade_duration(),
         );
 
-        self.windows.update(ctx, &self.timing);
-        self.menu(ctx);
-        self.config(ctx);
-        self.preview(ctx);
-        self.effects(ctx);
+        self.draw_main_window(ctx);
 
+        for viewport_id in self.other_main_windows.clone().into_iter() {
+            ctx.show_viewport_immediate(
+                viewport_id,
+                default_viewport_builder()
+                    .with_title("Gled: Second Window")
+                    .with_inner_size([1300.0, 1024.0])
+                    .with_drag_and_drop(true)
+                    .with_min_inner_size([300.0, 200.0]),
+                |ctx, _viewport_class| {
+                    ctx.input(|input| {
+                        if input.viewport().close_requested() {
+                            self.other_main_windows.remove(&viewport_id);
+                        }
+                    });
+
+                    self.draw_main_window(ctx);
+                },
+            );
+        }
+
+        self.windows.update(ctx, &self.timing);
         ctx.request_repaint();
     }
 }
 
 impl App {
+    pub fn draw_main_window(&mut self, ctx: &egui::Context) {
+        self.menu(ctx);
+        self.config(ctx);
+        self.preview(ctx);
+        self.effects(ctx);
+    }
     pub fn new() -> Option<Self> {
         let (output_sender, gpu_ready_receiver) =
             output_sender::start().expect("Could not start output sender");
@@ -145,6 +170,7 @@ impl App {
             hovered_effect: 0,
             pipeline: Pipeline::default(),
             windows: Windows::default(),
+            other_main_windows: HashSet::default(),
         };
 
         app.load_project();

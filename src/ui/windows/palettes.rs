@@ -1,8 +1,9 @@
 use crate::{
     storage::{Asset, Palette},
     ui::asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
+    viewport_builder::default_viewport_builder,
 };
-use egui::{Context, Margin, Ui};
+use egui::{Context, Id, Ui, Vec2, ViewportId};
 
 #[derive(Default)]
 pub struct PalettesWindow {
@@ -18,32 +19,37 @@ impl PalettesWindow {
             return;
         }
 
-        egui::Window::new("Palettes")
-            .collapsible(false)
-            .min_width(500.0)
-            .resizable(true)
-            .default_pos(ctx.available_rect().center())
-            .open(&mut self.open)
-            .show(ctx, |ui| {
+        ctx.show_viewport_immediate(
+            ViewportId(Id::new("palettes window")),
+            default_viewport_builder()
+                .with_title("Gled: Palettes")
+                .with_inner_size(Vec2::new(500.0, 500.0))
+                .with_min_inner_size(Vec2::new(500.0, 500.0)),
+            |ctx, _viewport_class| {
+                ctx.input(|input| {
+                    if input.viewport().close_requested() {
+                        self.open = false;
+                    }
+                });
+
                 egui::SidePanel::left("palettes tree")
                     .exact_width(TREE_WIDTH)
                     .resizable(false)
-                    .show_inside(ui, |ui| {
+                    .show(ctx, |ui| {
                         if self.tree.show(ui, ui.make_persistent_id("palettes_tree")) {
                             self.dirty = false;
                         }
                     });
 
-                egui::Frame::default()
-                    .outer_margin(Margin::same(4.0))
-                    .show(ui, |ui| {
-                        self.tree.common_settings(ui, &mut self.dirty);
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    self.tree.common_settings(ui, &mut self.dirty);
 
-                        if let TreeSelection::Asset(palette) = &mut self.tree.selected() {
-                            palette_editor(ui, palette, &mut self.dirty);
-                        }
-                    });
-            });
+                    if let TreeSelection::Asset(palette) = &mut self.tree.selected() {
+                        palette_editor(ui, palette, &mut self.dirty);
+                    }
+                });
+            },
+        );
     }
 
     pub fn open(&mut self) {

@@ -24,13 +24,13 @@ mod temperature;
 mod texture_to_output;
 mod transition;
 mod ui;
+mod viewport_builder;
 
 use app::App;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration};
-use egui::ViewportBuilder;
 use input::Input;
 use std::sync::OnceLock;
-use ui::logo::icon;
+use viewport_builder::default_viewport_builder;
 use wgpu::PowerPreference;
 
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
@@ -41,11 +41,11 @@ fn main() {
     temperature::start_thread();
 
     let options = eframe::NativeOptions {
-        viewport: ViewportBuilder::default()
+        viewport: default_viewport_builder()
+            .with_title("Gled")
             .with_inner_size([1300.0, 1024.0])
             .with_drag_and_drop(true)
-            .with_min_inner_size([300.0, 200.0])
-            .with_icon(icon()),
+            .with_min_inner_size([300.0, 200.0]),
         renderer: eframe::Renderer::Wgpu,
         vsync: false,
         wgpu_options: WgpuConfiguration {
