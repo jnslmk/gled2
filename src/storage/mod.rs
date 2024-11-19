@@ -63,7 +63,7 @@ pub fn start_thread() {
             retry_wait = std::time::Duration::from_secs(2);
 
             let mut git =
-                match git::Git::open("git@git.freshx.de:rene/gled2_assets.git".to_string()) {
+                match git::Git::open("git@gitlab.com:pentagonum/gled2_assets.git".to_string()) {
                     Ok(git) => git,
                     Err(err) => {
                         let err: String = format!("Could not open git: {err}");
