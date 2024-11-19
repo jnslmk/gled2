@@ -31,9 +31,15 @@ use eframe::egui_wgpu::{RenderState, WgpuConfiguration};
 use input::Input;
 use std::sync::OnceLock;
 use viewport_builder::default_viewport_builder;
-use wgpu::PowerPreference;
+use wgpu::{PowerPreference, PresentMode};
 
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
+
+#[cfg(target_os = "macos")]
+const PRESENT_MODE: PresentMode = PresentMode::Immediate;
+
+#[cfg(not(target_os = "macos"))]
+const PRESENT_MODE: PresentMode = PresentMode::Mailbox;
 
 fn main() {
     logging::init();
@@ -49,7 +55,7 @@ fn main() {
         renderer: eframe::Renderer::Wgpu,
         vsync: false,
         wgpu_options: WgpuConfiguration {
-            present_mode: eframe::wgpu::PresentMode::Mailbox,
+            present_mode: PRESENT_MODE,
             power_preference: PowerPreference::HighPerformance,
             ..Default::default()
         },
