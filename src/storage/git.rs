@@ -36,6 +36,7 @@ impl Git {
         &self.folder
     }
 
+    /*
     pub fn branches(&self) -> Result<Vec<String>, Error> {
         let repository = self
             .repository
@@ -58,6 +59,7 @@ impl Git {
     pub fn current_branch(&self) -> Result<String, Error> {
         Ok(self.branch_shorthand())
     }
+    */
 
     pub fn switch_branch(&self, name: &str) -> Result<(), Error> {
         let repository = self
