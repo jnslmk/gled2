@@ -67,7 +67,6 @@ impl Argument {
                 .on_disabled_hover_text(format!("Click to copy \"{}()\"", self.function_name()))
                 .clicked()
             {
-                println!("Copied function call: {}()", self.function_name());
                 ui.output_mut(|o| o.copied_text = format!("{}()", self.function_name()));
             }
         });

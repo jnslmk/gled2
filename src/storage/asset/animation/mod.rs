@@ -41,13 +41,6 @@ impl Animation {
     pub fn change_shader_code_ui(&mut self, ui: &mut Ui) -> bool {
         let mut changed = false;
 
-        ui.vertical_centered_justified(|ui| {
-            if ui.button("🖹 Copy whole source code").clicked() {
-                println!("Copied whole source code");
-                ui.output_mut(|o| o.copied_text = self.shader_code_complete());
-            }
-        });
-
         let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
             let mut layout_job = egui_extras::syntax_highlighting::highlight(
                 ui.ctx(),
@@ -64,18 +57,23 @@ impl Animation {
             egui::Layout::left_to_right(egui::Align::Min).with_cross_justify(true),
             |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    changed = ui
-                        .add(
-                            egui::TextEdit::multiline(&mut self.shader_code)
-                                .id_salt("Code Editor")
-                                .font(egui::TextStyle::Monospace) // for cursor height
-                                .code_editor()
-                                .desired_rows(20)
-                                .lock_focus(true)
-                                .desired_width(f32::INFINITY)
-                                .layouter(&mut layouter),
-                        )
-                        .changed();
+                    let response = ui.add(
+                        egui::TextEdit::multiline(&mut self.shader_code)
+                            .id_salt("Code Editor")
+                            .font(egui::TextStyle::Monospace) // for cursor height
+                            .code_editor()
+                            .desired_rows(20)
+                            .lock_focus(true)
+                            .desired_width(f32::INFINITY)
+                            .layouter(&mut layouter),
+                    );
+                    response.context_menu(|ui| {
+                        if ui.button("🖹 Copy whole source code").clicked() {
+                            ui.output_mut(|o| o.copied_text = self.shader_code_complete());
+                            ui.close_menu();
+                        }
+                    });
+                    changed = response.changed();
                 });
             },
         );
@@ -150,7 +148,7 @@ impl Animation {
     /// Complete shader code with common.wgsl and getters for arguments
     pub fn shader_code_complete(&self) -> String {
         format!(
-            "{}\n\n{}\n\n{}",
+            "{}\n\n{}\n\n/**************************************************\n        Do not edit/paste code above this line!\n**************************************************/\n\n{}",
             include_str!("../../../shaders/common.wgsl"),
             self.shader_code_for_getters(),
             self.shader_code
