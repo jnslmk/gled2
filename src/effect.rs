@@ -54,18 +54,11 @@ impl Default for Effect {
 }
 
 impl Effect {
-    pub fn shader_code(&self) -> String {
+    pub fn shader_code_complete(&self) -> String {
         self.animation_overwrite
             .clone()
             .or_else(|| self.animation.and_then(Asset::get))
-            .map(|animation| {
-                format!(
-                    "{}\n\n{}\n\n{}",
-                    include_str!("shaders/common.wgsl"),
-                    animation.data.shader_code_for_getters(),
-                    animation.data.shader_code
-                )
-            })
+            .map(|animation| animation.data.shader_code_complete())
             .unwrap_or_else(|| {
                 format!(
                     "{}\n\n{}",

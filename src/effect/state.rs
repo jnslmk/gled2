@@ -34,7 +34,7 @@ pub struct EffectState {
 
 impl EffectState {
     pub fn new(effect: &Effect) -> Self {
-        let (renderer, texture_to_output, texture_id) = compile(&effect.shader_code());
+        let (renderer, texture_to_output, texture_id) = compile(&effect.shader_code_complete());
 
         let output_mix = OutputMix::new();
         Self {
@@ -54,7 +54,7 @@ impl EffectState {
     }
 
     pub fn update(&mut self, effect: &Effect) {
-        let (renderer, texture_to_output, texture_id) = compile(&effect.shader_code());
+        let (renderer, texture_to_output, texture_id) = compile(&effect.shader_code_complete());
         self.renderer = renderer;
         self.texture_to_output = texture_to_output;
         self.texture_id = texture_id;

@@ -36,12 +36,12 @@ impl AnimationWindow {
             if let Some(effect) = self.effect.as_mut() {
                 effect.animation_overwrite = Some(Arc::new(animation.clone()));
                 let mut validator = Validator::new(ValidationFlags::all(), Capabilities::all());
-                match parse_str(&effect.shader_code())
-                    .map_err(|err| err.emit_to_string(&effect.shader_code()))
+                match parse_str(&effect.shader_code_complete())
+                    .map_err(|err| err.emit_to_string(&effect.shader_code_complete()))
                     .and_then(|module| {
                         validator
                             .validate(&module)
-                            .map_err(|err| err.emit_to_string(&effect.shader_code()))
+                            .map_err(|err| err.emit_to_string(&effect.shader_code_complete()))
                     }) {
                     Ok(_) => {
                         if let Some(effect_state) = self.effect_state.as_mut() {
@@ -171,7 +171,6 @@ impl AnimationWindow {
                                             .font(egui::TextStyle::Monospace)
                                             .code_editor()
                                             .desired_rows(lines)
-                                            .lock_focus(true)
                                             .desired_width(f32::INFINITY),
                                     );
                                 });
