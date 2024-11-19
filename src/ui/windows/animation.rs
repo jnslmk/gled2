@@ -7,6 +7,7 @@ use crate::{
         action::Action,
         asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
         effect::EffectWidget,
+        ChangeButton,
     },
     viewport_builder::default_viewport_builder,
     wgpu_render_state,
@@ -199,8 +200,8 @@ impl AnimationWindow {
             ViewportId(Id::new("animation preview window")),
             default_viewport_builder()
                 .with_title("Gled: Animation Preview")
-                .with_inner_size(Vec2::new(600.0, 500.0))
-                .with_min_inner_size(Vec2::new(600.0, 500.0)),
+                .with_inner_size(Vec2::new(630.0, 400.0))
+                .with_min_inner_size(Vec2::new(630.0, 400.0)),
             |ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {
@@ -208,15 +209,34 @@ impl AnimationWindow {
                     }
                 });
 
+                if let (Some(effect), Some(effect_state)) =
+                    (&mut self.effect, &mut self.effect_state)
+                {
+                    egui::SidePanel::right("animation preview right side")
+                        .exact_width(300.0)
+                        .resizable(false)
+                        .show(ctx, |ui| effect.config_ui(effect_state, ui, false));
+                }
+
                 egui::CentralPanel::default().show(ctx, |ui| {
+                    egui::Frame::none()
+                        .inner_margin(Margin::from(6.0))
+                        .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
+                        .show(ui, |ui| {
+                            ui.label("Preview Palette");
+                            ui.vertical_centered_justified(|ui| {
+                                let mut persistant_state = PersistantState::get();
+                                if persistant_state.preview_palette.change_button(ui) {
+                                    persistant_state.save();
+                                }
+                            });
+                        });
+
+                    ui.add_space(4.0);
+
                     if let (Some(effect), Some(effect_state)) =
                         (&mut self.effect, &mut self.effect_state)
                     {
-                        egui::SidePanel::right("animation preview right side")
-                            .exact_width(300.0)
-                            .resizable(false)
-                            .show(ctx, |ui| effect.config_ui(effect_state, ui, false));
-
                         egui::Frame::default()
                             .outer_margin(Margin::same(4.0))
                             .show(ui, |ui| {
