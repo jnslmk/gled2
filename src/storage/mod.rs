@@ -73,6 +73,7 @@ pub fn start_thread() {
                     }
                 };
 
+                log::debug!("Git opened");
             *STATE.lock() = State::Loading(0.2);
 
             let branches = match git.branches() {
@@ -85,6 +86,7 @@ pub fn start_thread() {
                 }
             };
 
+            log::debug!("Got branches");
             *STATE.lock() = State::Loading(0.3);
 
             let current_branch = match git.current_branch() {
@@ -97,6 +99,7 @@ pub fn start_thread() {
                 }
             };
 
+            log::debug!("Got current branch");
             *STATE.lock() = State::Loading(0.4);
 
             let root = git.folder().to_owned();

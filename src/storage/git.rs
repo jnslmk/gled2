@@ -141,23 +141,31 @@ impl Git {
     }
 
     pub fn update(&mut self) {
-        //TODO: Make manuel
-        /*
-        eprintln!("Loading repository at {}", self.folder.display());
-        if let Ok(repository) = Repository::open(&self.folder) {
-            eprintln!("Repository loaded!");
-            self.repository = Some(repository);
-            self.synced = true;
+        log::debug!("Loading repository at {}", self.folder.display());
+        match Repository::open(&self.folder) {
+            Ok(repository) => {
+                log::debug!("Repository loaded!");
+                self.repository = Some(repository);
+                self.synced = true;
+            }
+            Err(err) => {
+                log::error!("Could not open repository: {err:?}");
+                self.synced = false;
+            }
         }
-        */
 
-        if self
+        match self
             .pull()
             .or_else(|_err| self.clone())
             .and_then(|_| self.push())
-            .is_ok()
         {
-            self.synced = true;
+            Ok(_) => {
+                self.synced = true;
+            }
+            Err(err) => {
+                log::error!("Could not sync: {err:?}");
+                self.synced = false;
+            }
         }
     }
 
