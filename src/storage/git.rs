@@ -147,6 +147,7 @@ impl Git {
                 log::debug!("Repository loaded!");
                 self.repository = Some(repository);
                 self.synced = true;
+                return;
             }
             Err(err) => {
                 log::error!("Could not open repository: {err:?}");

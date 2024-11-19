@@ -62,8 +62,9 @@ pub fn start_thread() {
             std::thread::sleep(retry_wait);
             retry_wait = std::time::Duration::from_secs(2);
 
+            
             let mut git =
-                match git::Git::open("git@gitlab.com:pentagonum/gled2_assets.git".to_string()) {
+                match git::Git::open("https://gitlab.com/pentagonum/gled2_assets.git".to_string()) {
                     Ok(git) => git,
                     Err(err) => {
                         let err: String = format!("Could not open git: {err}");
@@ -72,10 +73,11 @@ pub fn start_thread() {
                         continue;
                     }
                 };
+                
 
                 log::debug!("Git opened");
             *STATE.lock() = State::Loading(0.2);
-
+/*
             let branches = match git.branches() {
                 Ok(branches) => branches,
                 Err(err) => {
@@ -101,10 +103,10 @@ pub fn start_thread() {
 
             log::debug!("Got current branch");
             *STATE.lock() = State::Loading(0.4);
+*/
 
             let root = git.folder().to_owned();
             let mut collections = ShareDebugMap::custom();
-
             collections.insert::<Collection<Animation>>(Collection::<Animation>::load(&root));
             *STATE.lock() = State::Loading(0.5);
             collections.insert::<Collection<Curve>>(Collection::<Curve>::load(&root));
@@ -120,8 +122,8 @@ pub fn start_thread() {
 
             *STATE.lock() = State::Opened {
                 synced: git.synced(),
-                branches,
-                current_branch,
+                branches: Default::default(),
+                current_branch: Default::default(),
                 folder: root.clone(),
                 collections,
             };
