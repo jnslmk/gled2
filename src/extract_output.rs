@@ -67,6 +67,8 @@ impl ExtractOutput {
             .expect("Could not receive on gpu rx")
             .expect("Error receiving answer to output_data map on gpu");
 
+        let output_data = buffer_slice.get_mapped_range().to_vec();
+        /* Old code if above does not work:
         let mut output_data = Vec::with_capacity(active_len);
         {
             let padded_buffer = buffer_slice.get_mapped_range();
@@ -74,6 +76,7 @@ impl ExtractOutput {
                 output_data.extend(chunk);
             }
         }
+        */
         self.output_cpu.unmap();
 
         output_data

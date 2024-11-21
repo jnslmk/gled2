@@ -7,6 +7,9 @@ use crate::{
     wgpu_render_state,
 };
 use egui::TextureId;
+use image::ImageBuffer;
+use std::path::PathBuf;
+use wgpu::{Maintain, MapMode, Queue};
 
 #[derive(Debug)]
 pub struct EffectState {
@@ -86,6 +89,79 @@ impl EffectState {
         const SIZE: usize = 24 + AnimationConfig::size();
         static_assertions::const_assert_eq!(SIZE % 16, 0);
         SIZE
+    }
+
+    pub fn save_to_png(&self, queue: &Queue, path: PathBuf) {
+        let texture = self.renderer.texture();
+        let texture_size = texture.size();
+        let buffer_size = (texture_size.width * texture_size.height * 4) as wgpu::BufferAddress;
+        let buffer = wgpu_render_state()
+            .device
+            .create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Texture Buffer"),
+                size: buffer_size,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+        let mut encoder =
+            wgpu_render_state()
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Copy Texture to Buffer"),
+                });
+        encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                texture: self.renderer.texture(),
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(texture_size.width * 4),
+                    rows_per_image: Some(texture_size.height),
+                },
+            },
+            texture_size,
+        );
+
+        queue.submit(Some(encoder.finish()));
+
+        let buffer_slice = buffer.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        buffer_slice.map_async(MapMode::Read, move |v| {
+            tx.send(v).expect("Could not send on oneshot sender")
+        });
+        wgpu_render_state().device.poll(Maintain::Wait);
+        rx.recv()
+            .expect("Could not receive on gpu rx")
+            .expect("Error receiving answer to output_data map on gpu");
+        let mut data = buffer_slice.get_mapped_range().to_vec();
+        buffer.unmap();
+
+        data.chunks_exact_mut(4).for_each(|pixel| {
+            pixel.swap(0, 2);
+            pixel[3] = 255;
+        });
+
+        std::thread::spawn(move || {
+            let img_buffer: ImageBuffer<image::Rgba<u8>, _> =
+                match ImageBuffer::from_raw(texture_size.width, texture_size.height, data) {
+                    Some(img_buffer) => img_buffer,
+                    None => {
+                        log::error!("Could not create image buffer");
+                        return;
+                    }
+                };
+
+            if let Err(err) = img_buffer.save(&path) {
+                log::error!("Could not save image: {}", err);
+            } else {
+                log::info!("Saved image to {}", path.display());
+            }
+        });
     }
 }
 

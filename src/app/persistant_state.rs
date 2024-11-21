@@ -26,6 +26,7 @@ pub struct PersistantState {
     pub freeze_input_events: BTreeSet<InputEvent>,
     pub blackout_input_events: BTreeSet<InputEvent>,
     pub preview_palette: Option<AssetId<Palette>>,
+    pub preview_save_path: Option<PathBuf>,
 }
 
 impl Default for PersistantState {
@@ -51,6 +52,7 @@ impl Default for PersistantState {
                 .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Start(0))))
                 .collect(),
             preview_palette: Default::default(),
+            preview_save_path: Default::default(),
         }
     }
 }
