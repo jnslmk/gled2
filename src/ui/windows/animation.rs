@@ -12,8 +12,7 @@ use crate::{
     viewport_builder::default_viewport_builder,
     wgpu_render_state,
 };
-use egui::{Button, Color32, Context, Id, Margin, Stroke, Vec2, ViewportId};
-use egui_flex::{item, Flex};
+use egui::{Color32, Context, Id, Margin, Stroke, Vec2, ViewportId};
 use naga::{
     front::wgsl::parse_str,
     valid::{Capabilities, ValidationFlags, Validator},
@@ -30,7 +29,7 @@ pub struct AnimationWindow {
     effect_state: Option<EffectState>,
     error: Option<String>,
     preview: bool,
-    save_to_png: bool,
+    copy_rendered_image_to_clipboard: bool,
 }
 
 impl AnimationWindow {
@@ -98,11 +97,9 @@ impl AnimationWindow {
                 label: Some("Render animations for scene editor"),
             });
             effect.render(effect_state, &mut encoder, false);
-            if self.save_to_png {
-                self.save_to_png = false;
-                if let Some(path) = PersistantState::get().preview_save_path.clone() {
-                    effect_state.save_to_png(queue, path);
-                }
+            if self.copy_rendered_image_to_clipboard {
+                self.copy_rendered_image_to_clipboard = false;
+                effect_state.copy_rendered_image_to_clipboard(queue);
             }
             queue.submit(once(encoder.finish()));
         }
@@ -228,40 +225,7 @@ impl AnimationWindow {
                     egui::SidePanel::right("animation preview right side")
                         .exact_width(300.0)
                         .resizable(false)
-                        .show(ctx, |ui| {
-                            effect.config_ui(effect_state, ui, false);
-                            ui.label("Save to png");
-                            Flex::horizontal().show(ui, |flex| {
-                                if flex
-                                    .add(item().grow(1.0), Button::new("Save".to_string()))
-                                    .inner
-                                    .clicked()
-                                {
-                                    self.save_to_png = true;
-                                }
-                                if flex
-                                    .add(
-                                        item().grow(1.0),
-                                        Button::new(
-                                            PersistantState::get()
-                                                .preview_save_path
-                                                .as_ref()
-                                                .map(|path| format!("{}", path.display()))
-                                                .unwrap_or_else(|| "Select path".to_string()),
-                                        ),
-                                    )
-                                    .inner
-                                    .clicked()
-                                {
-                                    let mut persistant_state = PersistantState::get();
-                                    persistant_state.preview_save_path = rfd::FileDialog::new()
-                                        .set_title("Save Preview Image")
-                                        .add_filter("png", &["png"])
-                                        .save_file();
-                                    persistant_state.save();
-                                }
-                            });
-                        });
+                        .show(ctx, |ui| effect.config_ui(effect_state, ui, false));
                 }
 
                 egui::CentralPanel::default().show(ctx, |ui| {
@@ -295,6 +259,15 @@ impl AnimationWindow {
                                         effect_state,
                                     },
                                 );
+                                if ui
+                                    .vertical_centered_justified(|ui| {
+                                        ui.button("🖹 Copy Image to Clipboard")
+                                    })
+                                    .inner
+                                    .clicked()
+                                {
+                                    self.copy_rendered_image_to_clipboard = true;
+                                }
                             });
                     }
                 });

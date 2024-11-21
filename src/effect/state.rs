@@ -6,9 +6,8 @@ use crate::{
     texture_to_output::TextureToOutput,
     wgpu_render_state,
 };
+use arboard::{Clipboard, ImageData};
 use egui::TextureId;
-use image::ImageBuffer;
-use std::path::PathBuf;
 use wgpu::{Maintain, MapMode, Queue};
 
 #[derive(Debug)]
@@ -91,7 +90,7 @@ impl EffectState {
         SIZE
     }
 
-    pub fn save_to_png(&self, queue: &Queue, path: PathBuf) {
+    pub fn copy_rendered_image_to_clipboard(&self, queue: &Queue) {
         let texture = self.renderer.texture();
         let texture_size = texture.size();
         let buffer_size = (texture_size.width * texture_size.height * 4) as wgpu::BufferAddress;
@@ -141,25 +140,22 @@ impl EffectState {
         let mut data = buffer_slice.get_mapped_range().to_vec();
         buffer.unmap();
 
-        data.chunks_exact_mut(4).for_each(|pixel| {
-            pixel.swap(0, 2);
-            pixel[3] = 255;
-        });
-
         std::thread::spawn(move || {
-            let img_buffer: ImageBuffer<image::Rgba<u8>, _> =
-                match ImageBuffer::from_raw(texture_size.width, texture_size.height, data) {
-                    Some(img_buffer) => img_buffer,
-                    None => {
-                        log::error!("Could not create image buffer");
-                        return;
-                    }
-                };
+            data.chunks_exact_mut(4).for_each(|pixel| {
+                pixel.swap(0, 2);
+                pixel[3] = 255;
+            });
 
-            if let Err(err) = img_buffer.save(&path) {
-                log::error!("Could not save image: {}", err);
-            } else {
-                log::info!("Saved image to {}", path.display());
+            if let Ok(mut clipboard) = Clipboard::new() {
+                if let Err(err) = clipboard.set_image(ImageData {
+                    bytes: data.into(),
+                    width: texture_size.width as usize,
+                    height: texture_size.height as usize,
+                }) {
+                    log::error!("Could not copy rendered image to clipboard: {}", err);
+                } else {
+                    log::info!("Copied rendered image to clipboard");
+                }
             }
         });
     }
