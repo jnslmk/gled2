@@ -1,5 +1,6 @@
 use crate::{
-    group::Group, pipeline::Pipeline, svg::MeasurementPoints, texture_to_output::Positions,
+    extract_output::ExtractOutput, group::Group, preview_indices::PREVIEW_INDICES,
+    svg::MeasurementPoints, texture_to_output::Positions, ui::action::Action,
 };
 use anyhow::Result;
 use egui::{mutex::Mutex, Rect};
@@ -51,7 +52,7 @@ impl Svg {
         Ok(())
     }
 
-    pub fn image(&mut self, pipeline: &mut Pipeline) -> Option<&RetainedImage> {
+    pub fn image(&mut self) -> Option<&RetainedImage> {
         if self.image.is_none() {
             self.image = {
                 let svg = crate::svg::ParsedSvg::parse(&self.svg_contents).ok()?;
@@ -59,7 +60,9 @@ impl Svg {
                 let universes = measurement_points.universes();
                 *MEASUREMENT_POINTS.lock() = measurement_points;
                 let image = svg.render().ok()?;
-                pipeline.svg_or_groups_changed(universes);
+                PREVIEW_INDICES.lock().send_positions();
+                *ExtractOutput::get().universes.lock() = universes;
+                Action::SendPositions.enqueue();
 
                 Some(image)
             };

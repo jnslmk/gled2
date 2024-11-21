@@ -13,10 +13,8 @@ mod output_clear;
 mod output_mix;
 mod output_routings;
 mod output_sender;
-mod pipeline;
 mod preview;
 mod preview_indices;
-mod project;
 mod scene_instance;
 mod storage;
 mod svg;
@@ -27,13 +25,23 @@ mod ui;
 mod viewport_builder;
 
 use app::App;
+use constants::OUTPUT_BUFFER_SIZE;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration};
 use input::Input;
+use once_cell::sync::Lazy;
 use std::sync::OnceLock;
 use viewport_builder::default_viewport_builder;
-use wgpu::{PowerPreference, PresentMode};
+use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
 
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
+pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
+    wgpu_render_state().device.create_buffer(&BufferDescriptor {
+        size: OUTPUT_BUFFER_SIZE,
+        usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+        label: Some("Output buffer"),
+        mapped_at_creation: false,
+    })
+});
 
 #[cfg(target_os = "macos")]
 const PRESENT_MODE: PresentMode = PresentMode::Immediate;

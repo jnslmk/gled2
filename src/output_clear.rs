@@ -1,5 +1,5 @@
 //! Clear output buffer.
-use crate::{constants::OUTPUT_BUFFER_SIZE, pipeline::OUTPUT_BUFFER, wgpu_render_state};
+use crate::{constants::OUTPUT_BUFFER_SIZE, wgpu_render_state, OUTPUT_BUFFER};
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use std::num::NonZeroU64;

@@ -20,13 +20,13 @@ impl App {
                 ui.horizontal_wrapped(|ui| {
                     let mut changed = None;
                     let mut flashed = Vec::new();
-                    for (index, scene_instance) in self.pipeline.scene_instances().into_iter() {
+                    for (path, scene_instance) in self.project.scene_instances() {
                         let response = ui.add_sized(
                             Vec2::new(effects_size + 40.0, effects_size + 60.0),
                             SceneInstanceWidget {
                                 selected_scene_instance: &mut self.selected_scene_instance,
-                                hovered_scene_instance: &mut self.hovered_effect,
-                                index,
+                                hovered_scene_instance: &mut self.hovered_scene_instance,
+                                path,
                                 scene_instance,
                                 svg: svg.filter(|_| effects_show_svg),
                                 effects_size,
@@ -41,12 +41,12 @@ impl App {
                                 .map(|event| event.is_new())
                                 .unwrap_or_default()
                         {
-                            changed = Some(index);
+                            changed = Some(path);
                         }
 
                         if let Some(event) = scene_instance.flash_input.as_ref() {
                             if event.is_live() {
-                                flashed.push(index);
+                                flashed.push(path);
                             }
                         }
 
@@ -55,8 +55,8 @@ impl App {
                         }
                     }
 
-                    if let Some(changed_index) = changed {
-                        if let Some(scene_instance) = self.pipeline.scene_instance(changed_index) {
+                    if let Some(changed_path) = changed {
+                        if let Some(scene_instance) = self.project.scene_instance(changed_path) {
                             scene_instance.set_transition(Transition::new(
                                 if scene_instance.active {
                                     TransitionGoal::TurnOff
@@ -68,8 +68,8 @@ impl App {
                         }
                     }
 
-                    for (index, scene_instance) in self.pipeline.scene_instances().iter_mut() {
-                        scene_instance.set_flash(flashed.contains(index));
+                    for (path, scene_instance) in self.project.scene_instances() {
+                        scene_instance.set_flash(flashed.contains(&path));
                     }
                 });
             });

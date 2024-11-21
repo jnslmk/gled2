@@ -1,7 +1,7 @@
 use super::App;
 use crate::{
     app::PersistantState,
-    storage::{AssetId, Scene},
+    storage::{AssetId, Scene, SceneInstancePath},
     ui::{action, ChangeButton},
 };
 use egui::{Align, Checkbox, Layout, RichText, Slider, Ui};
@@ -12,23 +12,29 @@ impl App {
         let mut effects_always_render = PersistantState::effects_always_render();
         let mut effects_size = PersistantState::effects_size();
 
+        let has_svg = self.project.svg.is_some();
+        let deck = self.project.deck(SceneInstancePath::default());
+        let Some(scene_group) = deck.scene_group(SceneInstancePath::default()) else {
+            return;
+        };
+
         ui.horizontal(|ui| {
             ui.label(RichText::new("Scenes").heading());
 
             let mut scene: Option<AssetId<Scene>> = None;
             scene.change_button(ui);
             if let Some(scene) = scene {
-                self.selected_scene_instance = self.pipeline.add_scene(scene);
+                scene_group.add_scene(&mut self.selected_scene_instance, scene);
             }
 
-            if self.pipeline.groups.change_button(ui) {
+            if scene_group.groups.change_button(ui) {
                 action::Action::InitGPU.enqueue();
             }
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if ui
                     .add_enabled(
-                        self.svg.is_some(),
+                        has_svg,
                         Checkbox::new(&mut effects_show_svg, RichText::new("SVG")),
                     )
                     .changed()
@@ -61,19 +67,19 @@ impl App {
             });
         });
         ui.horizontal(|ui| {
-            ui.checkbox(&mut self.pipeline.auto_mode_active, "Auto Mode");
+            ui.checkbox(&mut deck.auto_mode_active, "Auto Mode");
             ui.add_enabled(
-                self.pipeline.auto_mode_active,
-                Slider::new(&mut self.pipeline.auto_mode_seconds, 1..=240)
+                deck.auto_mode_active,
+                Slider::new(&mut deck.auto_mode_seconds, 1..=240)
                     .custom_formatter(|n, _| format!("{} s", n)),
             );
             ui.label("Max Effects:");
             ui.add_enabled(
-                self.pipeline.auto_mode_active,
-                Slider::new(&mut self.pipeline.auto_mode_max_scenes, 1..=10),
+                deck.auto_mode_active,
+                Slider::new(&mut deck.auto_mode_max_scenes, 1..=10),
             );
             ui.vertical_centered_justified(|ui| {
-                self.pipeline.palette.change_button(ui);
+                deck.palette.change_button(ui);
             });
         });
     }

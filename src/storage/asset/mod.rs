@@ -14,7 +14,7 @@ pub use animation::{Animation, AnimationConfig, AnimationRenderer};
 pub use curve::{Curve, RangeDegrees, RangePercentage, StaticOrCurve};
 pub use output_device::OutputDevice;
 pub use palette::Palette;
-pub use project::Project;
+pub use project::{Project, RenderDeactivatedScenes, SceneInstancePath};
 pub use scene::{GroupsSelection, Scene};
 
 pub trait AssetTrait:

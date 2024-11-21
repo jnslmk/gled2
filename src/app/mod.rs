@@ -10,13 +10,11 @@ use crate::{
     extract_output::ExtractOutput,
     input::Input,
     output_sender::{self, GpuReadyReceiver, OutputSender},
-    pipeline::{Pipeline, RenderDeactivatedScenes},
-    project::Project,
+    storage::{Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
     ui::{action::Action, windows::Windows},
     viewport_builder::default_viewport_builder,
 };
 use egui::{ahash::HashSet, Modifiers, ViewportId};
-use std::path::PathBuf;
 
 pub use persistant_state::PersistantState;
 pub use svg::{positions, preview_positions, preview_uv, Svg};
@@ -28,14 +26,12 @@ pub struct App {
     output_sender: OutputSender,
     gpu_ready_receiver: GpuReadyReceiver,
     timing: Timing,
-    project_path: Option<PathBuf>,
-    pipeline: Pipeline,
+    project: Project,
+    project_id: Option<AssetId<Project>>,
     other_main_windows: HashSet<ViewportId>,
-
     blackout: bool,
-    svg: Option<Svg>,
-    selected_scene_instance: usize,
-    hovered_effect: usize,
+    selected_scene_instance: SceneInstancePath,
+    hovered_scene_instance: SceneInstancePath,
 }
 
 impl eframe::App for App {
@@ -56,33 +52,32 @@ impl eframe::App for App {
         match Action::dequeue() {
             None => (),
             Some(Action::DeleteSelectedSceneInstance) => {
-                self.pipeline
-                    .remove_scene_instance(self.selected_scene_instance);
-
-                self.selected_scene_instance = self
-                    .pipeline
-                    .scene_instances()
-                    .first()
-                    .map(|(index, _scene_instance)| *index)
-                    .unwrap_or_default();
-                self.pipeline.init_gpu();
+                self.project
+                    .remove_scene_instance(&mut self.selected_scene_instance);
+                Action::InitGPU.enqueue();
             }
             Some(Action::CloneSelectedSceneInstance) => {
                 if let Some(scene) = self
-                    .pipeline
+                    .project
                     .scene_instance(self.selected_scene_instance)
                     .map(|scene_instance| scene_instance.scene)
                 {
-                    let index = self.pipeline.add_scene(scene);
-                    self.selected_scene_instance = index;
-                    self.pipeline.init_gpu();
+                    if let Some(scene_group) =
+                        self.project.scene_group(self.selected_scene_instance)
+                    {
+                        scene_group.add_scene(&mut self.selected_scene_instance, scene);
+                        Action::InitGPU.enqueue();
+                    }
                 }
             }
             Some(Action::InitGPU) => {
-                self.pipeline.init_gpu();
+                self.project.init_gpu();
             }
             Some(Action::ReloadShaderCode(animation)) => {
-                self.pipeline.reload_shader_code(animation);
+                self.project.reload_shader_code(animation);
+            }
+            Some(Action::SendPositions) => {
+                self.project.send_positions();
             }
         }
 
@@ -97,9 +92,9 @@ impl eframe::App for App {
 
         ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
             "gled - {} {}",
-            match self.project_path.as_ref() {
-                None => "demo project".to_string(),
-                Some(path) => format!("{}", path.display()),
+            match self.project_id.and_then(Asset::get) {
+                None => "no project loaded".to_owned(),
+                Some(project) => project.name().to_owned(),
             },
             match self.timing.framerate() {
                 Some(fps) => format!("({fps:.1} fps)"),
@@ -107,7 +102,7 @@ impl eframe::App for App {
             }
         )));
 
-        self.pipeline.render(
+        self.project.render(
             &mut self.output_sender,
             &mut self.gpu_ready_receiver,
             &self.timing,
@@ -115,7 +110,10 @@ impl eframe::App for App {
             if PersistantState::effects_always_render() {
                 RenderDeactivatedScenes::Always
             } else {
-                RenderDeactivatedScenes::Some(self.selected_scene_instance, self.hovered_effect)
+                RenderDeactivatedScenes::Some(
+                    self.selected_scene_instance,
+                    self.hovered_scene_instance,
+                )
             },
             self.timing.fade_duration(),
         );
@@ -158,38 +156,31 @@ impl App {
         let (output_sender, gpu_ready_receiver) =
             output_sender::start().expect("Could not start output sender");
 
-        let mut app = Self {
+        let app = Self {
             startup: true,
             output_sender,
             gpu_ready_receiver,
-            svg: None,
-            project_path: crate::opts::OPTS.project_path.clone(),
-            timing: Timing::default(),
-            blackout: false,
-            selected_scene_instance: 0,
-            hovered_effect: 0,
-            pipeline: Pipeline::default(),
-            windows: Windows::default(),
-            other_main_windows: HashSet::default(),
+            timing: Default::default(),
+            blackout: Default::default(),
+            selected_scene_instance: Default::default(),
+            hovered_scene_instance: Default::default(),
+            project: Default::default(),
+            project_id: Default::default(),
+            windows: Default::default(),
+            other_main_windows: Default::default(),
         };
 
-        app.load_project();
+        //TODO: Load last loaded project
 
         Some(app)
     }
 
-    pub fn load_project(&mut self) {
-        let project = Project::load(self.project_path.as_deref());
-        self.use_project(project);
-    }
-
     pub fn use_project(&mut self, project: Project) {
-        self.pipeline = project.pipeline;
-        self.pipeline.init_gpu();
+        self.project = project;
 
-        *ExtractOutput::get().routings.lock() = project.output_routings;
+        Action::InitGPU.enqueue();
+        *ExtractOutput::get().routings.lock() = self.project.output_routings.clone();
 
         svg::reset();
-        self.svg = project.svg;
     }
 }

@@ -9,6 +9,7 @@ pub enum Action {
     DeleteSelectedSceneInstance,
     CloneSelectedSceneInstance,
     InitGPU,
+    SendPositions,
     ReloadShaderCode(AssetId<Animation>),
 }
 

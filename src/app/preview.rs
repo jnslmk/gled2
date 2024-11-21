@@ -1,5 +1,5 @@
 use super::{App, PersistantState};
-use crate::app::preview_uv;
+use crate::{app::preview_uv, preview::PREVIEW};
 use egui::{load::SizedTexture, Align, Color32, Context, Image, Layout, RichText, Vec2};
 
 impl App {
@@ -44,10 +44,11 @@ impl App {
                     };
 
                     let res = self
+                        .project
                         .svg
                         .as_mut()
                         .filter(|_| show_preview_svg)
-                        .and_then(|svg| svg.image(&mut self.pipeline))
+                        .and_then(|svg| svg.image())
                         .map(|image| {
                             ui.add(
                                 Image::new(SizedTexture::new(image.texture_id(ctx), size))
@@ -56,8 +57,7 @@ impl App {
                             )
                         });
                     let mut preview =
-                        Image::new(SizedTexture::new(self.pipeline.preview_texture_id(), size))
-                            .uv(uv);
+                        Image::new(SizedTexture::new(PREVIEW.lock().texture_id(), size)).uv(uv);
                     if !show_preview_svg {
                         preview = preview.bg_fill(Color32::BLACK);
                     }

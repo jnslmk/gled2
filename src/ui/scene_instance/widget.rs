@@ -1,4 +1,7 @@
-use crate::{scene_instance::SceneInstance, storage::GroupsSelection};
+use crate::{
+    scene_instance::SceneInstance,
+    storage::{GroupsSelection, SceneInstancePath},
+};
 use egui::{
     epaint::{CircleShape, RectShape},
     load::SizedTexture,
@@ -8,9 +11,9 @@ use egui::{
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct SceneInstanceWidget<'a> {
-    pub selected_scene_instance: &'a mut usize,
-    pub hovered_scene_instance: &'a mut usize,
-    pub index: usize,
+    pub selected_scene_instance: &'a mut SceneInstancePath,
+    pub hovered_scene_instance: &'a mut SceneInstancePath,
+    pub path: SceneInstancePath,
     pub scene_instance: &'a mut SceneInstance,
     pub svg: Option<TextureId>,
     pub effects_size: f32,
@@ -23,7 +26,7 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
         let mut checkbox_rect = None;
 
         let mut response = egui::Frame::none()
-            .fill(if *self.selected_scene_instance == self.index {
+            .fill(if *self.selected_scene_instance == self.path {
                 Color32::GOLD.linear_multiply(
                     ((SystemTime::now()
                         .duration_since(UNIX_EPOCH)
@@ -191,10 +194,10 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
 
         let res = ui.put(response.rect, Button::new("").fill(Color32::TRANSPARENT));
         if res.clicked() {
-            *self.selected_scene_instance = self.index;
+            *self.selected_scene_instance = self.path;
         }
         if res.hovered() {
-            *self.hovered_scene_instance = self.index;
+            *self.hovered_scene_instance = self.path;
         }
 
         if let Some(checkbox_rect) = checkbox_rect {

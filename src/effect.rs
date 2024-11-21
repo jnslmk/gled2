@@ -3,11 +3,11 @@ mod state;
 use crate::{
     app::positions,
     group::Groups,
-    pipeline::OUTPUT_BUFFER,
     storage::{
         Animation, AnimationConfig, Asset, AssetId, Palette, RangeDegrees, RangePercentage,
         StaticOrCurve,
     },
+    OUTPUT_BUFFER,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

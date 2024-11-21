@@ -7,9 +7,10 @@ use egui::{Color32, Context, Margin, Stroke};
 impl App {
     pub fn effects(&mut self, ctx: &Context) {
         let svg = self
+            .project
             .svg
             .as_mut()
-            .and_then(|svg| svg.image(&mut self.pipeline))
+            .and_then(|svg| svg.image())
             .map(|image| image.texture_id(ctx));
         let uv = preview_uv();
         egui::CentralPanel::default().show(ctx, |ui| {

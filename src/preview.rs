@@ -1,8 +1,8 @@
 //! Render preview circles.
 use crate::{
     constants::{OUTPUT_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, PREVIEW_TEXTURE_SIZE},
-    pipeline::OUTPUT_BUFFER,
-    wgpu_render_state,
+    preview_indices::PREVIEW_INDICES,
+    wgpu_render_state, OUTPUT_BUFFER,
 };
 use egui::{mutex::Mutex, TextureId};
 use once_cell::sync::Lazy;
@@ -124,7 +124,7 @@ impl Preview {
         }
     }
 
-    pub fn set_buffers(&mut self, preview_indices: &Buffer) {
+    pub fn set_buffers(&mut self) {
         let device = wgpu_render_state().device;
         self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
             label: Some("Preview bind group"),
@@ -132,7 +132,7 @@ impl Preview {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: preview_indices.as_entire_binding(),
+                    resource: PREVIEW_INDICES.lock().indices().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,

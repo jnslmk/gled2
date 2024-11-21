@@ -12,7 +12,7 @@ impl App {
             .show(ctx, |ui| {
                 ui.add_space(6.0);
 
-                match self.pipeline.scene_instance(self.selected_scene_instance) {
+                match self.project.scene_instance(self.selected_scene_instance) {
                     Some(scene_instance) => {
                         scene_instance.config_ui(ctx, ui);
                     }
