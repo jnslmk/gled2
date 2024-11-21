@@ -158,7 +158,7 @@ impl AnimationWindow {
                     }
 
                     if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
-                        if let Some(error) = self.error.as_mut() {
+                        if let Some(mut error) = self.error.as_deref() {
                             let lines = error.lines().count().max(1);
                             egui::Frame::none()
                                 .inner_margin(Margin::from(3.0))
@@ -166,14 +166,19 @@ impl AnimationWindow {
                                 .fill(Color32::DARK_RED)
                                 .show(ui, |ui| {
                                     ui.heading("Error compiling shader code:");
-                                    ui.add_enabled(
-                                        false,
-                                        egui::TextEdit::multiline(error)
+                                    ui.add(
+                                        egui::TextEdit::multiline(&mut error)
                                             .font(egui::TextStyle::Monospace)
                                             .code_editor()
                                             .desired_rows(lines)
                                             .desired_width(f32::INFINITY),
-                                    );
+                                    )
+                                    .context_menu(|ui| {
+                                        if ui.button("🖹 Copy error").clicked() {
+                                            ui.output_mut(|o| o.copied_text = error.to_owned());
+                                            ui.close_menu();
+                                        }
+                                    });
                                 });
                         }
 
