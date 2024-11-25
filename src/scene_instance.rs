@@ -1,5 +1,5 @@
 use crate::{
-    app::{PersistantState, Timing},
+    app::Timing,
     effect::EffectState,
     group::Groups,
     input::InputEvent,
@@ -92,6 +92,7 @@ impl SceneInstance {
         palette: Option<Arc<Asset<Palette>>>,
         groups: &Groups,
         timing: &Timing,
+        main_dimmer: f32,
     ) {
         let mut beat_progression = timing.beat_progression();
         beat_progression += self.beat_progression_offset.value(beat_progression);
@@ -115,7 +116,7 @@ impl SceneInstance {
         }
 
         if always_render || self.active || self.flash {
-            let main_opacity = PersistantState::main_dimmer()
+            let main_opacity = main_dimmer
                 * opacity_factor
                 * self.opacity.value(beat_progression)
                 * self.input_dimmer;

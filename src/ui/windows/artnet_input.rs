@@ -1,4 +1,4 @@
-use crate::{input::ARTNET_INPUT_CONFIG, viewport_builder::default_viewport_builder};
+use crate::{input::ARTNET_CONFIG, viewport_builder::default_viewport_builder};
 use egui::{Context, Id, TextEdit, Vec2, ViewportId};
 
 #[derive(Default)]
@@ -31,33 +31,34 @@ impl ArtnetInputWindow {
                 });
 
                 egui::CentralPanel::default().show(ctx, |ui| {
-                    let mut config = ARTNET_INPUT_CONFIG.lock();
+                    let mut config = ARTNET_CONFIG.lock();
 
                     ui.label("Universe");
                     let universe = self
                         .universe
                         .get_or_insert_with(|| config.universe.to_string());
-                    if ui.add(TextEdit::singleline(universe)).changed()
-                        && universe.parse::<u16>().is_ok()
-                    {
-                        config.universe = universe.parse().expect("Should never happen");
+                    if ui.add(TextEdit::singleline(universe)).changed() {
+                        if let Ok(universe) = universe.parse::<u16>() {
+                            config.universe = universe;
+                        }
                     }
 
                     ui.label("Start channel");
                     let start = self.start.get_or_insert_with(|| config.start.to_string());
-                    if ui.add(TextEdit::singleline(start)).changed() && start.parse::<u16>().is_ok()
-                    {
-                        config.start = start.parse().expect("Should never happen");
+                    if ui.add(TextEdit::singleline(start)).changed() {
+                        if let Ok(start) = start.parse::<u16>() {
+                            config.start = start;
+                        }
                     }
 
                     ui.label("Channels");
                     let channels = self
                         .channels
                         .get_or_insert_with(|| config.channels.to_string());
-                    if ui.add(TextEdit::singleline(channels)).changed()
-                        && channels.parse::<u16>().is_ok()
-                    {
-                        config.channels = channels.parse().expect("Should never happen");
+                    if ui.add(TextEdit::singleline(channels)).changed() {
+                        if let Ok(channels) = channels.parse::<u16>() {
+                            config.channels = channels;
+                        }
                     }
                 });
             },
@@ -66,5 +67,9 @@ impl ArtnetInputWindow {
 
     pub fn open(&mut self) {
         self.open = true;
+    }
+
+    pub fn close(&mut self) {
+        self.open = false;
     }
 }

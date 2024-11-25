@@ -1,5 +1,7 @@
 use super::{svg::Svg, App, PersistantState};
-use crate::{storage::Asset, ui::logo::logo_image};
+use crate::{
+    extract_output::ExtractOutput, input::ARTNET_CONFIG, storage::Asset, ui::logo::logo_image,
+};
 use egui::{
     load::SizedTexture, text::LayoutJob, Button, Color32, Context, Id, ImageButton, Key, Modifiers,
     Slider, Stroke, TextFormat, Vec2, ViewportId,
@@ -51,7 +53,7 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add(Button::new("Open project Window").shortcut_text("Ctrl + O"))
+                        .add(Button::new("Load project").shortcut_text("Ctrl + O"))
                         .clicked()
                     {
                         open_project = true;
@@ -95,17 +97,37 @@ impl App {
 
                     ui.separator();
 
-                    if ui.button("Artnet Input").clicked() {
+                    if ui
+                        .add_enabled(self.project.is_some(), Button::new("Artnet Input"))
+                        .clicked()
+                    {
                         self.windows.artnet_input.open();
                         ui.close_menu();
                     }
-                    if ui.button("Output Routings").clicked() {
+                    if ui
+                        .add_enabled(self.project.is_some(), Button::new("Output Routings"))
+                        .clicked()
+                    {
                         self.windows.output_routings.open();
                         ui.close_menu();
                     }
-                    if ui.button("Shortcuts").clicked() {
+                    if ui
+                        .add_enabled(self.project.is_some(), Button::new("Shortcuts"))
+                        .clicked()
+                    {
                         self.windows.shortcuts.open();
                         ui.close_menu();
+                    }
+
+                    if let Some(project) = self.project.as_mut() {
+                        ui.separator();
+                        ui.label("Main Dimmer");
+                        ui.spacing_mut().slider_width = 290.0;
+                        ui.add(
+                            Slider::new(&mut project.main_dimmer, 0.0..=1.0)
+                                .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
+                                .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
+                        );
                     }
                 });
 
@@ -120,6 +142,8 @@ impl App {
                             .map(Arc::unwrap_or_clone),
                     ) {
                         asset.data = project.to_owned();
+                        asset.data.artnet_config = ARTNET_CONFIG.lock().clone();
+                        asset.data.output_routings = ExtractOutput::get().routings.lock().clone();
                         asset.save();
                     }
                 }
@@ -161,48 +185,6 @@ impl App {
                     }
                 }
 
-                ui.menu_button("Config", |ui| {
-                    ui.set_min_width(300.0);
-
-                    ui.label("Framerate Limiter");
-                    let mut fps_limit = PersistantState::fps_limit();
-                    if ui
-                        .add(
-                            Slider::new(&mut fps_limit, 30.0..=1000.0)
-                                .integer()
-                                .custom_formatter(|n, _| format!("{n:.0} fps")),
-                        )
-                        .changed()
-                    {
-                        let mut persistant_state = PersistantState::get();
-                        persistant_state.fps_limit = fps_limit;
-                        persistant_state.save();
-                    }
-
-                    ui.separator();
-
-                    ui.label("Main Dimmer");
-
-                    let mut main_dimmer = PersistantState::main_dimmer();
-                    if ui
-                        .add(
-                            Slider::new(&mut main_dimmer, 0.0..=1.0)
-                                .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
-                                .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
-                        )
-                        .changed()
-                    {
-                        let mut persistant_state = PersistantState::get();
-                        persistant_state.main_dimmer = main_dimmer;
-                        persistant_state.save();
-                    }
-
-                    ui.separator();
-
-                    ui.label("UI Zoom");
-                    egui::gui_zoom::zoom_menu_buttons(ui);
-                });
-
                 ui.menu_button("Assets", |ui| {
                     ui.set_min_width(300.0);
 
@@ -232,6 +214,30 @@ impl App {
                     }
                 });
 
+                ui.menu_button("Config", |ui| {
+                    ui.set_min_width(300.0);
+
+                    ui.label("Framerate Limiter");
+                    let mut fps_limit = PersistantState::fps_limit();
+                    ui.spacing_mut().slider_width = 290.0;
+                    if ui
+                        .add(
+                            Slider::new(&mut fps_limit, 30.0..=1000.0)
+                                .integer()
+                                .custom_formatter(|n, _| format!("{n:.0} fps")),
+                        )
+                        .changed()
+                    {
+                        let mut persistant_state = PersistantState::get();
+                        persistant_state.fps_limit = fps_limit;
+                        persistant_state.save();
+                    }
+
+                    ui.separator();
+
+                    egui::gui_zoom::zoom_menu_buttons(ui);
+                });
+
                 ui.separator();
 
                 ui.spacing_mut().slider_width =
@@ -254,13 +260,31 @@ impl App {
                         blackout = blackout.fill(Color32::DARK_RED);
                     }
                     if ui.add_sized(menu_button_size, blackout).clicked()
-                        || PersistantState::blackout_input_is_new()
+                        || self
+                            .project
+                            .as_ref()
+                            .map(|project| project.blackout_input_is_new())
+                            .unwrap_or_default()
                     {
                         self.blackout = !self.blackout;
                     }
 
-                    self.timing.freeze_button(ui, menu_button_size);
-                    self.timing.beat_button(ui, menu_button_size);
+                    self.timing.freeze_button(
+                        ui,
+                        menu_button_size,
+                        self.project
+                            .as_ref()
+                            .map(|project| project.freeze_input_is_new())
+                            .unwrap_or_default(),
+                    );
+                    self.timing.tap_button(
+                        ui,
+                        menu_button_size,
+                        self.project
+                            .as_ref()
+                            .map(|project| project.tap_input_is_new())
+                            .unwrap_or_default(),
+                    );
                     ui.separator();
                 });
             });

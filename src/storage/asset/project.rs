@@ -7,6 +7,7 @@ use super::{Animation, AssetId, AssetTrait};
 use crate::{
     app::{Svg, Timing},
     extract_output::ExtractOutput,
+    input::{ArtnetConfig, GamepadEvent, InputEvent},
     output_clear::OUTPUT_CLEAR,
     output_routings::OutputRoutings,
     output_sender::{GpuReadyReceiver, OutputSender},
@@ -16,7 +17,7 @@ use crate::{
     wgpu_render_state,
 };
 use serde::{Deserialize, Serialize};
-use std::{iter::once, time::Duration};
+use std::{collections::BTreeSet, iter::once, time::Duration};
 use wgpu::CommandEncoderDescriptor;
 
 pub use deck::Deck;
@@ -25,17 +26,21 @@ pub use scene_group::SceneGroup;
 pub use scene_instance_path::SceneInstancePath;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(default)]
 pub struct Project {
     pub a: Deck,
     pub b: Deck,
-    /// -1.0 = A, 0.0 = A + B, 1.0 = B
+    /// 0.0 = A, 0.5 = A + B, 1.0 = B
     pub cross_fader: f32,
     pub svg: Option<Svg>,
-    //TODO: set from extract output on save
     pub output_routings: OutputRoutings,
+    pub artnet_config: ArtnetConfig,
+    pub tap_input_events: BTreeSet<InputEvent>,
+    pub freeze_input_events: BTreeSet<InputEvent>,
+    pub blackout_input_events: BTreeSet<InputEvent>,
+    pub main_dimmer: f32,
 }
 
-//TODO: Remove
 impl Default for Project {
     fn default() -> Self {
         Self {
@@ -51,6 +56,19 @@ impl Default for Project {
             cross_fader: Default::default(),
             svg: Default::default(),
             output_routings: Default::default(),
+            artnet_config: Default::default(),
+            tap_input_events: std::iter::once(InputEvent::Key(egui::Key::T))
+                .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Mode(0))))
+                .collect(),
+            freeze_input_events: std::iter::once(InputEvent::Key(egui::Key::F))
+                .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Select(
+                    0,
+                ))))
+                .collect(),
+            blackout_input_events: std::iter::once(InputEvent::Key(egui::Key::B))
+                .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Start(0))))
+                .collect(),
+            main_dimmer: 1.0,
         }
     }
 }
@@ -166,15 +184,22 @@ impl Project {
         let device = wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
 
-        self.decks().for_each(|(path, deck)| {
-            deck.prepare(
-                path,
-                queue,
-                timing,
-                render_deactivated_scenes,
-                fade_duration,
-            )
-        });
+        self.a.prepare(
+            SceneInstancePath::DECK_A,
+            queue,
+            timing,
+            render_deactivated_scenes,
+            fade_duration,
+            self.main_dimmer * (1.0 - self.cross_fader),
+        );
+        self.b.prepare(
+            SceneInstancePath::DECK_B,
+            queue,
+            timing,
+            render_deactivated_scenes,
+            fade_duration,
+            self.main_dimmer * self.cross_fader,
+        );
 
         PREVIEW_INDICES.lock().prepare(queue);
 
@@ -199,6 +224,20 @@ impl Project {
         output_sender
             .send(())
             .expect("Output sender closed its channel");
+    }
+
+    pub fn tap_input_is_new(&self) -> bool {
+        self.tap_input_events.iter().any(|event| event.is_new())
+    }
+
+    pub fn freeze_input_is_new(&self) -> bool {
+        self.freeze_input_events.iter().any(|event| event.is_new())
+    }
+
+    pub fn blackout_input_is_new(&self) -> bool {
+        self.blackout_input_events
+            .iter()
+            .any(|event| event.is_new())
     }
 }
 

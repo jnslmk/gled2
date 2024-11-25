@@ -55,6 +55,7 @@ impl SceneGroup {
         timing: &Timing,
         render_deactivated_scenes: RenderDeactivatedScenes,
         palette: Option<Arc<Asset<Palette>>>,
+        main_dimmer: f32,
     ) {
         let groups = self.groups.clone();
         for (path, scene_instance) in self.scene_instances(path) {
@@ -64,6 +65,7 @@ impl SceneGroup {
                 palette.clone(),
                 &groups,
                 timing,
+                main_dimmer,
             );
         }
     }

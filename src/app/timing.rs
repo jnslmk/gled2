@@ -126,7 +126,7 @@ impl Timing {
         }
     }
 
-    pub fn beat_button(&mut self, ui: &mut Ui, menu_button_size: Vec2) {
+    pub fn tap_button(&mut self, ui: &mut Ui, menu_button_size: Vec2, tap_input: bool) {
         let underlined = TextFormat {
             underline: Stroke::new(1.0, Color32::GRAY),
             ..Default::default()
@@ -190,7 +190,7 @@ impl Timing {
             );
         }
 
-        let tapped = response.clicked() || PersistantState::tap_input_is_new();
+        let tapped = response.clicked() || tap_input;
 
         if tapped {
             let now = Instant::now();
@@ -214,7 +214,7 @@ impl Timing {
         }
     }
 
-    pub fn freeze_button(&mut self, ui: &mut Ui, menu_button_size: Vec2) {
+    pub fn freeze_button(&mut self, ui: &mut Ui, menu_button_size: Vec2, freeze_input: bool) {
         let underlined = TextFormat {
             underline: Stroke::new(1.0, Color32::GRAY),
             ..Default::default()
@@ -227,9 +227,7 @@ impl Timing {
         if self.freeze {
             freeze = freeze.fill(Color32::DARK_RED);
         }
-        if ui.add_sized(menu_button_size, freeze).clicked()
-            || PersistantState::freeze_input_is_new()
-        {
+        if ui.add_sized(menu_button_size, freeze).clicked() || freeze_input {
             self.freeze = !self.freeze;
         }
     }

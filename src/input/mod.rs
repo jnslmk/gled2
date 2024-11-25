@@ -9,7 +9,7 @@ use std::{
     sync::{mpsc::Receiver, Arc, OnceLock},
 };
 
-pub use artnet::ARTNET_INPUT_CONFIG;
+pub use artnet::{ArtnetConfig, ARTNET_CONFIG};
 pub use event::{GamepadEvent, InputEvent};
 
 static INPUT: OnceLock<Arc<Mutex<Input>>> = OnceLock::new();

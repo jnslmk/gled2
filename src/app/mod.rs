@@ -11,7 +11,7 @@ mod timing;
 
 use crate::{
     extract_output::ExtractOutput,
-    input::Input,
+    input::{Input, ARTNET_CONFIG},
     output_sender::{self, GpuReadyReceiver, OutputSender},
     storage::{Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
     ui::{action::Action, windows::Windows},
@@ -85,8 +85,10 @@ impl eframe::App for App {
                         self.project_id = Some(project.id);
                         let project = Arc::unwrap_or_clone(project).data;
                         *ExtractOutput::get().routings.lock() = project.output_routings.clone();
+                        *ARTNET_CONFIG.lock() = project.artnet_config.clone();
                         self.project = Some(project);
                     } else {
+                        self.windows.artnet_input.close();
                         self.project.take();
                         self.project_id.take();
                     };
@@ -161,7 +163,8 @@ impl eframe::App for App {
             );
         }
 
-        self.windows.update(ctx, &self.timing);
+        self.windows
+            .update(ctx, &self.timing, self.project.as_mut());
         ctx.request_repaint();
     }
 }

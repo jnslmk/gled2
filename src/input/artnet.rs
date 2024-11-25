@@ -3,6 +3,7 @@ use egui::mutex::Mutex;
 use log::{debug, info, trace, warn};
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 use std::{
     net::{Ipv4Addr, UdpSocket},
     sync::mpsc::{Receiver, Sender},
@@ -18,18 +19,23 @@ pub struct ArtnetEvent {
     pub value: u8,
 }
 
-pub static ARTNET_INPUT_CONFIG: Lazy<Mutex<ArtnetConfig>> = Lazy::new(|| {
-    Mutex::new(ArtnetConfig {
-        universe: 18,
-        start: 1,
-        channels: 100,
-    })
-});
+pub static ARTNET_CONFIG: Lazy<Mutex<ArtnetConfig>> = Lazy::new(|| Mutex::new(Default::default()));
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArtnetConfig {
     pub universe: u16,
     pub start: u16,
     pub channels: u16,
+}
+
+impl Default for ArtnetConfig {
+    fn default() -> Self {
+        Self {
+            universe: 18,
+            start: 1,
+            channels: 100,
+        }
+    }
 }
 
 impl ArtnetConfig {
@@ -155,7 +161,7 @@ fn thread(sender: Sender<ArtnetEvent>) {
                     };
                     trace!("parsed artnet");
 
-                    let config = ARTNET_INPUT_CONFIG.lock();
+                    let config = ARTNET_CONFIG.lock();
                     if output.port_address != config.port_address() {
                         debug!("Ignoring universe {:?}", output.port_address);
                         std::thread::sleep(Duration::from_millis(10));

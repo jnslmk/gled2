@@ -75,6 +75,7 @@ impl Deck {
         timing: &Timing,
         render_deactivated_scenes: RenderDeactivatedScenes,
         fade_duration: Duration,
+        main_dimmer: f32,
     ) {
         if self.auto_mode_active {
             if self
@@ -131,6 +132,7 @@ impl Deck {
                 timing,
                 render_deactivated_scenes,
                 palette.clone(),
+                main_dimmer,
             );
         }
     }

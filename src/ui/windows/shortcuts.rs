@@ -1,4 +1,4 @@
-use crate::{app::PersistantState, ui::ChangeButton, viewport_builder::default_viewport_builder};
+use crate::{storage::Project, ui::ChangeButton, viewport_builder::default_viewport_builder};
 use egui::{Context, Id, Vec2, ViewportId};
 
 #[derive(Default)]
@@ -7,10 +7,13 @@ pub struct ShortcutsWindow {
 }
 
 impl ShortcutsWindow {
-    pub fn update(&mut self, ctx: &Context) {
+    pub fn update(&mut self, ctx: &Context, project: Option<&mut Project>) {
         if !self.open {
             return;
         }
+        let Some(project) = project else {
+            return;
+        };
 
         ctx.show_viewport_immediate(
             ViewportId(Id::new("shortcuts window")),
@@ -28,22 +31,21 @@ impl ShortcutsWindow {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     let mut changed = false;
 
-                    let mut persistant_state = PersistantState::get();
-                    let mut tap_events = persistant_state
+                    let mut tap_events = project
                         .tap_input_events
                         .iter()
                         .cloned()
                         .map(Option::Some)
                         .chain(std::iter::once(None))
                         .collect::<Vec<_>>();
-                    let mut freeze_events = persistant_state
+                    let mut freeze_events = project
                         .freeze_input_events
                         .iter()
                         .cloned()
                         .map(Option::Some)
                         .chain(std::iter::once(None))
                         .collect::<Vec<_>>();
-                    let mut blackout_events = persistant_state
+                    let mut blackout_events = project
                         .blackout_input_events
                         .iter()
                         .cloned()
@@ -67,13 +69,10 @@ impl ShortcutsWindow {
                     }
 
                     if changed {
-                        persistant_state.tap_input_events =
-                            tap_events.into_iter().flatten().collect();
-                        persistant_state.freeze_input_events =
-                            freeze_events.into_iter().flatten().collect();
-                        persistant_state.blackout_input_events =
+                        project.tap_input_events = tap_events.into_iter().flatten().collect();
+                        project.freeze_input_events = freeze_events.into_iter().flatten().collect();
+                        project.blackout_input_events =
                             blackout_events.into_iter().flatten().collect();
-                        persistant_state.save();
                     }
                 });
             },

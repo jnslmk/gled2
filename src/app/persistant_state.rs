@@ -1,12 +1,9 @@
-use crate::{
-    input::{GamepadEvent, InputEvent},
-    storage::{AssetId, Palette, Project},
-};
+use crate::storage::{AssetId, Palette, Project};
 use egui::mutex::Mutex;
 use log::{error, info};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, path::PathBuf};
+use std::path::PathBuf;
 
 static PERSISTANT_STATE: Lazy<Mutex<PersistantState>> =
     Lazy::new(|| Mutex::new(PersistantState::load()));
@@ -15,16 +12,12 @@ static PERSISTANT_STATE: Lazy<Mutex<PersistantState>> =
 #[serde(default)]
 pub struct PersistantState {
     pub show_preview_svg: bool,
-    pub main_dimmer: f32,
     pub fullscreen: bool,
     pub effects_size: f32,
     pub effects_show_svg: bool,
     pub effects_always_render: bool,
     pub fps_limit: f32,
     pub preview_height: f32,
-    pub tap_input_events: BTreeSet<InputEvent>,
-    pub freeze_input_events: BTreeSet<InputEvent>,
-    pub blackout_input_events: BTreeSet<InputEvent>,
     pub preview_palette: Option<AssetId<Palette>>,
     pub last_project_id: Option<AssetId<Project>>,
 }
@@ -33,24 +26,12 @@ impl Default for PersistantState {
     fn default() -> Self {
         Self {
             show_preview_svg: true,
-            main_dimmer: 1.0,
             fullscreen: Default::default(),
             effects_size: 100.0,
             effects_show_svg: true,
             effects_always_render: false,
             fps_limit: 120.0,
             preview_height: 300.0,
-            tap_input_events: std::iter::once(InputEvent::Key(egui::Key::T))
-                .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Mode(0))))
-                .collect(),
-            freeze_input_events: std::iter::once(InputEvent::Key(egui::Key::F))
-                .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Select(
-                    0,
-                ))))
-                .collect(),
-            blackout_input_events: std::iter::once(InputEvent::Key(egui::Key::B))
-                .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Start(0))))
-                .collect(),
             preview_palette: Default::default(),
             last_project_id: Default::default(),
         }
@@ -73,10 +54,6 @@ impl PersistantState {
         PERSISTANT_STATE.lock().fps_limit
     }
 
-    pub fn main_dimmer() -> f32 {
-        PERSISTANT_STATE.lock().main_dimmer
-    }
-
     pub fn effects_always_render() -> bool {
         PERSISTANT_STATE.lock().effects_always_render
     }
@@ -95,30 +72,6 @@ impl PersistantState {
 
     pub fn preview_height() -> f32 {
         PERSISTANT_STATE.lock().preview_height
-    }
-
-    pub fn tap_input_is_new() -> bool {
-        PERSISTANT_STATE
-            .lock()
-            .tap_input_events
-            .iter()
-            .any(|event| event.is_new())
-    }
-
-    pub fn freeze_input_is_new() -> bool {
-        PERSISTANT_STATE
-            .lock()
-            .freeze_input_events
-            .iter()
-            .any(|event| event.is_new())
-    }
-
-    pub fn blackout_input_is_new() -> bool {
-        PERSISTANT_STATE
-            .lock()
-            .blackout_input_events
-            .iter()
-            .any(|event| event.is_new())
     }
 
     pub fn get() -> Self {

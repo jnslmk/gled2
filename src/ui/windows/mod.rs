@@ -1,4 +1,4 @@
-use crate::app::Timing;
+use crate::{app::Timing, storage::Project};
 use egui::Context;
 
 mod about;
@@ -27,7 +27,7 @@ pub struct Windows {
 }
 
 impl Windows {
-    pub fn update(&mut self, ctx: &Context, timing: &Timing) {
+    pub fn update(&mut self, ctx: &Context, timing: &Timing, project: Option<&mut Project>) {
         self.about.update(ctx);
         self.animations.update(ctx, timing);
         self.curves.update(ctx);
@@ -37,6 +37,6 @@ impl Windows {
         self.palettes.update(ctx);
         self.projects.update(ctx);
         self.scenes.update(ctx, timing);
-        self.shortcuts.update(ctx);
+        self.shortcuts.update(ctx, project);
     }
 }
