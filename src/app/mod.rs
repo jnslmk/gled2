@@ -93,6 +93,8 @@ impl eframe::App for App {
                         self.project = Some(project);
                     } else {
                         self.windows.artnet_input.close();
+                        self.windows.output_routings.close();
+                        self.windows.shortcuts.close();
                         self.project.take();
                         self.project_id.take();
                     };
