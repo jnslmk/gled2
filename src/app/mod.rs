@@ -82,6 +82,10 @@ impl eframe::App for App {
                 }
                 (_, Some(Action::SetProject(project))) => {
                     if let Some(project) = Asset::get(project) {
+                        let mut persistant_state = PersistantState::get();
+                        persistant_state.last_project_id = Some(project.id);
+                        persistant_state.save();
+
                         self.project_id = Some(project.id);
                         let project = Arc::unwrap_or_clone(project).data;
                         *ExtractOutput::get().routings.lock() = project.output_routings.clone();
@@ -190,14 +194,18 @@ impl App {
             output_sender,
             gpu_ready_receiver,
             timing: Default::default(),
-            blackout: Default::default(),
+            blackout: true,
             selected_scene_instance: Default::default(),
             hovered_scene_instance: Default::default(),
             project: Default::default(),
-            project_id: PersistantState::get().last_project_id,
+            project_id: Default::default(),
             windows: Default::default(),
             other_main_windows: Default::default(),
         };
+
+        if let Some(project) = PersistantState::get().last_project_id {
+            Action::SetProject(project).enqueue();
+        }
 
         Some(app)
     }
