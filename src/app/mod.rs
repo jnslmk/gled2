@@ -1,8 +1,11 @@
 mod config;
 mod effects;
 mod menu;
+mod no_project;
 mod persistant_state;
 mod preview;
+mod project_functions;
+mod status_bar;
 pub mod svg;
 mod timing;
 
@@ -15,6 +18,7 @@ use crate::{
     viewport_builder::default_viewport_builder,
 };
 use egui::{ahash::HashSet, Modifiers, ViewportId};
+use std::sync::Arc;
 
 pub use persistant_state::PersistantState;
 pub use svg::{positions, preview_positions, preview_uv, Svg};
@@ -26,7 +30,7 @@ pub struct App {
     output_sender: OutputSender,
     gpu_ready_receiver: GpuReadyReceiver,
     timing: Timing,
-    project: Project,
+    project: Option<Project>,
     project_id: Option<AssetId<Project>>,
     other_main_windows: HashSet<ViewportId>,
     blackout: bool,
@@ -49,35 +53,50 @@ impl eframe::App for App {
         self.timing.tick();
         Input::tick();
 
-        match Action::dequeue() {
-            None => (),
-            Some(Action::DeleteSelectedSceneInstance) => {
-                self.project
-                    .remove_scene_instance(&mut self.selected_scene_instance);
-                Action::InitGPU.enqueue();
-            }
-            Some(Action::CloneSelectedSceneInstance) => {
-                if let Some(scene) = self
-                    .project
-                    .scene_instance(self.selected_scene_instance)
-                    .map(|scene_instance| scene_instance.scene)
-                {
-                    if let Some(scene_group) =
-                        self.project.scene_group(self.selected_scene_instance)
+        loop {
+            match (&mut self.project, Action::dequeue()) {
+                (Some(project), Some(Action::DeleteSelectedSceneInstance)) => {
+                    project.remove_scene_instance(&mut self.selected_scene_instance);
+                    Action::InitGPU.enqueue();
+                }
+                (Some(project), Some(Action::CloneSelectedSceneInstance)) => {
+                    if let Some(scene) = project
+                        .scene_instance(self.selected_scene_instance)
+                        .map(|scene_instance| scene_instance.scene)
                     {
-                        scene_group.add_scene(&mut self.selected_scene_instance, scene);
-                        Action::InitGPU.enqueue();
+                        if let Some(scene_group) = project.scene_group(self.selected_scene_instance)
+                        {
+                            scene_group.add_scene(&mut self.selected_scene_instance, scene);
+                            Action::InitGPU.enqueue();
+                        }
                     }
                 }
-            }
-            Some(Action::InitGPU) => {
-                self.project.init_gpu();
-            }
-            Some(Action::ReloadShaderCode(animation)) => {
-                self.project.reload_shader_code(animation);
-            }
-            Some(Action::SendPositions) => {
-                self.project.send_positions();
+                (Some(project), Some(Action::InitGPU)) => {
+                    project.init_gpu();
+                }
+                (Some(project), Some(Action::ReloadShaderCode(animation))) => {
+                    project.reload_shader_code(animation);
+                }
+                (Some(project), Some(Action::SendPositions)) => {
+                    project.send_positions();
+                }
+                (_, Some(Action::SetProject(project))) => {
+                    if let Some(project) = Asset::get(project) {
+                        self.project_id = Some(project.id);
+                        let project = Arc::unwrap_or_clone(project).data;
+                        *ExtractOutput::get().routings.lock() = project.output_routings.clone();
+                        self.project = Some(project);
+                    } else {
+                        self.project.take();
+                        self.project_id.take();
+                    };
+                    Action::InitGPU.enqueue();
+                    svg::reset();
+                    self.selected_scene_instance = SceneInstancePath::default();
+                    self.hovered_scene_instance = SceneInstancePath::default();
+                }
+                (_, None) => break,
+                (None, _) => (),
             }
         }
 
@@ -102,21 +121,23 @@ impl eframe::App for App {
             }
         )));
 
-        self.project.render(
-            &mut self.output_sender,
-            &mut self.gpu_ready_receiver,
-            &self.timing,
-            self.blackout,
-            if PersistantState::effects_always_render() {
-                RenderDeactivatedScenes::Always
-            } else {
-                RenderDeactivatedScenes::Some(
-                    self.selected_scene_instance,
-                    self.hovered_scene_instance,
-                )
-            },
-            self.timing.fade_duration(),
-        );
+        if let Some(project) = &mut self.project {
+            project.render(
+                &mut self.output_sender,
+                &mut self.gpu_ready_receiver,
+                &self.timing,
+                self.blackout,
+                if PersistantState::effects_always_render() {
+                    RenderDeactivatedScenes::Always
+                } else {
+                    RenderDeactivatedScenes::Some(
+                        self.selected_scene_instance,
+                        self.hovered_scene_instance,
+                    )
+                },
+                self.timing.fade_duration(),
+            );
+        }
 
         self.draw_main_window(ctx);
 
@@ -148,9 +169,14 @@ impl eframe::App for App {
 impl App {
     pub fn draw_main_window(&mut self, ctx: &egui::Context) {
         self.menu(ctx);
-        self.config(ctx);
-        self.preview(ctx);
-        self.effects(ctx);
+        self.status_bar(ctx);
+        if self.project.is_some() {
+            self.config(ctx);
+            self.preview(ctx);
+            self.effects(ctx);
+        } else {
+            self.no_project(ctx);
+        }
     }
     pub fn new() -> Option<Self> {
         let (output_sender, gpu_ready_receiver) =
@@ -165,22 +191,11 @@ impl App {
             selected_scene_instance: Default::default(),
             hovered_scene_instance: Default::default(),
             project: Default::default(),
-            project_id: Default::default(),
+            project_id: PersistantState::get().last_project_id,
             windows: Default::default(),
             other_main_windows: Default::default(),
         };
 
-        //TODO: Load last loaded project
-
         Some(app)
-    }
-
-    pub fn use_project(&mut self, project: Project) {
-        self.project = project;
-
-        Action::InitGPU.enqueue();
-        *ExtractOutput::get().routings.lock() = self.project.output_routings.clone();
-
-        svg::reset();
     }
 }

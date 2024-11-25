@@ -1,4 +1,4 @@
-use crate::storage::{Animation, AssetId};
+use crate::storage::{Animation, AssetId, Project};
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use std::collections::VecDeque;
@@ -6,6 +6,7 @@ use std::collections::VecDeque;
 static ACTION_QUEUE: Lazy<Mutex<VecDeque<Action>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
 
 pub enum Action {
+    SetProject(AssetId<Project>),
     DeleteSelectedSceneInstance,
     CloneSelectedSceneInstance,
     InitGPU,

@@ -44,9 +44,7 @@ impl App {
                     };
 
                     let res = self
-                        .project
-                        .svg
-                        .as_mut()
+                        .svg_mut()
                         .filter(|_| show_preview_svg)
                         .and_then(|svg| svg.image())
                         .map(|image| {

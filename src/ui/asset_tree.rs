@@ -194,6 +194,7 @@ impl<T: AssetTrait> AssetTree<T> {
         pos
     }
 
+    /// Returns true if the selection has changed
     pub fn show(&mut self, ui: &mut Ui, id: Id) -> bool {
         let mut selection_changed = false;
         let entries = self.load();

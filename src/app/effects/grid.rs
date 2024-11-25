@@ -8,6 +8,10 @@ use egui::{scroll_area::ScrollBarVisibility, Color32, Rect, TextureId, Ui, Vec2}
 
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureId>, uv: Option<Rect>) {
+        let Some(project) = self.project.as_mut() else {
+            return;
+        };
+
         let effects_size = PersistantState::effects_size();
         let effects_show_svg = PersistantState::effects_show_svg();
 
@@ -20,7 +24,7 @@ impl App {
                 ui.horizontal_wrapped(|ui| {
                     let mut changed = None;
                     let mut flashed = Vec::new();
-                    for (path, scene_instance) in self.project.scene_instances() {
+                    for (path, scene_instance) in project.all_scene_instances() {
                         let response = ui.add_sized(
                             Vec2::new(effects_size + 40.0, effects_size + 60.0),
                             SceneInstanceWidget {
@@ -56,7 +60,7 @@ impl App {
                     }
 
                     if let Some(changed_path) = changed {
-                        if let Some(scene_instance) = self.project.scene_instance(changed_path) {
+                        if let Some(scene_instance) = project.scene_instance(changed_path) {
                             scene_instance.set_transition(Transition::new(
                                 if scene_instance.active {
                                     TransitionGoal::TurnOff
@@ -68,7 +72,7 @@ impl App {
                         }
                     }
 
-                    for (path, scene_instance) in self.project.scene_instances() {
+                    for (path, scene_instance) in project.all_scene_instances() {
                         scene_instance.set_flash(flashed.contains(&path));
                     }
                 });

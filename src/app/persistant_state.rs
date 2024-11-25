@@ -1,6 +1,6 @@
 use crate::{
     input::{GamepadEvent, InputEvent},
-    storage::{AssetId, Palette},
+    storage::{AssetId, Palette, Project},
 };
 use egui::mutex::Mutex;
 use log::{error, info};
@@ -26,6 +26,7 @@ pub struct PersistantState {
     pub freeze_input_events: BTreeSet<InputEvent>,
     pub blackout_input_events: BTreeSet<InputEvent>,
     pub preview_palette: Option<AssetId<Palette>>,
+    pub last_project_id: Option<AssetId<Project>>,
 }
 
 impl Default for PersistantState {
@@ -51,6 +52,7 @@ impl Default for PersistantState {
                 .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Start(0))))
                 .collect(),
             preview_palette: Default::default(),
+            last_project_id: Default::default(),
         }
     }
 }

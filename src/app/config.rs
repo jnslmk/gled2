@@ -1,9 +1,12 @@
 use super::{timing::FadeMode, App};
-use crate::temperature::temperature;
-use egui::{Color32, Context, Label, Layout, Margin, Stroke};
+use egui::{Color32, Context, Layout, Margin, Stroke};
 
 impl App {
     pub fn config(&mut self, ctx: &Context) {
+        let Some(project) = self.project.as_mut() else {
+            return;
+        };
+
         egui::SidePanel::left("left")
             .resizable(true)
             .default_width(280.0)
@@ -12,7 +15,7 @@ impl App {
             .show(ctx, |ui| {
                 ui.add_space(6.0);
 
-                match self.project.scene_instance(self.selected_scene_instance) {
+                match project.scene_instance(self.selected_scene_instance) {
                     Some(scene_instance) => {
                         scene_instance.config_ui(ctx, ui);
                     }
@@ -23,17 +26,6 @@ impl App {
 
                 ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
                     ui.add_space(6.0);
-
-                    if let Some(framerate) = self.timing.framerate() {
-                        ui.horizontal(|ui| {
-                            ui.add(Label::new(format!("{framerate:.0} fps")));
-                            ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                                ui.add(Label::new(temperature()))
-                            });
-                        });
-                    }
-
-                    ui.add_space(4.0);
 
                     egui::Frame::none()
                         .inner_margin(Margin::from(6.0))

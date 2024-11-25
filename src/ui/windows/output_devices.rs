@@ -73,10 +73,10 @@ impl OutputDevicesWindow {
 
                 egui::CentralPanel::default().show(ctx, |ui| {
                     self.tree.common_settings(ui, &mut self.dirty);
-                    if let TreeSelection::Asset(palette) = &mut self.tree.selected() {
+                    if let TreeSelection::Asset(output_device) = &mut self.tree.selected() {
                         output_device_editor(
                             ui,
-                            palette,
+                            output_device,
                             &mut self.dirty,
                             &mut self.device_strings,
                         );

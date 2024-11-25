@@ -8,6 +8,7 @@ mod curves;
 mod output_devices;
 mod output_routings;
 mod palettes;
+mod projects;
 mod scenes;
 mod shortcuts;
 
@@ -20,6 +21,7 @@ pub struct Windows {
     pub output_devices: output_devices::OutputDevicesWindow,
     pub output_routings: output_routings::OutputRoutingsWindow,
     pub palettes: palettes::PalettesWindow,
+    pub projects: projects::ProjectsWindow,
     pub scenes: scenes::ScenesWindow,
     pub shortcuts: shortcuts::ShortcutsWindow,
 }
@@ -33,6 +35,7 @@ impl Windows {
         self.output_devices.update(ctx);
         self.output_routings.update(ctx);
         self.palettes.update(ctx);
+        self.projects.update(ctx);
         self.scenes.update(ctx, timing);
         self.shortcuts.update(ctx);
     }

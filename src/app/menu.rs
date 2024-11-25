@@ -1,11 +1,12 @@
 use super::{svg::Svg, App, PersistantState};
-use crate::{storage::Project, ui::logo::logo_image};
+use crate::{storage::Asset, ui::logo::logo_image};
 use egui::{
     load::SizedTexture, text::LayoutJob, Button, Color32, Context, Id, ImageButton, Key, Modifiers,
     Slider, Stroke, TextFormat, Vec2, ViewportId,
 };
 use log::{debug, error};
 use rand::Rng;
+use std::sync::Arc;
 
 impl App {
     pub fn menu(&mut self, ctx: &Context) {
@@ -22,39 +23,35 @@ impl App {
                 {
                     self.windows.about.open();
                 };
-                ui.separator();
 
-                let mut create_new_project =
-                    ctx.input_mut(|i| i.consume_key(Modifiers::CTRL, Key::N));
+                ui.separator();
+                if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::N))
+                {
+                    self.other_main_windows.insert(ViewportId(Id::new(format!(
+                        "Second Window {}",
+                        rand::thread_rng().gen::<u64>()
+                    ))));
+                }
                 let mut open_project = ctx.input_mut(|i| i.consume_key(Modifiers::CTRL, Key::O));
                 let mut save_project = ctx.input_mut(|i| i.consume_key(Modifiers::CTRL, Key::S));
-                let mut save_project_as = ctx
-                    .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::S));
                 let mut open_svg_file = ctx
                     .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::O));
-                let mut save_svg_file = false;
+                let mut save_svg_file = ctx
+                    .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::S));
 
-                ui.menu_button("File", |ui| {
+                ui.menu_button("Project", |ui| {
                     ui.set_min_width(300.0);
 
-                    if ui.button("Create new window").clicked() {
-                        self.other_main_windows.insert(ViewportId(Id::new(format!(
-                            "Second Window {}",
-                            rand::thread_rng().gen::<u64>()
-                        ))));
-                        ui.close_menu();
+                    if let Some(project) = self.project_id.and_then(Asset::get) {
+                        ui.label(format!("Project: {}", project.name()));
+                    } else {
+                        ui.label("No project loaded");
                     }
 
-                    if ui
-                        .add(Button::new("Create new project").shortcut_text("Ctrl + N"))
-                        .clicked()
-                    {
-                        create_new_project = true;
-                        ui.close_menu();
-                    }
+                    ui.separator();
 
                     if ui
-                        .add(Button::new("Open project").shortcut_text("Ctrl + O"))
+                        .add(Button::new("Open project Window").shortcut_text("Ctrl + O"))
                         .clicked()
                     {
                         open_project = true;
@@ -62,23 +59,23 @@ impl App {
                     }
 
                     if ui
-                        .add(Button::new("Save project").shortcut_text("Ctrl + S"))
+                        .add_enabled(
+                            self.project.is_some(),
+                            Button::new("Save project").shortcut_text("Ctrl + S"),
+                        )
                         .clicked()
                     {
                         save_project = true;
                         ui.close_menu();
                     }
 
-                    if ui
-                        .add(Button::new("Save project as..").shortcut_text("Ctrl + Shift + S"))
-                        .clicked()
-                    {
-                        save_project_as = true;
-                        ui.close_menu();
-                    }
+                    ui.separator();
 
                     if ui
-                        .add(Button::new("Open SVG file").shortcut_text("Ctrl + Shift + O"))
+                        .add_enabled(
+                            self.project.is_some(),
+                            Button::new("Open SVG file").shortcut_text("Ctrl + Shift + O"),
+                        )
                         .clicked()
                     {
                         open_svg_file = true;
@@ -86,30 +83,54 @@ impl App {
                     }
 
                     if ui
-                        .add_enabled(self.project.svg.is_some(), Button::new("Save SVG file"))
+                        .add_enabled(
+                            self.svg().is_some(),
+                            Button::new("Save SVG file").shortcut_text("Ctrl + Shift + S"),
+                        )
                         .clicked()
                     {
                         save_svg_file = true;
                         ui.close_menu();
                     }
+
+                    ui.separator();
+
+                    if ui.button("Artnet Input").clicked() {
+                        self.windows.artnet_input.open();
+                        ui.close_menu();
+                    }
+                    if ui.button("Output Routings").clicked() {
+                        self.windows.output_routings.open();
+                        ui.close_menu();
+                    }
+                    if ui.button("Shortcuts").clicked() {
+                        self.windows.shortcuts.open();
+                        ui.close_menu();
+                    }
                 });
 
-                if create_new_project {
-                    self.use_project(Project::default());
-                }
                 if open_project {
-                    todo!()
+                    self.windows.projects.open();
                 }
-                if save_project || save_project_as {
-                    todo!()
+                if save_project {
+                    if let (Some(project), Some(mut asset)) = (
+                        self.project.as_ref(),
+                        self.project_id
+                            .and_then(Asset::get)
+                            .map(Arc::unwrap_or_clone),
+                    ) {
+                        asset.data = project.to_owned();
+                        asset.save();
+                    }
                 }
+
                 if open_svg_file {
                     if let Some(path) = rfd::FileDialog::new()
                         .set_title("Open SVG file")
                         .add_filter("svg", &["svg"])
                         .pick_file()
                     {
-                        self.project.svg = match Svg::load(&path) {
+                        self.set_svg(match Svg::load(&path) {
                             Ok(svg) => {
                                 debug!("Loaded svg file \"{}\"", path.display());
                                 Some(svg)
@@ -118,12 +139,12 @@ impl App {
                                 error!("Could not load svg file \"{}\": {err:?}", path.display());
                                 None
                             }
-                        };
+                        });
                     }
                 }
                 if save_svg_file {
                     if let (Some(svg), Some(path)) = (
-                        self.project.svg.as_ref(),
+                        self.svg(),
                         rfd::FileDialog::new()
                             .set_title("Save SVG file")
                             .add_filter("svg", &["svg"])
@@ -160,47 +181,6 @@ impl App {
 
                     ui.separator();
 
-                    if ui.button("Output Devices").clicked() {
-                        self.windows.output_devices.open();
-                        ui.close_menu();
-                    }
-                    if ui.button("Output Routings").clicked() {
-                        self.windows.output_routings.open();
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui.button("Shortcuts").clicked() {
-                        self.windows.shortcuts.open();
-                        ui.close_menu();
-                    }
-                    if ui.button("Artnet Input").clicked() {
-                        self.windows.artnet_input.open();
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui.button("Animations").clicked() {
-                        self.windows.animations.open();
-                        ui.close_menu();
-                    }
-                    if ui.button("Curves").clicked() {
-                        self.windows.curves.open();
-                        ui.close_menu();
-                    }
-                    if ui.button("Palettes").clicked() {
-                        self.windows.palettes.open();
-                        ui.close_menu();
-                    }
-                    if ui.button("Scenes").clicked() {
-                        self.windows.scenes.open();
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
                     ui.label("Main Dimmer");
 
                     let mut main_dimmer = PersistantState::main_dimmer();
@@ -221,6 +201,35 @@ impl App {
 
                     ui.label("UI Zoom");
                     egui::gui_zoom::zoom_menu_buttons(ui);
+                });
+
+                ui.menu_button("Assets", |ui| {
+                    ui.set_min_width(300.0);
+
+                    if ui.button("Animations").clicked() {
+                        self.windows.animations.open();
+                        ui.close_menu();
+                    }
+                    if ui.button("Curves").clicked() {
+                        self.windows.curves.open();
+                        ui.close_menu();
+                    }
+                    if ui.button("Output Devices").clicked() {
+                        self.windows.output_devices.open();
+                        ui.close_menu();
+                    }
+                    if ui.button("Palettes").clicked() {
+                        self.windows.palettes.open();
+                        ui.close_menu();
+                    }
+                    if ui.button("Projects").clicked() {
+                        self.windows.projects.open();
+                        ui.close_menu();
+                    }
+                    if ui.button("Scenes").clicked() {
+                        self.windows.scenes.open();
+                        ui.close_menu();
+                    }
                 });
 
                 ui.separator();

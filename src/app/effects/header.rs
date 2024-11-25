@@ -12,8 +12,11 @@ impl App {
         let mut effects_always_render = PersistantState::effects_always_render();
         let mut effects_size = PersistantState::effects_size();
 
-        let has_svg = self.project.svg.is_some();
-        let deck = self.project.deck(SceneInstancePath::default());
+        let has_svg = self.svg().is_some();
+        let Some(project) = self.project.as_mut() else {
+            return;
+        };
+        let deck = project.deck(SceneInstancePath::default());
         let Some(scene_group) = deck.scene_group(SceneInstancePath::default()) else {
             return;
         };

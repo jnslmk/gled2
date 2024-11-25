@@ -1,0 +1,3 @@
+# Fedora
+
+sudo dnf install gcc openssl-devel systemd-devel
