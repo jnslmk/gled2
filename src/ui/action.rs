@@ -1,9 +1,13 @@
 use crate::storage::{Animation, AssetId, Project};
-use egui::mutex::Mutex;
-use once_cell::sync::Lazy;
-use std::collections::VecDeque;
+use once_cell::unsync::OnceCell;
+use std::{
+    cell::{RefCell, RefMut},
+    collections::VecDeque,
+};
 
-static ACTION_QUEUE: Lazy<Mutex<VecDeque<Action>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
+thread_local! {
+    static ACTION_QUEUE: OnceCell<RefCell<VecDeque<Action>>> = const { OnceCell::new() };
+}
 
 pub enum Action {
     SetProject(AssetId<Project>),
@@ -15,11 +19,19 @@ pub enum Action {
 }
 
 impl Action {
+    #[inline(always)]
+    fn run_on_queue<T, F: FnOnce(RefMut<VecDeque<Action>>) -> T>(runner: F) -> T {
+        ACTION_QUEUE.with(|queue| {
+            let queue = queue.get_or_init(|| RefCell::new(VecDeque::new()));
+            runner(queue.borrow_mut())
+        })
+    }
+
     pub fn enqueue(self) {
-        ACTION_QUEUE.lock().push_back(self);
+        Self::run_on_queue(move |mut queue| queue.push_back(self));
     }
 
     pub fn dequeue() -> Option<Self> {
-        ACTION_QUEUE.lock().pop_front()
+        Self::run_on_queue(move |mut queue| queue.pop_front())
     }
 }
