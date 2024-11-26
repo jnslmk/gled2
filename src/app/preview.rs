@@ -1,5 +1,5 @@
 use super::{App, PersistantState};
-use crate::{app::preview_uv, preview::PREVIEW};
+use crate::{app::preview_uv, preview::Preview};
 use egui::{load::SizedTexture, Align, Color32, Context, Image, Layout, RichText, Vec2};
 
 impl App {
@@ -55,7 +55,7 @@ impl App {
                             )
                         });
                     let mut preview =
-                        Image::new(SizedTexture::new(PREVIEW.lock().texture_id(), size)).uv(uv);
+                        Image::new(SizedTexture::new(Preview::texture_id(), size)).uv(uv);
                     if !show_preview_svg {
                         preview = preview.bg_fill(Color32::BLACK);
                     }

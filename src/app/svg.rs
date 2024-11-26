@@ -1,5 +1,5 @@
 use crate::{
-    extract_output::ExtractOutput, group::Group, preview_indices::PREVIEW_INDICES,
+    extract_output::ExtractOutput, group::Group, preview_indices::PreviewIndices,
     svg::MeasurementPoints, texture_to_output::Positions, ui::action::Action,
 };
 use anyhow::Result;
@@ -60,7 +60,7 @@ impl Svg {
                 let universes = measurement_points.universes();
                 *MEASUREMENT_POINTS.lock() = measurement_points;
                 let image = svg.render().ok()?;
-                PREVIEW_INDICES.lock().send_positions();
+                PreviewIndices::get().send_positions();
                 *ExtractOutput::get().universes.lock() = universes;
                 Action::SendPositions.enqueue();
 

@@ -10,17 +10,18 @@ use crate::{
     },
     wgpu_render_state,
 };
-use egui::mutex::Mutex;
 use log::debug;
-use once_cell::sync::Lazy;
-use std::num::{NonZero, NonZeroU64};
+use std::{
+    num::{NonZero, NonZeroU64},
+    sync::{
+        atomic::{AtomicBool, Ordering::Relaxed},
+        OnceLock,
+    },
+};
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     *,
 };
-
-pub static PREVIEW_INDICES: Lazy<Mutex<PreviewIndices>> =
-    Lazy::new(|| Mutex::new(PreviewIndices::new()));
 
 #[derive(Debug)]
 pub struct PreviewIndices {
@@ -30,147 +31,156 @@ pub struct PreviewIndices {
     clear_pipeline: ComputePipeline,
     index_bind_group: BindGroup,
     index_pipeline: ComputePipeline,
-    pub send_positions: bool,
+    send_positions: AtomicBool,
 }
 
 impl PreviewIndices {
-    pub fn new() -> Self {
-        let device = wgpu_render_state().device;
+    pub fn get() -> &'static Self {
+        static PREVIEW_INDICES: OnceLock<PreviewIndices> = OnceLock::new();
+        PREVIEW_INDICES.get_or_init(|| {
+            let device = wgpu_render_state().device;
 
-        let positions = preview_positions();
-        let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
-        let positions = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Preview positions buffer"),
-            contents: &positions_contents,
-            usage: BufferUsages::COPY_DST | BufferUsages::STORAGE,
-        });
+            let positions = preview_positions();
+            let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
+            let positions = device.create_buffer_init(&BufferInitDescriptor {
+                label: Some("Preview positions buffer"),
+                contents: &positions_contents,
+                usage: BufferUsages::COPY_DST | BufferUsages::STORAGE,
+            });
 
-        let indices = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Preview indices buffer"),
-            contents: &[0; PREVIEW_INDICES_BUFFER_SIZE as usize],
-            usage: BufferUsages::STORAGE,
-        });
+            let indices = device.create_buffer_init(&BufferInitDescriptor {
+                label: Some("Preview indices buffer"),
+                contents: &[0; PREVIEW_INDICES_BUFFER_SIZE as usize],
+                usage: BufferUsages::STORAGE,
+            });
 
-        let wgpu_render_state = wgpu_render_state();
-        let device = wgpu_render_state.device;
+            let wgpu_render_state = wgpu_render_state();
+            let device = wgpu_render_state.device;
 
-        let clear_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("preview indices clear bind group layout"),
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: NonZeroU64::new(PREVIEW_INDICES_BUFFER_SIZE),
-                },
-                count: None,
-            }],
-        });
+            let clear_bind_group_layout =
+                device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                    label: Some("preview indices clear bind group layout"),
+                    entries: &[BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: NonZeroU64::new(PREVIEW_INDICES_BUFFER_SIZE),
+                        },
+                        count: None,
+                    }],
+                });
 
-        let clear_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("animation pipeline layout"),
-            bind_group_layouts: &[&clear_bind_group_layout],
-            push_constant_ranges: &[],
-        });
+            let clear_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("animation pipeline layout"),
+                bind_group_layouts: &[&clear_bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
-        let module = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("preview clear indices shader"),
-            source: ShaderSource::Wgsl(include_str!("./shaders/preview_indices_clear.wgsl").into()),
-        });
+            let module = device.create_shader_module(ShaderModuleDescriptor {
+                label: Some("preview clear indices shader"),
+                source: ShaderSource::Wgsl(
+                    include_str!("./shaders/preview_indices_clear.wgsl").into(),
+                ),
+            });
 
-        let clear_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            cache: None,
-            label: Some("preview clear indices pipeline"),
-            layout: Some(&clear_pipeline_layout),
-            module: &module,
-            entry_point: "main",
-            compilation_options: Default::default(),
-        });
+            let clear_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+                cache: None,
+                label: Some("preview clear indices pipeline"),
+                layout: Some(&clear_pipeline_layout),
+                module: &module,
+                entry_point: "main",
+                compilation_options: Default::default(),
+            });
 
-        let clear_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("preview indices clear bind group"),
-            layout: &clear_bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: indices.as_entire_binding(),
-            }],
-        });
-
-        let module = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("preview index indices shader"),
-            source: ShaderSource::Wgsl(include_str!("./shaders/preview_indices_index.wgsl").into()),
-        });
-
-        let index_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("preview indices index bind group layout"),
-            entries: &[
-                BindGroupLayoutEntry {
+            let clear_bind_group = device.create_bind_group(&BindGroupDescriptor {
+                label: Some("preview indices clear bind group"),
+                layout: &clear_bind_group_layout,
+                entries: &[BindGroupEntry {
                     binding: 0,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(POSITIONS_BUFFER_SIZE),
-                    },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(PREVIEW_INDICES_BUFFER_SIZE),
-                    },
-                    count: None,
-                },
-            ],
-        });
-
-        let index_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("animation pipeline layout"),
-            bind_group_layouts: &[&index_bind_group_layout],
-            push_constant_ranges: &[],
-        });
-
-        let index_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            cache: None,
-            label: Some("preview index indices pipeline"),
-            layout: Some(&index_pipeline_layout),
-            module: &module,
-            entry_point: "main",
-            compilation_options: Default::default(),
-        });
-
-        let index_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("preview indices index bind group"),
-            layout: &index_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: positions.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
                     resource: indices.as_entire_binding(),
-                },
-            ],
-        });
+                }],
+            });
 
-        Self {
-            positions,
-            indices,
-            send_positions: false,
-            clear_bind_group,
-            clear_pipeline,
-            index_bind_group,
-            index_pipeline,
-        }
+            let module = device.create_shader_module(ShaderModuleDescriptor {
+                label: Some("preview index indices shader"),
+                source: ShaderSource::Wgsl(
+                    include_str!("./shaders/preview_indices_index.wgsl").into(),
+                ),
+            });
+
+            let index_bind_group_layout =
+                device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                    label: Some("preview indices index bind group layout"),
+                    entries: &[
+                        BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: ShaderStages::COMPUTE,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: NonZeroU64::new(POSITIONS_BUFFER_SIZE),
+                            },
+                            count: None,
+                        },
+                        BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: ShaderStages::COMPUTE,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: NonZeroU64::new(PREVIEW_INDICES_BUFFER_SIZE),
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+            let index_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("animation pipeline layout"),
+                bind_group_layouts: &[&index_bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
+            let index_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+                cache: None,
+                label: Some("preview index indices pipeline"),
+                layout: Some(&index_pipeline_layout),
+                module: &module,
+                entry_point: "main",
+                compilation_options: Default::default(),
+            });
+
+            let index_bind_group = device.create_bind_group(&BindGroupDescriptor {
+                label: Some("preview indices index bind group"),
+                layout: &index_bind_group_layout,
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: positions.as_entire_binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: indices.as_entire_binding(),
+                    },
+                ],
+            });
+
+            Self {
+                positions,
+                indices,
+                send_positions: AtomicBool::new(true),
+                clear_bind_group,
+                clear_pipeline,
+                index_bind_group,
+                index_pipeline,
+            }
+        })
     }
 
-    pub fn prepare(&mut self, queue: &Queue) {
-        if !self.send_positions {
+    pub fn prepare(&self, queue: &Queue) {
+        if !self.send_positions.load(Relaxed) {
             return;
         }
 
@@ -188,11 +198,10 @@ impl PreviewIndices {
         }
     }
 
-    pub fn run(&mut self, encoder: &mut CommandEncoder) {
-        if !self.send_positions {
+    pub fn run(&self, encoder: &mut CommandEncoder) {
+        if !self.send_positions.swap(false, Relaxed) {
             return;
         }
-        self.send_positions = false;
 
         debug!("Calculating indices on the gpu");
         {
@@ -218,8 +227,8 @@ impl PreviewIndices {
         index_compute_pass.dispatch_workgroups(UNIVERSES as u32, LAMPS_PER_UNIVERSE as u32, 1);
     }
 
-    pub fn send_positions(&mut self) {
-        self.send_positions = true;
+    pub fn send_positions(&self) {
+        self.send_positions.store(true, Relaxed);
     }
 
     pub fn indices(&self) -> &Buffer {

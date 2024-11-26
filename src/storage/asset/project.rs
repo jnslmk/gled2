@@ -8,11 +8,11 @@ use crate::{
     app::{Svg, Timing},
     extract_output::ExtractOutput,
     input::{ArtnetConfig, GamepadEvent, InputEvent},
-    output_clear::OUTPUT_CLEAR,
+    output_clear::OutputClear,
     output_routings::OutputRoutings,
     output_sender::{GpuReadyReceiver, OutputSender},
-    preview::PREVIEW,
-    preview_indices::PREVIEW_INDICES,
+    preview::Preview,
+    preview_indices::PreviewIndices,
     scene_instance::SceneInstance,
     wgpu_render_state,
 };
@@ -117,7 +117,7 @@ impl Project {
             .for_each(|(_path, scene_instance)| {
                 scene_instance.set_output_mix_buffers();
             });
-        PREVIEW.lock().set_buffers();
+        Preview::set_buffers();
     }
 
     #[inline(always)]
@@ -201,21 +201,21 @@ impl Project {
             self.main_dimmer * self.cross_fader,
         );
 
-        PREVIEW_INDICES.lock().prepare(queue);
+        PreviewIndices::get().prepare(queue);
 
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations"),
         });
 
-        OUTPUT_CLEAR.lock().run(&mut encoder);
+        OutputClear::get().run(&mut encoder);
 
         self.decks().for_each(|(path, deck)| {
             deck.render(path, &mut encoder, blackout, render_deactivated_scenes)
         });
 
         ExtractOutput::get().run(&mut encoder);
-        PREVIEW_INDICES.lock().run(&mut encoder);
-        PREVIEW.lock().run(&mut encoder);
+        PreviewIndices::get().run(&mut encoder);
+        Preview::run(&mut encoder);
 
         //wait for gpu to be ready for the next queue submission
         gpu_ready_receiver.recv().ok();

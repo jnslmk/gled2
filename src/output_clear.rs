@@ -1,11 +1,7 @@
 //! Clear output buffer.
 use crate::{constants::OUTPUT_BUFFER_SIZE, wgpu_render_state, OUTPUT_BUFFER};
-use egui::mutex::Mutex;
-use once_cell::sync::Lazy;
-use std::num::NonZeroU64;
+use std::{num::NonZeroU64, sync::OnceLock};
 use wgpu::*;
-
-pub static OUTPUT_CLEAR: Lazy<Mutex<OutputClear>> = Lazy::new(|| Mutex::new(OutputClear::init()));
 
 #[derive(Debug)]
 pub struct OutputClear {
@@ -14,57 +10,60 @@ pub struct OutputClear {
 }
 
 impl OutputClear {
-    pub fn init() -> Self {
-        let device = wgpu_render_state().device;
+    pub fn get() -> &'static Self {
+        static OUTPUT_CLEAR: OnceLock<OutputClear> = OnceLock::new();
+        OUTPUT_CLEAR.get_or_init(|| {
+            let device = wgpu_render_state().device;
 
-        let module = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("OutputClear shader"),
-            source: ShaderSource::Wgsl(include_str!("./shaders/output_clear.wgsl").into()),
-        });
+            let module = device.create_shader_module(ShaderModuleDescriptor {
+                label: Some("OutputClear shader"),
+                source: ShaderSource::Wgsl(include_str!("./shaders/output_clear.wgsl").into()),
+            });
 
-        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("OutputClear bind group layout"),
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: NonZeroU64::new(OUTPUT_BUFFER_SIZE),
-                },
-                count: None,
-            }],
-        });
+            let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("OutputClear bind group layout"),
+                entries: &[BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::COMPUTE,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: NonZeroU64::new(OUTPUT_BUFFER_SIZE),
+                    },
+                    count: None,
+                }],
+            });
 
-        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("OutputClear pipeline layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
-        });
+            let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("OutputClear pipeline layout"),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
-        let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
-            cache: None,
-            label: Some("OutputClear pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &module,
-            entry_point: "main",
-            compilation_options: Default::default(),
-        });
+            let pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+                cache: None,
+                label: Some("OutputClear pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &module,
+                entry_point: "main",
+                compilation_options: Default::default(),
+            });
 
-        let device = wgpu_render_state().device;
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("OutputClear bind group"),
-            layout: &bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: OUTPUT_BUFFER.as_entire_binding(),
-            }],
-        });
+            let device = wgpu_render_state().device;
+            let bind_group = device.create_bind_group(&BindGroupDescriptor {
+                label: Some("OutputClear bind group"),
+                layout: &bind_group_layout,
+                entries: &[BindGroupEntry {
+                    binding: 0,
+                    resource: OUTPUT_BUFFER.as_entire_binding(),
+                }],
+            });
 
-        Self {
-            pipeline,
-            bind_group,
-        }
+            Self {
+                pipeline,
+                bind_group,
+            }
+        })
     }
 
     pub fn run(&self, encoder: &mut CommandEncoder) {

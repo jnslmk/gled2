@@ -1,27 +1,29 @@
 //! Render preview circles.
 use crate::{
     constants::{OUTPUT_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, PREVIEW_TEXTURE_SIZE},
-    preview_indices::PREVIEW_INDICES,
+    preview_indices::PreviewIndices,
     wgpu_render_state, OUTPUT_BUFFER,
 };
-use egui::{mutex::Mutex, TextureId};
-use once_cell::sync::Lazy;
-use std::num::NonZeroU64;
+use egui::TextureId;
+use once_cell::unsync::OnceCell;
+use std::{cell::RefCell, num::NonZeroU64};
 use wgpu::*;
 
-pub static PREVIEW: Lazy<Mutex<Preview>> = Lazy::new(|| Mutex::new(Preview::new()));
+thread_local! {
+    static PREVIEW: OnceCell<Preview> = const { OnceCell::new() };
+}
 
 #[derive(Debug)]
 pub struct Preview {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
-    bind_group: Option<BindGroup>,
+    bind_group: RefCell<Option<BindGroup>>,
     view: TextureView,
     texture_id: TextureId,
 }
 
 impl Preview {
-    pub fn new() -> Self {
+    fn init() -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: PREVIEW_TEXTURE_SIZE as u32,
@@ -118,58 +120,67 @@ impl Preview {
         Self {
             pipeline,
             bind_group_layout,
-            bind_group: None,
+            bind_group: RefCell::new(None),
             view,
             texture_id,
         }
     }
 
-    pub fn set_buffers(&mut self) {
-        let device = wgpu_render_state().device;
-        self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Preview bind group"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: PREVIEW_INDICES.lock().indices().as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: OUTPUT_BUFFER.as_entire_binding(),
-                },
-            ],
-        }));
+    pub fn set_buffers() {
+        PREVIEW.with(|preview| {
+            let preview = preview.get_or_init(Self::init);
+            let device = wgpu_render_state().device;
+            preview
+                .bind_group
+                .replace(Some(device.create_bind_group(&BindGroupDescriptor {
+                    label: Some("Preview bind group"),
+                    layout: &preview.bind_group_layout,
+                    entries: &[
+                        BindGroupEntry {
+                            binding: 0,
+                            resource: PreviewIndices::get().indices().as_entire_binding(),
+                        },
+                        BindGroupEntry {
+                            binding: 1,
+                            resource: OUTPUT_BUFFER.as_entire_binding(),
+                        },
+                    ],
+                })));
+        });
     }
 
-    pub fn run(&mut self, encoder: &mut CommandEncoder) {
-        if let Some(bind_group) = self.bind_group.as_ref() {
-            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: Some("Renderer Pass"),
-                color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &self.view,
-                    resolve_target: None,
-                    ops: Operations {
-                        load: LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 1.0,
-                        }),
-                        store: StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-            render_pass.set_pipeline(&self.pipeline);
-            render_pass.set_bind_group(0, bind_group, &[]);
-            render_pass.draw(0..3, 0..1);
-        }
+    pub fn run(encoder: &mut CommandEncoder) {
+        PREVIEW.with(|preview| {
+            let preview = preview.get_or_init(Self::init);
+
+            if let Some(bind_group) = &*preview.bind_group.borrow() {
+                let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                    label: Some("Renderer Pass"),
+                    color_attachments: &[Some(RenderPassColorAttachment {
+                        view: &preview.view,
+                        resolve_target: None,
+                        ops: Operations {
+                            load: LoadOp::Clear(wgpu::Color {
+                                r: 0.0,
+                                g: 0.0,
+                                b: 0.0,
+                                a: 1.0,
+                            }),
+                            store: StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                render_pass.set_pipeline(&preview.pipeline);
+                render_pass.set_bind_group(0, bind_group, &[]);
+                render_pass.draw(0..3, 0..1);
+            }
+        });
     }
 
-    pub fn texture_id(&self) -> TextureId {
-        self.texture_id
+    pub fn texture_id() -> TextureId {
+        PREVIEW.with(|preview| preview.get_or_init(Self::init).texture_id)
     }
 }
