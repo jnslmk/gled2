@@ -3,14 +3,14 @@ use crate::{
     svg::MeasurementPoints, texture_to_output::Positions, ui::action::Action,
 };
 use anyhow::Result;
-use egui::{mutex::Mutex, Rect};
+use egui::Rect;
 use egui_extras::RetainedImage;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, path::Path, sync::Arc};
+use std::{cell::RefCell, collections::BTreeSet, path::Path};
 
-static MEASUREMENT_POINTS: Lazy<Arc<Mutex<MeasurementPoints>>> =
-    Lazy::new(|| Arc::new(Mutex::new(MeasurementPoints::default())));
+thread_local! {
+    static MEASUREMENT_POINTS: RefCell<MeasurementPoints> = const { RefCell::new(MeasurementPoints::new()) };
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Svg {
@@ -58,7 +58,9 @@ impl Svg {
                 let svg = crate::svg::ParsedSvg::parse(&self.svg_contents).ok()?;
                 let measurement_points = MeasurementPoints::from(&svg);
                 let universes = measurement_points.universes();
-                *MEASUREMENT_POINTS.lock() = measurement_points;
+                MEASUREMENT_POINTS.with_borrow_mut(|mp| {
+                    *mp = measurement_points;
+                });
                 let image = svg.render().ok()?;
                 PreviewIndices::get().send_positions();
                 *ExtractOutput::get().universes.lock() = universes;
@@ -72,25 +74,27 @@ impl Svg {
 }
 
 pub fn reset() {
-    *MEASUREMENT_POINTS.lock() = MeasurementPoints::default();
+    MEASUREMENT_POINTS.with_borrow_mut(|mp| {
+        *mp = MeasurementPoints::new();
+    });
 }
 
 pub fn groups() -> Vec<Group> {
-    MEASUREMENT_POINTS.lock().groups()
+    MEASUREMENT_POINTS.with_borrow(|mp| mp.groups())
 }
 
 pub fn positions(group: &Group) -> Positions {
-    MEASUREMENT_POINTS.lock().positions(group)
+    MEASUREMENT_POINTS.with_borrow(|mp| mp.positions(group))
 }
 
 pub fn preview_positions() -> Positions {
-    MEASUREMENT_POINTS.lock().preview_positions()
+    MEASUREMENT_POINTS.with_borrow(|mp| mp.preview_positions())
 }
 
 pub fn preview_uv() -> Option<Rect> {
-    MEASUREMENT_POINTS.lock().preview_uv()
+    MEASUREMENT_POINTS.with_borrow_mut(|mp| mp.preview_uv())
 }
 
 pub fn universes() -> BTreeSet<u16> {
-    MEASUREMENT_POINTS.lock().universes()
+    MEASUREMENT_POINTS.with_borrow(|mp| mp.universes())
 }

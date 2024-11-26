@@ -22,7 +22,9 @@ pub struct ArtnetEvent {
 pub static ARTNET_CONFIG: Lazy<Mutex<ArtnetConfig>> = Lazy::new(|| Mutex::new(Default::default()));
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ArtnetConfig {
+    pub active: bool,
     pub universe: u16,
     pub start: u16,
     pub channels: u16,
@@ -31,6 +33,7 @@ pub struct ArtnetConfig {
 impl Default for ArtnetConfig {
     fn default() -> Self {
         Self {
+            active: false,
             universe: 18,
             start: 1,
             channels: 100,
@@ -47,18 +50,13 @@ impl ArtnetConfig {
 pub fn start_thread() -> Receiver<ArtnetEvent> {
     let (sender, receiver) = std::sync::mpsc::channel();
 
-    info!("Spawning worker thread");
-    thread::Builder::new()
-        .name("gled:artnet:rx".to_owned())
-        .spawn(move || {
-            thread(sender);
-        })
-        .expect("Could not spawn artnet receive thread");
+    info!("Spawning worker threads");
+    threads(sender);
 
     receiver
 }
 
-fn thread(sender: Sender<ArtnetEvent>) {
+fn threads(sender: Sender<ArtnetEvent>) {
     trace!("Opening udp sockets on artnet port");
     for addr in NetworkInterface::show()
         .expect("Could not find network interfaces")
@@ -73,7 +71,12 @@ fn thread(sender: Sender<ArtnetEvent>) {
         let sender = sender.clone();
         thread::Builder::new()
             .name("gled:artnet:rx".to_string())
-            .spawn(move || {
+            .spawn(move || loop {
+                if !ARTNET_CONFIG.lock().active {
+                    thread::sleep(Duration::from_secs(1));
+                    continue;
+                }
+
                 let ip = addr.ip();
                 let socket =
                     UdpSocket::bind((ip, ARTNET_PORT)).expect("Could not bind on artnet port");
@@ -81,6 +84,10 @@ fn thread(sender: Sender<ArtnetEvent>) {
                 socket.set_broadcast(true).expect("Could not set broadcast");
                 let mut buf = [0; 4096];
                 loop {
+                    if !ARTNET_CONFIG.lock().active {
+                        break;
+                    }
+
                     trace!("Receiving artnet package");
                     let Ok((size, src)) = socket.recv_from(&mut buf) else {
                         debug!("Could not receive on artnet");

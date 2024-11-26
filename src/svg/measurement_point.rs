@@ -26,6 +26,14 @@ pub struct MeasurementPoints {
 }
 
 impl MeasurementPoints {
+    pub const fn new() -> Self {
+        Self {
+            points: BTreeMap::new(),
+            preview_positions: Positions::new(),
+            uv: None,
+        }
+    }
+
     pub fn universes(&self) -> Universes {
         self.points
             .values()

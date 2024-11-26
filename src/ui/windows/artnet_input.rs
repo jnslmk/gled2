@@ -19,7 +19,7 @@ impl ArtnetInputWindow {
             ViewportId(Id::new("artnet inputs window")),
             default_viewport_builder()
                 .with_title("Gled: Artnet Inputs")
-                .with_inner_size(Vec2::new(160.0, 90.0))
+                .with_inner_size(Vec2::new(160.0, 110.0))
                 .with_resizable(false)
                 .with_minimize_button(false)
                 .with_maximize_button(false),
@@ -32,6 +32,9 @@ impl ArtnetInputWindow {
 
                 egui::CentralPanel::default().show(ctx, |ui| {
                     let mut config = ARTNET_CONFIG.lock();
+
+                    ui.label("Active");
+                    ui.checkbox(&mut config.active, "");
 
                     ui.label("Universe");
                     let universe = self

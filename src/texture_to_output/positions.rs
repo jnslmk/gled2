@@ -5,7 +5,15 @@ pub struct Positions {
     pub universes: [Universe; UNIVERSES as usize],
 }
 
-#[derive(Debug, Clone)]
+impl Positions {
+    pub const fn new() -> Self {
+        Self {
+            universes: [Universe::new(None); UNIVERSES as usize],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Universe {
     pub artnet_universe: Option<u16>,
     pub lamps: [Lamp; LAMPS_PER_UNIVERSE as usize],
@@ -18,10 +26,10 @@ impl Default for Universe {
 }
 
 impl Universe {
-    pub fn new(artnet_universe: Option<u16>) -> Self {
+    pub const fn new(artnet_universe: Option<u16>) -> Self {
         Self {
             artnet_universe,
-            lamps: [Lamp::default(); LAMPS_PER_UNIVERSE as usize],
+            lamps: [Lamp::None; LAMPS_PER_UNIVERSE as usize],
         }
     }
 }
