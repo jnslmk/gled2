@@ -1,6 +1,6 @@
 //! Send data via Art-Net udp protocol.
 use anyhow::{Context, Result};
-use log::{debug, error};
+use log::{debug, error, trace};
 use std::{
     net::{SocketAddr, ToSocketAddrs, UdpSocket},
     sync::mpsc::{channel, Receiver, Sender},
@@ -45,6 +45,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
             let extract_output = ExtractOutput::get();
 
             for _ in output_receiver.iter() {
+                trace!("Senmding output data");
                 let packages: Vec<(SocketAddr, Vec<u8>)> = {
                     let output_data = extract_output.poll_output_buffer();
                     gpu_ready_sender.send(()).ok();
@@ -128,8 +129,8 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                 };
 
                 for (addr, data) in packages {
-                    log::debug!("Sending package to {addr}");
-                    log::trace!("Package data: {data:02x?}");
+                    debug!("Sending package to {addr}");
+                    trace!("Package data: {data:02x?}");
                     if let Err(err) = socket.send_to(&data, addr) {
                         error!("Could not send data: {:?}", err)
                     };
