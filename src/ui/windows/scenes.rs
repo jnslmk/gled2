@@ -1,7 +1,6 @@
 use crate::{
     app::{PersistantState, Timing},
     effect::{Effect, EffectState},
-    group::Groups,
     storage::{Asset, Scene},
     ui::{
         asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
@@ -161,7 +160,7 @@ impl ScenesWindow {
                                 &mut self.effect_states,
                                 queue,
                                 PersistantState::get().preview_palette.and_then(Asset::get),
-                                &Groups::None,
+                                &Default::default(),
                                 1.0,
                             );
                             let mut encoder =

@@ -1,10 +1,11 @@
 use super::{Animation, Asset, AssetTrait, Palette};
 use crate::{
     effect::{Effect, EffectState},
-    group::Groups,
+    group::{GroupIndices, Groups},
     storage::AssetId,
+    ui::pills::show_pills,
 };
-use egui::{epaint::CircleShape, Color32, Label, Rect, Shape, Vec2};
+use egui::Vec2;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use wgpu::{CommandEncoder, Queue};
@@ -15,6 +16,13 @@ pub struct Scene {
 }
 
 impl Scene {
+    pub fn group_indices(&self) -> GroupIndices {
+        self.effects
+            .iter()
+            .map(|effect| effect.group_index)
+            .collect()
+    }
+
     pub fn set_output_mix_buffers(&self, effect_states: &mut [EffectState]) {
         for (effect, effect_state) in self.effects.iter().zip(effect_states.iter_mut()) {
             effect.set_output_mix_buffers(effect_state);
@@ -109,26 +117,6 @@ impl Scene {
             effect.render(state, encoder, send_output);
         }
     }
-
-    pub fn groups_selection(&self) -> GroupsSelection {
-        let mut primary = false;
-        let mut secondary = false;
-
-        for state in self.effects.iter() {
-            if state.use_secondary_group {
-                secondary = true;
-            } else {
-                primary = true;
-            }
-        }
-
-        match (primary, secondary) {
-            (true, true) => GroupsSelection::Both,
-            (true, false) => GroupsSelection::Primary,
-            (false, true) => GroupsSelection::Secondary,
-            (false, false) => GroupsSelection::None,
-        }
-    }
 }
 
 impl AssetTrait for Scene {
@@ -137,45 +125,13 @@ impl AssetTrait for Scene {
     const SHOW_NAME_IF_SELECTED: bool = true;
 
     fn show(&self, ui: &mut egui::Ui, rect: egui::Rect) {
-        let groups_selection = self.groups_selection();
-        ui.painter().add(Shape::Circle(CircleShape::filled(
-            rect.right_top() + Vec2::new(-10.0, 8.0),
-            5.5,
-            match groups_selection {
-                GroupsSelection::None => Color32::RED,
-                GroupsSelection::Secondary | GroupsSelection::Both => Color32::GOLD,
-                GroupsSelection::Primary => Color32::GREEN,
-            },
-        )));
-        ui.put(
-            Rect::from_min_size(rect.right_top() + Vec2::new(-15.0, 1.0), Vec2::splat(10.0)),
-            Label::new(
-                egui::RichText::new(match groups_selection {
-                    GroupsSelection::None => "N",
-                    GroupsSelection::Secondary | GroupsSelection::Both => "S",
-                    GroupsSelection::Primary => "P",
-                })
-                .color(Color32::BLACK),
-            )
-            .selectable(false),
+        show_pills(
+            ui,
+            rect.right_top() + Vec2::new(0.0, 1.0),
+            self.group_indices()
+                .into_iter()
+                .map(|index| index.to_string())
+                .collect(),
         );
-        if let GroupsSelection::Both = groups_selection {
-            ui.painter().add(Shape::Circle(CircleShape::filled(
-                rect.right_top() + Vec2::new(-21.0, 8.0),
-                5.5,
-                Color32::GREEN,
-            )));
-            ui.put(
-                Rect::from_min_size(rect.right_top() + Vec2::new(-26.0, 1.0), Vec2::splat(10.0)),
-                Label::new(egui::RichText::new("P").color(Color32::BLACK)).selectable(false),
-            );
-        }
     }
-}
-
-pub enum GroupsSelection {
-    None,
-    Primary,
-    Secondary,
-    Both,
 }

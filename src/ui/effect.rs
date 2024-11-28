@@ -5,7 +5,7 @@ use crate::{
     effect::{Effect, EffectState},
     storage::Asset,
 };
-use egui::{Checkbox, Slider};
+use egui::{DragValue, Slider};
 
 pub use widget::EffectWidget;
 
@@ -96,10 +96,10 @@ impl Effect {
 
         ui.separator();
 
-        ui.label("Use secondary group");
-        changed |= ui
-            .add(Checkbox::new(&mut self.use_secondary_group, ""))
-            .changed();
+        ui.label("Group indices");
+        ui.vertical_centered_justified(|ui| {
+            changed |= ui.add(DragValue::new(&mut self.group_index)).changed();
+        });
 
         changed
     }

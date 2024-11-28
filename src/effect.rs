@@ -24,8 +24,7 @@ pub struct Effect {
     pub beat_progression_offset: StaticOrCurve<RangePercentage>,
     /// In 2^n of bpm
     pub speed_exponent: i32,
-    /// Whether it should use the primary or the secondary group
-    pub use_secondary_group: bool,
+    pub group_index: usize,
     pub animation: Option<AssetId<Animation>>,
     pub animation_config: AnimationConfig,
 
@@ -44,8 +43,8 @@ impl Default for Effect {
                 0x99, 0xA6,
             ]),
             beat_progression_offset: StaticOrCurve::new_static(0.0),
-            speed_exponent: 0,
-            use_secondary_group: Default::default(),
+            speed_exponent: Default::default(),
+            group_index: Default::default(),
             animation: Default::default(),
             animation_config: Default::default(),
             animation_overwrite: Default::default(),
@@ -91,7 +90,7 @@ impl Effect {
         effect_state.speed_exponent = self.speed_exponent;
         effect_state.animation_config = self.animation_config.clone();
 
-        let group = groups.get(self.use_secondary_group);
+        let group = groups.get(&self.group_index);
         if effect_state.sent_group.as_ref() != group {
             let positions = group.map(positions);
             debug_assert!(positions.is_some());

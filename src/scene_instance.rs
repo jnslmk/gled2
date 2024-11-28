@@ -1,11 +1,9 @@
 use crate::{
     app::Timing,
     effect::EffectState,
-    group::Groups,
+    group::{GroupIndices, Groups},
     input::InputEvent,
-    storage::{
-        Animation, Asset, AssetId, GroupsSelection, Palette, RangePercentage, Scene, StaticOrCurve,
-    },
+    storage::{Animation, Asset, AssetId, Palette, RangePercentage, Scene, StaticOrCurve},
     transition::Transition,
 };
 use egui::TextureId;
@@ -188,11 +186,9 @@ impl SceneInstance {
             .collect()
     }
 
-    pub fn groups_selection(&self) -> GroupsSelection {
-        if let Some(scene) = Asset::get(self.scene) {
-            scene.data.groups_selection()
-        } else {
-            GroupsSelection::None
-        }
+    pub fn group_indices(&self) -> GroupIndices {
+        Asset::get(self.scene)
+            .map(|scene| scene.data.group_indices())
+            .unwrap_or_default()
     }
 }

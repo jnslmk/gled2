@@ -1,7 +1,6 @@
 use crate::{
     app::{PersistantState, Timing},
     effect::{Effect, EffectState},
-    group::Groups,
     storage::{Animation, Asset},
     ui::{
         action::Action,
@@ -90,7 +89,7 @@ impl AnimationWindow {
                 effect_state,
                 queue,
                 PersistantState::get().preview_palette.and_then(Asset::get),
-                &Groups::None,
+                &Default::default(),
                 1.0,
             );
             let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {

@@ -15,7 +15,7 @@ pub use curve::{Curve, RangeDegrees, RangePercentage, StaticOrCurve};
 pub use output_device::OutputDevice;
 pub use palette::Palette;
 pub use project::{Project, RenderDeactivatedScenes, SceneInstancePath};
-pub use scene::{GroupsSelection, Scene};
+pub use scene::Scene;
 
 pub trait AssetTrait:
     Serialize + DeserializeOwned + Debug + Default + Send + Sync + Clone + 'static

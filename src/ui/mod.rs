@@ -6,6 +6,7 @@ pub mod asset_tree;
 pub mod effect;
 pub mod input;
 pub mod logo;
+pub mod pills;
 pub mod scene_instance;
 pub mod windows;
 

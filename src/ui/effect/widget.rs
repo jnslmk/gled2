@@ -1,8 +1,11 @@
-use crate::effect::{Effect, EffectState};
-use egui::{
-    pos2, Button, Color32, Label, Margin, Rect, Response, Rounding, Sense, Shape, Ui, Vec2, Widget,
+use crate::{
+    effect::{Effect, EffectState},
+    ui::pills::show_pills,
 };
-use epaint::{CircleShape, RectShape};
+use egui::{
+    pos2, Button, Color32, Margin, Rect, Response, Rounding, Sense, Shape, Ui, Vec2, Widget,
+};
+use epaint::RectShape;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct EffectWidget<'a> {
@@ -58,30 +61,12 @@ impl<'a> Widget for EffectWidget<'a> {
                 }));
 
                 if self.show_group {
-                    ui.painter().add(Shape::Circle(CircleShape::filled(
-                        rect.left_top() + Vec2::splat(10.0),
-                        5.5,
-                        if self.effect.use_secondary_group {
-                            Color32::GOLD
-                        } else {
-                            Color32::GREEN
-                        },
-                    )));
-                    ui.put(
-                        Rect::from_min_size(
-                            rect.left_top() + Vec2::new(0.0, 0.5),
-                            Vec2::splat(20.0),
-                        ),
-                        Label::new(
-                            egui::RichText::new(if self.effect.use_secondary_group {
-                                "S"
-                            } else {
-                                "P"
-                            })
-                            .color(Color32::BLACK),
-                        )
-                        .selectable(false),
+                    show_pills(
+                        ui,
+                        rect.right_top() + Vec2::new(0.0, 5.0),
+                        vec![self.effect.group_index.to_string()],
                     );
+                    //TODO
                 }
             })
             .response;
