@@ -96,7 +96,7 @@ impl Effect {
 
         ui.separator();
 
-        ui.label("Group indices");
+        ui.label("Group index");
         ui.vertical_centered_justified(|ui| {
             changed |= ui.add(DragValue::new(&mut self.group_index)).changed();
         });
