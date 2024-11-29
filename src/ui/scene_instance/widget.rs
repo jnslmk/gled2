@@ -150,12 +150,18 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
                                     });
                                 }
 
+                                let groups = self
+                                    .scene_instance
+                                    .groups
+                                    .as_ref()
+                                    .unwrap_or(self.deck_groups);
+
                                 let texts = self
                                     .scene_instance
                                     .group_indices()
                                     .into_iter()
                                     .filter_map(|index| {
-                                        let group = self.deck_groups.get(&index)?;
+                                        let group = groups.get(&index)?;
                                         Some((group.0.clone(), group.color()))
                                     })
                                     .collect();

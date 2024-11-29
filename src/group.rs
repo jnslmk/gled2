@@ -47,6 +47,30 @@ impl Display for Group {
 pub type Groups = BTreeMap<usize, Group>;
 pub type GroupIndices = BTreeSet<usize>;
 
+impl ChangeButton for Option<Groups> {
+    fn change_button(&mut self, ui: &mut Ui) -> bool {
+        let mut changed = false;
+
+        let mut overwrite = self.is_some();
+        ui.label("Overwrite groups");
+        ui.checkbox(&mut overwrite, "");
+        if self.is_none() && overwrite {
+            *self = Some(Groups::default());
+            changed = true;
+        } else if self.is_some() && !overwrite {
+            *self = None;
+            changed = true;
+        }
+        if let Some(groups) = self {
+            ui.vertical_centered_justified(|ui| {
+                changed |= groups.change_button(ui);
+            });
+        }
+
+        changed
+    }
+}
+
 impl ChangeButton for Groups {
     fn change_button(&mut self, ui: &mut egui::Ui) -> bool {
         if groups().is_empty() {
@@ -61,6 +85,38 @@ impl ChangeButton for Groups {
         }
         let mut insert = None;
         let mut remove = None;
+
+        fn menu_button(
+            ui: &mut Ui,
+            index: usize,
+            group: &Group,
+            changed: &mut bool,
+            remove: &mut Option<usize>,
+            insert: &mut Option<(usize, Group)>,
+        ) {
+            ui.menu_button(format!("{index} {}", group.0), |ui| {
+                ui.set_min_width(200.0);
+                if ui
+                    .add(Button::new("🗑 Remove").fill(Color32::DARK_RED))
+                    .clicked()
+                {
+                    ui.close_menu();
+                    *remove = Some(index);
+                    *changed = true;
+                }
+                let mut group = Some(group.to_owned());
+                if group_buttons(ui, &mut group) {
+                    ui.close_menu();
+                    if let Some(group) = group {
+                        *insert = Some((index, group));
+                    } else {
+                        *remove = Some(index);
+                    }
+                    *changed = true;
+                }
+            });
+        }
+
         for (index, group) in self.iter() {
             ui.scope(|ui| {
                 {
@@ -70,26 +126,14 @@ impl ChangeButton for Groups {
                     widgets.hovered.fg_stroke.color = Color32::from_black_alpha(200);
                     widgets.hovered.weak_bg_fill = group.color();
                 }
-                ui.menu_button(format!("{index} {}", group.0), |ui| {
-                    ui.set_min_width(200.0);
-                    if ui
-                        .add(Button::new("🗑 Remove").fill(Color32::DARK_RED))
-                        .clicked()
-                    {
-                        remove = Some(*index);
-                        changed = true;
-                    }
-                    let mut group = Some(group.to_owned());
-                    if group_buttons(ui, &mut group) {
-                        ui.close_menu();
-                        if let Some(group) = group {
-                            insert = Some((*index, group));
-                        } else {
-                            remove = Some(*index);
-                        }
-                        changed = true;
-                    }
-                });
+
+                if ui.layout().main_dir().is_vertical() {
+                    ui.vertical_centered_justified(|ui| {
+                        menu_button(ui, *index, group, &mut changed, &mut remove, &mut insert);
+                    });
+                } else {
+                    menu_button(ui, *index, group, &mut changed, &mut remove, &mut insert);
+                }
             });
         }
 

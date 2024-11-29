@@ -21,6 +21,7 @@ pub struct SceneInstance {
     pub flash_input: Option<InputEvent>,
     pub dimmer_input: Option<InputEvent>,
     pub scene: AssetId<Scene>,
+    pub groups: Option<Groups>,
 
     #[serde(skip)]
     effect_states: Vec<EffectState>,
@@ -43,6 +44,7 @@ impl Clone for SceneInstance {
             flash_input: self.flash_input,
             dimmer_input: self.dimmer_input,
             scene: self.scene,
+            groups: self.groups.clone(),
             effect_states: Default::default(),
             transition: Default::default(),
             flash: Default::default(),
@@ -64,6 +66,7 @@ impl From<AssetId<Scene>> for SceneInstance {
             effect_states: Default::default(),
             transition: Default::default(),
             flash: Default::default(),
+            groups: Default::default(),
         }
     }
 }
@@ -88,7 +91,7 @@ impl SceneInstance {
         queue: &Queue,
         always_render: bool,
         palette: Option<Arc<Asset<Palette>>>,
-        groups: &Groups,
+        deck_groups: &Groups,
         timing: &Timing,
         main_dimmer: f32,
     ) {
@@ -114,6 +117,7 @@ impl SceneInstance {
         }
 
         if always_render || self.active || self.flash {
+            let groups = self.groups.as_ref().unwrap_or(deck_groups);
             let main_opacity = main_dimmer
                 * opacity_factor
                 * self.opacity.value(beat_progression)

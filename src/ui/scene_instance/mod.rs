@@ -40,6 +40,14 @@ impl SceneInstance {
                 });
             });
 
+        egui::Frame::none()
+            .inner_margin(Margin::from(6.0))
+            .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
+            .show(ui, |ui| {
+                ui.set_min_width(ui.available_width());
+                self.groups.change_button(ui);
+            });
+
         ui.add_space(10.0);
 
         egui::Frame::none()

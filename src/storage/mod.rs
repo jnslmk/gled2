@@ -62,48 +62,47 @@ pub fn start_thread() {
             std::thread::sleep(retry_wait);
             retry_wait = std::time::Duration::from_secs(2);
 
-            
-            let mut git =
-                match git::Git::open("https://gitlab.com/pentagonum/gled2_assets.git".to_string()) {
-                    Ok(git) => git,
-                    Err(err) => {
-                        let err: String = format!("Could not open git: {err}");
-                        log::error!("{err}");
-                        *STATE.lock() = State::Error(err);
-                        continue;
-                    }
-                };
-                
+            let mut git = match git::Git::open(
+                "https://gitlab.com/pentagonum/gled2_assets.git".to_string(),
+            ) {
+                Ok(git) => git,
+                Err(err) => {
+                    let err: String = format!("Could not open git: {err}");
+                    log::error!("{err}");
+                    *STATE.lock() = State::Error(err);
+                    continue;
+                }
+            };
 
-                log::debug!("Git opened");
+            log::debug!("Git opened");
             *STATE.lock() = State::Loading(0.2);
-/*
-            let branches = match git.branches() {
-                Ok(branches) => branches,
-                Err(err) => {
-                    let err: String = format!("Could not get branches: {err}");
-                    log::error!("{err}");
-                    *STATE.lock() = State::Error(err);
-                    continue;
-                }
-            };
+            /*
+                        let branches = match git.branches() {
+                            Ok(branches) => branches,
+                            Err(err) => {
+                                let err: String = format!("Could not get branches: {err}");
+                                log::error!("{err}");
+                                *STATE.lock() = State::Error(err);
+                                continue;
+                            }
+                        };
 
-            log::debug!("Got branches");
-            *STATE.lock() = State::Loading(0.3);
+                        log::debug!("Got branches");
+                        *STATE.lock() = State::Loading(0.3);
 
-            let current_branch = match git.current_branch() {
-                Ok(current_branch) => current_branch,
-                Err(err) => {
-                    let err: String = format!("Could not get current_branch: {err}");
-                    log::error!("{err}");
-                    *STATE.lock() = State::Error(err);
-                    continue;
-                }
-            };
+                        let current_branch = match git.current_branch() {
+                            Ok(current_branch) => current_branch,
+                            Err(err) => {
+                                let err: String = format!("Could not get current_branch: {err}");
+                                log::error!("{err}");
+                                *STATE.lock() = State::Error(err);
+                                continue;
+                            }
+                        };
 
-            log::debug!("Got current branch");
-            *STATE.lock() = State::Loading(0.4);
-*/
+                        log::debug!("Got current branch");
+                        *STATE.lock() = State::Loading(0.4);
+            */
 
             let root = git.folder().to_owned();
             let mut collections = ShareDebugMap::custom();
@@ -127,8 +126,6 @@ pub fn start_thread() {
                 folder: root.clone(),
                 collections,
             };
-
-            //TODO: Loader before main window which turns into main window once we are here
 
             while let Ok(action) = actions.recv() {
                 match action {

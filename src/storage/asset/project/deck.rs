@@ -120,13 +120,13 @@ impl Deck {
         }
 
         let palette = self.palette.and_then(Asset::get);
-        let groups = self.groups.clone();
+        let deck_groups = self.groups.clone();
         for (path, scene_instance) in self.scene_instances(path) {
             scene_instance.prepare(
                 queue,
                 render_deactivated_scenes.should_render(path),
                 palette.clone(),
-                &groups,
+                &deck_groups,
                 timing,
                 main_dimmer,
             );

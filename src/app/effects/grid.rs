@@ -1,13 +1,20 @@
 use super::App;
 use crate::{
     app::PersistantState,
+    storage::SceneInstancePath,
     transition::{Transition, TransitionGoal},
     ui::scene_instance::widget::SceneInstanceWidget,
 };
 use egui::{scroll_area::ScrollBarVisibility, Color32, Rect, TextureId, Ui, Vec2};
 
 impl App {
-    pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureId>, uv: Option<Rect>) {
+    pub fn effects_grid(
+        &mut self,
+        ui: &mut Ui,
+        svg: Option<TextureId>,
+        uv: Option<Rect>,
+        path: SceneInstancePath,
+    ) {
         let Some(project) = self.project.as_mut() else {
             return;
         };
@@ -24,9 +31,8 @@ impl App {
                 ui.horizontal_wrapped(|ui| {
                     let mut changed = None;
                     let mut flashed = Vec::new();
-                    //TODO: borrow
-                    let deck_groups = project.a.groups.clone();
-                    for (path, scene_instance) in project.all_scene_instances() {
+                    let deck_groups = project.deck(path).groups.clone();
+                    for (path, scene_instance) in project.scene_instances(path) {
                         let response = ui.add_sized(
                             Vec2::new(effects_size + 40.0, effects_size + 60.0),
                             SceneInstanceWidget {
