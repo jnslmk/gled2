@@ -236,6 +236,31 @@ impl App {
                     ui.separator();
 
                     egui::gui_zoom::zoom_menu_buttons(ui);
+
+                    ui.separator();
+
+                    let mut persistant_state = PersistantState::get();
+                    ui.label("Size:");
+                    if ui
+                        .add(
+                            Slider::new(&mut persistant_state.effects_size, 50.0..=500.0)
+                                .show_value(false),
+                        )
+                        .changed()
+                    {
+                        persistant_state.save();
+                    }
+
+                    let mut persistant_state = PersistantState::get();
+                    if ui
+                        .checkbox(
+                            &mut persistant_state.effects_always_render,
+                            "Always render all scenes",
+                        )
+                        .changed()
+                    {
+                        persistant_state.save();
+                    };
                 });
 
                 ui.separator();

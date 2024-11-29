@@ -95,6 +95,13 @@ impl SceneInstance {
         timing: &Timing,
         main_dimmer: f32,
     ) {
+        if let Some(event) = self.flash_input.as_ref() {
+            self.flash = event.is_live();
+        }
+        if let Some(event) = self.dimmer_input.as_ref() {
+            self.input_dimmer = event.dimmer();
+        }
+
         let mut beat_progression = timing.beat_progression();
         beat_progression += self.beat_progression_offset.value(beat_progression);
         for effect_state in self.effect_states.iter_mut() {
@@ -169,18 +176,10 @@ impl SceneInstance {
             .unwrap_or(1.0)
     }
 
-    pub fn set_flash(&mut self, flash: bool) {
-        self.flash = flash;
-    }
-
     pub fn send_positions(&mut self) {
         for state in self.effect_states.iter_mut() {
             state.send_positions();
         }
-    }
-
-    pub fn set_input_dimmer(&mut self, input_dimmer: f32) {
-        self.input_dimmer = input_dimmer;
     }
 
     pub fn texture_ids(&self) -> Vec<TextureId> {

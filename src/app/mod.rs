@@ -17,7 +17,7 @@ use crate::{
     ui::{action::Action, windows::Windows},
     viewport_builder::default_viewport_builder,
 };
-use egui::{ahash::HashSet, Modifiers, ViewportId};
+use egui::{ahash::HashSet, Modifiers, SidePanel, TopBottomPanel, ViewportId};
 use std::sync::Arc;
 
 pub use persistant_state::PersistantState;
@@ -179,9 +179,28 @@ impl App {
         self.menu(ctx);
         self.status_bar(ctx);
         if self.project.is_some() {
-            self.config(ctx);
+            TopBottomPanel::bottom("scenes c")
+                .resizable(true)
+                .show(ctx, |ui| {
+                    self.scenes(ui, SceneInstancePath::DECK_C);
+                });
+            SidePanel::left("scenes a")
+                .resizable(true)
+                .default_width(280.0)
+                .min_width(280.0)
+                .show(ctx, |ui| {
+                    self.scenes(ui, SceneInstancePath::DECK_A);
+                });
+            SidePanel::right("scenes b")
+                .resizable(true)
+                .default_width(280.0)
+                .min_width(280.0)
+                .show(ctx, |ui| {
+                    self.scenes(ui, SceneInstancePath::DECK_B);
+                });
+
             self.preview(ctx);
-            self.effects(ctx);
+            self.config(ctx);
         } else {
             self.no_project(ctx);
         }

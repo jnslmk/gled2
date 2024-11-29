@@ -7,55 +7,42 @@ impl App {
             return;
         };
 
-        egui::SidePanel::left("left")
-            .resizable(true)
-            .default_width(280.0)
-            .min_width(280.0)
-            .max_width(ctx.used_rect().width() - 950.0)
-            .show(ctx, |ui| {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.add_space(6.0);
+
+            match project.scene_instance(self.selected_scene_instance) {
+                Some(scene_instance) => {
+                    scene_instance.config_ui(ctx, ui);
+                }
+                None => {
+                    ui.label("There's no Effect to configure.");
+                }
+            }
+
+            ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
                 ui.add_space(6.0);
 
-                match project.scene_instance(self.selected_scene_instance) {
-                    Some(scene_instance) => {
-                        scene_instance.config_ui(ctx, ui);
-                    }
-                    None => {
-                        ui.label("There's no Effect to configure.");
-                    }
-                }
-
-                ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
-                    ui.add_space(6.0);
-
-                    egui::Frame::none()
-                        .inner_margin(Margin::from(6.0))
-                        .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
-                        .show(ui, |ui| {
-                            ui.horizontal(|ui| {
-                                ui.radio_value(
-                                    &mut self.timing.fade_mode,
-                                    FadeMode::Instant,
-                                    "Instant",
-                                );
-                                ui.radio_value(
-                                    &mut self.timing.fade_mode,
-                                    FadeMode::Beat,
-                                    "1 Beat",
-                                );
-                                ui.radio_value(
-                                    &mut self.timing.fade_mode,
-                                    FadeMode::Beats4,
-                                    "4 Beats",
-                                );
-                                ui.radio_value(
-                                    &mut self.timing.fade_mode,
-                                    FadeMode::Beats16,
-                                    "16 Beats",
-                                );
-                            });
-                            ui.label("Fade Mode");
+                egui::Frame::none()
+                    .inner_margin(Margin::from(6.0))
+                    .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.radio_value(
+                                &mut self.timing.fade_mode,
+                                FadeMode::Instant,
+                                "Instant",
+                            );
+                            ui.radio_value(&mut self.timing.fade_mode, FadeMode::Beat, "1 Beat");
+                            ui.radio_value(&mut self.timing.fade_mode, FadeMode::Beats4, "4 Beats");
+                            ui.radio_value(
+                                &mut self.timing.fade_mode,
+                                FadeMode::Beats16,
+                                "16 Beats",
+                            );
                         });
-                });
+                        ui.label("Fade Mode");
+                    });
             });
+        });
     }
 }

@@ -117,6 +117,18 @@ impl ChangeButton for Groups {
             });
         }
 
+        let mut new_group = None;
+        ui.menu_button(format!("+ Add Group {next_index}"), |ui| {
+            ui.set_min_width(200.0);
+            if group_buttons(ui, &mut new_group) {
+                ui.close_menu();
+                if let Some(group) = new_group {
+                    insert = Some((next_index, group));
+                    changed = true;
+                }
+            }
+        });
+
         for (index, group) in self.iter() {
             ui.scope(|ui| {
                 {
@@ -136,18 +148,6 @@ impl ChangeButton for Groups {
                 }
             });
         }
-
-        let mut new_group = None;
-        ui.menu_button(format!("+ Add Group {next_index}"), |ui| {
-            ui.set_min_width(200.0);
-            if group_buttons(ui, &mut new_group) {
-                ui.close_menu();
-                if let Some(group) = new_group {
-                    insert = Some((next_index, group));
-                    changed = true;
-                }
-            }
-        });
 
         if let Some((index, group)) = insert {
             self.insert(index, group);

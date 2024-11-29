@@ -1,25 +1,19 @@
 use super::App;
 use crate::{
-    app::PersistantState,
     storage::{AssetId, Scene, SceneInstancePath},
     ui::{action, ChangeButton},
 };
-use egui::{Align, Checkbox, Layout, RichText, Slider, Ui};
+use egui::{RichText, Slider, Ui};
 
 impl App {
-    pub fn effects_header(&mut self, ui: &mut Ui) {
-        let mut effects_show_svg = PersistantState::effects_show_svg();
-        let mut effects_always_render = PersistantState::effects_always_render();
-        let mut effects_size = PersistantState::effects_size();
-
-        let has_svg = self.svg().is_some();
+    pub fn effects_header(&mut self, ui: &mut Ui, path: SceneInstancePath) {
         let Some(project) = self.project.as_mut() else {
             return;
         };
-        let deck = project.deck(SceneInstancePath::default());
+        let deck = project.deck(path);
 
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Scenes").heading());
+            ui.label(RichText::new(path.deck_path.name()).heading());
 
             let mut scene: Option<AssetId<Scene>> = None;
             scene.change_button(ui);
@@ -27,44 +21,16 @@ impl App {
                 deck.add_scene(&mut self.selected_scene_instance, scene);
             }
 
+            ui.scope(|ui| {
+                ui.vertical_centered_justified(|ui| {
+                    deck.palette.change_button(ui);
+                });
+            });
+        });
+        ui.horizontal(|ui| {
             if deck.groups.change_button(ui) {
                 action::Action::InitGPU.enqueue();
             }
-
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if ui
-                    .add_enabled(
-                        has_svg,
-                        Checkbox::new(&mut effects_show_svg, RichText::new("SVG")),
-                    )
-                    .changed()
-                {
-                    let mut persistant_state = PersistantState::get();
-                    persistant_state.effects_show_svg = effects_show_svg;
-                    persistant_state.save();
-                };
-
-                if ui
-                    .checkbox(&mut effects_always_render, RichText::new("Render all"))
-                    .changed()
-                {
-                    let mut persistant_state = PersistantState::get();
-                    persistant_state.effects_always_render = effects_always_render;
-                    persistant_state.save();
-                };
-                if ui
-                    .add(
-                        Slider::new(&mut effects_size, 90.0..=500.0)
-                            .show_value(false)
-                            .text(RichText::new("Size")),
-                    )
-                    .changed()
-                {
-                    let mut persistant_state = PersistantState::get();
-                    persistant_state.effects_size = effects_size;
-                    persistant_state.save();
-                }
-            });
         });
         ui.horizontal(|ui| {
             ui.checkbox(&mut deck.auto_mode_active, "Auto Mode");
@@ -78,9 +44,6 @@ impl App {
                 deck.auto_mode_active,
                 Slider::new(&mut deck.auto_mode_max_scenes, 1..=10),
             );
-            ui.vertical_centered_justified(|ui| {
-                deck.palette.change_button(ui);
-            });
         });
     }
 }

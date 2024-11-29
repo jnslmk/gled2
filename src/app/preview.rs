@@ -9,8 +9,8 @@ impl App {
 
         if let Some(uv) = preview_uv() {
             let preview_rect = egui::TopBottomPanel::top("preview")
-                .default_height(preview_height)
-                .min_height(50.0)
+                .default_height(preview_height.max(300.0))
+                .min_height(300.0)
                 .resizable(true)
                 .show(ctx, |ui| {
                     ui.horizontal(|ui| {

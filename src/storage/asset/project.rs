@@ -72,6 +72,7 @@ impl Project {
     pub fn decks(&mut self) -> impl Iterator<Item = (SceneInstancePath, &mut Deck)> {
         once((SceneInstancePath::DECK_A, &mut self.a))
             .chain(once((SceneInstancePath::DECK_B, &mut self.b)))
+            .chain(once((SceneInstancePath::DECK_C, &mut self.c)))
     }
 
     #[inline(always)]
@@ -183,6 +184,14 @@ impl Project {
             render_deactivated_scenes,
             fade_duration,
             self.main_dimmer * self.cross_fader,
+        );
+        self.c.prepare(
+            SceneInstancePath::DECK_C,
+            queue,
+            timing,
+            render_deactivated_scenes,
+            fade_duration,
+            self.main_dimmer,
         );
 
         PreviewIndices::get().prepare(queue);

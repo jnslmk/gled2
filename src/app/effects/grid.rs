@@ -20,17 +20,15 @@ impl App {
         };
 
         let effects_size = PersistantState::effects_size();
-        let effects_show_svg = PersistantState::effects_show_svg();
 
         egui::ScrollArea::vertical()
-            .id_salt("effects_scroll")
+            .id_salt(format!("{path:?} scroll"))
             .auto_shrink([false, false])
             .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
             .show(ui, |ui| {
                 ui.set_max_width(ui.available_width() - 30.0);
                 ui.horizontal_wrapped(|ui| {
                     let mut changed = None;
-                    let mut flashed = Vec::new();
                     let deck_groups = project.deck(path).groups.clone();
                     for (path, scene_instance) in project.scene_instances(path) {
                         let response = ui.add_sized(
@@ -40,9 +38,9 @@ impl App {
                                 hovered_scene_instance: &mut self.hovered_scene_instance,
                                 path,
                                 scene_instance,
-                                svg: svg.filter(|_| effects_show_svg),
+                                svg,
                                 effects_size,
-                                live_color: Color32::GREEN,
+                                live_color: Color32::DARK_GREEN,
                                 uv,
                                 deck_groups: &deck_groups,
                             },
@@ -55,16 +53,6 @@ impl App {
                                 .unwrap_or_default()
                         {
                             changed = Some(path);
-                        }
-
-                        if let Some(event) = scene_instance.flash_input.as_ref() {
-                            if event.is_live() {
-                                flashed.push(path);
-                            }
-                        }
-
-                        if let Some(event) = scene_instance.dimmer_input.as_ref() {
-                            scene_instance.set_input_dimmer(event.dimmer());
                         }
                     }
 
@@ -79,10 +67,6 @@ impl App {
                                 self.timing.fade_duration(),
                             ));
                         }
-                    }
-
-                    for (path, scene_instance) in project.all_scene_instances() {
-                        scene_instance.set_flash(flashed.contains(&path));
                     }
                 });
             });

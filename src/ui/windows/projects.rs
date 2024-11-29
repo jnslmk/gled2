@@ -61,6 +61,13 @@ impl ProjectsWindow {
                                 .scene_instances(SceneInstancePath::DECK_B)
                                 .count()
                         ));
+                        ui.label(format!(
+                            "Scenes in Common Deck: {}",
+                            project
+                                .data
+                                .scene_instances(SceneInstancePath::DECK_C)
+                                .count()
+                        ));
                         ui.vertical_centered_justified(|ui| {
                             if ui.button("Load Project").clicked() {
                                 Action::SetProject(project.id).enqueue();

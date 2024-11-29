@@ -4,7 +4,7 @@ use egui::{Context, Label, Layout};
 
 impl App {
     pub fn status_bar(&mut self, ctx: &Context) {
-        egui::TopBottomPanel::bottom("Stauts_bar").show(ctx, |ui| {
+        egui::TopBottomPanel::bottom("status bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 if let Some(framerate) = self.timing.framerate() {
                     ui.add(Label::new(format!("{framerate:.0} fps")));

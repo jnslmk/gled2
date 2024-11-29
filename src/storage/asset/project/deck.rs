@@ -24,6 +24,16 @@ pub enum DeckPath {
     C,
 }
 
+impl DeckPath {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::A => "A",
+            Self::B => "B",
+            Self::C => "Common Scenes",
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Deck {
     pub palette: Option<AssetId<Palette>>,
