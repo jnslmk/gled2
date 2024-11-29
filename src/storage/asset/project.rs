@@ -15,6 +15,7 @@ use crate::{
     scene_instance::SceneInstance,
     wgpu_render_state,
 };
+use deck::DeckPath;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, iter::once, time::Duration};
 use wgpu::CommandEncoderDescriptor;
@@ -26,8 +27,9 @@ pub use scene_instance_path::SceneInstancePath;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(default)]
 pub struct Project {
-    pub a: Deck,
-    pub b: Deck,
+    a: Deck,
+    b: Deck,
+    c: Deck,
     /// 0.0 = A, 0.5 = A + B, 1.0 = B
     pub cross_fader: f32,
     pub svg: Option<Svg>,
@@ -44,6 +46,7 @@ impl Default for Project {
         Self {
             a: Default::default(),
             b: Default::default(),
+            c: Default::default(),
             cross_fader: Default::default(),
             svg: Default::default(),
             output_routings: Default::default(),
@@ -111,10 +114,10 @@ impl Project {
 
     #[inline(always)]
     pub fn deck(&mut self, path: SceneInstancePath) -> &mut Deck {
-        if path.deck_a {
-            &mut self.a
-        } else {
-            &mut self.b
+        match path.deck_path {
+            DeckPath::A => &mut self.a,
+            DeckPath::B => &mut self.b,
+            DeckPath::C => &mut self.c,
         }
     }
 
@@ -128,11 +131,7 @@ impl Project {
         &mut self,
         path: SceneInstancePath,
     ) -> impl Iterator<Item = (SceneInstancePath, &mut SceneInstance)> {
-        if path.deck_a {
-            self.a.scene_instances(path)
-        } else {
-            self.b.scene_instances(path)
-        }
+        self.deck(path).scene_instances(path)
     }
 
     /// Remove scene instance at path and update path to the next scene instance

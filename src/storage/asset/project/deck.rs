@@ -16,6 +16,14 @@ use std::{
 };
 use wgpu::CommandEncoder;
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DeckPath {
+    #[default]
+    A,
+    B,
+    C,
+}
+
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Deck {
     pub palette: Option<AssetId<Palette>>,
