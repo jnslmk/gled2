@@ -1,5 +1,5 @@
 use super::{timing::FadeMode, App};
-use egui::{Context, Layout, Margin};
+use egui::{Context, Layout, Margin, Slider};
 
 impl App {
     pub fn config(&mut self, ctx: &Context) {
@@ -20,6 +20,18 @@ impl App {
             }
 
             ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().slider_width = ui.available_width() - 30.0;
+                    ui.spacing_mut().slider_rail_height = 10.0;
+                    ui.label("A");
+                    ui.add(
+                        Slider::new(&mut project.cross_fader, 0.0..=1.0)
+                            .handle_shape(egui::style::HandleShape::Rect { aspect_ratio: 3.0 })
+                            .show_value(false),
+                    );
+                    ui.label("B");
+                });
+
                 egui::Frame::none()
                     .inner_margin(Margin::from(6.0))
                     .show(ui, |ui| {
