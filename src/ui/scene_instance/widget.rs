@@ -1,4 +1,9 @@
-use crate::{scene_instance::SceneInstance, storage::SceneInstancePath};
+use crate::{
+    group::Groups,
+    scene_instance::SceneInstance,
+    storage::{Asset, SceneInstancePath},
+    ui::pills::show_pills,
+};
 use egui::{
     epaint::RectShape, load::SizedTexture, pos2, Align, Button, Checkbox, Color32, Image, Layout,
     Margin, Rect, Rounding, Sense, Shape, TextureId, Ui, Vec2, Widget,
@@ -10,6 +15,7 @@ pub struct SceneInstanceWidget<'a> {
     pub hovered_scene_instance: &'a mut SceneInstancePath,
     pub path: SceneInstancePath,
     pub scene_instance: &'a mut SceneInstance,
+    pub deck_groups: &'a Groups,
     pub svg: Option<TextureId>,
     pub effects_size: f32,
     pub live_color: Color32,
@@ -81,6 +87,11 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
                                 ui.set_max_width(size.x + 28.0);
+                                ui.label(
+                                    Asset::get(self.scene_instance.scene)
+                                        .map(|asset| asset.name().to_owned())
+                                        .unwrap_or_default(),
+                                );
                                 if let Some(hotkey) = self
                                     .scene_instance
                                     .selection_input
@@ -139,7 +150,16 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
                                     });
                                 }
 
-                                let group_indices = self.scene_instance.group_indices();
+                                let texts = self
+                                    .scene_instance
+                                    .group_indices()
+                                    .into_iter()
+                                    .filter_map(|index| {
+                                        let group = self.deck_groups.get(&index)?;
+                                        Some((group.0.clone(), group.color()))
+                                    })
+                                    .collect();
+                                show_pills(ui, rect.right_top() + Vec2::new(0.0, 5.0), texts);
                             });
                         })
                     })

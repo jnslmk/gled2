@@ -5,7 +5,7 @@ use crate::{
     storage::AssetId,
     ui::pills::show_pills,
 };
-use egui::Vec2;
+use egui::{Color32, Vec2};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use wgpu::{CommandEncoder, Queue};
@@ -130,7 +130,7 @@ impl AssetTrait for Scene {
             rect.right_top() + Vec2::new(0.0, 1.0),
             self.group_indices()
                 .into_iter()
-                .map(|index| index.to_string())
+                .map(|index| (index.to_string(), Color32::GOLD))
                 .collect(),
         );
     }

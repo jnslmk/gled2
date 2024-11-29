@@ -1,17 +1,17 @@
 use super::{
-    render_deactivated_scenes::RenderDeactivatedScenes, scene_group::SceneGroup,
-    scene_instance_path::SceneInstancePath,
+    render_deactivated_scenes::RenderDeactivatedScenes, scene_instance_path::SceneInstancePath,
 };
 use crate::{
     app::Timing,
+    group::{Group, Groups},
     scene_instance::SceneInstance,
-    storage::{Asset, AssetId, Palette},
+    storage::{Asset, AssetId, Palette, Scene},
     transition::{Transition, TransitionGoal},
 };
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashSet,
+    collections::{BTreeMap, HashSet},
     time::{Duration, Instant},
 };
 use wgpu::CommandEncoder;
@@ -19,37 +19,24 @@ use wgpu::CommandEncoder;
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Deck {
     pub palette: Option<AssetId<Palette>>,
-    pub scene_groups: Vec<SceneGroup>,
     pub auto_mode_active: bool,
     pub auto_mode_seconds: u64,
     pub auto_mode_max_scenes: usize,
+    #[serde(deserialize_with = "deserialize_groups")]
+    pub groups: Groups,
+    pub scenes_instances: Vec<SceneInstance>,
 
     #[serde(skip)]
     pub auto_mode_last_change: Option<Instant>,
 }
 
 impl Deck {
-    pub fn scene_groups(
-        &mut self,
-        path: SceneInstancePath,
-    ) -> impl Iterator<Item = (SceneInstancePath, &mut SceneGroup)> {
-        self.scene_groups
-            .iter_mut()
-            .enumerate()
-            .map(move |(scene_group, sg)| {
-                (
-                    SceneInstancePath {
-                        scene_group,
-                        ..path
-                    },
-                    sg,
-                )
-            })
-    }
+    pub fn add_scene(&mut self, path: &mut SceneInstancePath, scene: AssetId<Scene>) {
+        let mut scene_instance: SceneInstance = scene.into();
+        scene_instance.init_states();
+        self.scenes_instances.push(scene_instance);
 
-    #[inline(always)]
-    pub fn scene_group(&mut self, path: SceneInstancePath) -> Option<&mut SceneGroup> {
-        self.scene_groups.get_mut(path.scene_group)
+        path.scene_instance = self.scenes_instances.len() - 1;
     }
 
     #[inline(always)]
@@ -57,15 +44,23 @@ impl Deck {
         &mut self,
         path: SceneInstancePath,
     ) -> impl Iterator<Item = (SceneInstancePath, &mut SceneInstance)> {
-        self.scene_groups(path)
-            .flat_map(|(path, scene_group)| scene_group.scene_instances(path))
+        self.scenes_instances
+            .iter_mut()
+            .enumerate()
+            .map(move |(scene_instance, si)| {
+                (
+                    SceneInstancePath {
+                        scene_instance,
+                        ..path
+                    },
+                    si,
+                )
+            })
     }
 
     #[inline(always)]
     pub fn scene_instance(&mut self, path: SceneInstancePath) -> Option<&mut SceneInstance> {
-        self.scene_groups
-            .get_mut(path.scene_group)?
-            .scene_instance(path)
+        self.scenes_instances.get_mut(path.scene_instance)
     }
 
     pub fn prepare(
@@ -125,13 +120,14 @@ impl Deck {
         }
 
         let palette = self.palette.and_then(Asset::get);
-        for (path, scene_group) in self.scene_groups(path) {
-            scene_group.prepare(
-                path,
+        let groups = self.groups.clone();
+        for (path, scene_instance) in self.scene_instances(path) {
+            scene_instance.prepare(
                 queue,
-                timing,
-                render_deactivated_scenes,
+                render_deactivated_scenes.should_render(path),
                 palette.clone(),
+                &groups,
+                timing,
                 main_dimmer,
             );
         }
@@ -144,8 +140,23 @@ impl Deck {
         blackout: bool,
         render_deactivated_scenes: RenderDeactivatedScenes,
     ) {
-        for (path, scene_group) in self.scene_groups(path) {
-            scene_group.render(path, encoder, blackout, render_deactivated_scenes);
+        for (path, scene_instance) in self.scene_instances(path) {
+            scene_instance.render(
+                encoder,
+                blackout,
+                render_deactivated_scenes.should_render(path),
+            );
         }
     }
+}
+
+fn deserialize_groups<'de, D>(deserializer: D) -> Result<Groups, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    BTreeMap::<String, Group>::deserialize(deserializer).map(|map| {
+        map.into_iter()
+            .filter_map(|(index, group)| index.parse().ok().map(|index| (index, group)))
+            .collect()
+    })
 }

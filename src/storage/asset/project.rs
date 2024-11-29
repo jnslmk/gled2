@@ -1,6 +1,5 @@
 mod deck;
 mod render_deactivated_scenes;
-mod scene_group;
 mod scene_instance_path;
 
 use super::{Animation, AssetId, AssetTrait};
@@ -22,7 +21,6 @@ use wgpu::CommandEncoderDescriptor;
 
 pub use deck::Deck;
 pub use render_deactivated_scenes::RenderDeactivatedScenes;
-pub use scene_group::SceneGroup;
 pub use scene_instance_path::SceneInstancePath;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -44,14 +42,7 @@ pub struct Project {
 impl Default for Project {
     fn default() -> Self {
         Self {
-            a: Deck {
-                scene_groups: vec![Default::default()],
-                palette: None,
-                auto_mode_active: Default::default(),
-                auto_mode_seconds: Default::default(),
-                auto_mode_max_scenes: Default::default(),
-                auto_mode_last_change: Default::default(),
-            },
+            a: Default::default(),
             b: Default::default(),
             cross_fader: Default::default(),
             svg: Default::default(),
@@ -84,10 +75,8 @@ impl Project {
     pub fn all_scene_instances(
         &mut self,
     ) -> impl Iterator<Item = (SceneInstancePath, &mut SceneInstance)> {
-        self.decks().flat_map(|(path, deck)| {
-            deck.scene_groups(path)
-                .flat_map(|(path, scene_groups)| scene_groups.scene_instances(path))
-        })
+        self.decks()
+            .flat_map(|(path, deck)| deck.scene_instances(path))
     }
 
     pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
@@ -130,13 +119,8 @@ impl Project {
     }
 
     #[inline(always)]
-    pub fn scene_group(&mut self, path: SceneInstancePath) -> Option<&mut SceneGroup> {
-        self.deck(path).scene_group(path)
-    }
-
-    #[inline(always)]
     pub fn scene_instance(&mut self, path: SceneInstancePath) -> Option<&mut SceneInstance> {
-        self.scene_group(path)?.scene_instance(path)
+        self.deck(path).scene_instance(path)
     }
 
     #[inline(always)]
@@ -153,9 +137,10 @@ impl Project {
 
     /// Remove scene instance at path and update path to the next scene instance
     pub fn remove_scene_instance(&mut self, path: &mut SceneInstancePath) {
-        if let Some(scene_group) = self.scene_group(*path) {
-            scene_group.scenes_instances.remove(path.scene_instance);
-        }
+        self.deck(*path)
+            .scenes_instances
+            .remove(path.scene_instance);
+
         while path.scene_instance > 0 {
             if self.scene_instance(*path).is_some() {
                 break;

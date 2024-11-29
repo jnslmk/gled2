@@ -64,11 +64,10 @@ impl eframe::App for App {
                         .scene_instance(self.selected_scene_instance)
                         .map(|scene_instance| scene_instance.scene)
                     {
-                        if let Some(scene_group) = project.scene_group(self.selected_scene_instance)
-                        {
-                            scene_group.add_scene(&mut self.selected_scene_instance, scene);
-                            Action::InitGPU.enqueue();
-                        }
+                        project
+                            .deck(self.selected_scene_instance)
+                            .add_scene(&mut self.selected_scene_instance, scene);
+                        Action::InitGPU.enqueue();
                     }
                 }
                 (Some(project), Some(Action::InitGPU)) => {

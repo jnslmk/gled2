@@ -24,6 +24,8 @@ impl App {
                 ui.horizontal_wrapped(|ui| {
                     let mut changed = None;
                     let mut flashed = Vec::new();
+                    //TODO: borrow
+                    let deck_groups = project.a.groups.clone();
                     for (path, scene_instance) in project.all_scene_instances() {
                         let response = ui.add_sized(
                             Vec2::new(effects_size + 40.0, effects_size + 60.0),
@@ -36,6 +38,7 @@ impl App {
                                 effects_size,
                                 live_color: Color32::GREEN,
                                 uv,
+                                deck_groups: &deck_groups,
                             },
                         );
                         if response.changed()

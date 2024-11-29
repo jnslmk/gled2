@@ -8,7 +8,29 @@ use std::{
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone, PartialOrd, Ord)]
 #[serde(transparent)]
-pub struct Group(String);
+pub struct Group(pub String);
+
+impl Group {
+    pub fn color(&self) -> Color32 {
+        let index = groups()
+            .iter()
+            .position(|group| group == self)
+            .unwrap_or_default();
+        static COLORS: &[Color32] = &[
+            Color32::from_rgb(175, 213, 129),
+            Color32::from_rgb(177, 152, 221),
+            Color32::from_rgb(140, 181, 255),
+            Color32::from_rgb(217, 176, 140),
+            Color32::from_rgb(217, 148, 140),
+            Color32::from_rgb(113, 208, 132),
+            Color32::from_rgb(213, 129, 192),
+            Color32::from_rgb(163, 218, 224),
+            Color32::from_rgb(222, 233, 190),
+            Color32::from_rgb(255, 255, 255),
+        ];
+        COLORS[index % COLORS.len()]
+    }
+}
 
 impl From<&Group> for String {
     fn from(val: &Group) -> Self {
@@ -44,9 +66,9 @@ impl ChangeButton for Groups {
                 {
                     let widgets = &mut ui.visuals_mut().widgets;
                     widgets.inactive.fg_stroke.color = Color32::from_black_alpha(200);
-                    widgets.inactive.weak_bg_fill = color(group);
+                    widgets.inactive.weak_bg_fill = group.color();
                     widgets.hovered.fg_stroke.color = Color32::from_black_alpha(200);
-                    widgets.hovered.weak_bg_fill = color(group);
+                    widgets.hovered.weak_bg_fill = group.color();
                 }
                 ui.menu_button(format!("{index} {}", group.0), |ui| {
                     ui.set_min_width(200.0);
@@ -110,28 +132,11 @@ fn group_buttons(ui: &mut Ui, selected: &mut Option<Group>) -> bool {
 
 pub fn group_button(group: &Group, selected: bool) -> Button {
     let button =
-        Button::new(RichText::new(group).color(Color32::from_black_alpha(200))).fill(color(group));
+        Button::new(RichText::new(group).color(Color32::from_black_alpha(200))).fill(group.color());
 
     if selected {
         button.stroke(Stroke::new(3.0, Color32::RED))
     } else {
         button
     }
-}
-
-fn color(group: &Group) -> Color32 {
-    let index = groups().iter().position(|g| g == group).unwrap_or_default();
-    static COLORS: &[Color32] = &[
-        Color32::from_rgb(175, 213, 129),
-        Color32::from_rgb(177, 152, 221),
-        Color32::from_rgb(140, 181, 255),
-        Color32::from_rgb(217, 176, 140),
-        Color32::from_rgb(217, 148, 140),
-        Color32::from_rgb(113, 208, 132),
-        Color32::from_rgb(213, 129, 192),
-        Color32::from_rgb(163, 218, 224),
-        Color32::from_rgb(222, 233, 190),
-        Color32::from_rgb(255, 255, 255),
-    ];
-    COLORS[index % COLORS.len()]
 }

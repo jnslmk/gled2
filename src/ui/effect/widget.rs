@@ -64,7 +64,7 @@ impl<'a> Widget for EffectWidget<'a> {
                     show_pills(
                         ui,
                         rect.right_top() + Vec2::new(0.0, 5.0),
-                        vec![self.effect.group_index.to_string()],
+                        vec![(self.effect.group_index.to_string(), Color32::GOLD)],
                     );
                     //TODO
                 }

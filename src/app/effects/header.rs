@@ -17,9 +17,6 @@ impl App {
             return;
         };
         let deck = project.deck(SceneInstancePath::default());
-        let Some(scene_group) = deck.scene_group(SceneInstancePath::default()) else {
-            return;
-        };
 
         ui.horizontal(|ui| {
             ui.label(RichText::new("Scenes").heading());
@@ -27,10 +24,10 @@ impl App {
             let mut scene: Option<AssetId<Scene>> = None;
             scene.change_button(ui);
             if let Some(scene) = scene {
-                scene_group.add_scene(&mut self.selected_scene_instance, scene);
+                deck.add_scene(&mut self.selected_scene_instance, scene);
             }
 
-            if scene_group.groups.change_button(ui) {
+            if deck.groups.change_button(ui) {
                 action::Action::InitGPU.enqueue();
             }
 
