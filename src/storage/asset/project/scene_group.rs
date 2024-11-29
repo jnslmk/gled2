@@ -1,8 +1,10 @@
 use crate::app::Timing;
+use crate::group::Group;
 use crate::scene_instance::SceneInstance;
 use crate::storage::{Asset, Palette, Scene};
 use crate::{group::Groups, storage::AssetId};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use wgpu::CommandEncoder;
 
@@ -11,6 +13,7 @@ use super::scene_instance_path::SceneInstancePath;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct SceneGroup {
+    #[serde(deserialize_with = "deserialize_groups")]
     pub groups: Groups,
     pub scenes_instances: Vec<SceneInstance>,
 }
@@ -85,4 +88,15 @@ impl SceneGroup {
             );
         }
     }
+}
+
+fn deserialize_groups<'de, D>(deserializer: D) -> Result<Groups, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    BTreeMap::<String, Group>::deserialize(deserializer).map(|map| {
+        map.into_iter()
+            .filter_map(|(index, group)| index.parse().ok().map(|index| (index, group)))
+            .collect()
+    })
 }

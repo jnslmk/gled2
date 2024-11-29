@@ -93,7 +93,6 @@ impl Effect {
         let group = groups.get(&self.group_index);
         if effect_state.sent_group.as_ref() != group {
             let positions = group.map(positions);
-            debug_assert!(positions.is_some());
             effect_state
                 .texture_to_output
                 .set_positions(queue, positions.unwrap_or_default());
