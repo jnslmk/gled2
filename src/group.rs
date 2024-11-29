@@ -52,8 +52,7 @@ impl ChangeButton for Option<Groups> {
         let mut changed = false;
 
         let mut overwrite = self.is_some();
-        ui.label("Overwrite groups");
-        ui.checkbox(&mut overwrite, "");
+        ui.checkbox(&mut overwrite, "Overwrite groups");
         if self.is_none() && overwrite {
             *self = Some(Groups::default());
             changed = true;

@@ -86,7 +86,7 @@ impl<'a> Widget for SceneInstanceWidget<'a> {
                         };
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
-                                ui.set_max_width(size.x + 28.0);
+                                ui.set_max_width(size.x);
                                 ui.label(
                                     Asset::get(self.scene_instance.scene)
                                         .map(|asset| asset.name().to_owned())

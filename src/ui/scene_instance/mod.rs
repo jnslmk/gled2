@@ -2,57 +2,57 @@ pub mod widget;
 
 use super::{action::Action, ChangeButton};
 use crate::scene_instance::SceneInstance;
-use egui::{Button, Checkbox, Color32, Context, Margin, Modifiers, Stroke};
+use egui::{Button, Checkbox, Color32, Context, Margin, Modifiers};
 
 impl SceneInstance {
     pub fn config_ui(&mut self, ctx: &Context, ui: &mut egui::Ui) {
-        egui::Frame::none()
-            .inner_margin(Margin::from(6.0))
-            .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
-            .show(ui, |ui| {
-                ui.label("Selection Input");
-                self.selection_input.change_button(ui);
+        let width = ui.available_width() - 20.0;
+        ui.horizontal(|ui| {
+            egui::Frame::none()
+                .inner_margin(Margin::from(3.0))
+                .show(ui, |ui| {
+                    ui.set_max_width(width / 2.0);
+                    ui.vertical(|ui| {
+                        ui.label("Selection Input");
+                        self.selection_input.change_button(ui);
 
-                ui.label("Flash Input");
-                self.flash_input.change_button(ui);
+                        ui.label("Flash Input");
+                        self.flash_input.change_button(ui);
 
-                ui.label("Dimmer Input");
-                self.dimmer_input.change_button(ui);
-            });
-
-        ui.add_space(10.0);
-
-        egui::Frame::none()
-            .inner_margin(Margin::from(6.0))
-            .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
-            .show(ui, |ui| {
-                ui.label("Active");
-                ui.add(Checkbox::new(&mut self.active, ""));
-
-                ui.label("Opacity");
-                ui.vertical_centered_justified(|ui| {
-                    self.opacity.change_button(ui);
+                        ui.label("Dimmer Input");
+                        self.dimmer_input.change_button(ui);
+                    });
                 });
+            egui::Frame::none()
+                .inner_margin(Margin::from(3.0))
+                .show(ui, |ui| {
+                    ui.set_max_width(width / 2.0);
+                    ui.vertical(|ui| {
+                        ui.label("Active");
+                        ui.add(Checkbox::new(&mut self.active, ""));
 
-                ui.label("Beat offset");
-                ui.vertical_centered_justified(|ui| {
-                    self.beat_progression_offset.change_button(ui);
+                        ui.label("Opacity");
+                        ui.vertical_centered_justified(|ui| {
+                            self.opacity.change_button(ui);
+                        });
+
+                        ui.label("Beat offset");
+                        ui.vertical_centered_justified(|ui| {
+                            self.beat_progression_offset.change_button(ui);
+                        });
+                    });
                 });
-            });
+        });
 
         egui::Frame::none()
             .inner_margin(Margin::from(6.0))
-            .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
             .show(ui, |ui| {
                 ui.set_min_width(ui.available_width());
                 self.groups.change_button(ui);
             });
 
-        ui.add_space(10.0);
-
         egui::Frame::none()
             .inner_margin(Margin::from(6.0))
-            .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
             .show(ui, |ui| {
                 ui.vertical_centered_justified(|ui| {
                     if ui
