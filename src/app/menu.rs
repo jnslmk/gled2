@@ -287,7 +287,8 @@ impl App {
                         .unwrap_or(&mut self.areas);
                     let checkbox_with_shortcut =
                         |ui: &mut egui::Ui, check: &mut bool, text: &str, shortcut: &str| {
-                            let rect = ui.checkbox(check, text).rect;
+                            let res = ui.checkbox(check, text);
+                            let rect = res.rect;
                             let shortcut = RichText::new(shortcut).color(Color32::DARK_GRAY);
                             let size = WidgetText::from(shortcut.clone())
                                 .into_galley(ui, None, ui.available_width(), TextStyle::Body)
@@ -297,8 +298,13 @@ impl App {
                                 Rect::from_min_max(rect.right_bottom() - size, rect.right_bottom()),
                                 Label::new(shortcut).selectable(false),
                             );
+                            res.changed()
                         };
 
+                    if checkbox_with_shortcut(ui, &mut areas.fullscreen, "Fullscreen", "Alt+Enter")
+                    {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(areas.fullscreen));
+                    }
                     if viewport_id.is_some() {
                         checkbox_with_shortcut(ui, &mut areas.menu, "Show Menu", "Ctrl+Shift+1");
                     }
