@@ -1,3 +1,2 @@
-* Configurable which parts of the window are visible (Window Menu)
 * Change dimmer to work on output, not on texture level
 * full git integration
