@@ -19,55 +19,9 @@ static POLYNOMIAL_QUEUE: Lazy<Mutex<Sender<BezierCurve>>> = Lazy::new(|| {
     let (sender, receiver) = crossbeam_channel::unbounded::<BezierCurve>();
     spawn(move || {
         for bezier_curve in receiver {
-            log::debug!("Fitting polynomial to curve: {:?}", bezier_curve);
-            let curve = QuadraticBezierShape::from_points_stroke(
-                [bezier_curve.start, bezier_curve.bezier, bezier_curve.end],
-                false,
-                Color32::TRANSPARENT,
-                Stroke::default(),
-            );
-
-            let (x_values, y_values): (Vec<_>, Vec<_>) = (0..1_000_000)
-                .map(|t| t as f32 / 1_000_000.0)
-                .map(|t| {
-                    let pos = curve.sample(t);
-                    (pos.x as f64, pos.y as f64)
-                })
-                .unzip();
-
-            let x_values = arr1(&x_values);
-            let y_values = arr1(&y_values);
-
-            let mut polynomials = { 1..6 }
-                .into_par_iter()
-                .map(|degree| {
-                    (
-                        degree,
-                        try_fit_poly_with_residual(x_values.view(), y_values.view(), degree)
-                            .expect("Could not fit polynomial"),
-                    )
-                })
-                .collect::<Vec<_>>();
-
-            polynomials.sort_by(
-                |(_, PolyFit { residual, .. }),
-                 (
-                    _,
-                    PolyFit {
-                        residual: residual2,
-                        ..
-                    },
-                )| {
-                    residual
-                        .partial_cmp(residual2)
-                        .expect("Could not compare residuals")
-                },
-            );
-
-            let polynomial = polynomials.remove(0).1.polynomial;
-
-            log::debug!("Done fitting polynomial to curve: {:?}", bezier_curve);
-            POLYNOMIALS.lock().insert(bezier_curve, Some(polynomial));
+            POLYNOMIALS
+                .lock()
+                .insert(bezier_curve, Some(bezier_curve.polynomial()));
         }
     });
     Mutex::new(sender)
@@ -94,6 +48,60 @@ impl Hash for BezierCurve {
 impl BezierCurve {
     pub fn new(start: Pos2, bezier: Pos2, end: Pos2) -> Self {
         Self { start, bezier, end }
+    }
+
+    pub fn polynomial(&self) -> Polynomial {
+        log::debug!("Fitting polynomial to curve: {self:?}");
+
+        let curve = QuadraticBezierShape::from_points_stroke(
+            [self.start, self.bezier, self.end],
+            false,
+            Color32::TRANSPARENT,
+            Stroke::default(),
+        );
+
+        let (x_values, y_values): (Vec<_>, Vec<_>) = (0..1_000_000)
+            .map(|t| t as f32 / 1_000_000.0)
+            .map(|t| {
+                let pos = curve.sample(t);
+                (pos.x as f64, pos.y as f64)
+            })
+            .unzip();
+
+        let x_values = arr1(&x_values);
+        let y_values = arr1(&y_values);
+
+        let mut polynomials = { 1..6 }
+            .into_par_iter()
+            .map(|degree| {
+                (
+                    degree,
+                    try_fit_poly_with_residual(x_values.view(), y_values.view(), degree)
+                        .expect("Could not fit polynomial"),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        polynomials.sort_by(
+            |(_, PolyFit { residual, .. }),
+             (
+                _,
+                PolyFit {
+                    residual: residual2,
+                    ..
+                },
+            )| {
+                residual
+                    .partial_cmp(residual2)
+                    .expect("Could not compare residuals")
+            },
+        );
+
+        let polynomial = polynomials.remove(0).1.polynomial;
+
+        log::debug!("Done fitting polynomial to curve: {self:?}");
+
+        polynomial
     }
 
     /// Start fitting a polynomial to the curve if not already started.
