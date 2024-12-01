@@ -12,12 +12,16 @@ impl App {
 
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.add(Label::new(temperature()));
+                    ui.add_space(4.0);
                     match polynomials_fitting() {
                         0 => (),
                         n => {
-                            ui.add_space(4.0);
                             ui.add(Spinner::new()).on_hover_ui(|ui| {
-                                ui.label(format!("Fitting {n} polynomials"));
+                                ui.label(if n == 1 {
+                                    "Fitting one polynomial".to_owned()
+                                } else {
+                                    format!("Fitting {n} polynomials")
+                                });
                             });
                             ui.add_space(4.0);
                         }
