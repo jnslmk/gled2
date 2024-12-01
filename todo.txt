@@ -1,4 +1,3 @@
 * Configurable which parts of the window are visible (Window Menu)
 * Change dimmer to work on output, not on texture level
-* Fit polynoms on curves to have finer curves with less cpu work
 * full git integration
