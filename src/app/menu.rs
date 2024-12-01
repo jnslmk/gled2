@@ -3,16 +3,16 @@ use crate::{
     extract_output::ExtractOutput, input::ARTNET_CONFIG, storage::Asset, ui::logo::logo_image,
 };
 use egui::{
-    load::SizedTexture, text::LayoutJob, Button, Color32, Context, Id, ImageButton, Key, Modifiers,
-    Slider, Stroke, TextFormat, Vec2, ViewportId,
+    load::SizedTexture, text::LayoutJob, Button, Color32, Context, Id, ImageButton, Key, Label,
+    Modifiers, Rect, RichText, Slider, Stroke, TextFormat, TextStyle, Vec2, ViewportId, WidgetText,
 };
 use log::{debug, error};
 use rand::Rng;
 use std::sync::Arc;
 
 impl App {
-    pub fn menu(&mut self, ctx: &Context) {
-        egui::TopBottomPanel::top("menu").show(ctx, |ui| {
+    pub fn menu(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
+        egui::TopBottomPanel::top(format!("{viewport_id:?} menu")).show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 let menu_button_size = Vec2::new(100.0, ui.available_height());
 
@@ -27,13 +27,7 @@ impl App {
                 };
 
                 ui.separator();
-                if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::N))
-                {
-                    self.other_main_windows.insert(ViewportId(Id::new(format!(
-                        "Second Window {}",
-                        rand::thread_rng().gen::<u64>()
-                    ))));
-                }
+
                 let mut open_project = ctx.input_mut(|i| i.consume_key(Modifiers::CTRL, Key::O));
                 let mut save_project = ctx.input_mut(|i| i.consume_key(Modifiers::CTRL, Key::S));
                 let mut open_svg_file = ctx
@@ -53,7 +47,7 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add(Button::new("Load project").shortcut_text("Ctrl + O"))
+                        .add(Button::new("Load project").shortcut_text("Ctrl+O"))
                         .clicked()
                     {
                         open_project = true;
@@ -63,7 +57,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.project.is_some(),
-                            Button::new("Save project").shortcut_text("Ctrl + S"),
+                            Button::new("Save project").shortcut_text("Ctrl+S"),
                         )
                         .clicked()
                     {
@@ -76,7 +70,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.project.is_some(),
-                            Button::new("Open SVG file").shortcut_text("Ctrl + Shift + O"),
+                            Button::new("Open SVG file").shortcut_text("Ctrl+Shift+O"),
                         )
                         .clicked()
                     {
@@ -87,7 +81,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.svg().is_some(),
-                            Button::new("Save SVG file").shortcut_text("Ctrl + Shift + S"),
+                            Button::new("Save SVG file").shortcut_text("Ctrl+Shift+S"),
                         )
                         .clicked()
                     {
@@ -262,6 +256,111 @@ impl App {
                         persistant_state.save();
                     };
                 });
+
+                let mut open_new_window = ctx
+                    .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::N));
+                let mut open_new_preview_window = ctx
+                    .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::P));
+                ui.menu_button("Window", |ui| {
+                    ui.set_min_width(300.0);
+
+                    if ui
+                        .add(Button::new("Open new window").shortcut_text("Ctrl+Shift+N"))
+                        .clicked()
+                    {
+                        open_new_window = true;
+                        ui.close_menu();
+                    }
+
+                    if ui
+                        .add(Button::new("Open new preview window").shortcut_text("Ctrl+Shift+P"))
+                        .clicked()
+                    {
+                        open_new_preview_window = true;
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    let areas = viewport_id
+                        .and_then(|viewport| self.other_main_windows.get_mut(&viewport))
+                        .unwrap_or(&mut self.areas);
+                    let checkbox_with_shortcut =
+                        |ui: &mut egui::Ui, check: &mut bool, text: &str, shortcut: &str| {
+                            let rect = ui.checkbox(check, text).rect;
+                            let shortcut = RichText::new(shortcut).color(Color32::DARK_GRAY);
+                            let size = WidgetText::from(shortcut.clone())
+                                .into_galley(ui, None, ui.available_width(), TextStyle::Body)
+                                .rect
+                                .size();
+                            ui.put(
+                                Rect::from_min_max(rect.right_bottom() - size, rect.right_bottom()),
+                                Label::new(shortcut).selectable(false),
+                            );
+                        };
+
+                    if viewport_id.is_some() {
+                        checkbox_with_shortcut(ui, &mut areas.menu, "Show Menu", "Ctrl+Shift+1");
+                    }
+                    checkbox_with_shortcut(ui, &mut areas.preview, "Show Preview", "Ctrl+Shift+2");
+                    checkbox_with_shortcut(ui, &mut areas.deck_a, "Show Deck A", "Ctrl+Shift+3");
+                    checkbox_with_shortcut(ui, &mut areas.deck_b, "Show Deck B", "Ctrl+Shift+4");
+                    checkbox_with_shortcut(ui, &mut areas.deck_c, "Show Deck C", "Ctrl+Shift+5");
+                    checkbox_with_shortcut(ui, &mut areas.config, "Show Config", "Ctrl+Shift+6");
+                    checkbox_with_shortcut(
+                        ui,
+                        &mut areas.status_bar,
+                        "Show Status Bar",
+                        "Ctrl+Shift+7",
+                    );
+
+                    ui.separator();
+
+                    if ui.button("Show All").clicked() {
+                        areas.menu = true;
+                        areas.deck_a = true;
+                        areas.deck_b = true;
+                        areas.deck_c = true;
+                        areas.config = true;
+                        areas.preview = true;
+                        areas.status_bar = true;
+                    }
+                    if ui.button("Hide All").clicked() {
+                        areas.deck_a = false;
+                        areas.deck_b = false;
+                        areas.deck_c = false;
+                        areas.config = false;
+                        areas.preview = false;
+                        areas.status_bar = false;
+                    }
+                });
+
+                if open_new_window {
+                    self.other_main_windows.insert(
+                        ViewportId(Id::new(format!(
+                            "Second Window {}",
+                            rand::thread_rng().gen::<u64>()
+                        ))),
+                        Default::default(),
+                    );
+                }
+                if open_new_preview_window {
+                    self.other_main_windows.insert(
+                        ViewportId(Id::new(format!(
+                            "Preview Window {}",
+                            rand::thread_rng().gen::<u64>()
+                        ))),
+                        super::MainWindowAreas {
+                            menu: false,
+                            deck_a: false,
+                            deck_b: false,
+                            deck_c: false,
+                            preview: true,
+                            config: false,
+                            status_bar: false,
+                        },
+                    );
+                }
 
                 ui.separator();
 

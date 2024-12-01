@@ -1,4 +1,5 @@
 use crate::storage::{Animation, AssetId, Project};
+use egui::ViewportId;
 use once_cell::unsync::OnceCell;
 use std::{
     cell::{RefCell, RefMut},
@@ -16,6 +17,7 @@ pub enum Action {
     InitGPU,
     SendPositions,
     ReloadShaderCode(AssetId<Animation>),
+    CloseWindow(ViewportId),
 }
 
 impl Action {

@@ -17,7 +17,7 @@ use crate::{
     ui::{action::Action, windows::Windows},
     viewport_builder::default_viewport_builder,
 };
-use egui::{ahash::HashSet, Modifiers, SidePanel, TopBottomPanel, ViewportId};
+use egui::{ahash::HashMap, Key, Modifiers, SidePanel, TopBottomPanel, ViewportId};
 use std::sync::Arc;
 
 pub use persistant_state::PersistantState;
@@ -25,6 +25,7 @@ pub use svg::{positions, preview_positions, preview_uv, Svg};
 pub use timing::Timing;
 
 pub struct App {
+    areas: MainWindowAreas,
     windows: Windows,
     startup: bool,
     output_sender: OutputSender,
@@ -32,7 +33,7 @@ pub struct App {
     timing: Timing,
     project: Option<Project>,
     project_id: Option<AssetId<Project>>,
-    other_main_windows: HashSet<ViewportId>,
+    other_main_windows: HashMap<ViewportId, MainWindowAreas>,
     blackout: bool,
     selected_scene_instance: SceneInstancePath,
     hovered_scene_instance: SceneInstancePath,
@@ -102,6 +103,9 @@ impl eframe::App for App {
                     self.selected_scene_instance = SceneInstancePath::default();
                     self.hovered_scene_instance = SceneInstancePath::default();
                 }
+                (_, Some(Action::CloseWindow(viewport_id))) => {
+                    self.other_main_windows.remove(&viewport_id);
+                }
                 (_, None) => break,
                 (None, _) => (),
             }
@@ -146,9 +150,10 @@ impl eframe::App for App {
             );
         }
 
-        self.draw_main_window(ctx);
+        self.draw_main_window(ctx, None);
 
-        for viewport_id in self.other_main_windows.clone().into_iter() {
+        let viewport_ids = self.other_main_windows.keys().copied().collect::<Vec<_>>();
+        for viewport_id in viewport_ids {
             ctx.show_viewport_immediate(
                 viewport_id,
                 default_viewport_builder()
@@ -159,11 +164,11 @@ impl eframe::App for App {
                 |ctx, _viewport_class| {
                     ctx.input(|input| {
                         if input.viewport().close_requested() {
-                            self.other_main_windows.remove(&viewport_id);
+                            Action::CloseWindow(viewport_id).enqueue();
                         }
                     });
 
-                    self.draw_main_window(ctx);
+                    self.draw_main_window(ctx, Some(viewport_id));
                 },
             );
         }
@@ -175,32 +180,76 @@ impl eframe::App for App {
 }
 
 impl App {
-    pub fn draw_main_window(&mut self, ctx: &egui::Context) {
-        self.menu(ctx);
-        self.status_bar(ctx);
-        if self.project.is_some() {
-            TopBottomPanel::bottom("scenes c")
-                .resizable(true)
-                .show(ctx, |ui| {
-                    self.scenes(ui, SceneInstancePath::DECK_C);
-                });
-            SidePanel::left("scenes a")
-                .resizable(true)
-                .default_width(280.0)
-                .min_width(280.0)
-                .show(ctx, |ui| {
-                    self.scenes(ui, SceneInstancePath::DECK_A);
-                });
-            SidePanel::right("scenes b")
-                .resizable(true)
-                .default_width(280.0)
-                .min_width(280.0)
-                .show(ctx, |ui| {
-                    self.scenes(ui, SceneInstancePath::DECK_B);
-                });
+    pub fn draw_main_window(&mut self, ctx: &egui::Context, viewport_id: Option<ViewportId>) {
+        let areas = {
+            let areas = viewport_id
+                .and_then(|viewport| self.other_main_windows.get_mut(&viewport))
+                .unwrap_or(&mut self.areas);
+            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num1))
+                && viewport_id.is_some()
+            {
+                areas.menu = !areas.menu;
+            }
+            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num2)) {
+                areas.preview = !areas.preview;
+            }
+            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num3)) {
+                areas.deck_a = !areas.deck_a;
+            }
+            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num4)) {
+                areas.deck_b = !areas.deck_b;
+            }
+            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num5)) {
+                areas.deck_c = !areas.deck_c;
+            }
+            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num6)) {
+                areas.config = !areas.config;
+            }
+            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num7)) {
+                areas.status_bar = !areas.status_bar;
+            }
+            *areas
+        };
 
-            self.preview(ctx);
-            self.config(ctx);
+        if areas.menu {
+            self.menu(ctx, viewport_id);
+        }
+        if areas.status_bar {
+            self.status_bar(ctx, viewport_id);
+        }
+        if self.project.is_some() {
+            if areas.deck_c {
+                TopBottomPanel::bottom(format!("{viewport_id:?} deck c"))
+                    .resizable(true)
+                    .show(ctx, |ui| {
+                        self.scenes(ui, SceneInstancePath::DECK_C);
+                    });
+            }
+            if areas.deck_a {
+                SidePanel::left(format!("{viewport_id:?} deck a"))
+                    .resizable(true)
+                    .default_width(280.0)
+                    .min_width(280.0)
+                    .show(ctx, |ui| {
+                        self.scenes(ui, SceneInstancePath::DECK_A);
+                    });
+            }
+            if areas.deck_b {
+                SidePanel::right(format!("{viewport_id:?} deck b"))
+                    .resizable(true)
+                    .default_width(280.0)
+                    .min_width(280.0)
+                    .show(ctx, |ui| {
+                        self.scenes(ui, SceneInstancePath::DECK_B);
+                    });
+            }
+
+            if areas.config {
+                self.config(ctx, viewport_id);
+            }
+            if areas.preview {
+                self.preview(ctx);
+            }
         } else {
             self.no_project(ctx);
         }
@@ -221,6 +270,7 @@ impl App {
             project_id: Default::default(),
             windows: Default::default(),
             other_main_windows: Default::default(),
+            areas: Default::default(),
         };
 
         if let Some(project) = PersistantState::get().last_project_id {
@@ -228,5 +278,30 @@ impl App {
         }
 
         Some(app)
+    }
+}
+
+#[derive(Clone, Copy)]
+struct MainWindowAreas {
+    menu: bool,
+    deck_a: bool,
+    deck_b: bool,
+    deck_c: bool,
+    preview: bool,
+    config: bool,
+    status_bar: bool,
+}
+
+impl Default for MainWindowAreas {
+    fn default() -> Self {
+        Self {
+            menu: true,
+            deck_a: true,
+            deck_b: true,
+            deck_c: true,
+            preview: true,
+            config: true,
+            status_bar: true,
+        }
     }
 }

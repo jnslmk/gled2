@@ -16,7 +16,6 @@ pub struct PersistantState {
     pub effects_size: f32,
     pub effects_always_render: bool,
     pub fps_limit: f32,
-    pub preview_height: f32,
     pub preview_palette: Option<AssetId<Palette>>,
     pub last_project_id: Option<AssetId<Project>>,
 }
@@ -29,7 +28,6 @@ impl Default for PersistantState {
             effects_size: 100.0,
             effects_always_render: false,
             fps_limit: 120.0,
-            preview_height: 300.0,
             preview_palette: Default::default(),
             last_project_id: Default::default(),
         }
@@ -62,10 +60,6 @@ impl PersistantState {
 
     pub fn show_preview_svg() -> bool {
         PERSISTANT_STATE.lock().show_preview_svg
-    }
-
-    pub fn preview_height() -> f32 {
-        PERSISTANT_STATE.lock().preview_height
     }
 
     pub fn get() -> Self {
