@@ -108,6 +108,7 @@ impl BezierCurve {
             }
             Some(None) => (),
         }
+        drop(polynomials);
 
         // polynomial is not yet available, sample the curve with a binary search
         let bezier = QuadraticBezierShape::from_points_stroke(
