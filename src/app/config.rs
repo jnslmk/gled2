@@ -23,9 +23,22 @@ impl App {
                 }
 
                 ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
+                    ui.add_space(4.0);
+
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().slider_width = ui.available_width() - 30.0;
+                        if ui.button("⏮").clicked() {
+                            project.cross_fader = 0.0;
+                        }
+                        if ui.button("⏸").clicked() {
+                            project.cross_fader = 0.5;
+                        }
+                        if ui.button("⏭").clicked() {
+                            project.cross_fader = 1.0;
+                        }
+
+                        ui.spacing_mut().slider_width = ui.available_width() - 32.0;
                         ui.spacing_mut().slider_rail_height = 10.0;
+
                         ui.label("A");
                         ui.add(
                             Slider::new(&mut project.cross_fader, 0.0..=1.0)
@@ -40,7 +53,7 @@ impl App {
                         .show(ui, |ui| {
                             ui.set_min_width(ui.available_width());
                             ui.horizontal(|ui| {
-                                ui.label("Fade Mode:");
+                                ui.label("Fade duration:");
                                 ui.radio_value(
                                     &mut self.timing.fade_mode,
                                     FadeMode::Instant,

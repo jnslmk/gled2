@@ -1,2 +1,3 @@
 * Change dimmer to work on output, not on texture level
+* Auto mode behind toggle
 * full git integration

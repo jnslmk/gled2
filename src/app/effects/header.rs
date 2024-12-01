@@ -21,6 +21,29 @@ impl App {
                 deck.add_scene(&mut self.selected_scene_instance, scene);
             }
 
+            ui.menu_button(
+                if deck.auto_mode_active {
+                    "💂Automatic"
+                } else {
+                    "🔨Manual"
+                },
+                |ui| {
+                    ui.label("Automatic mode");
+                    ui.checkbox(&mut deck.auto_mode_active, "");
+                    ui.label("Seconds/scene");
+                    ui.add_enabled(
+                        deck.auto_mode_active,
+                        Slider::new(&mut deck.auto_mode_seconds, 1..=240)
+                            .custom_formatter(|n, _| format!("{} s", n)),
+                    );
+                    ui.label("Max concurrent scenes");
+                    ui.add_enabled(
+                        deck.auto_mode_active,
+                        Slider::new(&mut deck.auto_mode_max_scenes, 1..=10),
+                    );
+                },
+            );
+
             ui.scope(|ui| {
                 ui.vertical_centered_justified(|ui| {
                     deck.palette.change_button(ui);
@@ -31,19 +54,6 @@ impl App {
             if deck.groups.change_button(ui) {
                 action::Action::InitGPU.enqueue();
             }
-        });
-        ui.horizontal(|ui| {
-            ui.checkbox(&mut deck.auto_mode_active, "Auto Mode");
-            ui.add_enabled(
-                deck.auto_mode_active,
-                Slider::new(&mut deck.auto_mode_seconds, 1..=240)
-                    .custom_formatter(|n, _| format!("{} s", n)),
-            );
-            ui.label("Max Effects:");
-            ui.add_enabled(
-                deck.auto_mode_active,
-                Slider::new(&mut deck.auto_mode_max_scenes, 1..=10),
-            );
         });
     }
 }

@@ -10,18 +10,18 @@ impl App {
                     ui.add(Label::new(format!("{framerate:.0} fps")));
                 }
 
-                match polynomials_fitting() {
-                    0 => (),
-                    n => {
-                        ui.add_space(10.0);
-                        ui.add(Label::new(format!("Fitting polynomials: {n}")));
-                        ui.add(Spinner::new());
-                        ui.add_space(10.0);
-                    }
-                }
-
                 ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.add(Label::new(temperature()))
+                    ui.add(Label::new(temperature()));
+                    match polynomials_fitting() {
+                        0 => (),
+                        n => {
+                            ui.add_space(4.0);
+                            ui.add(Spinner::new()).on_hover_ui(|ui| {
+                                ui.label(format!("Fitting {n} polynomials"));
+                            });
+                            ui.add_space(4.0);
+                        }
+                    }
                 });
             });
         });

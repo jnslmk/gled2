@@ -11,7 +11,7 @@ pub fn start_thread() {
             max_temperature = max_temperature.max(component.temperature());
         }
         TEMPERATURE.store(
-            (max_temperature * 10.0).round() as u16,
+            max_temperature.round() as u16,
             std::sync::atomic::Ordering::Relaxed,
         );
         std::thread::sleep(std::time::Duration::from_secs(1));
@@ -20,10 +20,10 @@ pub fn start_thread() {
 
 pub fn temperature() -> RichText {
     let temperature = TEMPERATURE.load(std::sync::atomic::Ordering::Relaxed);
-    let mut text = RichText::new(format!("{}°C", temperature as f32 / 10.0));
-    if temperature >= 900 {
+    let mut text = RichText::new(format!("{temperature}°C"));
+    if temperature >= 90 {
         text = text.color(Color32::RED);
-    } else if temperature >= 800 {
+    } else if temperature >= 80 {
         text = text.color(Color32::ORANGE);
     }
     text
