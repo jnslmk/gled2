@@ -8,20 +8,21 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     collections::HashMap,
     hash::{Hash, Hasher},
+    sync::atomic::{AtomicUsize, Ordering::Relaxed},
     thread::spawn,
 };
 
 pub type Polynomial = NewtonPolynomial<f64, f64, Vec<f64>, Vec<f64>>;
 
+static POLYNOMIALS_FITTING: AtomicUsize = AtomicUsize::new(0);
 static POLYNOMIALS: Lazy<Mutex<HashMap<BezierCurve, Option<Polynomial>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 static POLYNOMIAL_QUEUE: Lazy<Sender<BezierCurve>> = Lazy::new(|| {
     let (sender, receiver) = crossbeam_channel::unbounded::<BezierCurve>();
     spawn(move || {
         for bezier_curve in receiver {
-            POLYNOMIALS
-                .lock()
-                .insert(bezier_curve, Some(bezier_curve.polynomial()));
+            let polynomial = bezier_curve.polynomial();
+            POLYNOMIALS.lock().insert(bezier_curve, Some(polynomial));
         }
     });
     sender
@@ -101,6 +102,8 @@ impl BezierCurve {
 
         log::debug!("Done fitting polynomial to curve: {self:?}");
 
+        POLYNOMIALS_FITTING.fetch_sub(1, Relaxed);
+
         polynomial
     }
 
@@ -111,6 +114,7 @@ impl BezierCurve {
         match polynomials.get(self) {
             Some(Some(polynomial)) => return polynomial.eval(x as f64) as f32,
             None => {
+                POLYNOMIALS_FITTING.fetch_add(1, Relaxed);
                 POLYNOMIAL_QUEUE.send(*self).ok();
                 polynomials.insert(*self, None);
             }
@@ -142,4 +146,8 @@ impl BezierCurve {
             n += 1;
         }
     }
+}
+
+pub fn polynomials_fitting() -> usize {
+    POLYNOMIALS_FITTING.load(Relaxed)
 }

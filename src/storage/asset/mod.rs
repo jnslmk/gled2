@@ -11,7 +11,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
 pub use animation::{Animation, AnimationConfig, AnimationRenderer};
-pub use curve::{Curve, RangeDegrees, RangePercentage, StaticOrCurve};
+pub use curve::{polynomials_fitting, Curve, RangeDegrees, RangePercentage, StaticOrCurve};
 pub use output_device::OutputDevice;
 pub use palette::Palette;
 pub use project::{Project, RenderDeactivatedScenes, SceneInstancePath};

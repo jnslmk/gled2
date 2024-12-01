@@ -9,8 +9,8 @@ use epaint::PathShape;
 use polynomial::BezierCurve;
 use serde::{Deserialize, Serialize};
 
+pub use polynomial::polynomials_fitting;
 pub use static_or_curve::{RangeDegrees, RangePercentage, StaticOrCurve};
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Curve {
     linked: bool,
