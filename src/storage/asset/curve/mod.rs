@@ -1,21 +1,22 @@
 mod point;
+mod polynomial;
 mod static_or_curve;
 
 use self::point::CurvePoint;
 use super::AssetTrait;
 use egui::{epaint::QuadraticBezierShape, Color32, Pos2, Rect, Sense, Shape, Stroke, Ui, Vec2};
 use epaint::PathShape;
+use polynomial::BezierCurve;
 use serde::{Deserialize, Serialize};
 
 pub use static_or_curve::{RangeDegrees, RangePercentage, StaticOrCurve};
 
-const PRECISION: f32 = 0.005; // 100 updates per second at 240 bpm
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Curve {
     linked: bool,
     points: Vec<CurvePoint>,
 }
+impl Eq for Curve {}
 
 impl Default for Curve {
     fn default() -> Self {
@@ -25,15 +26,16 @@ impl Default for Curve {
 
 impl Curve {
     pub fn alternating() -> Self {
+        let points = Self::linear_points(vec![
+            (0.0, 1.0),
+            (1.0, 0.0),
+            (2.0, 1.0),
+            (3.0, 0.0),
+            (4.0, 1.0),
+        ]);
         Self {
             linked: true,
-            points: Self::linear_points(vec![
-                (0.0, 1.0),
-                (1.0, 0.0),
-                (2.0, 1.0),
-                (3.0, 0.0),
-                (4.0, 1.0),
-            ]),
+            points,
         }
     }
 
@@ -277,8 +279,7 @@ impl Curve {
             panic!("Beat position out of range 0.0..=4.0: {beat_position}");
         }
 
-        let y = self
-            .points
+        self.points
             .iter()
             .position(|point| point.pos().x > beat_position)
             .and_then(|i| {
@@ -287,51 +288,19 @@ impl Curve {
                         self.points.get(i - 1).and_then(|start| {
                             self.points
                                 .get(i + 1)
-                                .map(|end| (start.pos(), point.pos(), end.pos()))
+                                .map(|end| BezierCurve::new(start.pos(), point.pos(), end.pos()))
                         })
                     } else {
                         self.points.get(i - 1).and_then(|bezier| {
-                            self.points
-                                .get(i - 2)
-                                .map(|start| (start.pos(), bezier.pos(), point.pos()))
+                            self.points.get(i - 2).map(|start| {
+                                BezierCurve::new(start.pos(), bezier.pos(), point.pos())
+                            })
                         })
                     }
                 })
             })
-            .map(|(start, bezier, end)| {
-                let bezier = QuadraticBezierShape::from_points_stroke(
-                    [start, bezier, end],
-                    false,
-                    Color32::TRANSPARENT,
-                    Stroke::default(),
-                );
-
-                // Binary search for t with (sample(t).x - beat_position).abs() < PRECISION
-                let mut n = 2;
-                let mut t = 0.5;
-                loop {
-                    let sample = bezier.sample(t);
-                    let e = sample.x - beat_position;
-                    if e.abs() < PRECISION {
-                        break sample.y;
-                    }
-                    let step = 1.0 / 2.0f32.powi(n);
-                    if e < 0.0 {
-                        t += step;
-                    } else {
-                        t -= step;
-                    }
-                    n += 1;
-                }
-            })
-            .unwrap_or_else(|| {
-                self.points
-                    .last()
-                    .expect("Could not get last point")
-                    .pos()
-                    .y
-            });
-        1.0 - y
+            .map(|curve| curve.value(beat_position))
+            .unwrap_or_default()
     }
 }
 
