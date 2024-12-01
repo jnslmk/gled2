@@ -4,6 +4,8 @@ mod positions;
 
 use crate::{
     constants::{OUTPUT_BUFFER_SIZE, POSITIONS_BUFFER_SIZE, UNIVERSES},
+    effect::EffectState,
+    storage::Palette,
     wgpu_render_state,
 };
 use log::debug;
@@ -24,7 +26,7 @@ pub struct TextureToOutput {
 }
 
 impl TextureToOutput {
-    pub fn init(texture: &Texture) -> Self {
+    pub fn init(texture: &Texture, uniforms: &Buffer) -> Self {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
 
@@ -69,6 +71,18 @@ impl TextureToOutput {
                         ty: BufferBindingType::Storage { read_only: false },
                         has_dynamic_offset: false,
                         min_binding_size: NonZeroU64::new(OUTPUT_BUFFER_SIZE),
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: ShaderStages::COMPUTE,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: NonZeroU64::new(
+                            { EffectState::size() + Palette::size() } as u64,
+                        ),
                     },
                     count: None,
                 },
@@ -133,6 +147,10 @@ impl TextureToOutput {
                 BindGroupEntry {
                     binding: 3,
                     resource: output.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 4,
+                    resource: uniforms.as_entire_binding(),
                 },
             ],
         });

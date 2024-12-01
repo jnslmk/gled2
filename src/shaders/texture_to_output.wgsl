@@ -10,6 +10,34 @@ var tex: texture_2d<f32>;
 @group(0) @binding(3)
 var<storage, read_write> output: array<u32, 4096>;
 
+struct Uniforms {
+    // colors: 288 bytes
+    primary_color: vec3<f32>,
+    secondary_color: vec3<f32>,
+    gradient_colors: array<vec3<f32>, 16>,
+
+    // state: 64 bytes
+    beat_progression: f32,
+    beats_per_minute: f32,
+    frame_rate: f32,
+    opacity: f32,
+    color_shift: f32,
+    speed: f32,
+    u32_0: u32,
+    u32_1: u32,
+    u32_2: u32,
+    f32_0: f32,
+    f32_1: f32,
+    f32_2: f32,
+    f32_3: f32,
+    f32_4: f32,
+    f32_5: f32,
+    f32_6: f32,
+};
+
+@group(0) @binding(4)
+var<uniform> uniforms: Uniforms;
+
 const LAMPS_PER_UNIVERSE: u32 = 170u;
 
 @compute
@@ -36,9 +64,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         if 2. - x < 0.001 && 2. - y < 0.001 {
             color = vec3(0.);
         }
-        colors[i * 3u] = u32(round(color.r * 254.)) & 0x000000ffu;
-        colors[i * 3u + 1u] = u32(round(color.g * 254.)) & 0x000000ffu;
-        colors[i * 3u + 2u] = u32(round(color.b * 254.)) & 0x000000ffu;
+        colors[i * 3u] = u32(round(color.r * uniforms.opacity * 254.)) & 0x000000ffu;
+        colors[i * 3u + 1u] = u32(round(color.g * uniforms.opacity * 254.)) & 0x000000ffu;
+        colors[i * 3u + 2u] = u32(round(color.b * uniforms.opacity * 254.)) & 0x000000ffu;
     }
 
     let index = universe * 128u + idx * 3u;

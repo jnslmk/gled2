@@ -36,7 +36,7 @@ fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
         return vec4<f32>(0.0);
     }
 
-    return vec4<f32>(color * uniforms.opacity, 1.);
+    return vec4<f32>(color, 1.);
 }
 
 /// Convert rgb color to hsv, apply color shift to hue value and convert it back to rgb

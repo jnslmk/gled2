@@ -179,4 +179,8 @@ impl AnimationRenderer {
     pub fn texture(&self) -> &Texture {
         &self.texture
     }
+
+    pub fn uniforms(&self) -> &Buffer {
+        &self.uniform
+    }
 }
