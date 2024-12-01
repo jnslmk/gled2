@@ -216,6 +216,7 @@ impl App {
             if areas.deck_c {
                 TopBottomPanel::bottom(format!("{viewport_id:?} deck c"))
                     .resizable(true)
+                    .min_height(100.0)
                     .show(ctx, |ui| {
                         self.scenes(ui, SceneInstancePath::DECK_C);
                     });
@@ -223,8 +224,8 @@ impl App {
             if areas.deck_a {
                 SidePanel::left(format!("{viewport_id:?} deck a"))
                     .resizable(true)
-                    .default_width(280.0)
-                    .min_width(280.0)
+                    .default_width(250.0)
+                    .min_width(100.0)
                     .show(ctx, |ui| {
                         self.scenes(ui, SceneInstancePath::DECK_A);
                     });
@@ -232,8 +233,8 @@ impl App {
             if areas.deck_b {
                 SidePanel::right(format!("{viewport_id:?} deck b"))
                     .resizable(true)
-                    .default_width(280.0)
-                    .min_width(280.0)
+                    .default_width(250.0)
+                    .min_width(100.0)
                     .show(ctx, |ui| {
                         self.scenes(ui, SceneInstancePath::DECK_B);
                     });
