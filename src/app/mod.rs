@@ -111,15 +111,6 @@ impl eframe::App for App {
             }
         }
 
-        if ctx.input_mut(|i| i.consume_key(Modifiers::ALT, egui::Key::Enter)) {
-            let mut persistant_state = PersistantState::get();
-            persistant_state.fullscreen = !persistant_state.fullscreen;
-            ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(
-                persistant_state.fullscreen,
-            ));
-            persistant_state.save();
-        }
-
         ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
             "gled - {} {}",
             match self.project_id.and_then(Asset::get) {
@@ -185,6 +176,10 @@ impl App {
             let areas = viewport_id
                 .and_then(|viewport| self.other_main_windows.get_mut(&viewport))
                 .unwrap_or(&mut self.areas);
+            if ctx.input_mut(|i| i.consume_key(Modifiers::ALT, Key::Enter)) {
+                areas.fullscreen = !areas.fullscreen;
+                ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(areas.fullscreen));
+            }
             if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num1))
                 && viewport_id.is_some()
             {
@@ -283,6 +278,7 @@ impl App {
 
 #[derive(Clone, Copy)]
 struct MainWindowAreas {
+    fullscreen: bool,
     menu: bool,
     deck_a: bool,
     deck_b: bool,
@@ -295,6 +291,7 @@ struct MainWindowAreas {
 impl Default for MainWindowAreas {
     fn default() -> Self {
         Self {
+            fullscreen: false,
             menu: true,
             deck_a: true,
             deck_b: true,

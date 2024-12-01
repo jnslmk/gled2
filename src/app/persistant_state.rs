@@ -12,7 +12,6 @@ static PERSISTANT_STATE: Lazy<Mutex<PersistantState>> =
 #[serde(default)]
 pub struct PersistantState {
     pub show_preview_svg: bool,
-    pub fullscreen: bool,
     pub effects_size: f32,
     pub effects_always_render: bool,
     pub fps_limit: f32,
@@ -24,7 +23,6 @@ impl Default for PersistantState {
     fn default() -> Self {
         Self {
             show_preview_svg: true,
-            fullscreen: Default::default(),
             effects_size: 100.0,
             effects_always_render: false,
             fps_limit: 120.0,

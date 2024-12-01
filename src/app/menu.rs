@@ -351,6 +351,7 @@ impl App {
                             rand::thread_rng().gen::<u64>()
                         ))),
                         super::MainWindowAreas {
+                            fullscreen: false,
                             menu: false,
                             deck_a: false,
                             deck_b: false,
