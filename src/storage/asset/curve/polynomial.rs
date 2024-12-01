@@ -15,7 +15,7 @@ pub type Polynomial = NewtonPolynomial<f64, f64, Vec<f64>, Vec<f64>>;
 
 static POLYNOMIALS: Lazy<Mutex<HashMap<BezierCurve, Option<Polynomial>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
-static POLYNOMIAL_QUEUE: Lazy<Mutex<Sender<BezierCurve>>> = Lazy::new(|| {
+static POLYNOMIAL_QUEUE: Lazy<Sender<BezierCurve>> = Lazy::new(|| {
     let (sender, receiver) = crossbeam_channel::unbounded::<BezierCurve>();
     spawn(move || {
         for bezier_curve in receiver {
@@ -24,7 +24,7 @@ static POLYNOMIAL_QUEUE: Lazy<Mutex<Sender<BezierCurve>>> = Lazy::new(|| {
                 .insert(bezier_curve, Some(bezier_curve.polynomial()));
         }
     });
-    Mutex::new(sender)
+    sender
 });
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -111,7 +111,7 @@ impl BezierCurve {
         match polynomials.get(self) {
             Some(Some(polynomial)) => return polynomial.eval(x as f64) as f32,
             None => {
-                POLYNOMIAL_QUEUE.lock().send(*self).ok();
+                POLYNOMIAL_QUEUE.send(*self).ok();
                 polynomials.insert(*self, None);
             }
             Some(None) => (),
