@@ -15,6 +15,7 @@ pub fn init() -> Receiver<Action> {
 #[allow(dead_code)]
 pub enum Action {
     Update,
+    Restart,
     SwitchBranch(String),
     SaveAsset {
         dir_name: &'static str,

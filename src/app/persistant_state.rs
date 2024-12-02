@@ -17,6 +17,7 @@ pub struct PersistantState {
     pub fps_limit: f32,
     pub preview_palette: Option<AssetId<Palette>>,
     pub last_project_id: Option<AssetId<Project>>,
+    pub git_url: String,
 }
 
 impl Default for PersistantState {
@@ -28,6 +29,7 @@ impl Default for PersistantState {
             fps_limit: 120.0,
             preview_palette: Default::default(),
             last_project_id: Default::default(),
+            git_url: "https://gitlab.com/pentagonum/gled2_assets.git".to_string(),
         }
     }
 }
@@ -58,6 +60,10 @@ impl PersistantState {
 
     pub fn show_preview_svg() -> bool {
         PERSISTANT_STATE.lock().show_preview_svg
+    }
+
+    pub fn git_url() -> String {
+        PERSISTANT_STATE.lock().git_url.clone()
     }
 
     pub fn get() -> Self {

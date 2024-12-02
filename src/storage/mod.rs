@@ -16,6 +16,8 @@ use strum::Display;
 use typemap::ShareDebugMap;
 use uuid::Uuid;
 
+use crate::app::PersistantState;
+
 pub use self::{action::Action, asset::*, asset_id::AssetId};
 
 pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
@@ -43,18 +45,36 @@ pub enum State {
     },
 }
 
+impl State {
+    pub fn set(self) {
+        match &self {
+            Self::Opened { .. } => println!("Storage is fully loaded."),
+            state => println!("Storage state: {state:?}"),
+        }
+        *STATE.lock() = self;
+    }
+}
+
 #[derive(Debug, Clone, Copy, Display)]
 pub enum Loading {
     #[strum(serialize = "Git repository")]
     GitRepository,
     #[strum(serialize = "Git branches")]
     GitBranches,
+    #[strum(serialize = "Git branch")]
+    GitBranch,
     Animations,
     Curves,
     OutputDevices,
     Palettes,
     Projects,
     Scenes,
+}
+
+impl Loading {
+    pub fn set(self) {
+        State::Loading(self).set();
+    }
 }
 
 pub fn opened() -> bool {
@@ -83,14 +103,12 @@ pub fn start_thread() {
     std::thread::spawn(move || {
         let mut retry_wait = std::time::Duration::from_secs(0);
         loop {
-            *STATE.lock() = State::Loading(Loading::GitRepository);
+            Loading::GitRepository.set();
 
             std::thread::sleep(retry_wait);
             retry_wait = std::time::Duration::from_secs(2);
 
-            let mut git = match git::Git::open(
-                "https://gitlab.com/pentagonum/gled2_assets.git".to_string(),
-            ) {
+            let mut git = match git::Git::open(PersistantState::git_url()) {
                 Ok(git) => git,
                 Err(err) => {
                     let err: String = format!("Could not open git: {err}");
@@ -100,67 +118,70 @@ pub fn start_thread() {
                 }
             };
 
-            log::debug!("Git opened");
-            *STATE.lock() = State::Loading(Loading::GitBranches);
-            /*
-                        let branches = match git.branches() {
-                            Ok(branches) => branches,
-                            Err(err) => {
-                                let err: String = format!("Could not get branches: {err}");
-                                log::error!("{err}");
-                                *STATE.lock() = State::Error(err);
-                                continue;
-                            }
-                        };
+            Loading::GitBranches.set();
 
-                        log::debug!("Got branches");
-                        *STATE.lock() = State::Loading(0.3);
+            let branches = match git.branches() {
+                Ok(branches) => branches,
+                Err(err) => {
+                    let err: String = format!("Could not get branches: {err}");
+                    log::error!("{err}");
+                    State::Error(err).set();
+                    continue;
+                }
+            };
 
-                        let current_branch = match git.current_branch() {
-                            Ok(current_branch) => current_branch,
-                            Err(err) => {
-                                let err: String = format!("Could not get current_branch: {err}");
-                                log::error!("{err}");
-                                *STATE.lock() = State::Error(err);
-                                continue;
-                            }
-                        };
+            Loading::GitBranch.set();
 
-                        log::debug!("Got current branch");
-                        *STATE.lock() = State::Loading(0.4);
-            */
+            let current_branch = match git.current_branch() {
+                Ok(current_branch) => current_branch,
+                Err(err) => {
+                    let err: String = format!("Could not get current_branch: {err}");
+                    log::error!("{err}");
+                    State::Error(err).set();
+                    continue;
+                }
+            };
+
+            Loading::Animations.set();
 
             let root = git.folder().to_owned();
             let mut collections = ShareDebugMap::custom();
-            *STATE.lock() = State::Loading(Loading::Animations);
             collections.insert::<Collection<Animation>>(Collection::<Animation>::load(&root));
-            *STATE.lock() = State::Loading(Loading::Curves);
+
+            Loading::Curves.set();
             collections.insert::<Collection<Curve>>(Collection::<Curve>::load(&root));
-            *STATE.lock() = State::Loading(Loading::OutputDevices);
+
+            Loading::OutputDevices.set();
             collections.insert::<Collection<OutputDevice>>(Collection::<OutputDevice>::load(&root));
-            *STATE.lock() = State::Loading(Loading::Palettes);
+
+            Loading::Palettes.set();
             collections.insert::<Collection<Palette>>(Collection::<Palette>::load(&root));
-            *STATE.lock() = State::Loading(Loading::Projects);
+
+            Loading::Projects.set();
             collections.insert::<Collection<Project>>(Collection::<Project>::load(&root));
-            *STATE.lock() = State::Loading(Loading::Scenes);
+
+            Loading::Scenes.set();
             collections.insert::<Collection<Scene>>(Collection::<Scene>::load(&root));
 
-            *STATE.lock() = State::Opened {
+            State::Opened {
                 synced: git.synced(),
-                branches: Default::default(),
-                current_branch: Default::default(),
+                branches,
+                current_branch,
                 folder: root.clone(),
                 collections,
-            };
+            }
+            .set();
 
             while let Ok(action) = actions.recv() {
                 match action {
                     Action::CommitAndPush { message } => {
                         if let Err(err) = git.commit_and_push(&message) {
-                            *STATE.lock() =
-                                State::Error(format!("Error committing and pushing: {err}"));
+                            State::Error(format!("Error committing and pushing: {err}")).set();
                             break;
                         }
+                    }
+                    Action::Restart => {
+                        break;
                     }
                     Action::Update => break,
                     Action::SwitchBranch(branch) => match git.switch_branch(&branch) {
@@ -169,7 +190,7 @@ pub fn start_thread() {
                             break;
                         }
                         Err(err) => {
-                            *STATE.lock() = State::Error(format!("Error switching branch: {err}"));
+                            State::Error(format!("Error switching branch: {err}")).set();
                             break;
                         }
                     },
