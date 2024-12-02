@@ -14,7 +14,7 @@ use crate::{
     extract_output::ExtractOutput,
     input::{Input, ARTNET_CONFIG},
     output_sender::{self, GpuReadyReceiver, OutputSender},
-    storage::{opened, Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
+    storage::{loaded, Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
     ui::{action::Action, windows::Windows},
     viewport_builder::default_viewport_builder,
 };
@@ -45,7 +45,7 @@ pub struct App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if opened() && self.startup {
+        if loaded() && self.startup {
             self.startup = false;
             if let Some(project) = PersistantState::get().last_project_id {
                 Action::SetProject(project).enqueue();

@@ -71,7 +71,7 @@ impl<T: AssetTrait> Asset<T> {
 
     pub fn get(id: AssetId<T>) -> Option<Arc<Self>> {
         let state: &State = &STATE.lock();
-        let State::Opened { collections, .. } = state else {
+        let State::Loaded(collections) = state else {
             return None;
         };
         collections.get::<Collection<T>>()?.get(&id).cloned()
@@ -79,7 +79,7 @@ impl<T: AssetTrait> Asset<T> {
 
     pub fn all() -> Vec<Arc<Asset<T>>> {
         let state: &State = &STATE.lock();
-        if let State::Opened { collections, .. } = state {
+        if let State::Loaded(collections) = state {
             if let Some(collection) = collections.get::<Collection<T>>() {
                 return collection.assets();
             }
@@ -93,7 +93,7 @@ impl<T: AssetTrait> Asset<T> {
 
         std::thread::spawn(move || {
             let state: &mut State = &mut STATE.lock();
-            if let State::Opened { collections, .. } = state {
+            if let State::Loaded(collections) = state {
                 collections
                     .entry::<Collection<T>>()
                     .or_insert_with(Default::default)

@@ -10,7 +10,9 @@ use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use std::{
     fmt::Debug,
-    path::{Path, PathBuf},
+    fs::remove_dir_all,
+    path::PathBuf,
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed},
 };
 use strum::Display;
 use typemap::ShareDebugMap;
@@ -26,8 +28,10 @@ pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
         .data_dir()
         .join("gled2")
 });
+static WORKING: AtomicBool = AtomicBool::new(true);
 static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::Loading(Loading::GitRepository)));
 static BRANCHES: Lazy<Mutex<Option<Branches>>> = Lazy::new(|| Mutex::new(None));
+static STAGED_FILES: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug, Clone)]
 pub struct Branches {
@@ -40,18 +44,13 @@ pub struct Branches {
 pub enum State {
     Loading(Loading),
     Error(String),
-    Opened {
-        synced: bool,
-        #[allow(unused)]
-        folder: PathBuf,
-        collections: ShareDebugMap,
-    },
+    Loaded(ShareDebugMap),
 }
 
 impl State {
     pub fn set(self) {
         match &self {
-            Self::Opened { .. } => println!("Storage is fully loaded."),
+            Self::Loaded(..) => println!("Storage is fully loaded."),
             state => println!("Storage state: {state:?}"),
         }
         *STATE.lock() = self;
@@ -80,17 +79,16 @@ impl Loading {
     }
 }
 
-pub fn staged_changes() -> usize {
-    //TODO: Check if there's sth to commit
-    if opened() {
-        1
-    } else {
-        0
-    }
+pub fn working() -> bool {
+    WORKING.load(Relaxed)
 }
 
-pub fn opened() -> bool {
-    matches!(*STATE.lock(), State::Opened { .. })
+pub fn staged_files() -> usize {
+    STAGED_FILES.load(Relaxed)
+}
+
+pub fn loaded() -> bool {
+    matches!(*STATE.lock(), State::Loaded(..))
 }
 
 pub fn loading_state() -> Option<Loading> {
@@ -119,11 +117,13 @@ pub fn start_thread() {
     std::thread::spawn(move || {
         let mut retry_wait = std::time::Duration::from_secs(0);
         loop {
-            Loading::GitRepository.set();
-
             std::thread::sleep(retry_wait);
             retry_wait = std::time::Duration::from_secs(2);
 
+            // Clear the queue
+            while actions.try_recv().is_ok() {}
+
+            Loading::GitRepository.set();
             let mut git = match git::Git::open(PersistantState::git_url()) {
                 Ok(git) => git,
                 Err(err) => {
@@ -134,78 +134,101 @@ pub fn start_thread() {
                 }
             };
 
-            Loading::GitBranches.set();
-
-            let branches = match git.branches() {
-                Ok(branches) => branches,
-                Err(err) => {
-                    let err: String = format!("Could not get branches: {err}");
-                    log::error!("{err}");
-                    State::Error(err).set();
-                    continue;
-                }
-            };
-
-            Loading::GitBranch.set();
-
-            let current_branch = match git.current_branch() {
-                Ok(current_branch) => current_branch,
-                Err(err) => {
-                    let err: String = format!("Could not get current_branch: {err}");
-                    log::error!("{err}");
-                    State::Error(err).set();
-                    continue;
-                }
-            };
-
-            *BRANCHES.lock() = Some(Branches {
-                available: branches,
-                current: current_branch,
-            });
-
-            Loading::Animations.set();
-
-            let root = git.folder().to_owned();
-            let mut collections = ShareDebugMap::custom();
-            collections.insert::<Collection<Animation>>(Collection::<Animation>::load(&root));
-
-            Loading::Curves.set();
-            collections.insert::<Collection<Curve>>(Collection::<Curve>::load(&root));
-
-            Loading::OutputDevices.set();
-            collections.insert::<Collection<OutputDevice>>(Collection::<OutputDevice>::load(&root));
-
-            Loading::Palettes.set();
-            collections.insert::<Collection<Palette>>(Collection::<Palette>::load(&root));
-
-            Loading::Projects.set();
-            collections.insert::<Collection<Project>>(Collection::<Project>::load(&root));
-
-            Loading::Scenes.set();
-            collections.insert::<Collection<Scene>>(Collection::<Scene>::load(&root));
-
-            State::Opened {
-                synced: git.synced(),
-                folder: root.clone(),
-                collections,
-            }
-            .set();
+            Action::LoadBranches.enqueue();
+            Action::CountStagedFiles.enqueue();
+            Action::LoadAssets.enqueue();
 
             while let Ok(action) = actions.recv() {
+                WORKING.store(true, Relaxed);
+
                 match action {
+                    Action::Nuke => {
+                        remove_dir_all(&*STORAGE_DIR).ok();
+                        Action::Restart.enqueue();
+                    }
+                    Action::Restart => {
+                        break;
+                    }
+                    Action::CountStagedFiles => match git.count_staged_files() {
+                        Err(err) => {
+                            State::Error(format!("Error counting staged files: {err}")).set();
+                        }
+                        Ok(count) => {
+                            STAGED_FILES.store(count, Relaxed);
+                        }
+                    },
+                    Action::Pull => {
+                        if let Err(err) = git.pull() {
+                            State::Error(format!("Error pulling: {err}")).set();
+                        }
+                    }
                     Action::CommitAndPush { message } => {
                         if let Err(err) = git.commit_and_push(&message) {
                             State::Error(format!("Error committing and pushing: {err}")).set();
                         }
+                        Action::CountStagedFiles.enqueue();
                     }
-                    Action::Restart => {
+                    Action::LoadBranches => {
                         BRANCHES.lock().take();
-                        println!("Restarting Storage");
-                        break;
+
+                        Loading::GitBranches.set();
+                        let branches = match git.branches() {
+                            Ok(branches) => branches,
+                            Err(err) => {
+                                let err: String = format!("Could not get branches: {err}");
+                                log::error!("{err}");
+                                State::Error(err).set();
+                                continue;
+                            }
+                        };
+
+                        Loading::GitBranch.set();
+                        let current_branch = match git.current_branch() {
+                            Ok(current_branch) => current_branch,
+                            Err(err) => {
+                                let err: String = format!("Could not get current_branch: {err}");
+                                log::error!("{err}");
+                                State::Error(err).set();
+                                continue;
+                            }
+                        };
+
+                        *BRANCHES.lock() = Some(Branches {
+                            available: branches,
+                            current: current_branch,
+                        });
+                    }
+                    Action::LoadAssets => {
+                        let mut collections = ShareDebugMap::custom();
+
+                        Loading::Animations.set();
+                        collections
+                            .insert::<Collection<Animation>>(Collection::<Animation>::load());
+
+                        Loading::Curves.set();
+                        collections.insert::<Collection<Curve>>(Collection::<Curve>::load());
+
+                        Loading::OutputDevices.set();
+                        collections
+                            .insert::<Collection<OutputDevice>>(Collection::<OutputDevice>::load());
+
+                        Loading::Palettes.set();
+                        collections.insert::<Collection<Palette>>(Collection::<Palette>::load());
+
+                        Loading::Projects.set();
+                        collections.insert::<Collection<Project>>(Collection::<Project>::load());
+
+                        Loading::Scenes.set();
+                        collections.insert::<Collection<Scene>>(Collection::<Scene>::load());
+
+                        State::Loaded(collections).set();
                     }
                     Action::SwitchBranch(branch) => match git.switch_branch(&branch) {
                         Ok(_) => {
                             Action::Restart.enqueue();
+                            Action::LoadBranches.enqueue();
+                            Action::CountStagedFiles.enqueue();
+                            Action::LoadAssets.enqueue();
                         }
                         Err(err) => {
                             State::Error(format!("Error switching branch: {err}")).set();
@@ -216,34 +239,27 @@ pub fn start_thread() {
                         uuid,
                         json,
                     } => {
-                        if let Err(err) = git.write_asset(&asset_path(&root, uuid, dir_name), json)
-                        {
+                        if let Err(err) = git.write_asset(&asset_path(uuid, dir_name), json) {
                             log::error!("Could not write asset: {err:?}");
-                            continue;
                         }
 
-                        let state: &mut State = &mut STATE.lock();
-                        if let State::Opened { synced, .. } = state {
-                            *synced = git.synced();
-                        }
+                        Action::CountStagedFiles.enqueue();
                     }
                     Action::DeleteAsset { uuid, dir_name } => {
-                        if let Err(err) = git.delete_asset(&asset_path(&root, uuid, dir_name)) {
+                        if let Err(err) = git.delete_asset(&asset_path(uuid, dir_name)) {
                             log::error!("Could not delete asset: {err:?}");
-                            continue;
                         }
 
-                        let state: &mut State = &mut STATE.lock();
-                        if let State::Opened { synced, .. } = state {
-                            *synced = git.synced();
-                        }
+                        Action::CountStagedFiles.enqueue();
                     }
                 }
+
+                WORKING.store(false, Relaxed);
             }
         }
     });
 }
 
-pub fn asset_path(root: &Path, id: Uuid, dir_name: &str) -> PathBuf {
-    root.join(dir_name).join(format!("{}.json", id))
+pub fn asset_path(id: Uuid, dir_name: &str) -> PathBuf {
+    STORAGE_DIR.join(dir_name).join(format!("{}.json", id))
 }

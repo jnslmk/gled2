@@ -14,7 +14,12 @@ pub fn init() -> Receiver<Action> {
 
 #[allow(dead_code)]
 pub enum Action {
+    /// Nuke the storage folder and restart from scratch
+    Nuke,
+    /// Restart the storage system
     Restart,
+    LoadBranches,
+    LoadAssets,
     SwitchBranch(String),
     SaveAsset {
         dir_name: &'static str,
@@ -25,6 +30,8 @@ pub enum Action {
         dir_name: &'static str,
         uuid: Uuid,
     },
+    Pull,
+    CountStagedFiles,
     CommitAndPush {
         message: String,
     },

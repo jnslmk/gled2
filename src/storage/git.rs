@@ -4,33 +4,21 @@ use git2::{
     RemoteCallbacks, Repository, Signature,
 };
 use mkdirp::mkdirp;
-use std::{
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{io::Write, path::Path};
 
 pub struct Git {
-    synced: bool,
     url: String,
-    folder: PathBuf,
     repository: Option<Repository>,
 }
 
 impl Git {
     pub fn open(url: String) -> Result<Self, Error> {
-        let folder = STORAGE_DIR.clone();
         let mut db = Self {
             url,
-            folder,
             repository: None,
-            synced: false,
         };
-        db.update();
+        db.init()?;
         Ok(db)
-    }
-
-    pub fn folder(&self) -> &Path {
-        &self.folder
     }
 
     pub fn branches(&self) -> Result<Vec<String>, Error> {
@@ -49,6 +37,7 @@ impl Git {
                     .map(|name| name.to_owned()))
             })
             .filter_map(|name| name.transpose())
+            .filter(|name| name.as_deref() != Ok("HEAD"))
             .collect()
     }
 
@@ -87,14 +76,7 @@ impl Git {
 
     pub fn commit_and_push(&mut self, message: &str) -> Result<(), Error> {
         self.commit(message)?;
-
-        match self.push() {
-            Ok(_) => self.synced = true,
-            Err(err) => {
-                log::warn!("Could not push changes: {err:?}");
-                self.synced = false;
-            }
-        }
+        self.push()?;
 
         Ok(())
     }
@@ -137,38 +119,23 @@ impl Git {
             .unwrap_or_else(|| "main".to_owned())
     }
 
-    pub fn update(&mut self) {
-        log::debug!("Loading repository at {}", self.folder.display());
-        match Repository::open(&self.folder) {
+    pub fn init(&mut self) -> Result<(), Error> {
+        log::debug!("Loading repository at {}", STORAGE_DIR.display());
+        match Repository::open(&*STORAGE_DIR) {
             Ok(repository) => {
                 log::debug!("Repository loaded!");
                 self.repository = Some(repository);
-                self.synced = true;
-                return;
+                Ok(())
             }
             Err(err) => {
                 log::error!("Could not open repository: {err:?}");
-                self.synced = false;
-            }
-        }
-
-        match self
-            .pull()
-            .or_else(|_err| self.clone())
-            .and_then(|_| self.push())
-        {
-            Ok(_) => {
-                self.synced = true;
-            }
-            Err(err) => {
-                log::error!("Could not sync: {err:?}");
-                self.synced = false;
+                self.clone()
             }
         }
     }
 
-    fn pull(&mut self) -> Result<(), Error> {
-        self.repository = Some(Repository::open(&self.folder)?);
+    pub fn pull(&mut self) -> Result<(), Error> {
+        self.repository = Some(Repository::open(&*STORAGE_DIR)?);
         let branch = self.branch_shorthand();
 
         let mut fetch_options = self.fetch_options();
@@ -257,12 +224,12 @@ impl Git {
     }
 
     fn clone(&mut self) -> Result<(), Error> {
-        let _ = std::fs::remove_dir_all(&self.folder);
+        let _ = std::fs::remove_dir_all(&*STORAGE_DIR);
 
         self.repository = Some(
             RepoBuilder::new()
                 .fetch_options(self.fetch_options())
-                .clone(&self.url, &self.folder)?,
+                .clone(&self.url, &STORAGE_DIR)?,
         );
 
         Ok(())
@@ -276,7 +243,7 @@ impl Git {
             .as_ref()
             .ok_or(Error::from_str("No repository set"))?;
         let file = file
-            .strip_prefix(self.folder())
+            .strip_prefix(&*STORAGE_DIR)
             .map_err(|_err| Error::from_str("Could not make path relative"))?;
 
         let mut index = repository.index()?;
@@ -364,8 +331,13 @@ impl Git {
         Ok(())
     }
 
-    pub fn synced(&self) -> bool {
-        self.synced
+    pub fn count_staged_files(&self) -> Result<usize, Error> {
+        let repository = self
+            .repository
+            .as_ref()
+            .ok_or(Error::from_str("No repository set"))?;
+
+        Ok(repository.statuses(None)?.len())
     }
 
     pub fn delete_asset(&mut self, path: &Path) -> Result<(), String> {

@@ -52,7 +52,7 @@ impl<T: AssetTrait> AssetId<T> {
 
         std::thread::spawn(move || {
             let state: &mut State = &mut STATE.lock();
-            if let State::Opened { collections, .. } = state {
+            if let State::Loaded(collections) = state {
                 if let Some(collection) = collections.get_mut::<Collection<T>>() {
                     collection.delete_asset(self);
                 }
