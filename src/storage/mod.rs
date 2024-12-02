@@ -59,17 +59,25 @@ impl State {
 
 #[derive(Debug, Clone, Copy, Display)]
 pub enum Loading {
-    #[strum(serialize = "Git repository")]
+    #[strum(serialize = "Nuking storage")]
+    Nuking,
+    #[strum(serialize = "Loading git repository")]
     GitRepository,
-    #[strum(serialize = "Git branches")]
+    #[strum(serialize = "Loading git branches")]
     GitBranches,
-    #[strum(serialize = "Git branch")]
+    #[strum(serialize = "Loading current git branch")]
     GitBranch,
+    #[strum(serialize = "Loading animations")]
     Animations,
+    #[strum(serialize = "Loading curves")]
     Curves,
+    #[strum(serialize = "Loading output devices")]
     OutputDevices,
+    #[strum(serialize = "Loading palettes")]
     Palettes,
+    #[strum(serialize = "Loading projects")]
     Projects,
+    #[strum(serialize = "Loading scenes")]
     Scenes,
 }
 
@@ -143,6 +151,7 @@ pub fn start_thread() {
 
                 match action {
                     Action::Nuke => {
+                        Loading::Nuking.set();
                         remove_dir_all(&*STORAGE_DIR).ok();
                         Action::Restart.enqueue();
                     }

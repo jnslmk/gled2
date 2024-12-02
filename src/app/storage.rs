@@ -44,7 +44,7 @@ pub fn show_storage_loading(ctx: &Context, loading: Loading) {
         ui.put(center_rect, Spinner::new().size(spinner_size));
         ui.put(
             center_rect,
-            Label::new(RichText::new(format!("Loading {loading}..")).heading()),
+            Label::new(RichText::new(format!("{loading}")).heading()),
         );
     });
 }

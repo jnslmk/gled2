@@ -40,8 +40,6 @@ pub struct App {
     selected_scene_instance: SceneInstancePath,
     hovered_scene_instance: SceneInstancePath,
     new_git_url: String,
-    new_git_username: String,
-    new_git_password: String,
     commit_message: String,
 }
 
@@ -283,8 +281,6 @@ impl App {
             other_main_windows: Default::default(),
             areas: Default::default(),
             new_git_url: persistant_state.git_url,
-            new_git_username: persistant_state.git_username,
-            new_git_password: persistant_state.git_password,
             commit_message: Default::default(),
         };
 

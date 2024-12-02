@@ -18,8 +18,6 @@ pub struct PersistantState {
     pub preview_palette: Option<AssetId<Palette>>,
     pub last_project_id: Option<AssetId<Project>>,
     pub git_url: String,
-    pub git_username: String,
-    pub git_password: String,
 }
 
 impl Default for PersistantState {
@@ -31,9 +29,7 @@ impl Default for PersistantState {
             fps_limit: 120.0,
             preview_palette: Default::default(),
             last_project_id: Default::default(),
-            git_url: "https://gitlab.com/pentagonum/gled2_assets.git".to_string(),
-            git_username: "git".to_string(),
-            git_password: "".to_string(),
+            git_url: "git@gitlab.com:pentagonum/gled2_assets.git".to_string(),
         }
     }
 }
