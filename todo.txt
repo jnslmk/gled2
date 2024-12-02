@@ -1,2 +1,1 @@
-* full git integration
 * cd for linux rpm, mac homebrew, windows exe
