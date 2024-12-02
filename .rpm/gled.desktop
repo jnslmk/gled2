@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=gled
+Comment=Create animations and effects on artnet or wled light installations
+Exec=gled
+Icon=application-gled
+Terminal=false
+Type=Application
+Categories=AudioVideo;
+MimeType=application/gled
