@@ -15,7 +15,7 @@ pub struct EffectWidget<'a> {
     pub effect_state: &'a EffectState,
 }
 
-impl<'a> Widget for EffectWidget<'a> {
+impl Widget for EffectWidget<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let frame = if let Some((selected_effect, index)) = &self.selectable {
             egui::Frame::none()

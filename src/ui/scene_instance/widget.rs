@@ -22,7 +22,7 @@ pub struct SceneInstanceWidget<'a> {
     pub uv: Option<Rect>,
 }
 
-impl<'a> Widget for SceneInstanceWidget<'a> {
+impl Widget for SceneInstanceWidget<'_> {
     fn ui(self, ui: &mut Ui) -> egui::Response {
         let mut checkbox_rect = None;
 
