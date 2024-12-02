@@ -1,12 +1,12 @@
 mod config;
 mod effects;
-mod loading;
 mod menu;
 mod no_project;
 mod persistant_state;
 mod preview;
 mod project_functions;
 mod status_bar;
+mod storage;
 pub mod svg;
 mod timing;
 
@@ -14,13 +14,13 @@ use crate::{
     extract_output::ExtractOutput,
     input::{Input, ARTNET_CONFIG},
     output_sender::{self, GpuReadyReceiver, OutputSender},
-    storage::{self, Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
+    storage::{opened, Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
     ui::{action::Action, windows::Windows},
     viewport_builder::default_viewport_builder,
 };
 use egui::{ahash::HashMap, Key, Modifiers, SidePanel, TopBottomPanel, ViewportId};
-use loading::show_loading;
 use std::sync::Arc;
+use storage::{show_storage_error, show_storage_loading};
 
 pub use persistant_state::PersistantState;
 pub use svg::{positions, preview_positions, preview_uv, Svg};
@@ -43,7 +43,7 @@ pub struct App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if storage::opened() && self.startup {
+        if opened() && self.startup {
             self.startup = false;
             if let Some(project) = PersistantState::get().last_project_id {
                 Action::SetProject(project).enqueue();
@@ -214,11 +214,11 @@ impl App {
         }
 
         if let Some(loading) = crate::storage::loading_state() {
-            show_loading(ctx, loading);
+            show_storage_loading(ctx, loading);
             return;
-        } else if let Some(err) = crate::storage::error_state() {
-            println!("Error: {}", err);
-            //TODO: Display
+        } else if let Some(error) = crate::storage::error_state() {
+            show_storage_error(ctx, error);
+            return;
         }
 
         if self.project.is_some() {

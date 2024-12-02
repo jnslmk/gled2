@@ -1,4 +1,4 @@
-use directories::BaseDirs;
+use super::STORAGE_DIR;
 use git2::{
     build::RepoBuilder, Cred, Error, ErrorCode, FetchOptions, PushOptions, Reference,
     RemoteCallbacks, Repository, Signature,
@@ -18,10 +18,7 @@ pub struct Git {
 
 impl Git {
     pub fn open(url: String) -> Result<Self, Error> {
-        let folder = BaseDirs::new()
-            .expect("Could not get base dirs")
-            .data_dir()
-            .join("gled2");
+        let folder = STORAGE_DIR.clone();
         let mut db = Self {
             url,
             folder,

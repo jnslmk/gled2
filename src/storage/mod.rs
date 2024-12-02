@@ -5,6 +5,7 @@ mod collection;
 mod git;
 
 use collection::Collection;
+use directories::BaseDirs;
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use std::{
@@ -17,6 +18,12 @@ use uuid::Uuid;
 
 pub use self::{action::Action, asset::*, asset_id::AssetId};
 
+pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
+    BaseDirs::new()
+        .expect("Could not get base dirs")
+        .data_dir()
+        .join("gled2")
+});
 static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::Loading(Loading::GitRepository)));
 
 #[allow(clippy::large_enum_variant)]
