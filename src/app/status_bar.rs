@@ -4,8 +4,10 @@ use crate::{
     temperature::temperature,
 };
 use egui::{
-    Button, Color32, ComboBox, Context, Label, Layout, Margin, Spinner, TextEdit, ViewportId,
+    Button, Color32, ComboBox, Context, Label, Layout, Margin, Spinner, Stroke, TextEdit,
+    ViewportId,
 };
+use egui_flex::{item, Flex};
 
 impl App {
     pub fn status_bar(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
@@ -67,10 +69,23 @@ impl App {
                                         }
                                     });
 
+                                    egui::Frame::none()
+                                    .inner_margin(Margin::from(6.0))
+                                    .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
+                                    .show(ui, |ui| {
                                     ui.label("Repository:");
-                                    ui.horizontal(|ui| {
                                         ui.text_edit_singleline(&mut self.new_git_url);
-                                        if ui.add(Button::new("Apply").fill(Color32::DARK_RED))
+                                    if PersistantState::git_url().starts_with("https") {
+                                            ui.label("Username:");
+                                            ui.text_edit_singleline(&mut self.new_git_username);
+                                            ui.label("Password:");
+                                            ui.add(TextEdit::singleline(&mut self.new_git_password).password(true));
+                                    }
+                                    Flex::horizontal().show(ui, |flex| {
+                                        if flex
+                                            .add(
+                                                item().grow(1.0),
+                                    Button::new("Apply").fill(Color32::DARK_RED)).inner
                                             .on_hover_text("This deletes all assets on disk and starts from scratch by cloning the repository!")
                                             .clicked()
                                         {
@@ -78,32 +93,43 @@ impl App {
 
                                             let mut persistant = PersistantState::get();
                                             persistant.git_url = self.new_git_url.clone();
+                                            persistant.git_username = self.new_git_username.clone();
+                                            persistant.git_password = self.new_git_password.clone();
                                             persistant.save();
 
                                             Action::Nuke.enqueue();
                                         }
-                                        ui.add_space(5.0);
-                                        if ui
-                                            .add(Button::new("Reset"))
+
+                                        if flex
+                                            .add(
+                                                item().grow(1.0),
+                                        Button::new("Reset")).inner
                                             .clicked()
                                         {
-                                            self.new_git_url = PersistantState::git_url();
+                                            let persistant_state = PersistantState::get();
+                                            self.new_git_url = persistant_state.git_url;
+                                            self.new_git_username = persistant_state.git_username;
+                                            self.new_git_password = persistant_state.git_password;
                                         }
                                     });
+                                });
 
                                     if staged_changes > 0 {
-                                        ui.separator();
+                                        egui::Frame::none()
+                                        .inner_margin(Margin::from(6.0))
+                                        .stroke(Stroke::new(1.0, Color32::DARK_GREEN))
+                                        .show(ui, |ui| {
 
                                         ui.label(if staged_changes == 1 {
                                             "Commit message for 1 change:".to_owned()
                                         } else {
                                             format!("Commit message for {staged_changes} changes:")
                                         });
-                                        ui.horizontal(|ui| {
                                             ui.add(
                                                 TextEdit::singleline(&mut self.commit_message)
                                                     .hint_text("Please enter a commit message"),
                                             );
+                                            ui.vertical_centered_justified(|ui| {
                                             if ui.button("⬆Commit & Push").clicked() {
                                                 close_menu = true;
                                                 Action::CommitAndPush {
@@ -111,8 +137,8 @@ impl App {
                                                 }
                                                 .enqueue();
                                                 self.commit_message = String::new();
-                                            }
-                                        });
+                                            }});
+                                    });
                                     }
 
                                     if close_menu {

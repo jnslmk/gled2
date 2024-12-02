@@ -1,3 +1,5 @@
+use crate::app::PersistantState;
+
 use super::STORAGE_DIR;
 use git2::{
     build::RepoBuilder, Cred, Error, ErrorCode, FetchOptions, PushOptions, Reference,
@@ -95,8 +97,13 @@ impl Git {
 
     fn remote_callbacks(&self) -> RemoteCallbacks<'static> {
         let mut callbacks = RemoteCallbacks::new();
-        callbacks.credentials(move |_url, username_from_url, _allowed_types| {
-            Cred::ssh_key_from_agent(username_from_url.unwrap_or(&whoami::username()))
+        callbacks.credentials(move |url, username_from_url, _allowed_types| {
+            if url.starts_with("https") {
+                let persistant = PersistantState::get();
+                Cred::userpass_plaintext(&persistant.git_username, &persistant.git_password)
+            } else {
+                Cred::ssh_key_from_agent(username_from_url.unwrap_or(&whoami::username()))
+            }
         });
         callbacks
     }
