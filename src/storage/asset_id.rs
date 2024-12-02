@@ -62,7 +62,7 @@ impl<T: AssetTrait> AssetId<T> {
                 uuid: self.id,
                 dir_name: T::DIR_NAME,
             }
-            .send();
+            .enqueue();
         });
     }
 }

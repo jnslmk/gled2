@@ -107,7 +107,7 @@ impl<T: AssetTrait> Asset<T> {
                     uuid,
                     json,
                 }
-                .send();
+                .enqueue();
             }
         });
     }

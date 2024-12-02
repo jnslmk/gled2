@@ -39,6 +39,8 @@ pub struct App {
     blackout: bool,
     selected_scene_instance: SceneInstancePath,
     hovered_scene_instance: SceneInstancePath,
+    new_git_url: String,
+    commit_message: String,
 }
 
 impl eframe::App for App {
@@ -276,6 +278,8 @@ impl App {
             windows: Default::default(),
             other_main_windows: Default::default(),
             areas: Default::default(),
+            new_git_url: PersistantState::git_url(),
+            commit_message: Default::default(),
         };
 
         Some(app)

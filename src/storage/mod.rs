@@ -27,6 +27,13 @@ pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
         .join("gled2")
 });
 static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::Loading(Loading::GitRepository)));
+static BRANCHES: Lazy<Mutex<Option<Branches>>> = Lazy::new(|| Mutex::new(None));
+
+#[derive(Debug, Clone)]
+pub struct Branches {
+    pub available: Vec<String>,
+    pub current: String,
+}
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -35,10 +42,6 @@ pub enum State {
     Error(String),
     Opened {
         synced: bool,
-        #[allow(unused)]
-        branches: Vec<String>,
-        #[allow(unused)]
-        current_branch: String,
         #[allow(unused)]
         folder: PathBuf,
         collections: ShareDebugMap,
@@ -77,6 +80,15 @@ impl Loading {
     }
 }
 
+pub fn staged_changes() -> usize {
+    //TODO: Check if there's sth to commit
+    if opened() {
+        1
+    } else {
+        0
+    }
+}
+
 pub fn opened() -> bool {
     matches!(*STATE.lock(), State::Opened { .. })
 }
@@ -95,6 +107,10 @@ pub fn error_state() -> Option<String> {
     } else {
         None
     }
+}
+
+pub fn branches() -> Option<Branches> {
+    BRANCHES.lock().clone()
 }
 
 pub fn start_thread() {
@@ -142,6 +158,11 @@ pub fn start_thread() {
                 }
             };
 
+            *BRANCHES.lock() = Some(Branches {
+                available: branches,
+                current: current_branch,
+            });
+
             Loading::Animations.set();
 
             let root = git.folder().to_owned();
@@ -165,8 +186,6 @@ pub fn start_thread() {
 
             State::Opened {
                 synced: git.synced(),
-                branches,
-                current_branch,
                 folder: root.clone(),
                 collections,
             }
@@ -177,21 +196,19 @@ pub fn start_thread() {
                     Action::CommitAndPush { message } => {
                         if let Err(err) = git.commit_and_push(&message) {
                             State::Error(format!("Error committing and pushing: {err}")).set();
-                            break;
                         }
                     }
                     Action::Restart => {
+                        BRANCHES.lock().take();
+                        println!("Restarting Storage");
                         break;
                     }
-                    Action::Update => break,
                     Action::SwitchBranch(branch) => match git.switch_branch(&branch) {
                         Ok(_) => {
-                            // needs to reload all assets
-                            break;
+                            Action::Restart.enqueue();
                         }
                         Err(err) => {
                             State::Error(format!("Error switching branch: {err}")).set();
-                            break;
                         }
                     },
                     Action::SaveAsset {
@@ -201,7 +218,7 @@ pub fn start_thread() {
                     } => {
                         if let Err(err) = git.write_asset(&asset_path(&root, uuid, dir_name), json)
                         {
-                            log::error!("Could not save color palette: {err:?}");
+                            log::error!("Could not write asset: {err:?}");
                             continue;
                         }
 
@@ -212,7 +229,7 @@ pub fn start_thread() {
                     }
                     Action::DeleteAsset { uuid, dir_name } => {
                         if let Err(err) = git.delete_asset(&asset_path(&root, uuid, dir_name)) {
-                            log::error!("Could not delete color palette: {err:?}");
+                            log::error!("Could not delete asset: {err:?}");
                             continue;
                         }
 

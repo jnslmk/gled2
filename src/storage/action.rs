@@ -14,7 +14,6 @@ pub fn init() -> Receiver<Action> {
 
 #[allow(dead_code)]
 pub enum Action {
-    Update,
     Restart,
     SwitchBranch(String),
     SaveAsset {
@@ -32,7 +31,7 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn send(self) {
+    pub fn enqueue(self) {
         SENDER
             .get()
             .expect("Could not get ACTION_SENDER")
