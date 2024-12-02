@@ -2,6 +2,10 @@
 
 set -e
 
+# todo: remove
+cargo build
+exit 1
+
 cargo install cargo-edit cargo-packager cargo-generate-rpm cargo-xwin --locked
 
 echo "Setting version to ${CI_COMMIT_TAG}"
