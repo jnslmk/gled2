@@ -1,7 +1,6 @@
 /target
-/perf.data
-/Gled.app/Contents/MacOS/gled
-/Gled.dmg
+/*.dmg
+/*.exe
+/*.rpm
 /*.svg
-/*.gled2
-/release.sh
+/.cargo-packager

@@ -1,7 +1,9 @@
 [package]
 name = "gled"
+description = "gled is an application for creating animations and effects on artnet or wled light installations"
 version = "2.0.0"
 edition = "2021"
+license = "GPL-3.0-or-later"
 
 [dependencies]
 anyhow = "1"
@@ -66,3 +68,12 @@ debug = true
 
 [profile.dev.package."*"]
 opt-level = 3
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/gled", dest = "/usr/bin/gled", mode = "755" },
+    { source = ".rpm/gled.desktop", dest = "/usr/share/applications/gled.desktop", mode = "555" },
+    { source = "assets/logo.svg", dest = "/usr/share/icons/application-gled.svg", mode = "555" },
+]
+
+[package.metadata.packager]

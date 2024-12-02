@@ -1,1 +1,0 @@
-* cd for linux rpm, mac homebrew, windows exe
