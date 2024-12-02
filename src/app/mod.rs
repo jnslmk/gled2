@@ -1,5 +1,6 @@
 mod config;
 mod effects;
+mod loading;
 mod menu;
 mod no_project;
 mod persistant_state;
@@ -13,11 +14,12 @@ use crate::{
     extract_output::ExtractOutput,
     input::{Input, ARTNET_CONFIG},
     output_sender::{self, GpuReadyReceiver, OutputSender},
-    storage::{Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
+    storage::{self, Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
     ui::{action::Action, windows::Windows},
     viewport_builder::default_viewport_builder,
 };
 use egui::{ahash::HashMap, Key, Modifiers, SidePanel, TopBottomPanel, ViewportId};
+use loading::show_loading;
 use std::sync::Arc;
 
 pub use persistant_state::PersistantState;
@@ -25,9 +27,9 @@ pub use svg::{positions, preview_positions, preview_uv, Svg};
 pub use timing::Timing;
 
 pub struct App {
+    startup: bool,
     areas: MainWindowAreas,
     windows: Windows,
-    startup: bool,
     output_sender: OutputSender,
     gpu_ready_receiver: GpuReadyReceiver,
     timing: Timing,
@@ -41,14 +43,11 @@ pub struct App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if let Some(_loading) = crate::storage::loading_state() {
-            //TODO: Display
-        } else if let Some(err) = crate::storage::error_state() {
-            println!("Error: {}", err);
-            //TODO: Display
-        } else if self.startup {
-            println!("Loading complete");
+        if storage::opened() && self.startup {
             self.startup = false;
+            if let Some(project) = PersistantState::get().last_project_id {
+                Action::SetProject(project).enqueue();
+            }
         }
 
         self.timing.tick();
@@ -209,9 +208,19 @@ impl App {
         if areas.menu {
             self.menu(ctx, viewport_id);
         }
+
         if areas.status_bar {
             self.status_bar(ctx, viewport_id);
         }
+
+        if let Some(loading) = crate::storage::loading_state() {
+            show_loading(ctx, loading);
+            return;
+        } else if let Some(err) = crate::storage::error_state() {
+            println!("Error: {}", err);
+            //TODO: Display
+        }
+
         if self.project.is_some() {
             if areas.deck_c {
                 TopBottomPanel::bottom(format!("{viewport_id:?} deck c"))
@@ -268,10 +277,6 @@ impl App {
             other_main_windows: Default::default(),
             areas: Default::default(),
         };
-
-        if let Some(project) = PersistantState::get().last_project_id {
-            Action::SetProject(project).enqueue();
-        }
 
         Some(app)
     }

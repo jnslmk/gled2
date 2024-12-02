@@ -13,6 +13,10 @@ use std::sync::Arc;
 impl App {
     pub fn menu(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
         egui::TopBottomPanel::top(format!("{viewport_id:?} menu")).show(ctx, |ui| {
+            if !crate::storage::opened() {
+                ui.set_enabled(false);
+            }
+
             egui::menu::bar(ui, |ui| {
                 let menu_button_size = Vec2::new(100.0, ui.available_height());
 
@@ -371,8 +375,10 @@ impl App {
 
                 ui.separator();
 
-                ui.spacing_mut().slider_width =
-                    ui.available_width() - (menu_button_size.x * 3.0 + 120.0);
+                let slider_width = ui.available_width() - (menu_button_size.x * 3.0 + 120.0);
+                if slider_width > 5.0 {
+                    ui.spacing_mut().slider_width = slider_width;
+                }
                 ui.add(
                     Slider::new(&mut self.timing.beats_per_minute, 1.0..=240.0)
                         .custom_formatter(|n, _| format!("{:.1} bpm", n)),

@@ -11,17 +11,18 @@ use std::{
     fmt::Debug,
     path::{Path, PathBuf},
 };
+use strum::Display;
 use typemap::ShareDebugMap;
 use uuid::Uuid;
 
 pub use self::{action::Action, asset::*, asset_id::AssetId};
 
-static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::Loading(0.0)));
+static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::Loading(Loading::GitRepository)));
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum State {
-    Loading(f32),
+    Loading(Loading),
     Error(String),
     Opened {
         synced: bool,
@@ -35,7 +36,25 @@ pub enum State {
     },
 }
 
-pub fn loading_state() -> Option<f32> {
+#[derive(Debug, Clone, Copy, Display)]
+pub enum Loading {
+    #[strum(serialize = "Git repository")]
+    GitRepository,
+    #[strum(serialize = "Git branches")]
+    GitBranches,
+    Animations,
+    Curves,
+    OutputDevices,
+    Palettes,
+    Projects,
+    Scenes,
+}
+
+pub fn opened() -> bool {
+    matches!(*STATE.lock(), State::Opened { .. })
+}
+
+pub fn loading_state() -> Option<Loading> {
     if let State::Loading(loading) = *STATE.lock() {
         Some(loading)
     } else {
@@ -57,7 +76,7 @@ pub fn start_thread() {
     std::thread::spawn(move || {
         let mut retry_wait = std::time::Duration::from_secs(0);
         loop {
-            *STATE.lock() = State::Loading(0.0);
+            *STATE.lock() = State::Loading(Loading::GitRepository);
 
             std::thread::sleep(retry_wait);
             retry_wait = std::time::Duration::from_secs(2);
@@ -75,7 +94,7 @@ pub fn start_thread() {
             };
 
             log::debug!("Git opened");
-            *STATE.lock() = State::Loading(0.2);
+            *STATE.lock() = State::Loading(Loading::GitBranches);
             /*
                         let branches = match git.branches() {
                             Ok(branches) => branches,
@@ -106,18 +125,18 @@ pub fn start_thread() {
 
             let root = git.folder().to_owned();
             let mut collections = ShareDebugMap::custom();
+            *STATE.lock() = State::Loading(Loading::Animations);
             collections.insert::<Collection<Animation>>(Collection::<Animation>::load(&root));
-            *STATE.lock() = State::Loading(0.5);
+            *STATE.lock() = State::Loading(Loading::Curves);
             collections.insert::<Collection<Curve>>(Collection::<Curve>::load(&root));
-            *STATE.lock() = State::Loading(0.6);
+            *STATE.lock() = State::Loading(Loading::OutputDevices);
             collections.insert::<Collection<OutputDevice>>(Collection::<OutputDevice>::load(&root));
-            *STATE.lock() = State::Loading(0.7);
+            *STATE.lock() = State::Loading(Loading::Palettes);
             collections.insert::<Collection<Palette>>(Collection::<Palette>::load(&root));
-            *STATE.lock() = State::Loading(0.8);
+            *STATE.lock() = State::Loading(Loading::Projects);
             collections.insert::<Collection<Project>>(Collection::<Project>::load(&root));
-            *STATE.lock() = State::Loading(0.9);
+            *STATE.lock() = State::Loading(Loading::Scenes);
             collections.insert::<Collection<Scene>>(Collection::<Scene>::load(&root));
-            *STATE.lock() = State::Loading(1.0);
 
             *STATE.lock() = State::Opened {
                 synced: git.synced(),
