@@ -122,7 +122,7 @@ impl App {
         });
 
         let staged_files = staged_files();
-        if staged_files > 0 {
+        ui.add_enabled_ui(staged_files > 0 && !working(), |ui| {
             egui::Frame::none()
                 .inner_margin(Margin::from(6.0))
                 .stroke(Stroke::new(1.0, Color32::DARK_GREEN))
@@ -138,7 +138,6 @@ impl App {
                     );
                     ui.vertical_centered_justified(|ui| {
                         if ui.button("⬆Commit & Push").clicked() {
-                            close_menu = true;
                             Action::CommitAndPush {
                                 message: self.commit_message.clone(),
                             }
@@ -147,7 +146,7 @@ impl App {
                         }
                     });
                 });
-        }
+        });
 
         close_menu
     }
