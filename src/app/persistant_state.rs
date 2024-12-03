@@ -1,4 +1,4 @@
-use crate::storage::{AssetId, Palette, Project};
+use crate::storage::{AssetId, GitCredentials, Palette, Project};
 use egui::mutex::Mutex;
 use log::{error, info};
 use once_cell::sync::Lazy;
@@ -18,6 +18,7 @@ pub struct PersistantState {
     pub preview_palette: Option<AssetId<Palette>>,
     pub last_project_id: Option<AssetId<Project>>,
     pub git_url: String,
+    pub git_credentials: GitCredentials,
 }
 
 impl Default for PersistantState {
@@ -29,7 +30,8 @@ impl Default for PersistantState {
             fps_limit: 120.0,
             preview_palette: Default::default(),
             last_project_id: Default::default(),
-            git_url: "git@gitlab.com:pentagonum/gled2_assets.git".to_string(),
+            git_url: "git@gitlab.com:photonenkollektiv/gled2_assets.git".to_string(),
+            git_credentials: Default::default(),
         }
     }
 }
@@ -68,6 +70,10 @@ impl PersistantState {
 
     pub fn get() -> Self {
         PERSISTANT_STATE.lock().clone()
+    }
+
+    pub fn git_credentials() -> GitCredentials {
+        PERSISTANT_STATE.lock().git_credentials.clone()
     }
 
     pub fn save(self) {

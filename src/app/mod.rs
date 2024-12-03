@@ -14,7 +14,10 @@ use crate::{
     extract_output::ExtractOutput,
     input::{Input, ARTNET_CONFIG},
     output_sender::{self, GpuReadyReceiver, OutputSender},
-    storage::{loaded, Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
+    storage::{
+        loading, Asset, AssetId, GitCredentials, Project, RenderDeactivatedScenes,
+        SceneInstancePath,
+    },
     ui::{action::Action, windows::Windows},
     viewport_builder::default_viewport_builder,
 };
@@ -39,13 +42,12 @@ pub struct App {
     blackout: bool,
     selected_scene_instance: SceneInstancePath,
     hovered_scene_instance: SceneInstancePath,
-    new_git_url: String,
-    commit_message: String,
+    git_ui_state: GitUiState,
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if loaded() && self.startup {
+        if loading().is_none() && self.startup {
             self.startup = false;
             if let Some(project) = PersistantState::get().last_project_id {
                 Action::SetProject(project).enqueue();
@@ -215,10 +217,10 @@ impl App {
             self.status_bar(ctx, viewport_id);
         }
 
-        if let Some(loading) = crate::storage::loading_state() {
+        if let Some(loading) = crate::storage::loading() {
             show_storage_loading(ctx, loading);
             return;
-        } else if let Some(error) = crate::storage::error_state() {
+        } else if let Some(error) = crate::storage::error() {
             show_storage_error(ctx, error);
             return;
         }
@@ -265,8 +267,6 @@ impl App {
         let (output_sender, gpu_ready_receiver) =
             output_sender::start().expect("Could not start output sender");
 
-        let persistant_state = PersistantState::get();
-
         let app = Self {
             startup: true,
             output_sender,
@@ -280,8 +280,7 @@ impl App {
             windows: Default::default(),
             other_main_windows: Default::default(),
             areas: Default::default(),
-            new_git_url: persistant_state.git_url,
-            commit_message: Default::default(),
+            git_ui_state: Default::default(),
         };
 
         Some(app)
@@ -311,6 +310,26 @@ impl Default for MainWindowAreas {
             preview: true,
             config: true,
             status_bar: true,
+        }
+    }
+}
+
+pub struct GitUiState {
+    pub url: String,
+    pub commit_message: String,
+    pub use_agent: bool,
+    pub passphrase: String,
+}
+
+impl Default for GitUiState {
+    fn default() -> Self {
+        let persistant_state = PersistantState::get();
+
+        Self {
+            url: persistant_state.git_url,
+            commit_message: Default::default(),
+            use_agent: matches!(persistant_state.git_credentials, GitCredentials::Agent),
+            passphrase: "password".to_string(),
         }
     }
 }

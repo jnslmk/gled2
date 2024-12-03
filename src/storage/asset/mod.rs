@@ -5,7 +5,7 @@ mod palette;
 mod project;
 mod scene;
 
-use super::{collection::Collection, Action, AssetId, State, STATE};
+use super::{collection::Collection, Action, AssetId, COLLECTIONS};
 use egui::Rect;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
@@ -70,30 +70,32 @@ impl<T: AssetTrait> Asset<T> {
     }
 
     pub fn get(id: AssetId<T>) -> Option<Arc<Self>> {
-        let state: &State = &STATE.lock();
-        let State::Loaded(collections) = state else {
-            return None;
-        };
-        collections.get::<Collection<T>>()?.get(&id).cloned()
+        COLLECTIONS
+            .lock()
+            .as_ref()?
+            .get::<Collection<T>>()?
+            .get(&id)
+            .cloned()
     }
 
     pub fn all() -> Vec<Arc<Asset<T>>> {
-        let state: &State = &STATE.lock();
-        if let State::Loaded(collections) = state {
-            if let Some(collection) = collections.get::<Collection<T>>() {
-                return collection.assets();
-            }
-        }
-
-        Default::default()
+        let get_assets = || {
+            Some(
+                COLLECTIONS
+                    .lock()
+                    .as_ref()?
+                    .get::<Collection<T>>()?
+                    .assets(),
+            )
+        };
+        get_assets().unwrap_or_default()
     }
 
     pub fn save(self) {
         log::info!("Setting asset in cache: {:?}", self.id);
 
         std::thread::spawn(move || {
-            let state: &mut State = &mut STATE.lock();
-            if let State::Loaded(collections) = state {
+            if let Some(collections) = COLLECTIONS.lock().as_mut() {
                 collections
                     .entry::<Collection<T>>()
                     .or_insert_with(Default::default)

@@ -13,7 +13,7 @@ use std::sync::Arc;
 impl App {
     pub fn menu(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
         egui::TopBottomPanel::top(format!("{viewport_id:?} menu")).show(ctx, |ui| {
-            if !crate::storage::loaded() {
+            if crate::storage::loading().is_some() {
                 ui.set_enabled(false);
             }
 

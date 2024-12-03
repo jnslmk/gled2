@@ -13,6 +13,8 @@ use std::{
     fs::remove_dir_all,
     path::PathBuf,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed},
+    thread::sleep,
+    time::Duration,
 };
 use strum::Display;
 use typemap::ShareDebugMap;
@@ -21,6 +23,7 @@ use uuid::Uuid;
 use crate::app::PersistantState;
 
 pub use self::{action::Action, asset::*, asset_id::AssetId};
+pub use git::{GitCredentials, SSH_KEY_PASSPHRASE_ENTRY};
 
 pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
     BaseDirs::new()
@@ -29,7 +32,9 @@ pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
         .join("gled2")
 });
 static WORKING: AtomicBool = AtomicBool::new(true);
-static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::Loading(Loading::GitRepository)));
+static ERROR: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
+static LOADING: Lazy<Mutex<Option<Loading>>> = Lazy::new(|| Mutex::new(None));
+static COLLECTIONS: Lazy<Mutex<Option<ShareDebugMap>>> = Lazy::new(|| Mutex::new(None));
 static BRANCHES: Lazy<Mutex<Option<Branches>>> = Lazy::new(|| Mutex::new(None));
 static STAGED_FILES: AtomicUsize = AtomicUsize::new(0);
 
@@ -37,24 +42,6 @@ static STAGED_FILES: AtomicUsize = AtomicUsize::new(0);
 pub struct Branches {
     pub available: Vec<String>,
     pub current: String,
-}
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug)]
-pub enum State {
-    Loading(Loading),
-    Error(String),
-    Loaded(ShareDebugMap),
-}
-
-impl State {
-    pub fn set(self) {
-        match &self {
-            Self::Loaded(..) => println!("Storage is fully loaded."),
-            state => println!("Storage state: {state:?}"),
-        }
-        *STATE.lock() = self;
-    }
 }
 
 #[derive(Debug, Clone, Copy, Display)]
@@ -83,7 +70,11 @@ pub enum Loading {
 
 impl Loading {
     pub fn set(self) {
-        State::Loading(self).set();
+        *LOADING.lock() = Some(self);
+    }
+
+    pub fn unset() {
+        LOADING.lock().take();
     }
 }
 
@@ -95,24 +86,12 @@ pub fn staged_files() -> usize {
     STAGED_FILES.load(Relaxed)
 }
 
-pub fn loaded() -> bool {
-    matches!(*STATE.lock(), State::Loaded(..))
+pub fn loading() -> Option<Loading> {
+    *LOADING.lock()
 }
 
-pub fn loading_state() -> Option<Loading> {
-    if let State::Loading(loading) = *STATE.lock() {
-        Some(loading)
-    } else {
-        None
-    }
-}
-
-pub fn error_state() -> Option<String> {
-    if let State::Error(err) = &*STATE.lock() {
-        Some(err.clone())
-    } else {
-        None
-    }
+pub fn error() -> Option<String> {
+    ERROR.lock().clone()
 }
 
 pub fn branches() -> Option<Branches> {
@@ -125,8 +104,10 @@ pub fn start_thread() {
     std::thread::spawn(move || {
         let mut retry_wait = std::time::Duration::from_secs(0);
         loop {
-            std::thread::sleep(retry_wait);
+            sleep(retry_wait);
             retry_wait = std::time::Duration::from_secs(2);
+
+            ERROR.lock().take();
 
             // Clear the queue
             while actions.try_recv().is_ok() {}
@@ -137,7 +118,7 @@ pub fn start_thread() {
                 Err(err) => {
                     let err: String = format!("Could not open git: {err}");
                     log::error!("{err}");
-                    *STATE.lock() = State::Error(err);
+                    ERROR.lock().replace(err);
                     continue;
                 }
             };
@@ -151,6 +132,7 @@ pub fn start_thread() {
 
                 match action {
                     Action::Nuke => {
+                        ERROR.lock().take();
                         Loading::Nuking.set();
                         remove_dir_all(&*STORAGE_DIR).ok();
                         Action::Restart.enqueue();
@@ -160,20 +142,35 @@ pub fn start_thread() {
                     }
                     Action::CountStagedFiles => match git.count_staged_files() {
                         Err(err) => {
-                            State::Error(format!("Error counting staged files: {err}")).set();
+                            ERROR
+                                .lock()
+                                .replace(format!("Error counting staged files: {err}"));
+                            sleep(Duration::from_secs(1));
+                            Action::CountStagedFiles.enqueue();
                         }
                         Ok(count) => {
                             STAGED_FILES.store(count, Relaxed);
+                            ERROR.lock().take();
                         }
                     },
                     Action::Pull => {
                         if let Err(err) = git.pull() {
-                            State::Error(format!("Error pulling: {err}")).set();
+                            ERROR.lock().replace(format!("Error pulling: {err}"));
+                            sleep(Duration::from_secs(1));
+                            Action::Pull.enqueue();
+                        } else {
+                            ERROR.lock().take();
                         }
                     }
                     Action::CommitAndPush { message } => {
                         if let Err(err) = git.commit_and_push(&message) {
-                            State::Error(format!("Error committing and pushing: {err}")).set();
+                            ERROR
+                                .lock()
+                                .replace(format!("Error committing and pushing: {err}"));
+                            sleep(Duration::from_secs(1));
+                            Action::CommitAndPush { message }.enqueue();
+                        } else {
+                            ERROR.lock().take();
                         }
                         Action::CountStagedFiles.enqueue();
                     }
@@ -186,7 +183,7 @@ pub fn start_thread() {
                             Err(err) => {
                                 let err: String = format!("Could not get branches: {err}");
                                 log::error!("{err}");
-                                State::Error(err).set();
+                                ERROR.lock().replace(err);
                                 continue;
                             }
                         };
@@ -197,7 +194,7 @@ pub fn start_thread() {
                             Err(err) => {
                                 let err: String = format!("Could not get current_branch: {err}");
                                 log::error!("{err}");
-                                State::Error(err).set();
+                                ERROR.lock().replace(err);
                                 continue;
                             }
                         };
@@ -206,6 +203,8 @@ pub fn start_thread() {
                             available: branches,
                             current: current_branch,
                         });
+
+                        ERROR.lock().take();
                     }
                     Action::LoadAssets => {
                         let mut collections = ShareDebugMap::custom();
@@ -230,7 +229,8 @@ pub fn start_thread() {
                         Loading::Scenes.set();
                         collections.insert::<Collection<Scene>>(Collection::<Scene>::load());
 
-                        State::Loaded(collections).set();
+                        COLLECTIONS.lock().replace(collections);
+                        Loading::unset();
                     }
                     Action::SwitchBranch(branch) => match git.switch_branch(&branch) {
                         Ok(_) => {
@@ -240,7 +240,9 @@ pub fn start_thread() {
                             Action::LoadAssets.enqueue();
                         }
                         Err(err) => {
-                            State::Error(format!("Error switching branch: {err}")).set();
+                            ERROR
+                                .lock()
+                                .replace(format!("Error switching branch: {err}"));
                         }
                     },
                     Action::SaveAsset {

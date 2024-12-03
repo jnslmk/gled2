@@ -1,10 +1,19 @@
 use super::STORAGE_DIR;
+use crate::app::PersistantState;
 use git2::{
     build::RepoBuilder, Cred, Error, ErrorCode, FetchOptions, PushOptions, Reference,
     RemoteCallbacks, Repository, Signature,
 };
 use mkdirp::mkdirp;
+use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 use std::{io::Write, path::Path};
+
+pub static SSH_KEY_PASSPHRASE_ENTRY: Lazy<Option<keyring::Entry>> = Lazy::new(|| {
+    keyring::Entry::new("gled2", "ssh_key_passphrase")
+        .map_err(|err| log::error!("Could not get keyring entry: {err:?}"))
+        .ok()
+});
 
 pub struct Git {
     url: String,
@@ -96,7 +105,18 @@ impl Git {
     fn remote_callbacks(&self) -> RemoteCallbacks<'static> {
         let mut callbacks = RemoteCallbacks::new();
         callbacks.credentials(move |_url, username_from_url, _allowed_types| {
-            Cred::ssh_key_from_agent(username_from_url.unwrap_or(&whoami::username()))
+            let username = username_from_url
+                .map(|username| username.to_owned())
+                .unwrap_or(whoami::username());
+            match PersistantState::git_credentials() {
+                GitCredentials::Agent => Cred::ssh_key_from_agent(&username),
+                GitCredentials::Key { private_key } => {
+                    let passphrase = SSH_KEY_PASSPHRASE_ENTRY
+                        .as_ref()
+                        .and_then(|entry| entry.get_password().ok());
+                    Cred::ssh_key_from_memory(&username, None, &private_key, passphrase.as_deref())
+                }
+            }
         });
         callbacks
     }
@@ -376,4 +396,12 @@ impl Git {
 
         Ok(())
     }
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub enum GitCredentials {
+    #[default]
+    Agent,
+    /// Uses system keychain for the password
+    Key { private_key: String },
 }

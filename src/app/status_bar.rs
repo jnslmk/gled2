@@ -1,6 +1,9 @@
-use super::{App, PersistantState};
+use super::{App, GitUiState, PersistantState};
 use crate::{
-    storage::{branches, polynomials_fitting, staged_files, working, Action, Branches},
+    storage::{
+        branches, polynomials_fitting, staged_files, working, Action, Branches, GitCredentials,
+        SSH_KEY_PASSPHRASE_ENTRY,
+    },
     temperature::temperature,
 };
 use egui::{
@@ -8,6 +11,7 @@ use egui::{
     ViewportId,
 };
 use egui_flex::{item, Flex};
+use std::fs::read_to_string;
 
 impl App {
     pub fn status_bar(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
@@ -95,8 +99,7 @@ impl App {
             .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
             .show(ui, |ui| {
                 ui.label("Repository:");
-                ui.text_edit_singleline(&mut self.new_git_url);
-
+                ui.text_edit_singleline(&mut self.git_ui_state.url);
                 Flex::horizontal().show(ui, |flex| {
                     if flex.add(item().grow(1.0), Button::new("Apply").fill(Color32::DARK_RED)).inner
                         .on_hover_text("This deletes all assets on disk and starts from scratch by cloning the repository!")
@@ -105,8 +108,12 @@ impl App {
                         close_menu = true;
 
                         let mut persistant = PersistantState::get();
-                        persistant.git_url = self.new_git_url.clone();
+                        persistant.git_url = self.git_ui_state.url.clone();
+                        if self.git_ui_state.use_agent {
+                            persistant.git_credentials = Default::default();
+                        }
                         persistant.save();
+                        self.git_ui_state.url = GitUiState::default().url;
 
                         Action::Nuke.enqueue();
                     }
@@ -114,10 +121,35 @@ impl App {
                     if flex.add(item().grow(1.0), Button::new("Reset")).inner
                         .clicked()
                     {
-                        let persistant_state = PersistantState::get();
-                        self.new_git_url = persistant_state.git_url;
+                        self.git_ui_state.url = GitUiState::default().url;
                     }
                 });
+
+                if let Some(entry) = SSH_KEY_PASSPHRASE_ENTRY.as_ref() {
+                    ui.horizontal(|ui| {
+                        if ui.checkbox(&mut self.git_ui_state.use_agent, "Use SSH agent").changed() && !self.git_ui_state.use_agent {
+                            if let Some(private_key) = rfd::FileDialog::new()
+                                .set_title("Open private ssh key")
+                                .pick_file().and_then(|path|read_to_string(path).ok()) {
+                                let mut persistant = PersistantState::get();
+                                persistant.git_credentials = GitCredentials::Key { private_key };
+                                persistant.save();
+                            } else {
+                                self.git_ui_state.use_agent = true;
+                            }
+                        }
+                        if !self.git_ui_state.use_agent {
+                            ui.label("Passphrase:");
+                            if ui.add(TextEdit::singleline(&mut self.git_ui_state.passphrase).password(true)).lost_focus()
+                            && ui.ctx().input(|input| input.key_pressed(egui::Key::Enter)) {
+                                if let Err(err) = entry.set_password(&self.git_ui_state.passphrase) {
+                                    log::error!("Could not set passphrase in system keychain: {err}");
+                                }
+                                self.git_ui_state.passphrase = GitUiState::default().passphrase;
+                            }
+                        }
+                    });
+                }
         });
 
         let staged_files = staged_files();
@@ -131,22 +163,19 @@ impl App {
                     } else {
                         format!("Commit message for {staged_files} files:")
                     });
-                    let mut commit_and_push = ui
+                    let commit_and_push = ui
                         .add(
-                            TextEdit::singleline(&mut self.commit_message)
+                            TextEdit::singleline(&mut self.git_ui_state.commit_message)
                                 .hint_text("Please enter a commit message"),
                         )
                         .lost_focus()
                         && ui.ctx().input(|input| input.key_pressed(egui::Key::Enter));
-                    ui.vertical_centered_justified(|ui| {
-                        commit_and_push |= ui.button("⬆Commit & Push").clicked()
-                    });
                     if commit_and_push {
                         Action::CommitAndPush {
-                            message: self.commit_message.clone(),
+                            message: self.git_ui_state.commit_message.clone(),
                         }
                         .enqueue();
-                        self.commit_message = String::new();
+                        self.git_ui_state.commit_message.clear();
                     }
                 });
         });
