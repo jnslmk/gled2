@@ -140,7 +140,7 @@ impl App {
                         }
                         if !self.git_ui_state.use_agent {
                             ui.label("Passphrase:");
-                            if ui.add(TextEdit::singleline(&mut self.git_ui_state.passphrase).password(true)).lost_focus()
+                            if ui.add(TextEdit::singleline(&mut self.git_ui_state.passphrase).hint_text("Please enter key password").password(true)).lost_focus()
                             && ui.ctx().input(|input| input.key_pressed(egui::Key::Enter)) {
                                 if let Err(err) = entry.set_password(&self.git_ui_state.passphrase) {
                                     log::error!("Could not set passphrase in system keychain: {err}");

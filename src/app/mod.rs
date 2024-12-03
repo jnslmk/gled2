@@ -329,7 +329,7 @@ impl Default for GitUiState {
             url: persistant_state.git_url,
             commit_message: Default::default(),
             use_agent: matches!(persistant_state.git_credentials, GitCredentials::Agent),
-            passphrase: "password".to_string(),
+            passphrase: Default::default(),
         }
     }
 }
