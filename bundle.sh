@@ -1,8 +1,6 @@
 #!/bin/bash
 set -xe
 
-source ~/.cargo/env
-
 cargo install cargo-edit cargo-packager --locked
 
 echo "Setting version to ${CI_COMMIT_TAG}"
