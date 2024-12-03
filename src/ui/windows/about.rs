@@ -39,7 +39,10 @@ impl AboutWindow {
                         ui.spacing();
                         ui.label("Made with Rust ❤");
                         ui.spacing();
-                        ui.hyperlink_to("Project website", "https://pentagonum.gitlab.io/gled/");
+                        ui.hyperlink_to(
+                            "Project website",
+                            "https://photonenkollektiv.gitlab.io/gled2/",
+                        );
                         ui.spacing();
                         ui.label("Logo artwork created by Geoffrey Guterl.");
                         ui.hyperlink_to(
