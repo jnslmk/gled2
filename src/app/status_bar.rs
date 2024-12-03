@@ -28,13 +28,12 @@ impl App {
                             match polynomials_fitting() {
                                 0 => (),
                                 n => {
-                                    ui.add(Spinner::new()).on_hover_ui(|ui| {
-                                        ui.label(if n == 1 {
-                                            "Fitting one polynomial".to_owned()
-                                        } else {
-                                            format!("Fitting {n} polynomials")
-                                        });
+                                    ui.label(if n == 1 {
+                                        "Fitting one polynomial".to_owned()
+                                    } else {
+                                        format!("Fitting {n} polynomials")
                                     });
+                                    ui.add(Spinner::new());
                                     ui.add_space(4.0);
                                 }
                             }
