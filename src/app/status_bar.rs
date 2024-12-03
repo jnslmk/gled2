@@ -131,19 +131,23 @@ impl App {
                     } else {
                         format!("Commit message for {staged_files} files:")
                     });
-                    ui.add(
-                        TextEdit::singleline(&mut self.commit_message)
-                            .hint_text("Please enter a commit message"),
-                    );
+                    let mut commit_and_push = ui
+                        .add(
+                            TextEdit::singleline(&mut self.commit_message)
+                                .hint_text("Please enter a commit message"),
+                        )
+                        .lost_focus()
+                        && ui.ctx().input(|input| input.key_pressed(egui::Key::Enter));
                     ui.vertical_centered_justified(|ui| {
-                        if ui.button("⬆Commit & Push").clicked() {
-                            Action::CommitAndPush {
-                                message: self.commit_message.clone(),
-                            }
-                            .enqueue();
-                            self.commit_message = String::new();
-                        }
+                        commit_and_push |= ui.button("⬆Commit & Push").clicked()
                     });
+                    if commit_and_push {
+                        Action::CommitAndPush {
+                            message: self.commit_message.clone(),
+                        }
+                        .enqueue();
+                        self.commit_message = String::new();
+                    }
                 });
         });
 
