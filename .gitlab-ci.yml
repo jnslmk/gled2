@@ -1,6 +1,7 @@
 linux:
   stage: build
-  tag_name: linux
+  tags:
+    - linux
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+$/'
   script:
@@ -17,7 +18,8 @@ linux:
 
 darwin:
   stage: build
-  tag_name: darwin
+  tags:
+    - darwin
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+$/'
   script:
