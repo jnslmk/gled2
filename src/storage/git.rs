@@ -151,7 +151,7 @@ impl Git {
                 Ok(())
             }
             Err(err) => {
-                log::error!("Could not open repository: {err:?}");
+                log::warn!("Could not open repository: {err:?}");
                 self.clone()
             }
         }
