@@ -1,8 +1,7 @@
 use super::{App, GitUiState, PersistantState};
 use crate::{
     storage::{
-        branches, polynomials_fitting, staged_files, working, Action, Branches, GitCredentials,
-        SSH_KEY_PASSPHRASE_ENTRY,
+        branches, polynomials_fitting, staged_files, working, Action, Branches,
     },
     temperature::temperature,
 };
@@ -125,30 +124,48 @@ impl App {
                     }
                 });
 
-                if let Some(entry) = SSH_KEY_PASSPHRASE_ENTRY.as_ref() {
-                    ui.horizontal(|ui| {
-                        if ui.checkbox(&mut self.git_ui_state.use_agent, "Use SSH agent").changed() && !self.git_ui_state.use_agent {
+                ui.separator();
+
+                ui.horizontal(|ui| {
+                    if ui.checkbox(&mut self.git_ui_state.use_agent, "Use SSH agent").changed() {
+                        let mut persistant = PersistantState::get();
+                        persistant.git_credentials.set_use_agent(self.git_ui_state.use_agent);
+                        persistant.save();
+                    }
+
+                    ui.vertical_centered_justified(|ui| {
+                        if !self.git_ui_state.use_agent && ui.button(if  PersistantState::git_credentials().private_key().is_some() { "Change private key" } else { "Select private key"}).clicked() {
                             if let Some(private_key) = rfd::FileDialog::new()
                                 .set_title("Open private ssh key")
                                 .pick_file().and_then(|path|read_to_string(path).ok()) {
                                 let mut persistant = PersistantState::get();
-                                persistant.git_credentials = GitCredentials::Key { private_key };
+                                persistant.git_credentials.set_private_key(private_key);
                                 persistant.save();
-                            } else {
-                                self.git_ui_state.use_agent = true;
                             }
                         }
-                        if !self.git_ui_state.use_agent {
+                    });
+                });
+
+                if !self.git_ui_state.use_agent {
+                    ui.horizontal(|ui| {
+                        if ui.checkbox(&mut self.git_ui_state.use_passphrase, "Use passphrase").changed() && !self.git_ui_state.use_passphrase {
+                            let mut persistant = PersistantState::get();
+                            persistant.git_credentials.set_passphrase(None);
+                            persistant.save();
+                        }
+
+                        if self.git_ui_state.use_passphrase {
                             ui.label("Passphrase:");
                             if ui.add(TextEdit::singleline(&mut self.git_ui_state.passphrase).hint_text("Please enter key password").password(true)).lost_focus()
                             && ui.ctx().input(|input| input.key_pressed(egui::Key::Enter)) {
-                                if let Err(err) = entry.set_password(&self.git_ui_state.passphrase) {
-                                    log::error!("Could not set passphrase in system keychain: {err}");
-                                }
+                                let mut persistant = PersistantState::get();
+                                persistant.git_credentials.set_passphrase(Some(self.git_ui_state.passphrase.clone()));
+                                persistant.save();
                                 self.git_ui_state.passphrase = GitUiState::default().passphrase;
                             }
                         }
                     });
+                    
                 }
         });
 

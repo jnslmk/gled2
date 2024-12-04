@@ -23,7 +23,7 @@ use uuid::Uuid;
 use crate::app::PersistantState;
 
 pub use self::{action::Action, asset::*, asset_id::AssetId};
-pub use git::{GitCredentials, SSH_KEY_PASSPHRASE_ENTRY};
+pub use git::GitCredentials;
 
 pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
     BaseDirs::new()

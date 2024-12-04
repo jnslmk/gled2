@@ -108,14 +108,17 @@ impl Git {
             let username = username_from_url
                 .map(|username| username.to_owned())
                 .unwrap_or(whoami::username());
-            match PersistantState::git_credentials() {
-                GitCredentials::Agent => Cred::ssh_key_from_agent(&username),
-                GitCredentials::Key { private_key } => {
-                    let passphrase = SSH_KEY_PASSPHRASE_ENTRY
-                        .as_ref()
-                        .and_then(|entry| entry.get_password().ok());
-                    Cred::ssh_key_from_memory(&username, None, &private_key, passphrase.as_deref())
-                }
+
+            let credentials = PersistantState::git_credentials();
+            if let Some(private_key) = credentials.private_key() {
+                Cred::ssh_key_from_memory(
+                    &username,
+                    None,
+                    private_key,
+                    credentials.passphrase().as_deref(),
+                )
+            } else {
+                Cred::ssh_key_from_agent(&username)
             }
         });
         callbacks
@@ -403,5 +406,76 @@ pub enum GitCredentials {
     #[default]
     Agent,
     /// Uses system keychain for the password
-    Key { private_key: String },
+    Key {
+        private_key: Option<String>,
+        use_passphrase: bool,
+    },
+}
+
+impl GitCredentials {
+    pub fn set_use_agent(&mut self, use_agent: bool) {
+        if use_agent {
+            *self = GitCredentials::Agent
+        } else if matches!(self, GitCredentials::Agent) {
+            *self = GitCredentials::Key {
+                private_key: None,
+                use_passphrase: false,
+            }
+        }
+    }
+
+    pub fn private_key(&self) -> Option<&str> {
+        match self {
+            GitCredentials::Key { private_key, .. } => private_key.as_deref(),
+            _ => None,
+        }
+    }
+
+    pub fn set_private_key(&mut self, private_key: String) {
+        match self {
+            GitCredentials::Key {
+                private_key: key, ..
+            } => {
+                *key = Some(private_key);
+            }
+            _ => {
+                *self = GitCredentials::Key {
+                    private_key: Some(private_key),
+                    use_passphrase: false,
+                };
+            }
+        }
+    }
+
+    pub fn passphrase(&self) -> Option<String> {
+        let Self::Key { use_passphrase, .. } = self else {
+            return None;
+        };
+        if !use_passphrase {
+            return None;
+        }
+        SSH_KEY_PASSPHRASE_ENTRY
+            .as_ref()
+            .and_then(|entry| entry.get_password().ok())
+    }
+
+    pub fn set_passphrase(&mut self, passphrase: Option<String>) {
+        match self {
+            GitCredentials::Key { use_passphrase, .. } => {
+                *use_passphrase = passphrase.is_some();
+            }
+            _ => {
+                *self = GitCredentials::Key {
+                    private_key: None,
+                    use_passphrase: passphrase.is_some(),
+                };
+            }
+        }
+
+        if let (Some(entry), Some(passphrase)) = (SSH_KEY_PASSPHRASE_ENTRY.as_ref(), passphrase) {
+            if let Err(err) = entry.set_password(&passphrase) {
+                log::error!("Could not set passphrase in system keychain: {err}");
+            }
+        }
+    }
 }

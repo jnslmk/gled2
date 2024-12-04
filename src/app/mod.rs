@@ -318,6 +318,7 @@ pub struct GitUiState {
     pub url: String,
     pub commit_message: String,
     pub use_agent: bool,
+    pub use_passphrase: bool,
     pub passphrase: String,
 }
 
@@ -329,6 +330,7 @@ impl Default for GitUiState {
             url: persistant_state.git_url,
             commit_message: Default::default(),
             use_agent: matches!(persistant_state.git_credentials, GitCredentials::Agent),
+            use_passphrase: persistant_state.git_credentials.passphrase().is_some(),
             passphrase: Default::default(),
         }
     }
