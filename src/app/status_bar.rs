@@ -1,8 +1,6 @@
 use super::{App, GitUiState, PersistantState};
 use crate::{
-    storage::{
-        branches, polynomials_fitting, staged_files, working, Action, Branches,
-    },
+    storage::{branches, polynomials_fitting, staged_files, working, Action, Branches},
     temperature::temperature,
 };
 use egui::{
@@ -10,7 +8,7 @@ use egui::{
     ViewportId,
 };
 use egui_flex::{item, Flex};
-use std::fs::read_to_string;
+use home::home_dir;
 
 impl App {
     pub fn status_bar(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
@@ -108,9 +106,6 @@ impl App {
 
                         let mut persistant = PersistantState::get();
                         persistant.git_url = self.git_ui_state.url.clone();
-                        if self.git_ui_state.use_agent {
-                            persistant.git_credentials = Default::default();
-                        }
                         persistant.save();
                         self.git_ui_state.url = GitUiState::default().url;
 
@@ -127,46 +122,45 @@ impl App {
                 ui.separator();
 
                 ui.horizontal(|ui| {
-                    if ui.checkbox(&mut self.git_ui_state.use_agent, "Use SSH agent").changed() {
-                        let mut persistant = PersistantState::get();
-                        persistant.git_credentials.set_use_agent(self.git_ui_state.use_agent);
-                        persistant.save();
-                    }
-
                     ui.vertical_centered_justified(|ui| {
-                        if !self.git_ui_state.use_agent && ui.button(if  PersistantState::git_credentials().private_key().is_some() { "Change private key" } else { "Select private key"}).clicked() {
-                            if let Some(private_key) = rfd::FileDialog::new()
-                                .set_title("Open private ssh key")
-                                .pick_file().and_then(|path|read_to_string(path).ok()) {
+                        let choose_private_key_text = match PersistantState::git_credentials().private_key_path() {
+                            Some(path) => format!("Choose private key (current: {})", path.display()),
+                            None => "Choose private key".to_owned(),
+                        };
+
+                        if ui.button(choose_private_key_text).clicked() {
+                            let mut file_dialog = rfd::FileDialog::new().set_title("Choose private key");
+                            if let Some(home) = home_dir() {
+                                file_dialog = file_dialog.set_directory(home.join(".ssh"))
+                            }
+                            if let Some(private_key_path) = 
+                                file_dialog.pick_file() {
                                 let mut persistant = PersistantState::get();
-                                persistant.git_credentials.set_private_key(private_key);
+                                persistant.git_credentials.set_private_key_path(private_key_path);
                                 persistant.save();
                             }
                         }
                     });
                 });
 
-                if !self.git_ui_state.use_agent {
-                    ui.horizontal(|ui| {
-                        if ui.checkbox(&mut self.git_ui_state.use_passphrase, "Use passphrase").changed() && !self.git_ui_state.use_passphrase {
-                            let mut persistant = PersistantState::get();
-                            persistant.git_credentials.set_passphrase(None);
-                            persistant.save();
-                        }
+                ui.horizontal(|ui| {
+                    if ui.checkbox(&mut self.git_ui_state.use_passphrase, "Use passphrase").changed() && !self.git_ui_state.use_passphrase {
+                        let mut persistant = PersistantState::get();
+                        persistant.git_credentials.set_passphrase(None);
+                        persistant.save();
+                    }
 
-                        if self.git_ui_state.use_passphrase {
-                            ui.label("Passphrase:");
-                            if ui.add(TextEdit::singleline(&mut self.git_ui_state.passphrase).hint_text("Please enter key password").password(true)).lost_focus()
-                            && ui.ctx().input(|input| input.key_pressed(egui::Key::Enter)) {
-                                let mut persistant = PersistantState::get();
-                                persistant.git_credentials.set_passphrase(Some(self.git_ui_state.passphrase.clone()));
-                                persistant.save();
-                                self.git_ui_state.passphrase = GitUiState::default().passphrase;
-                            }
+                    if self.git_ui_state.use_passphrase {
+                        ui.label("Passphrase:");
+                        if ui.add(TextEdit::singleline(&mut self.git_ui_state.passphrase).hint_text("Please enter key password").password(true)).lost_focus()
+                        && ui.ctx().input(|input| input.key_pressed(egui::Key::Enter)) {
+                            let mut persistant = PersistantState::get();
+                            persistant.git_credentials.set_passphrase(Some(self.git_ui_state.passphrase.clone()));
+                            persistant.save();
+                            self.git_ui_state.passphrase = GitUiState::default().passphrase;
                         }
-                    });
-                    
-                }
+                    }
+                });
         });
 
         let staged_files = staged_files();

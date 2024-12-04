@@ -14,10 +14,7 @@ use crate::{
     extract_output::ExtractOutput,
     input::{Input, ARTNET_CONFIG},
     output_sender::{self, GpuReadyReceiver, OutputSender},
-    storage::{
-        loading, Asset, AssetId, GitCredentials, Project, RenderDeactivatedScenes,
-        SceneInstancePath,
-    },
+    storage::{loading, Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
     ui::{action::Action, windows::Windows},
     viewport_builder::default_viewport_builder,
 };
@@ -317,7 +314,6 @@ impl Default for MainWindowAreas {
 pub struct GitUiState {
     pub url: String,
     pub commit_message: String,
-    pub use_agent: bool,
     pub use_passphrase: bool,
     pub passphrase: String,
 }
@@ -329,7 +325,6 @@ impl Default for GitUiState {
         Self {
             url: persistant_state.git_url,
             commit_message: Default::default(),
-            use_agent: matches!(persistant_state.git_credentials, GitCredentials::Agent),
             use_passphrase: persistant_state.git_credentials.passphrase().is_some(),
             passphrase: Default::default(),
         }

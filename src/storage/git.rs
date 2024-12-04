@@ -7,7 +7,10 @@ use git2::{
 use mkdirp::mkdirp;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{io::Write, path::Path};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 pub static SSH_KEY_PASSPHRASE_ENTRY: Lazy<Option<keyring::Entry>> = Lazy::new(|| {
     keyring::Entry::new("gled2", "ssh_key_passphrase")
@@ -110,15 +113,18 @@ impl Git {
                 .unwrap_or(whoami::username());
 
             let credentials = PersistantState::git_credentials();
-            if let Some(private_key) = credentials.private_key() {
+            if let Some(private_key) = credentials
+                .private_key_path()
+                .and_then(|path| std::fs::read_to_string(path).ok())
+            {
                 Cred::ssh_key_from_memory(
                     &username,
                     None,
-                    private_key,
+                    &private_key,
                     credentials.passphrase().as_deref(),
                 )
             } else {
-                Cred::ssh_key_from_agent(&username)
+                Err(Error::from_str("No private key set"))
             }
         });
         callbacks
@@ -402,56 +408,22 @@ impl Git {
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub enum GitCredentials {
-    #[default]
-    Agent,
-    /// Uses system keychain for the password
-    Key {
-        private_key: Option<String>,
-        use_passphrase: bool,
-    },
+pub struct GitCredentials {
+    private_key_path: Option<PathBuf>,
+    use_passphrase: bool,
 }
 
 impl GitCredentials {
-    pub fn set_use_agent(&mut self, use_agent: bool) {
-        if use_agent {
-            *self = GitCredentials::Agent
-        } else if matches!(self, GitCredentials::Agent) {
-            *self = GitCredentials::Key {
-                private_key: None,
-                use_passphrase: false,
-            }
-        }
+    pub fn private_key_path(&self) -> Option<&Path> {
+        self.private_key_path.as_deref()
     }
 
-    pub fn private_key(&self) -> Option<&str> {
-        match self {
-            GitCredentials::Key { private_key, .. } => private_key.as_deref(),
-            _ => None,
-        }
-    }
-
-    pub fn set_private_key(&mut self, private_key: String) {
-        match self {
-            GitCredentials::Key {
-                private_key: key, ..
-            } => {
-                *key = Some(private_key);
-            }
-            _ => {
-                *self = GitCredentials::Key {
-                    private_key: Some(private_key),
-                    use_passphrase: false,
-                };
-            }
-        }
+    pub fn set_private_key_path(&mut self, private_key_path: PathBuf) {
+        self.private_key_path = Some(private_key_path);
     }
 
     pub fn passphrase(&self) -> Option<String> {
-        let Self::Key { use_passphrase, .. } = self else {
-            return None;
-        };
-        if !use_passphrase {
+        if !self.use_passphrase {
             return None;
         }
         SSH_KEY_PASSPHRASE_ENTRY
@@ -460,18 +432,7 @@ impl GitCredentials {
     }
 
     pub fn set_passphrase(&mut self, passphrase: Option<String>) {
-        match self {
-            GitCredentials::Key { use_passphrase, .. } => {
-                *use_passphrase = passphrase.is_some();
-            }
-            _ => {
-                *self = GitCredentials::Key {
-                    private_key: None,
-                    use_passphrase: passphrase.is_some(),
-                };
-            }
-        }
-
+        self.use_passphrase = passphrase.is_some();
         if let (Some(entry), Some(passphrase)) = (SSH_KEY_PASSPHRASE_ENTRY.as_ref(), passphrase) {
             if let Err(err) = entry.set_password(&passphrase) {
                 log::error!("Could not set passphrase in system keychain: {err}");
