@@ -144,9 +144,9 @@ impl App {
                 });
 
                 ui.horizontal(|ui| {
-                    if ui.checkbox(&mut self.git_ui_state.use_passphrase, "Use passphrase").changed() && !self.git_ui_state.use_passphrase {
+                    if ui.checkbox(&mut self.git_ui_state.use_passphrase, "Use passphrase").changed() {
                         let mut persistant = PersistantState::get();
-                        persistant.git_credentials.set_passphrase(None);
+                        persistant.git_credentials.set_use_passphrase(self.git_ui_state.use_passphrase);
                         persistant.save();
                     }
 
@@ -155,7 +155,7 @@ impl App {
                         if ui.add(TextEdit::singleline(&mut self.git_ui_state.passphrase).hint_text("Please enter key password").password(true)).lost_focus()
                         && ui.ctx().input(|input| input.key_pressed(egui::Key::Enter)) {
                             let mut persistant = PersistantState::get();
-                            persistant.git_credentials.set_passphrase(Some(self.git_ui_state.passphrase.clone()));
+                            persistant.git_credentials.set_passphrase(self.git_ui_state.passphrase.clone());
                             persistant.save();
                             self.git_ui_state.passphrase = GitUiState::default().passphrase;
                         }

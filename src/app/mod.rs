@@ -325,7 +325,7 @@ impl Default for GitUiState {
         Self {
             url: persistant_state.git_url,
             commit_message: Default::default(),
-            use_passphrase: persistant_state.git_credentials.passphrase().is_some(),
+            use_passphrase: persistant_state.git_credentials.use_passphrase(),
             passphrase: Default::default(),
         }
     }

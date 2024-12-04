@@ -422,6 +422,14 @@ impl GitCredentials {
         self.private_key_path = Some(private_key_path);
     }
 
+    pub fn use_passphrase(&self) -> bool {
+        self.use_passphrase
+    }
+
+    pub fn set_use_passphrase(&mut self, use_passphrase: bool) {
+        self.use_passphrase = use_passphrase;
+    }
+
     pub fn passphrase(&self) -> Option<String> {
         if !self.use_passphrase {
             return None;
@@ -431,9 +439,8 @@ impl GitCredentials {
             .and_then(|entry| entry.get_password().ok())
     }
 
-    pub fn set_passphrase(&mut self, passphrase: Option<String>) {
-        self.use_passphrase = passphrase.is_some();
-        if let (Some(entry), Some(passphrase)) = (SSH_KEY_PASSPHRASE_ENTRY.as_ref(), passphrase) {
+    pub fn set_passphrase(&mut self, passphrase: String) {
+        if let Some(entry) = SSH_KEY_PASSPHRASE_ENTRY.as_ref() {
             if let Err(err) = entry.set_password(&passphrase) {
                 log::error!("Could not set passphrase in system keychain: {err}");
             }
