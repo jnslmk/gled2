@@ -11,7 +11,6 @@ static PERSISTANT_STATE: Lazy<Mutex<PersistantState>> =
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct PersistantState {
-    pub show_preview_svg: bool,
     pub effects_size: f32,
     pub effects_always_render: bool,
     pub fps_limit: f32,
@@ -24,7 +23,6 @@ pub struct PersistantState {
 impl Default for PersistantState {
     fn default() -> Self {
         Self {
-            show_preview_svg: true,
             effects_size: 100.0,
             effects_always_render: false,
             fps_limit: 120.0,
@@ -58,10 +56,6 @@ impl PersistantState {
 
     pub fn effects_size() -> f32 {
         PERSISTANT_STATE.lock().effects_size
-    }
-
-    pub fn show_preview_svg() -> bool {
-        PERSISTANT_STATE.lock().show_preview_svg
     }
 
     pub fn git_url() -> String {

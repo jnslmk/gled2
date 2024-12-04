@@ -1,27 +1,11 @@
-use super::{App, PersistantState};
+use super::App;
 use crate::{app::preview_uv, preview::Preview};
-use egui::{load::SizedTexture, Align, Color32, Context, Image, Layout, RichText, Vec2};
+use egui::{load::SizedTexture, Color32, Context, Image, Vec2};
 
 impl App {
     pub fn preview(&mut self, ctx: &Context) {
-        let mut show_preview_svg = PersistantState::show_preview_svg();
-
         if let Some(uv) = preview_uv() {
             egui::CentralPanel::default().show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Preview").heading());
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if ui
-                            .checkbox(&mut show_preview_svg, RichText::new("SVG").heading())
-                            .changed()
-                        {
-                            let mut persistant_state = PersistantState::get();
-                            persistant_state.show_preview_svg = show_preview_svg;
-                            persistant_state.save();
-                        }
-                    });
-                });
-
                 let size = if uv.max.x > uv.max.y {
                     Vec2::new(
                         ui.available_width()
@@ -38,21 +22,14 @@ impl App {
                     )
                 };
 
-                let res = self
-                    .svg_mut()
-                    .filter(|_| show_preview_svg)
-                    .and_then(|svg| svg.image())
-                    .map(|image| {
-                        ui.add(
-                            Image::new(SizedTexture::new(image.texture_id(ctx), size))
-                                .uv(uv)
-                                .bg_fill(Color32::BLACK),
-                        )
-                    });
-                let mut preview = Image::new(SizedTexture::new(Preview::texture_id(), size)).uv(uv);
-                if !show_preview_svg {
-                    preview = preview.bg_fill(Color32::BLACK);
-                }
+                let res = self.svg_mut().and_then(|svg| svg.image()).map(|image| {
+                    ui.add(
+                        Image::new(SizedTexture::new(image.texture_id(ctx), size))
+                            .uv(uv)
+                            .bg_fill(Color32::BLACK),
+                    )
+                });
+                let preview = Image::new(SizedTexture::new(Preview::texture_id(), size)).uv(uv);
                 match res {
                     Some(res) => {
                         ui.put(res.rect, preview);

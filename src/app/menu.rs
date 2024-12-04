@@ -8,7 +8,10 @@ use egui::{
 };
 use log::{debug, error};
 use rand::Rng;
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 impl App {
     pub fn menu(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
@@ -393,7 +396,12 @@ impl App {
                     blackout_text.append("B", 0.0, underlined);
                     blackout_text.append("lackout", 0.0, TextFormat::default());
                     let mut blackout = Button::new(blackout_text);
-                    if self.blackout {
+                    if self.blackout
+                        && SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .map(|d| d.as_millis() / 200 % 2 == 0)
+                            .unwrap_or_default()
+                    {
                         blackout = blackout.fill(Color32::DARK_RED);
                     }
                     if ui.add_sized(menu_button_size, blackout).clicked()
