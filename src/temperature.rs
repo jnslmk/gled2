@@ -8,7 +8,9 @@ pub fn start_thread() {
         let components = sysinfo::Components::new_with_refreshed_list();
         let mut max_temperature = 0f32;
         for component in &components {
-            max_temperature = max_temperature.max(component.temperature());
+            if let Some(temperature) = component.temperature() {
+                max_temperature = max_temperature.max(temperature);
+            }
         }
         TEMPERATURE.store(
             max_temperature.round() as u16,
