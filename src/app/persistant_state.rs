@@ -28,7 +28,7 @@ impl Default for PersistantState {
             fps_limit: 120.0,
             preview_palette: Default::default(),
             last_project_id: Default::default(),
-            git_url: "git@gitlab.com:photonenkollektiv/gled2_assets.git".to_string(),
+            git_url: "https://gitlab.com/photonenkollektiv/gled2_assets.git".to_string(),
             git_credentials: Default::default(),
         }
     }
