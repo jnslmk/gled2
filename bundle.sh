@@ -21,7 +21,8 @@ fi
 
 if [[ $(uname) == "Darwin" ]]; then
     echo "Building Darwin dmg"
+    rm -f *.dmg
     cargo build --target aarch64-apple-darwin --release
     strip target/aarch64-apple-darwin/release/gled
-    cargo packager --target aarch64-apple-darwin --release -o . -f dmg
+    cargo packager --target aarch64-apple-darwin --release -o . -f dmg --verbose
 fi
