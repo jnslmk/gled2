@@ -27,7 +27,7 @@ mod viewport_builder;
 use app::App;
 use constants::OUTPUT_BUFFER_SIZE;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration};
-use egui::{Style, Visuals};
+use egui::ThemePreference;
 use input::Input;
 use once_cell::sync::Lazy;
 use std::sync::OnceLock;
@@ -74,10 +74,8 @@ fn main() {
         "gled",
         options,
         Box::new(|cc| {
-            cc.egui_ctx.set_style(Style {
-                visuals: Visuals::dark(),
-                ..Default::default()
-            });
+            cc.egui_ctx
+                .options_mut(|options| options.theme_preference = ThemePreference::Dark);
             Input::init(&cc.egui_ctx);
 
             WGPU_RENDER_STATE
