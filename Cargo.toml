@@ -86,3 +86,4 @@ product-name = "Gled"
 identifier = "de.photonenkollektiv.gled"
 resources = ["assets/logo.png", "assets/logo.icns"]
 icons = ["assets/logo.png", "assets/logo.icns"]
+macos = { "signingIdentity" = "Developer ID Application: FreshX GmbH (V5GQY7AUWA)" }
