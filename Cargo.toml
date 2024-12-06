@@ -84,5 +84,5 @@ assets = [
 [package.metadata.packager]
 product-name = "Gled"
 identifier = "de.photonenkollektiv.gled"
-resources = ["assets/logo.png"]
-icons = ["assets/logo.png"]
+resources = ["assets/logo.png", "assets/128x128.png", "assets/128x128@2x.png"]
+icons = ["assets/logo.png", "assets/128x128.png", "assets/128x128@2x.png"]
