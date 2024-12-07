@@ -1584,6 +1584,7 @@ dependencies = [
  "svgdom",
  "sysinfo",
  "tiny-skia",
+ "toml",
  "typemap",
  "usvg",
  "uuid",
