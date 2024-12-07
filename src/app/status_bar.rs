@@ -129,16 +129,18 @@ impl App {
                         };
 
                         if ui.button(choose_private_key_text).clicked() {
-                            let mut file_dialog = rfd::FileDialog::new().set_title("Choose private key");
-                            if let Some(home) = home_dir() {
-                                file_dialog = file_dialog.set_directory(home.join(".ssh"))
-                            }
-                            if let Some(private_key_path) = 
-                                file_dialog.pick_file() {
-                                let mut persistant = PersistantState::get();
-                                persistant.git_credentials.set_private_key_path(private_key_path);
-                                persistant.save();
-                            }
+                            std::thread::spawn(|| {
+                                let mut file_dialog = rfd::FileDialog::new().set_title("Choose private key");
+                                if let Some(home) = home_dir() {
+                                    file_dialog = file_dialog.set_directory(home.join(".ssh"))
+                                }
+                                if let Some(private_key_path) = 
+                                    file_dialog.pick_file() {
+                                    let mut persistant = PersistantState::get();
+                                    persistant.git_credentials.set_private_key_path(private_key_path);
+                                    persistant.save();
+                                }
+                            });
                         }
                     });
                 });

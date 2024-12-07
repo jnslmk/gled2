@@ -82,25 +82,28 @@ impl ProjectsWindow {
                                 )
                                 .clicked()
                             {
-                                if let (Some(svg), Some(path)) = (
-                                    project.data.svg.as_ref(),
-                                    rfd::FileDialog::new()
-                                        .set_title("Save SVG file")
-                                        .add_filter("svg", &["svg"])
-                                        .save_file(),
-                                ) {
-                                    match svg.save(&path) {
-                                        Ok(_) => {
-                                            debug!("Saved svg file \"{}\"", path.display());
-                                        }
-                                        Err(err) => {
-                                            error!(
-                                                "Could not save svg file \"{}\": {err:?}",
-                                                path.display()
-                                            );
-                                        }
-                                    };
-                                }
+                                let svg = project.data.svg.as_ref().cloned();
+                                std::thread::spawn(move || {
+                                    if let (Some(svg), Some(path)) = (
+                                        svg,
+                                        rfd::FileDialog::new()
+                                            .set_title("Save SVG file")
+                                            .add_filter("svg", &["svg"])
+                                            .save_file(),
+                                    ) {
+                                        match svg.save(&path) {
+                                            Ok(_) => {
+                                                debug!("Saved svg file \"{}\"", path.display());
+                                            }
+                                            Err(err) => {
+                                                error!(
+                                                    "Could not save svg file \"{}\": {err:?}",
+                                                    path.display()
+                                                );
+                                            }
+                                        };
+                                    }
+                                });
                             }
                         });
                     }
