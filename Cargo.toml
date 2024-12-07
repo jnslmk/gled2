@@ -40,7 +40,6 @@ rayon = "1.10"
 resvg = { version = "0.44", default-features = false }
 rfd = "0.15"
 serde = { version = "1", features = ["derive"] }
-serde-hjson = "1"
 serde_json = "1"
 svgdom = "0.18"
 static_assertions = "1"

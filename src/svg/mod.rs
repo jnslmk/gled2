@@ -82,15 +82,9 @@ fn traverse_node(
                 .next()
                 .and_then(|child| child.children().next())
                 .and_then(|child| {
-                    let text = child.text();
-                    match (serde_hjson::from_str::<Parameter>(&text), toml::from_str::<Parameter>(&text)) {
-                        (Ok(hjson), _) => Some(hjson),
-                        (_, Ok(toml)) => Some(toml),
-                        (Err(hjson), Err(toml)) => {
-                            warn!("Could not parse parameter of {}. JSON error: {hjson}, Toml error: {toml}", node.id());
-                            None
-                        },
-                    }
+                    toml::from_str::<Parameter>(&child.text())
+                        .map_err(|err| warn!("Could not parse parameter of {}: {err:?}", node.id()))
+                        .ok()
                 })
             {
                 parameter.start += start;
