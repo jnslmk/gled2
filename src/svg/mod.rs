@@ -6,7 +6,8 @@ mod parameter;
 mod render;
 
 use anyhow::{Context, Result};
-use log::{debug, warn};
+use image::EncodableLayout;
+use log::{debug, error};
 use std::collections::{HashMap, HashSet};
 use svgdom::{Document, ElementId, FilterSvg, Node};
 use usvg::Tree;
@@ -82,8 +83,11 @@ fn traverse_node(
                 .next()
                 .and_then(|child| child.children().next())
                 .and_then(|child| {
-                    toml::from_str::<Parameter>(&child.text())
-                        .map_err(|err| warn!("Could not parse parameter of {}: {err:?}", node.id()))
+                    serde_hjson::from_str::<Parameter>(&child.text())
+                        .map_err(|err| {
+                            eprintln!("{:?}", child.text().as_bytes().as_bytes());
+                            error!("Could not parse parameter of {}: {err:?}", node.id())
+                        })
                         .ok()
                 })
             {

@@ -44,8 +44,24 @@ impl Display for Group {
     }
 }
 
-pub type Groups = BTreeMap<usize, Group>;
 pub type GroupIndices = BTreeSet<usize>;
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct Groups(BTreeMap<usize, Group>);
+
+impl Groups {
+    pub fn new(groups: BTreeMap<usize, Group>) -> Self {
+        Self(groups)
+    }
+
+    pub fn get(&self, index: usize) -> Option<&Group> {
+        self.0.get(&index)
+    }
+
+    pub fn remove_nonexistant_groups(&mut self) {
+        self.0.retain(|_, group| groups().contains(group));
+    }
+}
 
 impl ChangeButton for Option<Groups> {
     fn change_button(&mut self, ui: &mut Ui) -> bool {
@@ -79,7 +95,7 @@ impl ChangeButton for Groups {
 
         let mut changed = false;
         let mut next_index = 0;
-        while self.contains_key(&next_index) {
+        while self.0.contains_key(&next_index) {
             next_index += 1;
         }
         let mut insert = None;
@@ -128,7 +144,7 @@ impl ChangeButton for Groups {
             }
         });
 
-        for (index, group) in self.iter() {
+        for (index, group) in self.0.iter() {
             ui.scope(|ui| {
                 {
                     let widgets = &mut ui.visuals_mut().widgets;
@@ -149,10 +165,10 @@ impl ChangeButton for Groups {
         }
 
         if let Some((index, group)) = insert {
-            self.insert(index, group);
+            self.0.insert(index, group);
         }
         if let Some(index) = remove {
-            self.remove(&index);
+            self.0.remove(&index);
         }
 
         changed

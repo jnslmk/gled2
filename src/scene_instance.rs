@@ -194,4 +194,10 @@ impl SceneInstance {
             .map(|scene| scene.data.group_indices())
             .unwrap_or_default()
     }
+
+    pub fn remove_nonexistant_groups(&mut self) {
+        if let Some(groups) = self.groups.as_mut() {
+            groups.remove_nonexistant_groups();
+        }
+    }
 }

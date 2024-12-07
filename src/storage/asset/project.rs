@@ -232,6 +232,12 @@ impl Project {
             .iter()
             .any(|event| event.is_new())
     }
+
+    pub fn remove_nonexistant_groups(&mut self) {
+        self.decks().for_each(|(_, deck)| {
+            deck.remove_nonexistant_groups();
+        });
+    }
 }
 
 impl AssetTrait for Project {

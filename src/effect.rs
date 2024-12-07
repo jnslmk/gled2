@@ -90,7 +90,7 @@ impl Effect {
         effect_state.speed_exponent = self.speed_exponent;
         effect_state.animation_config = self.animation_config.clone();
 
-        let group = groups.get(&self.group_index);
+        let group = groups.get(self.group_index);
         if effect_state.sent_group.as_ref() != group {
             let positions = group.map(positions);
             effect_state

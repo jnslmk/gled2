@@ -166,6 +166,13 @@ impl Deck {
             );
         }
     }
+
+    pub fn remove_nonexistant_groups(&mut self) {
+        self.groups.remove_nonexistant_groups();
+        for scene_instance in &mut self.scenes_instances {
+            scene_instance.remove_nonexistant_groups();
+        }
+    }
 }
 
 fn deserialize_groups<'de, D>(deserializer: D) -> Result<Groups, D::Error>
@@ -173,8 +180,10 @@ where
     D: serde::Deserializer<'de>,
 {
     BTreeMap::<String, Group>::deserialize(deserializer).map(|map| {
-        map.into_iter()
-            .filter_map(|(index, group)| index.parse().ok().map(|index| (index, group)))
-            .collect()
+        Groups::new(
+            map.into_iter()
+                .filter_map(|(index, group)| index.parse().ok().map(|index| (index, group)))
+                .collect(),
+        )
     })
 }

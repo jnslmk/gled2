@@ -1,14 +1,12 @@
-use crate::storage::{Animation, AssetId, Project};
-use egui::ViewportId;
-use once_cell::unsync::OnceCell;
-use std::{
-    cell::{RefCell, RefMut},
-    collections::VecDeque,
+use crate::{
+    app::Svg,
+    storage::{Animation, AssetId, Project},
 };
+use egui::ViewportId;
+use once_cell::sync::OnceCell;
+use std::sync::mpsc::{Receiver, Sender};
 
-thread_local! {
-    static ACTION_QUEUE: OnceCell<RefCell<VecDeque<Action>>> = const { OnceCell::new() };
-}
+static ACTION_SENDER: OnceCell<Sender<Action>> = OnceCell::new();
 
 pub enum Action {
     SetProject(AssetId<Project>),
@@ -18,22 +16,21 @@ pub enum Action {
     SendPositions,
     ReloadShaderCode(AssetId<Animation>),
     CloseWindow(ViewportId),
+    SetSvg(Option<Svg>),
 }
 
 impl Action {
-    #[inline(always)]
-    fn run_on_queue<T, F: FnOnce(RefMut<VecDeque<Action>>) -> T>(runner: F) -> T {
-        ACTION_QUEUE.with(|queue| {
-            let queue = queue.get_or_init(|| RefCell::new(VecDeque::new()));
-            runner(queue.borrow_mut())
-        })
+    pub fn init_queue() -> Receiver<Action> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        ACTION_SENDER.set(sender).unwrap();
+        receiver
     }
 
     pub fn enqueue(self) {
-        Self::run_on_queue(move |mut queue| queue.push_back(self));
-    }
-
-    pub fn dequeue() -> Option<Self> {
-        Self::run_on_queue(move |mut queue| queue.pop_front())
+        ACTION_SENDER
+            .get()
+            .expect("Action sender not initialized")
+            .send(self)
+            .expect("Action receiver dropped");
     }
 }

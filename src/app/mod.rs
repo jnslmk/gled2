@@ -19,7 +19,7 @@ use crate::{
     viewport_builder::default_viewport_builder,
 };
 use egui::{ahash::HashMap, Key, Modifiers, SidePanel, TopBottomPanel, ViewportId};
-use std::sync::Arc;
+use std::sync::{mpsc::Receiver, Arc};
 use storage::{show_storage_error, show_storage_loading};
 
 pub use persistant_state::PersistantState;
@@ -40,6 +40,7 @@ pub struct App {
     selected_scene_instance: SceneInstancePath,
     hovered_scene_instance: SceneInstancePath,
     git_ui_state: GitUiState,
+    action_receiver: Receiver<Action>,
 }
 
 impl eframe::App for App {
@@ -55,7 +56,7 @@ impl eframe::App for App {
         Input::tick();
 
         loop {
-            match (&mut self.project, Action::dequeue()) {
+            match (&mut self.project, self.action_receiver.try_recv().ok()) {
                 (Some(project), Some(Action::DeleteSelectedSceneInstance)) => {
                     project.remove_scene_instance(&mut self.selected_scene_instance);
                     Action::InitGPU.enqueue();
@@ -79,6 +80,10 @@ impl eframe::App for App {
                 }
                 (Some(project), Some(Action::SendPositions)) => {
                     project.send_positions();
+                }
+                (Some(project), Some(Action::SetSvg(svg))) => {
+                    project.svg = svg;
+                    project.remove_nonexistant_groups();
                 }
                 (_, Some(Action::SetProject(project))) => {
                     if let Some(project) = Asset::get(project) {
@@ -278,6 +283,7 @@ impl App {
             other_main_windows: Default::default(),
             areas: Default::default(),
             git_ui_state: Default::default(),
+            action_receiver: Action::init_queue(),
         };
 
         Some(app)

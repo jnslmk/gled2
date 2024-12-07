@@ -161,7 +161,7 @@ impl Widget for SceneInstanceWidget<'_> {
                                     .group_indices()
                                     .into_iter()
                                     .filter_map(|index| {
-                                        let group = groups.get(&index)?;
+                                        let group = groups.get(index)?;
                                         Some((group.0.clone(), group.color()))
                                     })
                                     .collect();

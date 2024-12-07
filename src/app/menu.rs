@@ -1,6 +1,9 @@
 use super::{svg::Svg, App, PersistantState};
 use crate::{
-    extract_output::ExtractOutput, input::ARTNET_CONFIG, storage::Asset, ui::logo::logo_image,
+    extract_output::ExtractOutput,
+    input::ARTNET_CONFIG,
+    storage::Asset,
+    ui::{action::Action, logo::logo_image},
 };
 use egui::{
     load::SizedTexture, text::LayoutJob, Button, Color32, Context, Id, ImageButton, Key, Label,
@@ -150,22 +153,28 @@ impl App {
                 }
 
                 if open_svg_file {
-                    if let Some(path) = rfd::FileDialog::new()
-                        .set_title("Open SVG file")
-                        .add_filter("svg", &["svg"])
-                        .pick_file()
-                    {
-                        self.set_svg(match Svg::load(&path) {
-                            Ok(svg) => {
-                                debug!("Loaded svg file \"{}\"", path.display());
-                                Some(svg)
-                            }
-                            Err(err) => {
-                                error!("Could not load svg file \"{}\": {err:?}", path.display());
-                                None
-                            }
-                        });
-                    }
+                    std::thread::spawn(|| {
+                        if let Some(path) = rfd::FileDialog::new()
+                            .set_title("Open SVG file")
+                            .add_filter("svg", &["svg"])
+                            .pick_file()
+                        {
+                            Action::SetSvg(match Svg::load(&path) {
+                                Ok(svg) => {
+                                    debug!("Loaded svg file \"{}\"", path.display());
+                                    Some(svg)
+                                }
+                                Err(err) => {
+                                    error!(
+                                        "Could not load svg file \"{}\": {err:?}",
+                                        path.display()
+                                    );
+                                    None
+                                }
+                            })
+                            .enqueue();
+                        }
+                    });
                 }
                 if save_svg_file {
                     if let (Some(svg), Some(path)) = (
