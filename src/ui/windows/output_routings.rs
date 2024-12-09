@@ -48,7 +48,10 @@ impl OutputRoutingsWindow {
                                 ));
                                 }
 
-                                for universe in universes {
+                                let mut set_routing = None;
+                                let mut set_device = None;
+
+                                for universe in universes.clone() {
                                     ui.label(
                                         RichText::new(format!("Universe: {universe}")).heading(),
                                     );
@@ -56,13 +59,15 @@ impl OutputRoutingsWindow {
                                     ui.horizontal(|ui| {
                                         let output_routing =
                                             routings.universe_output_routing(universe);
-                                        output_routing.device.change_button(ui);
+                                        if output_routing.device.change_button(ui) {
+                                            set_device = Some((universe, output_routing.device));
+                                        }
 
                                         if let Some(device) =
                                             output_routing.device.and_then(Asset::get)
                                         {
-                                            let universes = device.data.universes();
-                                            if !universes.is_empty() {
+                                            let device_universes = device.data.universes();
+                                            if !device_universes.is_empty() {
                                                 ComboBox::new(format!("{universe}_universe"), "")
                                                     .selected_text(match output_routing.universe {
                                                         None => "No universe selected".to_string(),
@@ -70,19 +75,21 @@ impl OutputRoutingsWindow {
                                                     })
                                                     .width(150.0)
                                                     .show_ui(ui, |ui| {
-                                                        for universe in universes {
+                                                        for device_universe in device_universes {
                                                             if ui
                                                                 .selectable_value(
                                                                     &mut output_routing
                                                                         .universe
                                                                         .unwrap_or_default(),
-                                                                    *universe,
-                                                                    universe.to_string(),
+                                                                    *device_universe,
+                                                                    device_universe.to_string(),
                                                                 )
                                                                 .changed()
                                                             {
-                                                                output_routing.universe =
-                                                                    Some(*universe);
+                                                                set_routing = Some((
+                                                                    universe,
+                                                                    *device_universe,
+                                                                ));
                                                             }
                                                         }
                                                     });
@@ -91,6 +98,61 @@ impl OutputRoutingsWindow {
                                     });
 
                                     ui.separator();
+                                }
+
+                                if let Some((mut universe, device)) = set_device {
+                                    let mut first = true;
+                                    loop {
+                                        let output_routing =
+                                            routings.universe_output_routing(universe);
+                                        if first || output_routing.device.is_none() {
+                                            output_routing.device = device;
+
+                                            if let Some(device) = device.and_then(Asset::get) {
+                                                let device_universes = device.data.universes();
+                                                if device_universes.len() == 1 {
+                                                    output_routing.universe =
+                                                        Some(device_universes[0]);
+                                                    break;
+                                                }
+                                            };
+                                        } else {
+                                            break;
+                                        }
+
+                                        first = false;
+                                        universe += 1;
+                                        if !universes.contains(&universe) {
+                                            break;
+                                        }
+                                    }
+                                }
+                                if let Some((mut universe, mut device_universe)) = set_routing {
+                                    let mut first = true;
+                                    loop {
+                                        let output_routing =
+                                            routings.universe_output_routing(universe);
+                                        let Some(device) =
+                                            output_routing.device.and_then(Asset::get)
+                                        else {
+                                            break;
+                                        };
+                                        if !device.data.universes().contains(&device_universe) {
+                                            break;
+                                        }
+                                        if first || output_routing.universe.is_none() {
+                                            output_routing.universe = Some(device_universe);
+                                        } else {
+                                            break;
+                                        }
+
+                                        first = false;
+                                        universe += 1;
+                                        device_universe += 1;
+                                        if !universes.contains(&universe) {
+                                            break;
+                                        }
+                                    }
                                 }
                             });
                         });
