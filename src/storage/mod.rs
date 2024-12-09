@@ -100,7 +100,6 @@ pub fn branches() -> Option<Branches> {
 
 pub fn start_thread() {
     let actions = action::init();
-
     std::thread::spawn(move || {
         let mut retry_wait = std::time::Duration::from_secs(0);
         loop {
@@ -207,6 +206,13 @@ pub fn start_thread() {
                         ERROR.lock().take();
                     }
                     Action::LoadAssets => {
+                        if let Err(err) = mkdirp::mkdirp(STORAGE_DIR.join("svg")) {
+                            ERROR
+                                .lock()
+                                .replace(format!("Could not create svg templates folder: {err}"));
+                            continue;
+                        }
+
                         let mut collections = ShareDebugMap::custom();
 
                         Loading::Animations.set();

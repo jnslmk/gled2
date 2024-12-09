@@ -50,6 +50,7 @@ tiny-skia = { version = "0.11", default-features = false, features = [
     "simd",
     "std",
 ] }
+open = "5"
 uuid = { version = "1", features = ["v4", "serde"] }
 usvg = "0.44"
 wgpu = "22"

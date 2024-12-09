@@ -2,7 +2,7 @@ use super::{svg::Svg, App, PersistantState};
 use crate::{
     extract_output::ExtractOutput,
     input::ARTNET_CONFIG,
-    storage::Asset,
+    storage::{Asset, STORAGE_DIR},
     ui::{action::Action, logo::logo_image},
 };
 use egui::{
@@ -96,6 +96,11 @@ impl App {
                         .clicked()
                     {
                         save_svg_file = true;
+                        ui.close_menu();
+                    }
+
+                    if ui.button("Open SVG templates folder").clicked() {
+                        open::that(STORAGE_DIR.join("svg")).ok();
                         ui.close_menu();
                     }
 
