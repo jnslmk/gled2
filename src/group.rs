@@ -61,6 +61,10 @@ impl Groups {
     pub fn remove_nonexistant_groups(&mut self) {
         self.0.retain(|_, group| groups().contains(group));
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 impl ChangeButton for Option<Groups> {

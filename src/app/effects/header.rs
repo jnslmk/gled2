@@ -3,7 +3,7 @@ use crate::{
     storage::{AssetId, Scene, SceneInstancePath},
     ui::{action, ChangeButton},
 };
-use egui::{RichText, Slider, Ui};
+use egui::{Color32, Rect, RichText, Slider, Ui};
 
 impl App {
     pub fn effects_header(&mut self, ui: &mut Ui, path: SceneInstancePath) {
@@ -50,6 +50,22 @@ impl App {
                 });
             });
         });
+        if deck.groups.is_empty() {
+            ui.painter().rect_filled(
+                {
+                    let rect = ui.cursor();
+                    rect.with_max_y(rect.min.y + 20.0)
+                },
+                0.0,
+                Color32::ORANGE,
+            );
+            ui.add_sized(
+                [ui.available_width(), 20.0],
+                egui::Label::new(
+                    RichText::new("☢ No groups = no output! ☢").color(Color32::DARK_RED),
+                ),
+            );
+        }
         ui.horizontal(|ui| {
             if deck.groups.change_button(ui) {
                 action::Action::InitGPU.enqueue();

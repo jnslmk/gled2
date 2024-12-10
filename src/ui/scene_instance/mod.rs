@@ -14,7 +14,7 @@ impl SceneInstance {
                     ui.set_max_width(width / 2.0);
                     ui.vertical(|ui| {
                         ui.label("Activation Input");
-                        self.selection_input.change_button(ui);
+                        self.activation_input.change_button(ui);
 
                         ui.label("Flash Input");
                         self.flash_input.change_button(ui);

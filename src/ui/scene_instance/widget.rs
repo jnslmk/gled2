@@ -94,7 +94,7 @@ impl Widget for SceneInstanceWidget<'_> {
                                 );
                                 if let Some(hotkey) = self
                                     .scene_instance
-                                    .selection_input
+                                    .activation_input
                                     .as_ref()
                                     .map(|key| format!("{key}"))
                                 {

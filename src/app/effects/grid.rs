@@ -47,7 +47,7 @@ impl App {
                         );
                         if response.changed()
                             || scene_instance
-                                .selection_input
+                                .activation_input
                                 .as_ref()
                                 .map(|event| event.is_new())
                                 .unwrap_or_default()
