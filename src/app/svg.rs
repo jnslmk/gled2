@@ -1,6 +1,6 @@
 use crate::{
     extract_output::ExtractOutput, group::Group, preview_indices::PreviewIndices,
-    svg::MeasurementPoints, texture_to_output::Positions, ui::action::Action,
+    svg::MeasurementPoints, texture_to_output::Positions, ui::action::UiAction,
 };
 use anyhow::Result;
 use egui::Rect;
@@ -64,7 +64,7 @@ impl Svg {
                 let image = svg.render().ok()?;
                 PreviewIndices::get().send_positions();
                 *ExtractOutput::get().universes.lock() = universes;
-                Action::SendPositions.enqueue();
+                UiAction::SendPositions.enqueue();
 
                 Some(image)
             };

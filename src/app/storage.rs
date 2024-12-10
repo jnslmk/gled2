@@ -1,6 +1,6 @@
 use crate::{
     storage::{Loading, STORAGE_DIR},
-    ui::logo::logo_image,
+    ui::{action::UiAction, logo::logo_image},
 };
 use egui::{
     pos2, Color32, Context, Label, Margin, Pos2, Rect, RichText, Spinner, Stroke, Ui, Vec2,
@@ -64,6 +64,10 @@ pub fn show_storage_error(ctx: &Context, error: String) {
                     ui.add(Label::new(RichText::new(error).color(Color32::WHITE)));
                 });
             ui.label(format!("Storage folder: {}", STORAGE_DIR.display()));
+            ui.add_space(20.0);
+            if ui.button("Open git config").clicked() {
+                UiAction::OpenGitConfigWindow.enqueue();
+            }
         });
     });
 }

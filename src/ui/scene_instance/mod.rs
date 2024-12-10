@@ -1,6 +1,6 @@
 pub mod widget;
 
-use super::{action::Action, ChangeButton};
+use super::{action::UiAction, ChangeButton};
 use crate::scene_instance::SceneInstance;
 use egui::{Button, Checkbox, Color32, Context, Margin, Modifiers};
 
@@ -59,7 +59,7 @@ impl SceneInstance {
                         .add(Button::new("🗐 Duplicate Scene").fill(Color32::DARK_BLUE))
                         .clicked()
                     {
-                        Action::CloneSelectedSceneInstance.enqueue();
+                        UiAction::CloneSelectedSceneInstance.enqueue();
                     }
                 });
 
@@ -75,7 +75,7 @@ impl SceneInstance {
                                 })
                         }
                     {
-                        Action::DeleteSelectedSceneInstance.enqueue();
+                        UiAction::DeleteSelectedSceneInstance.enqueue();
                     }
                 });
             });

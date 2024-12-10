@@ -15,7 +15,7 @@ use crate::{
     input::{Input, ARTNET_CONFIG},
     output_sender::{self, GpuReadyReceiver, OutputSender},
     storage::{loading, Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
-    ui::{action::Action, windows::Windows},
+    ui::{action::UiAction, windows::Windows},
     viewport_builder::default_viewport_builder,
 };
 use egui::{ahash::HashMap, Key, Modifiers, SidePanel, TopBottomPanel, ViewportId};
@@ -40,7 +40,7 @@ pub struct App {
     selected_scene_instance: SceneInstancePath,
     hovered_scene_instance: SceneInstancePath,
     git_commit_message: String,
-    action_receiver: Receiver<Action>,
+    action_receiver: Receiver<UiAction>,
 }
 
 impl eframe::App for App {
@@ -48,7 +48,7 @@ impl eframe::App for App {
         if loading().is_none() && self.startup {
             self.startup = false;
             if let Some(project) = PersistantState::get().last_project_id {
-                Action::SetProject(project).enqueue();
+                UiAction::SetProject(project).enqueue();
             }
         }
 
@@ -57,11 +57,11 @@ impl eframe::App for App {
 
         loop {
             match (&mut self.project, self.action_receiver.try_recv().ok()) {
-                (Some(project), Some(Action::DeleteSelectedSceneInstance)) => {
+                (Some(project), Some(UiAction::DeleteSelectedSceneInstance)) => {
                     project.remove_scene_instance(&mut self.selected_scene_instance);
-                    Action::InitGPU.enqueue();
+                    UiAction::InitGPU.enqueue();
                 }
-                (Some(project), Some(Action::CloneSelectedSceneInstance)) => {
+                (Some(project), Some(UiAction::CloneSelectedSceneInstance)) => {
                     if let Some(scene) = project
                         .scene_instance(self.selected_scene_instance)
                         .map(|scene_instance| scene_instance.scene)
@@ -69,24 +69,24 @@ impl eframe::App for App {
                         project
                             .deck(self.selected_scene_instance)
                             .add_scene(&mut self.selected_scene_instance, scene);
-                        Action::InitGPU.enqueue();
+                        UiAction::InitGPU.enqueue();
                     }
                 }
-                (Some(project), Some(Action::InitGPU)) => {
+                (Some(project), Some(UiAction::InitGPU)) => {
                     project.init_gpu();
                 }
-                (Some(project), Some(Action::ReloadShaderCode(animation))) => {
+                (Some(project), Some(UiAction::ReloadShaderCode(animation))) => {
                     project.reload_shader_code(animation);
                     self.windows.scenes.reload_shader_code(animation);
                 }
-                (Some(project), Some(Action::SendPositions)) => {
+                (Some(project), Some(UiAction::SendPositions)) => {
                     project.send_positions();
                 }
-                (Some(project), Some(Action::SetSvg(svg))) => {
+                (Some(project), Some(UiAction::SetSvg(svg))) => {
                     project.svg = svg;
                     project.remove_nonexistant_groups();
                 }
-                (_, Some(Action::SetProject(project))) => {
+                (_, Some(UiAction::SetProject(project))) => {
                     if let Some(project) = Asset::get(project) {
                         let mut persistant_state = PersistantState::get();
                         persistant_state.last_project_id = Some(project.id);
@@ -104,13 +104,16 @@ impl eframe::App for App {
                         self.project.take();
                         self.project_id.take();
                     };
-                    Action::InitGPU.enqueue();
+                    UiAction::InitGPU.enqueue();
                     svg::reset();
                     self.selected_scene_instance = SceneInstancePath::default();
                     self.hovered_scene_instance = SceneInstancePath::default();
                 }
-                (_, Some(Action::CloseWindow(viewport_id))) => {
+                (_, Some(UiAction::CloseWindow(viewport_id))) => {
                     self.other_main_windows.remove(&viewport_id);
+                }
+                (_, Some(UiAction::OpenGitConfigWindow)) => {
+                    self.windows.git_config.open();
                 }
                 (_, None) => break,
                 (None, _) => (),
@@ -161,7 +164,7 @@ impl eframe::App for App {
                 |ctx, _viewport_class| {
                     ctx.input(|input| {
                         if input.viewport().close_requested() {
-                            Action::CloseWindow(viewport_id).enqueue();
+                            UiAction::CloseWindow(viewport_id).enqueue();
                         }
                     });
 
@@ -220,11 +223,11 @@ impl App {
             self.status_bar(ctx, viewport_id);
         }
 
-        if let Some(loading) = crate::storage::loading() {
-            show_storage_loading(ctx, loading);
-            return;
-        } else if let Some(error) = crate::storage::error() {
+        if let Some(error) = crate::storage::error() {
             show_storage_error(ctx, error);
+            return;
+        } else if let Some(loading) = crate::storage::loading() {
+            show_storage_loading(ctx, loading);
             return;
         }
 
@@ -284,7 +287,7 @@ impl App {
             other_main_windows: Default::default(),
             areas: Default::default(),
             git_commit_message: Default::default(),
-            action_receiver: Action::init_queue(),
+            action_receiver: UiAction::init_queue(),
         };
 
         Some(app)

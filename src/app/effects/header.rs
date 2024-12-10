@@ -68,7 +68,7 @@ impl App {
         }
         ui.horizontal(|ui| {
             if deck.groups.change_button(ui) {
-                action::Action::InitGPU.enqueue();
+                action::UiAction::InitGPU.enqueue();
             }
         });
     }

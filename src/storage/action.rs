@@ -4,16 +4,16 @@ use std::sync::{
 };
 use uuid::Uuid;
 
-static SENDER: OnceLock<Sender<Action>> = OnceLock::new();
+static SENDER: OnceLock<Sender<StorageAction>> = OnceLock::new();
 
-pub fn init() -> Receiver<Action> {
+pub fn init() -> Receiver<StorageAction> {
     let (tx, rx) = std::sync::mpsc::channel();
     SENDER.set(tx).expect("Could not set ACTION_SENDER");
     rx
 }
 
 #[allow(dead_code)]
-pub enum Action {
+pub enum StorageAction {
     /// Nuke the storage folder and restart from scratch
     Nuke,
     /// Restart the storage system
@@ -38,7 +38,7 @@ pub enum Action {
     },
 }
 
-impl Action {
+impl StorageAction {
     pub fn enqueue(self) {
         SENDER
             .get()

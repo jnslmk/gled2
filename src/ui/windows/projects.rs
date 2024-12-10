@@ -1,7 +1,7 @@
 use crate::{
     storage::{Project, SceneInstancePath},
     ui::{
-        action::Action,
+        action::UiAction,
         asset_tree::{AssetTree, TreeSelection},
     },
     viewport_builder::default_viewport_builder,
@@ -70,7 +70,7 @@ impl ProjectsWindow {
                         ));
                         ui.vertical_centered_justified(|ui| {
                             if ui.button("Load Project").clicked() {
-                                Action::SetProject(project.id).enqueue();
+                                UiAction::SetProject(project.id).enqueue();
                                 self.open = false;
                             }
                         });

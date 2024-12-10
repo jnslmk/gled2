@@ -5,7 +5,7 @@ mod palette;
 mod project;
 mod scene;
 
-use super::{collection::Collection, Action, AssetId, COLLECTIONS};
+use super::{collection::Collection, AssetId, StorageAction, COLLECTIONS};
 use egui::Rect;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
@@ -104,7 +104,7 @@ impl<T: AssetTrait> Asset<T> {
 
             let uuid = self.id.id;
             if let Ok(json) = self.into_json() {
-                Action::SaveAsset {
+                StorageAction::SaveAsset {
                     dir_name: T::DIR_NAME,
                     uuid,
                     json,

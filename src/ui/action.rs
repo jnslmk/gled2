@@ -6,9 +6,9 @@ use egui::ViewportId;
 use once_cell::sync::OnceCell;
 use std::sync::mpsc::{Receiver, Sender};
 
-static ACTION_SENDER: OnceCell<Sender<Action>> = OnceCell::new();
+static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 
-pub enum Action {
+pub enum UiAction {
     SetProject(AssetId<Project>),
     DeleteSelectedSceneInstance,
     CloneSelectedSceneInstance,
@@ -17,10 +17,11 @@ pub enum Action {
     ReloadShaderCode(AssetId<Animation>),
     CloseWindow(ViewportId),
     SetSvg(Option<Svg>),
+    OpenGitConfigWindow,
 }
 
-impl Action {
-    pub fn init_queue() -> Receiver<Action> {
+impl UiAction {
+    pub fn init_queue() -> Receiver<UiAction> {
         let (sender, receiver) = std::sync::mpsc::channel();
         ACTION_SENDER.set(sender).unwrap();
         receiver

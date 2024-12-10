@@ -1,4 +1,4 @@
-use crate::{app::{GitUiState, PersistantState}, storage::{branches, Action, Branches}, viewport_builder::default_viewport_builder};
+use crate::{app::{GitUiState, PersistantState}, storage::{branches, StorageAction, Branches}, viewport_builder::default_viewport_builder};
 use egui::{Button, Color32, ComboBox, Context, Id, Layout, RichText, TextEdit, Vec2, ViewportId};
 use egui_flex::{item, Flex};
 use home::home_dir;
@@ -57,7 +57,7 @@ impl GitConfigWindow {
                                                 .changed()
                                             {
                                                 ui.close_menu();
-                                                Action::SwitchBranch(branch).enqueue();
+                                                StorageAction::SwitchBranch(branch).enqueue();
                                             };
                                         }
                                     });
@@ -75,7 +75,7 @@ impl GitConfigWindow {
                             persistant.save();
                             self.git_ui_state.url = GitUiState::default().url;
 
-                            Action::Nuke.enqueue();
+                            StorageAction::Nuke.enqueue();
                         }
 
                         if flex.add(item().grow(1.0), Button::new("Reset")).inner

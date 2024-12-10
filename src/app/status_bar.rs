@@ -1,6 +1,6 @@
 use super::App;
 use crate::{
-    storage::{polynomials_fitting, staged_files, working, Action},
+    storage::{polynomials_fitting, staged_files, working, StorageAction},
     temperature::temperature,
 };
 use egui::{Button, Context, Label, Layout, Margin, Spinner, TextEdit, Ui, ViewportId};
@@ -58,57 +58,58 @@ impl App {
         });
 
         let staged_files = staged_files();
-        ui.add_enabled_ui(staged_files > 0 && !working(), |ui| {
-            egui::Frame::none()
-                .inner_margin(Margin::from(6.0))
-                .show(ui, |ui| {
+        egui::Frame::none()
+            .inner_margin(Margin::from(6.0))
+            .show(ui, |ui| {
+                let mut commit = false;
+                ui.add_enabled_ui(staged_files > 0 && !working(), |ui| {
                     ui.label(if staged_files == 1 {
                         "Commit message for 1 change:".to_owned()
                     } else {
                         format!("Commit message for {staged_files} files:")
                     });
-                    let mut commit = ui
+                    commit = ui
                         .add(
                             TextEdit::singleline(&mut self.git_commit_message)
                                 .hint_text("Please enter a commit message"),
                         )
                         .lost_focus()
                         && ui.ctx().input(|input| input.key_pressed(egui::Key::Enter));
+                });
 
-                    Flex::horizontal().show(ui, |flex| {
-                        if flex
-                            .add(item().grow(1.0), Button::new("Commit"))
-                            .inner
-                            .clicked()
-                        {
-                            commit = true;
-                        }
+                Flex::horizontal().show(ui, |flex| {
+                    if flex
+                        .add(item().grow(1.0), Button::new("Commit"))
+                        .inner
+                        .clicked()
+                    {
+                        commit = true;
+                    }
 
-                        if flex
-                            .add(item().grow(1.0), Button::new("⬆Push"))
-                            .inner
-                            .clicked()
-                        {
-                            Action::Push.enqueue();
-                        }
+                    if flex
+                        .add(item().grow(1.0), Button::new("⬆Push"))
+                        .inner
+                        .clicked()
+                    {
+                        StorageAction::Push.enqueue();
+                    }
 
-                        if flex
-                            .add(item().grow(1.0), Button::new("⬇Pull"))
-                            .inner
-                            .clicked()
-                        {
-                            Action::Pull.enqueue();
-                        }
-                    });
-
-                    if commit {
-                        Action::Commit {
-                            message: self.git_commit_message.clone(),
-                        }
-                        .enqueue();
-                        self.git_commit_message.clear();
+                    if flex
+                        .add(item().grow(1.0), Button::new("⬇Pull"))
+                        .inner
+                        .clicked()
+                    {
+                        StorageAction::Pull.enqueue();
                     }
                 });
-        });
+
+                if commit {
+                    StorageAction::Commit {
+                        message: self.git_commit_message.clone(),
+                    }
+                    .enqueue();
+                    self.git_commit_message.clear();
+                }
+            });
     }
 }

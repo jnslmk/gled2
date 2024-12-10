@@ -122,7 +122,7 @@ impl ScenesWindow {
 
                     if let TreeSelection::Asset(scene) = &mut self.tree.selected() {
                         if asset_changed {
-                            crate::ui::action::Action::InitGPU.enqueue();
+                            crate::ui::action::UiAction::InitGPU.enqueue();
                             if let (Some(effect), Some(state)) = (
                                 scene.data.effect(self.selected_effect),
                                 self.effect_states.get_mut(self.selected_effect),

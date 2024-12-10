@@ -1,5 +1,5 @@
 use super::AssetTrait;
-use crate::storage::{collection::Collection, Action, COLLECTIONS};
+use crate::storage::{collection::Collection, StorageAction, COLLECTIONS};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
@@ -57,7 +57,7 @@ impl<T: AssetTrait> AssetId<T> {
                 }
             }
 
-            Action::DeleteAsset {
+            StorageAction::DeleteAsset {
                 uuid: self.id,
                 dir_name: T::DIR_NAME,
             }

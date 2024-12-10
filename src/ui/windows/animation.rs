@@ -3,7 +3,7 @@ use crate::{
     effect::{Effect, EffectState},
     storage::{Animation, Asset},
     ui::{
-        action::Action,
+        action::UiAction,
         asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
         effect::EffectWidget,
         ChangeButton,
@@ -157,7 +157,7 @@ impl AnimationWindow {
                         self.effect_state.take();
                         validate = true;
                         if let TreeSelection::Asset(animation) = &self.tree.selected() {
-                            Action::ReloadShaderCode(animation.id).enqueue();
+                            UiAction::ReloadShaderCode(animation.id).enqueue();
                         }
                     }
 

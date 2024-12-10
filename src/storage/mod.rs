@@ -22,7 +22,7 @@ use uuid::Uuid;
 
 use crate::app::PersistantState;
 
-pub use self::{action::Action, asset::*, asset_id::AssetId};
+pub use self::{action::StorageAction, asset::*, asset_id::AssetId};
 pub use git::GitCredentials;
 
 pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
@@ -122,67 +122,67 @@ pub fn start_thread() {
                 }
             };
 
-            Action::LoadBranches.enqueue();
-            Action::CountStagedFiles.enqueue();
-            Action::LoadAssets.enqueue();
+            StorageAction::LoadBranches.enqueue();
+            StorageAction::CountStagedFiles.enqueue();
+            StorageAction::LoadAssets.enqueue();
 
             while let Ok(action) = actions.recv() {
                 WORKING.store(true, Relaxed);
 
                 match action {
-                    Action::Nuke => {
+                    StorageAction::Nuke => {
                         ERROR.lock().take();
                         Loading::Nuking.set();
                         remove_dir_all(&*STORAGE_DIR).ok();
-                        Action::Restart.enqueue();
+                        StorageAction::Restart.enqueue();
                     }
-                    Action::Restart => {
+                    StorageAction::Restart => {
                         break;
                     }
-                    Action::CountStagedFiles => match git.count_staged_files() {
+                    StorageAction::CountStagedFiles => match git.count_staged_files() {
                         Err(err) => {
                             ERROR
                                 .lock()
                                 .replace(format!("Error counting staged files: {err}"));
                             sleep(Duration::from_secs(1));
-                            Action::CountStagedFiles.enqueue();
+                            StorageAction::CountStagedFiles.enqueue();
                         }
                         Ok(count) => {
                             STAGED_FILES.store(count, Relaxed);
                             ERROR.lock().take();
                         }
                     },
-                    Action::Pull => {
+                    StorageAction::Pull => {
                         if let Err(err) = git.pull() {
                             ERROR.lock().replace(format!("Error pulling: {err}"));
                             sleep(Duration::from_secs(1));
-                            Action::Pull.enqueue();
+                            StorageAction::Pull.enqueue();
                         } else {
                             ERROR.lock().take();
                         }
                     }
-                    Action::Push => {
+                    StorageAction::Push => {
                         if let Err(err) = git.push() {
                             ERROR.lock().replace(format!("Error pushing: {err}"));
                             sleep(Duration::from_secs(1));
-                            Action::Push.enqueue();
+                            StorageAction::Push.enqueue();
                         } else {
                             ERROR.lock().take();
                         }
                     }
-                    Action::Commit { message } => {
+                    StorageAction::Commit { message } => {
                         if let Err(err) = git.commit(&message) {
                             ERROR
                                 .lock()
                                 .replace(format!("Error committing and pushing: {err}"));
                             sleep(Duration::from_secs(1));
-                            Action::Commit { message }.enqueue();
+                            StorageAction::Commit { message }.enqueue();
                         } else {
                             ERROR.lock().take();
                         }
-                        Action::CountStagedFiles.enqueue();
+                        StorageAction::CountStagedFiles.enqueue();
                     }
-                    Action::LoadBranches => {
+                    StorageAction::LoadBranches => {
                         BRANCHES.lock().take();
 
                         Loading::GitBranches.set();
@@ -214,7 +214,7 @@ pub fn start_thread() {
 
                         ERROR.lock().take();
                     }
-                    Action::LoadAssets => {
+                    StorageAction::LoadAssets => {
                         if let Err(err) = mkdirp::mkdirp(STORAGE_DIR.join("svg")) {
                             ERROR
                                 .lock()
@@ -247,12 +247,12 @@ pub fn start_thread() {
                         COLLECTIONS.lock().replace(collections);
                         Loading::unset();
                     }
-                    Action::SwitchBranch(branch) => match git.switch_branch(&branch) {
+                    StorageAction::SwitchBranch(branch) => match git.switch_branch(&branch) {
                         Ok(_) => {
-                            Action::Restart.enqueue();
-                            Action::LoadBranches.enqueue();
-                            Action::CountStagedFiles.enqueue();
-                            Action::LoadAssets.enqueue();
+                            StorageAction::Restart.enqueue();
+                            StorageAction::LoadBranches.enqueue();
+                            StorageAction::CountStagedFiles.enqueue();
+                            StorageAction::LoadAssets.enqueue();
                         }
                         Err(err) => {
                             ERROR
@@ -260,7 +260,7 @@ pub fn start_thread() {
                                 .replace(format!("Error switching branch: {err}"));
                         }
                     },
-                    Action::SaveAsset {
+                    StorageAction::SaveAsset {
                         dir_name,
                         uuid,
                         json,
@@ -269,14 +269,14 @@ pub fn start_thread() {
                             log::error!("Could not write asset: {err:?}");
                         }
 
-                        Action::CountStagedFiles.enqueue();
+                        StorageAction::CountStagedFiles.enqueue();
                     }
-                    Action::DeleteAsset { uuid, dir_name } => {
+                    StorageAction::DeleteAsset { uuid, dir_name } => {
                         if let Err(err) = git.delete_asset(&asset_path(uuid, dir_name)) {
                             log::error!("Could not delete asset: {err:?}");
                         }
 
-                        Action::CountStagedFiles.enqueue();
+                        StorageAction::CountStagedFiles.enqueue();
                     }
                 }
 

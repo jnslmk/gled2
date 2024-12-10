@@ -3,7 +3,7 @@ use crate::{
     extract_output::ExtractOutput,
     input::ARTNET_CONFIG,
     storage::{Asset, STORAGE_DIR},
-    ui::{action::Action, logo::logo_image},
+    ui::{action::UiAction, logo::logo_image},
 };
 use egui::{
     load::SizedTexture, text::LayoutJob, Button, Color32, Context, Id, ImageButton, Key, Label,
@@ -164,7 +164,7 @@ impl App {
                             .add_filter("svg", &["svg"])
                             .pick_file()
                         {
-                            Action::SetSvg(match Svg::load(&path) {
+                            UiAction::SetSvg(match Svg::load(&path) {
                                 Ok(svg) => {
                                     debug!("Loaded svg file \"{}\"", path.display());
                                     Some(svg)
