@@ -5,6 +5,7 @@ mod about;
 mod animation;
 mod artnet_input;
 mod curves;
+mod git_config;
 mod output_devices;
 mod output_routings;
 mod palettes;
@@ -18,6 +19,7 @@ pub struct Windows {
     pub animations: animation::AnimationWindow,
     pub artnet_input: artnet_input::ArtnetInputWindow,
     pub curves: curves::CurvesWindow,
+    pub git_config: git_config::GitConfigWindow,
     pub output_devices: output_devices::OutputDevicesWindow,
     pub output_routings: output_routings::OutputRoutingsWindow,
     pub palettes: palettes::PalettesWindow,
@@ -31,6 +33,7 @@ impl Windows {
         self.about.update(ctx);
         self.animations.update(ctx, timing);
         self.curves.update(ctx);
+        self.git_config.update(ctx);
         self.artnet_input.update(ctx);
         self.output_devices.update(ctx);
         self.output_routings.update(ctx);

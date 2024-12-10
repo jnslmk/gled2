@@ -86,13 +86,6 @@ impl Git {
         Ok(())
     }
 
-    pub fn commit_and_push(&mut self, message: &str) -> Result<(), Error> {
-        self.commit(message)?;
-        self.push()?;
-
-        Ok(())
-    }
-
     fn push_options(&self) -> PushOptions<'static> {
         let mut push_options = PushOptions::new();
         push_options.remote_callbacks(self.remote_callbacks());
@@ -305,7 +298,7 @@ impl Git {
         Ok(())
     }
 
-    fn commit(&self, msg: &str) -> Result<(), Error> {
+    pub fn commit(&self, msg: &str) -> Result<(), Error> {
         log::info!("Committing..");
 
         let repository = self
@@ -346,7 +339,7 @@ impl Git {
         Ok(())
     }
 
-    fn push(&self) -> Result<(), Error> {
+    pub fn push(&self) -> Result<(), Error> {
         let name = self.branch_name();
         let repository = self
             .repository

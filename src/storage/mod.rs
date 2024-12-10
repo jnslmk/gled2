@@ -161,13 +161,22 @@ pub fn start_thread() {
                             ERROR.lock().take();
                         }
                     }
-                    Action::CommitAndPush { message } => {
-                        if let Err(err) = git.commit_and_push(&message) {
+                    Action::Push => {
+                        if let Err(err) = git.push() {
+                            ERROR.lock().replace(format!("Error pushing: {err}"));
+                            sleep(Duration::from_secs(1));
+                            Action::Push.enqueue();
+                        } else {
+                            ERROR.lock().take();
+                        }
+                    }
+                    Action::Commit { message } => {
+                        if let Err(err) = git.commit(&message) {
                             ERROR
                                 .lock()
                                 .replace(format!("Error committing and pushing: {err}"));
                             sleep(Duration::from_secs(1));
-                            Action::CommitAndPush { message }.enqueue();
+                            Action::Commit { message }.enqueue();
                         } else {
                             ERROR.lock().take();
                         }

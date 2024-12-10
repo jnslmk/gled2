@@ -39,7 +39,7 @@ pub struct App {
     blackout: bool,
     selected_scene_instance: SceneInstancePath,
     hovered_scene_instance: SceneInstancePath,
-    git_ui_state: GitUiState,
+    git_commit_message: String,
     action_receiver: Receiver<Action>,
 }
 
@@ -282,7 +282,7 @@ impl App {
             windows: Default::default(),
             other_main_windows: Default::default(),
             areas: Default::default(),
-            git_ui_state: Default::default(),
+            git_commit_message: Default::default(),
             action_receiver: Action::init_queue(),
         };
 
@@ -319,7 +319,6 @@ impl Default for MainWindowAreas {
 
 pub struct GitUiState {
     pub url: String,
-    pub commit_message: String,
     pub use_passphrase: bool,
     pub passphrase: String,
 }
@@ -330,7 +329,6 @@ impl Default for GitUiState {
 
         Self {
             url: persistant_state.git_url,
-            commit_message: Default::default(),
             use_passphrase: persistant_state.git_credentials.use_passphrase(),
             passphrase: Default::default(),
         }

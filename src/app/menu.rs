@@ -232,6 +232,13 @@ impl App {
                 ui.menu_button("Config", |ui| {
                     ui.set_min_width(300.0);
 
+                    if ui.button("Git Configuration").clicked() {
+                        self.windows.git_config.open();
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
                     ui.label("Framerate Limiter");
                     let mut fps_limit = PersistantState::fps_limit();
                     ui.spacing_mut().slider_width = 290.0;

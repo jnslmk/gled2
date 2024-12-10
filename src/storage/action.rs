@@ -31,8 +31,9 @@ pub enum Action {
         uuid: Uuid,
     },
     Pull,
+    Push,
     CountStagedFiles,
-    CommitAndPush {
+    Commit {
         message: String,
     },
 }
