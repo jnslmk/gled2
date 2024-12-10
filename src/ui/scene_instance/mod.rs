@@ -13,7 +13,7 @@ impl SceneInstance {
                 .show(ui, |ui| {
                     ui.set_max_width(width / 2.0);
                     ui.vertical(|ui| {
-                        ui.label("Selection Input");
+                        ui.label("Activation Input");
                         self.selection_input.change_button(ui);
 
                         ui.label("Flash Input");
