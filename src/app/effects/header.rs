@@ -3,7 +3,7 @@ use crate::{
     storage::{AssetId, Scene, SceneInstancePath},
     ui::{action, ChangeButton},
 };
-use egui::{Color32, Rect, RichText, Slider, Ui};
+use egui::{Color32, RichText, Slider, Ui};
 
 impl App {
     pub fn effects_header(&mut self, ui: &mut Ui, path: SceneInstancePath) {
