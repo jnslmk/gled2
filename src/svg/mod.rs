@@ -91,10 +91,10 @@ fn traverse_node(
                         .ok()
                 })
             {
-                parameter.start += start;
+                start += parameter.start.unwrap_or_default();
+                parameter.start = Some(start);
                 parameter.universe += universe;
 
-                start = parameter.start;
                 universe = parameter.universe;
 
                 parents.insert(node.id().clone());
