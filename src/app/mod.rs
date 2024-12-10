@@ -77,6 +77,7 @@ impl eframe::App for App {
                 }
                 (Some(project), Some(Action::ReloadShaderCode(animation))) => {
                     project.reload_shader_code(animation);
+                    self.windows.scenes.reload_shader_code(animation);
                 }
                 (Some(project), Some(Action::SendPositions)) => {
                     project.send_positions();

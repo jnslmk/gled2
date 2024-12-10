@@ -1,7 +1,7 @@
 use crate::{
     app::{PersistantState, Timing},
     effect::{Effect, EffectState},
-    storage::{Asset, Scene},
+    storage::{Animation, Asset, AssetId, Scene},
     ui::{
         asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
         effect::EffectWidget,
@@ -212,5 +212,15 @@ impl ScenesWindow {
 
     pub fn open(&mut self) {
         self.open = true;
+    }
+
+    pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
+        let TreeSelection::Asset(scene) = self.tree.selected() else {
+            return;
+        };
+
+        scene
+            .data
+            .reload_shader_code(&mut self.effect_states, animation);
     }
 }
