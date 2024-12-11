@@ -126,6 +126,18 @@ impl Timing {
         }
     }
 
+    pub fn half_button(&mut self, ui: &mut Ui) {
+        if ui.add(Button::new("x½")).clicked() {
+            self.beats_per_minute /= 2.0;
+        }
+    }
+
+    pub fn double_button(&mut self, ui: &mut Ui) {
+        if ui.add(Button::new("x2")).clicked() {
+            self.beats_per_minute *= 2.0;
+        }
+    }
+
     pub fn tap_button(&mut self, ui: &mut Ui, menu_button_size: Vec2, tap_input: bool) {
         let underlined = TextFormat {
             underline: Stroke::new(1.0, Color32::GRAY),

@@ -407,15 +407,6 @@ impl App {
 
                 ui.separator();
 
-                let slider_width = ui.available_width() - (menu_button_size.x * 3.0 + 120.0);
-                if slider_width > 5.0 {
-                    ui.spacing_mut().slider_width = slider_width;
-                }
-                ui.add(
-                    Slider::new(&mut self.timing.beats_per_minute, 1.0..=240.0)
-                        .custom_formatter(|n, _| format!("{:.1} bpm", n)),
-                );
-
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let underlined = TextFormat {
                         underline: Stroke::new(1.0, Color32::GRAY),
@@ -459,7 +450,22 @@ impl App {
                             .map(|project| project.tap_input_is_new())
                             .unwrap_or_default(),
                     );
+
                     ui.separator();
+                    self.timing.half_button(ui);
+                    self.timing.double_button(ui);
+                    ui.separator();
+
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        let slider_width = ui.available_width() - 70.0;
+                        if slider_width > 5.0 {
+                            ui.spacing_mut().slider_width = slider_width;
+                        }
+                        ui.add(
+                            Slider::new(&mut self.timing.beats_per_minute, 1.0..=240.0)
+                                .custom_formatter(|n, _| format!("{:.1} bpm", n)),
+                        );
+                    });
                 });
             });
         });
