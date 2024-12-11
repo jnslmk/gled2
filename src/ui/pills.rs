@@ -1,11 +1,10 @@
-use egui::{Color32, Label, Pos2, Rect, Rounding, TextStyle, Ui, Vec2, WidgetText};
+use egui::{Align2, Color32, Pos2, Rect, Rounding, TextStyle, Ui, Vec2, WidgetText};
 
 pub fn show_pills(ui: &mut Ui, start: Pos2, texts: Vec<(String, Color32)>) {
     const PADDING: f32 = 5.0;
     let mut pills = vec![];
     for (text, bg_color) in texts {
-        let text = egui::RichText::new(text).color(Color32::from_black_alpha(200));
-        let size = WidgetText::from(text.clone())
+        let size = WidgetText::from(egui::RichText::new(text.clone()))
             .into_galley(ui, None, ui.available_width(), TextStyle::Body)
             .rect
             .size()
@@ -24,7 +23,13 @@ pub fn show_pills(ui: &mut Ui, start: Pos2, texts: Vec<(String, Color32)>) {
         let rect = Rect::from_min_size(start, size);
         ui.painter()
             .rect_filled(rect, Rounding::same(5.0), bg_color);
-        ui.put(rect, Label::new(text).selectable(false));
-        start += Vec2::new(size.x + PADDING / 2.0, 0.0);
+        ui.painter().text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            text,
+            egui::TextStyle::Body.resolve(ui.style()),
+            Color32::from_black_alpha(200),
+        );
+        start += Vec2::new(size.x + PADDING, 0.0);
     }
 }
