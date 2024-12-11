@@ -75,6 +75,14 @@ impl App {
                         ui.close_menu();
                     }
 
+                    if ui
+                        .add_enabled(self.project.is_some(), Button::new("Close project"))
+                        .clicked()
+                    {
+                        self.project.take();
+                        ui.close_menu();
+                    }
+
                     ui.separator();
 
                     if ui
