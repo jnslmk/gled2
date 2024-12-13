@@ -33,11 +33,13 @@ pub fn start() {
                 let mut enttec_data = vec![
                     0x7E, // Start of message
                     6,    // DMX output message
-                    512u16.to_le_bytes()[0],
-                    512u16.to_le_bytes()[1],
+                    0,    // Data length LSB
+                    2,    // Data length MSB
                 ];
                 enttec_data.extend_from_slice(&data);
                 enttec_data.push(0xE7); // End of message
+
+                log::trace!("Sending data to enttec dmx usb pro: {enttec_data:?}");
 
                 match devices.entry(serial_number) {
                     Entry::Occupied(mut occupied_entry) => {
