@@ -19,7 +19,10 @@ use crate::{
     viewport_builder::default_viewport_builder,
 };
 use egui::{ahash::HashMap, Key, Modifiers, SidePanel, TopBottomPanel, ViewportId};
-use std::sync::{mpsc::Receiver, Arc};
+use std::{
+    sync::{mpsc::Receiver, Arc},
+    time::{SystemTime, UNIX_EPOCH},
+};
 use storage::{show_storage_error, show_storage_loading};
 
 pub use persistant_state::PersistantState;
@@ -41,6 +44,7 @@ pub struct App {
     hovered_scene_instance: SceneInstancePath,
     git_commit_message: String,
     action_receiver: Receiver<UiAction>,
+    last_title_update: u64,
 }
 
 impl eframe::App for App {
@@ -120,17 +124,28 @@ impl eframe::App for App {
             }
         }
 
-        ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
-            "gled - {} {}",
-            match self.project_id.and_then(Asset::get) {
-                None => "no project loaded".to_owned(),
-                Some(project) => project.name().to_owned(),
-            },
-            match self.timing.framerate() {
-                Some(fps) => format!("({fps:.1} fps)"),
-                None => String::new(),
-            }
-        )));
+        if SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            != self.last_title_update
+        {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
+                "gled - {} {}",
+                match self.project_id.and_then(Asset::get) {
+                    None => "no project loaded".to_owned(),
+                    Some(project) => project.name().to_owned(),
+                },
+                match self.timing.framerate() {
+                    Some(fps) => format!("({fps:.1} fps)"),
+                    None => String::new(),
+                }
+            )));
+            self.last_title_update = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+        }
 
         if let Some(project) = &mut self.project {
             project.render(
@@ -288,6 +303,7 @@ impl App {
             areas: Default::default(),
             git_commit_message: Default::default(),
             action_receiver: UiAction::init_queue(),
+            last_title_update: 0,
         };
 
         Some(app)
