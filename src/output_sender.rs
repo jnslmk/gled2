@@ -1,4 +1,7 @@
 //! Send data via Art-Net udp protocol.
+
+pub mod enttec_usb_pro;
+
 use anyhow::{Context, Result};
 use log::{debug, error, trace};
 use std::{
@@ -21,6 +24,8 @@ pub type GpuReadyReceiver = Receiver<()>;
 /// * a sender to activate the output thread
 /// * a receiver to wait for the GPU to be ready again
 pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
+    enttec_usb_pro::start();
+
     debug!("Spawning output thread");
     let (output_sender, output_receiver) = channel::<()>();
     let (gpu_ready_sender, gpu_ready_receiver) = channel::<()>();
@@ -45,7 +50,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
             let extract_output = ExtractOutput::get();
 
             for _ in output_receiver.iter() {
-                trace!("Senmding output data");
+                trace!("Sending output data");
                 let packages: Vec<(SocketAddr, Vec<u8>)> = {
                     let output_data = extract_output.poll_output_buffer();
                     gpu_ready_sender.send(()).ok();
@@ -90,6 +95,12 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                                                 .ok()
                                                 .map(|data| (addr, data))
                                         })
+                                }
+                                OutputDevice::EnttecDmxUsbPro { serial_number } => {
+                                    let mut send_data = [0u8; 512];
+                                    send_data[..data.len()].copy_from_slice(data);
+                                    enttec_usb_pro::send(serial_number.to_owned(), send_data);
+                                    None
                                 }
                                 OutputDevice::WledDRGB { ip, port, .. } => {
                                     log::debug!("Preparing wled drgb data for universe {universe}");

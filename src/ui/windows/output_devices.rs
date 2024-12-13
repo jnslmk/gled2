@@ -1,4 +1,5 @@
 use crate::{
+    output_sender::enttec_usb_pro::serial_numbers,
     storage::{Asset, OutputDevice},
     ui::asset_tree::{AssetTree, TreeSelection},
     viewport_builder::default_viewport_builder,
@@ -9,6 +10,7 @@ use strum::{EnumIter, IntoEnumIterator, IntoStaticStr};
 #[derive(Clone, Copy, Debug, IntoStaticStr, PartialEq, Eq, EnumIter)]
 pub enum OutputDeviceKind {
     Artnet,
+    EnttecDmxUsbPro,
     WledDRGB,
     WledDNRGB,
 }
@@ -17,6 +19,7 @@ impl OutputDevice {
     pub fn kind(&self) -> OutputDeviceKind {
         match self {
             OutputDevice::Artnet { .. } => OutputDeviceKind::Artnet,
+            OutputDevice::EnttecDmxUsbPro { .. } => OutputDeviceKind::EnttecDmxUsbPro,
             OutputDevice::WledDRGB { .. } => OutputDeviceKind::WledDRGB,
             OutputDevice::WledDNRGB { .. } => OutputDeviceKind::WledDNRGB,
         }
@@ -123,6 +126,11 @@ fn output_device_editor(
                                 universes: vec![],
                             }
                         }
+                        OutputDeviceKind::EnttecDmxUsbPro => {
+                            output_device.data = OutputDevice::EnttecDmxUsbPro {
+                                serial_number: String::new(),
+                            }
+                        }
                         OutputDeviceKind::WledDRGB => {
                             output_device.data = OutputDevice::WledDRGB {
                                 ip: [127, 0, 0, 1].into(),
@@ -143,15 +151,15 @@ fn output_device_editor(
             }
         });
 
-    ui.heading("IP-Address");
-    let ip = device_strings
-        .ip
-        .get_or_insert_with(|| output_device.data.ip().to_string());
+    if let Some(ip) = output_device.data.ip() {
+        ui.heading("IP-Address");
+        let ip = device_strings.ip.get_or_insert_with(|| ip.to_string());
 
-    if ui.add(TextEdit::singleline(ip)).changed() {
-        if let Ok(ip) = ip.parse() {
-            output_device.data.set_ip(ip);
-            *dirty = true;
+        if ui.add(TextEdit::singleline(ip)).changed() {
+            if let Ok(ip) = ip.parse() {
+                output_device.data.set_ip(ip);
+                *dirty = true;
+            }
         }
     }
 
@@ -170,10 +178,7 @@ fn output_device_editor(
                 .split(',')
                 .map(|universe| universe.trim().parse().unwrap_or_default())
                 .collect();
-            output_device.data = OutputDevice::Artnet {
-                ip: output_device.data.ip(),
-                universes,
-            };
+            output_device.data.set_univeres(universes);
             *dirty = true;
         }
     }
@@ -219,5 +224,26 @@ fn output_device_editor(
                 };
             }
         }
+    }
+
+    if let OutputDevice::EnttecDmxUsbPro { serial_number } = &output_device.data {
+        ui.heading("Serial Number:");
+        let mut serial_number = serial_number.clone();
+        ComboBox::new(format!("{id}_serial_number"), "")
+            .selected_text(serial_number.clone())
+            .width(290.0)
+            .show_ui(ui, |ui| {
+                for sn in serial_numbers() {
+                    if ui
+                        .selectable_value(&mut serial_number, sn.clone(), sn)
+                        .changed()
+                    {
+                        output_device.data = OutputDevice::EnttecDmxUsbPro {
+                            serial_number: serial_number.clone(),
+                        };
+                        *dirty = true;
+                    }
+                }
+            });
     }
 }
