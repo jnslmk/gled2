@@ -100,7 +100,7 @@ impl TextureToOutput {
             label: Some("TextureToArtnet pipeline"),
             layout: Some(&pipeline_layout),
             module: &module,
-            entry_point: "main",
+            entry_point: Some("main"),
             compilation_options: Default::default(),
         });
 

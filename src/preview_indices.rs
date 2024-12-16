@@ -90,7 +90,7 @@ impl PreviewIndices {
                 label: Some("preview clear indices pipeline"),
                 layout: Some(&clear_pipeline_layout),
                 module: &module,
-                entry_point: "main",
+                entry_point: Some("main"),
                 compilation_options: Default::default(),
             });
 
@@ -148,7 +148,7 @@ impl PreviewIndices {
                 label: Some("preview index indices pipeline"),
                 layout: Some(&index_pipeline_layout),
                 module: &module,
-                entry_point: "main",
+                entry_point: Some("main"),
                 compilation_options: Default::default(),
             });
 

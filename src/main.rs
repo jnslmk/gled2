@@ -26,7 +26,7 @@ mod viewport_builder;
 
 use app::App;
 use constants::OUTPUT_BUFFER_SIZE;
-use eframe::egui_wgpu::{RenderState, WgpuConfiguration};
+use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup};
 use egui::ThemePreference;
 use input::Input;
 use once_cell::sync::Lazy;
@@ -55,6 +55,21 @@ fn main() {
     storage::start_thread();
     temperature::start_thread();
 
+    let mut wgpu_options = WgpuConfiguration::default();
+    wgpu_options.present_mode = PRESENT_MODE;
+    wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
+        WgpuSetup::CreateNew {
+            supported_backends,
+            device_descriptor,
+            ..
+        } => WgpuSetup::CreateNew {
+            supported_backends,
+            power_preference: PowerPreference::HighPerformance,
+            device_descriptor,
+        },
+        existing => existing,
+    };
+
     let options = eframe::NativeOptions {
         viewport: default_viewport_builder()
             .with_title("Gled")
@@ -63,11 +78,7 @@ fn main() {
             .with_min_inner_size([300.0, 200.0]),
         renderer: eframe::Renderer::Wgpu,
         vsync: false,
-        wgpu_options: WgpuConfiguration {
-            present_mode: PRESENT_MODE,
-            power_preference: PowerPreference::HighPerformance,
-            ..Default::default()
-        },
+        wgpu_options,
         ..Default::default()
     };
     eframe::run_native(

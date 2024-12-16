@@ -62,7 +62,7 @@ impl OutputMix {
             label: Some("OutputMix pipeline"),
             layout: Some(&pipeline_layout),
             module: &module,
-            entry_point: "main",
+            entry_point: Some("main"),
             compilation_options: Default::default(),
         });
 
