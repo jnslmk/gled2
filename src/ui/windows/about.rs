@@ -37,7 +37,10 @@ impl AboutWindow {
                         ui.spacing();
                         ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
                         ui.spacing();
-                        ui.label("Made with Rust ❤");
+                        ui.hyperlink_to(
+                            "Made with ❤ for Photonenkollektiv",
+                            "https://www.photonenkollektiv.de",
+                        );
                         ui.spacing();
                         ui.hyperlink_to(
                             "Project website",
