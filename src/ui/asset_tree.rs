@@ -333,7 +333,6 @@ impl<T: AssetTrait> AssetTree<T> {
                             item().grow(1.0),
                             Button::new(format!("Save{}", if *dirty { "*" } else { "" })),
                         )
-                        .inner
                         .on_hover_ui(|ui| {
                             ui.label("Save to disk");
                         })
@@ -349,7 +348,6 @@ impl<T: AssetTrait> AssetTree<T> {
                     }
                     if flex
                         .add(item().grow(1.0), Button::new("Save Copy"))
-                        .inner
                         .on_hover_ui(|ui| {
                             ui.label("Save copy to disk");
                         })
@@ -369,7 +367,6 @@ impl<T: AssetTrait> AssetTree<T> {
                             Button::new(format!("Reset{}", if *dirty { "*" } else { "" }))
                                 .fill(Color32::DARK_RED),
                         )
-                        .inner
                         .on_hover_ui(|ui| {
                             ui.label("Reset to state on disk");
                         })
@@ -387,7 +384,6 @@ impl<T: AssetTrait> AssetTree<T> {
                             item().grow(1.0),
                             Button::new("Delete").fill(Color32::DARK_RED),
                         )
-                        .inner
                         .clicked()
                     {
                         if let TreeSelection::Asset(asset) = &self.selection {

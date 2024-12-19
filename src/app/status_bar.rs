@@ -78,27 +78,15 @@ impl App {
                 });
 
                 Flex::horizontal().show(ui, |flex| {
-                    if flex
-                        .add(item().grow(1.0), Button::new("Commit"))
-                        .inner
-                        .clicked()
-                    {
+                    if flex.add(item().grow(1.0), Button::new("Commit")).clicked() {
                         commit = true;
                     }
 
-                    if flex
-                        .add(item().grow(1.0), Button::new("⬆Push"))
-                        .inner
-                        .clicked()
-                    {
+                    if flex.add(item().grow(1.0), Button::new("⬆Push")).clicked() {
                         StorageAction::Push.enqueue();
                     }
 
-                    if flex
-                        .add(item().grow(1.0), Button::new("⬇Pull"))
-                        .inner
-                        .clicked()
-                    {
+                    if flex.add(item().grow(1.0), Button::new("⬇Pull")).clicked() {
                         StorageAction::Pull.enqueue();
                     }
                 });

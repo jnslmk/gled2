@@ -81,6 +81,7 @@ impl<R: Range> ChangeButton for StaticOrCurve<R> {
                     },
                 },
                 |ui| {
+                    ui.set_min_width(300.0);
                     ui.horizontal(|ui| {
                         let mut use_static = matches!(self, Self::Static(..));
                         if ui

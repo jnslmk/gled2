@@ -66,7 +66,7 @@ impl GitConfigWindow {
                     });
 
                     Flex::horizontal().show(ui, |flex| {
-                        if flex.add(item().grow(1.0), Button::new("Apply").fill(Color32::DARK_RED)).inner
+                        if flex.add(item().grow(1.0), Button::new("Apply").fill(Color32::DARK_RED))
                             .on_hover_text("This deletes all assets on disk and starts from scratch by cloning the repository!")
                             .clicked()
                         {
@@ -78,7 +78,7 @@ impl GitConfigWindow {
                             StorageAction::Nuke.enqueue();
                         }
 
-                        if flex.add(item().grow(1.0), Button::new("Reset")).inner
+                        if flex.add(item().grow(1.0), Button::new("Reset"))
                             .clicked()
                         {
                             self.git_ui_state.url = GitUiState::default().url;
