@@ -1,0 +1,24 @@
+<h1 id="install-gled">Install gled</h1>
+<h2 id="linux-rpm">Linux (RPM)</h2>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> tee <span class="at">-a</span> /etc/yum.repos.d/gled.repo <span class="op">&lt;&lt; &#39;EOF&#39;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="st">[gitlab.com_gled_repo]</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="st">name=gitlab.com_gled_repo</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="st">baseurl=https://photonenkollektiv.gitlab.io/gled2/rpm/</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="st">enabled=1</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="st">gpgcheck=1</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="st">repo_gpgcheck=1</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="st">gpgkey=https://gitlab.com/photonenkollektiv/gled2/-/raw/main/.rpm/public.gpg</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="st">metadata_expire=1h</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="op">EOF</span></span></code></pre></div>
+<pre><code>sudo dnf install gled</code></pre>
+<h2 id="macwindows">Mac/Windows</h2>
+<p>Download the latest release from the <a
+href="https://gitlab.com/photonenkollektiv/gled2/-/releases">releases
+page</a>.</p>
+<h2 id="other">Other</h2>
+<p>Install with cargo:</p>
+<pre><code>cargo install --git https://gitlab.com/photonenkollektiv/gled2</code></pre>
+<h1 id="source-code">Source code:</h1>
+<p><a
+href="https://gitlab.com/photonenkollektiv/gled2">https://gitlab.com/photonenkollektiv/gled2</a></p>
