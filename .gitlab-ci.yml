@@ -76,7 +76,7 @@ pages:
     FF_USE_FASTZIP: "true"
     ARTIFACT_COMPRESSION_LEVEL: "fastest"
   script:
-    - dnf -q -y install --allowerasing createrepo_c curl git dpkg-devel gnupg2 expect openssl reprepro findutils rpm-sign pandoc
+    - dnf -q -y install --allowerasing createrepo_c curl git dpkg-devel gnupg2 expect openssl reprepro findutils rpm-sign
     - mkdir rpm
     - "echo \"Downloading artifact: \\\"$(echo $ARTIFACT_URL_RPM | sed -e 's/file/raw/')\\\"\""
     - (cd rpm; curl $(echo $ARTIFACT_URL_RPM | sed -e 's/file/raw/') -o gled-${CI_COMMIT_TAG}.x86_64.rpm)
@@ -89,7 +89,6 @@ pages:
     - gpg2 --local-user "Gled Photonenkollektiv <gled@photonenkollektiv.de>" --yes --detach-sign --armor rpm/repodata/repomd.xml
     - mkdir -p public
     - mv rpm public/
-    - pandoc -f markdown README.md > public/index.html
   artifacts:
     expire_in: 1 day
     paths:

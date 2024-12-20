@@ -1,0 +1,8 @@
+[gitlab.com_gled_repo]
+name=gitlab.com_gled_repo
+baseurl=https://photonenkollektiv.gitlab.io/gled2/rpm/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://gitlab.com/photonenkollektiv/gled2/-/raw/main/.rpm/public.gpg
+metadata_expire=1h
