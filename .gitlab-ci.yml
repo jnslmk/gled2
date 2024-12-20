@@ -63,3 +63,33 @@ release:
           url: ${ARTIFACT_URL_DMG}
           filepath: '/assets/gled_${CI_COMMIT_TAG}_aarch64.dmg'
           link_type: package
+
+pages:
+  stage: deploy
+  image: fedora:latest
+  needs:
+  - job: linux
+    artifacts: true
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+$/'
+  variables:
+    FF_USE_FASTZIP: "true"
+    ARTIFACT_COMPRESSION_LEVEL: "fastest"
+  script:
+    - mkdir rpm
+    - (cd rpm; wget $ARTIFACT_URL_RPM)
+    - openssl aes-256-cbc -d -in .rpm/private.gpg.enc -out .rpm/private.gpg -k $GPG_KEY
+    - gpg2 --import .rpm/public.gpg
+    - gpg2 --import .rpm/private.gpg
+    - expect -c "spawn gpg2 --edit-key 92D2F72EEDF4105E18C30540E60766D8DA4461A4 trust quit; send \"5\ry\r\"; expect eof"
+    - rpm --define "_gpg_name Gled Photonenkollektiv <gled@photonenkollektiv.de>" --addsign rpm/*.rpm
+    - createrepo_c --database --compatibility rpm
+    - gpg2 --local-user "Gled Photonenkollektiv <gled@photonenkollektiv.de>" --yes --detach-sign --armor rpm/repodata/repomd.xml
+    - mkdir -p public
+    - mv rpm public/
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - public
+  only:
+    - master
