@@ -81,10 +81,10 @@ opt-level = 3
 
 [package.metadata.generate-rpm]
 assets = [
-    { source = "target/release/gled", dest = "/usr/bin/gled", mode = "755" },
-    { source = ".rpm/gled.desktop", dest = "/usr/share/applications/gled.desktop", mode = "555" },
-    { source = ".rpm/gled.repo", dest = "/etc/yum.repos.d/gled.repo", mode = "555" },
-    { source = "assets/logo.svg", dest = "/usr/share/icons/application-gled.svg", mode = "555" },
+    { source = "target/release/gled", dest = "/usr/bin/gled", mode = "555" },
+    { source = ".rpm/gled.desktop", dest = "/usr/share/applications/gled.desktop", mode = "444" },
+    { source = ".rpm/gled.repo", dest = "/etc/yum.repos.d/gled.repo", mode = "444" },
+    { source = "assets/logo.svg", dest = "/usr/share/icons/application-gled.svg", mode = "444" },
 ]
 
 [package.metadata.packager]
