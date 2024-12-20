@@ -1,8 +1,16 @@
 use crate::constants::{LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, TEXTURE_SIZE, UNIVERSES};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Positions {
     pub universes: [Universe; UNIVERSES as usize],
+}
+
+impl Default for Positions {
+    fn default() -> Self {
+        Self {
+            universes: [Default::default(); UNIVERSES as usize],
+        }
+    }
 }
 
 impl Positions {
