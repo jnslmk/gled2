@@ -78,7 +78,7 @@ pages:
   script:
     - dnf -q -y install --allowerasing createrepo_c curl git dpkg-devel gnupg2 expect openssl reprepro findutils rpm-sign
     - mkdir rpm
-    - echo \"Downloading artifact: \\\"$ARTIFACT_URL_RPM\\\"\"
+    - echo "Downloading artifact: \"$ARTIFACT_URL_RPM\""
     - (cd rpm; curl $ARTIFACT_URL_RPM -o gled-${CI_COMMIT_TAG}.x86_64.rpm)
     - openssl aes-256-cbc -d -in .rpm/private.gpg.enc -out .rpm/private.gpg -k $GPG_KEY
     - gpg2 --import .rpm/public.gpg
