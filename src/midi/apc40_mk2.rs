@@ -33,17 +33,17 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
             };
             UiAction::ToggleSceneActive(path)
         }
-        (128..136, 48, 127) => UiAction::SetSceneActive(
+        (128..136, 48 | 52, _) => UiAction::SetSceneActive(
             SceneInstancePath::new(DeckPath::C, status as usize - 128),
             false,
         ),
-        (144..152, 48, 127) => UiAction::SetSceneActive(
+        (144..152, 48 | 52, 127) => UiAction::SetSceneActive(
             SceneInstancePath::new(DeckPath::C, status as usize - 144),
             true,
         ),
         (144, 91, 127) => UiAction::SetBlackout(false),
         (128, 91, 127) => UiAction::SetBlackout(true),
-        (144, 99, 127) => UiAction::Tap,
+        (144, 82..=85 | 99, 127) => UiAction::Tap,
         (176, 13, value) => {
             let delta = if value > 64 {
                 value as f32 - 128.0
