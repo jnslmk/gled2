@@ -434,14 +434,6 @@ impl App {
                         self.blackout = !self.blackout;
                     }
 
-                    self.timing.freeze_button(
-                        ui,
-                        menu_button_size,
-                        self.project
-                            .as_ref()
-                            .map(|project| project.freeze_input_is_new())
-                            .unwrap_or_default(),
-                    );
                     self.timing.tap_button(
                         ui,
                         menu_button_size,

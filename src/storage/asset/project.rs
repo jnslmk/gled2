@@ -15,12 +15,11 @@ use crate::{
     scene_instance::SceneInstance,
     wgpu_render_state,
 };
-use deck::DeckPath;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, iter::once, time::Duration};
 use wgpu::CommandEncoderDescriptor;
 
-pub use deck::Deck;
+pub use deck::{Deck, DeckPath};
 pub use render_deactivated_scenes::RenderDeactivatedScenes;
 pub use scene_instance_path::SceneInstancePath;
 
@@ -36,7 +35,6 @@ pub struct Project {
     pub output_routings: OutputRoutings,
     pub artnet_config: ArtnetConfig,
     pub tap_input_events: BTreeSet<InputEvent>,
-    pub freeze_input_events: BTreeSet<InputEvent>,
     pub blackout_input_events: BTreeSet<InputEvent>,
     pub main_dimmer: f32,
 }
@@ -53,11 +51,6 @@ impl Default for Project {
             artnet_config: Default::default(),
             tap_input_events: std::iter::once(InputEvent::Key(egui::Key::T))
                 .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Mode(0))))
-                .collect(),
-            freeze_input_events: std::iter::once(InputEvent::Key(egui::Key::F))
-                .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Select(
-                    0,
-                ))))
                 .collect(),
             blackout_input_events: std::iter::once(InputEvent::Key(egui::Key::B))
                 .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Start(0))))
@@ -147,12 +140,6 @@ impl Project {
             }
             path.scene_instance -= 1;
         }
-        while path.scene_group > 0 {
-            if self.scene_instance(*path).is_some() {
-                break;
-            }
-            path.scene_group -= 1;
-        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -221,10 +208,6 @@ impl Project {
 
     pub fn tap_input_is_new(&self) -> bool {
         self.tap_input_events.iter().any(|event| event.is_new())
-    }
-
-    pub fn freeze_input_is_new(&self) -> bool {
-        self.freeze_input_events.iter().any(|event| event.is_new())
     }
 
     pub fn blackout_input_is_new(&self) -> bool {

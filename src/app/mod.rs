@@ -11,8 +11,7 @@ pub mod svg;
 mod timing;
 
 use crate::{
-    extract_output::ExtractOutput,
-    input::{Input, ARTNET_CONFIG},
+    input::Input,
     output_sender::{self, GpuReadyReceiver, OutputSender},
     storage::{loading, Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
     ui::{action::UiAction, windows::Windows},
@@ -20,7 +19,7 @@ use crate::{
 };
 use egui::{ahash::HashMap, Key, Modifiers, SidePanel, TopBottomPanel, ViewportId};
 use std::{
-    sync::{mpsc::Receiver, Arc},
+    sync::mpsc::Receiver,
     time::{SystemTime, UNIX_EPOCH},
 };
 use storage::{show_storage_error, show_storage_loading};
@@ -30,21 +29,21 @@ pub use svg::{positions, preview_positions, preview_uv, Svg};
 pub use timing::Timing;
 
 pub struct App {
-    startup: bool,
-    areas: MainWindowAreas,
-    windows: Windows,
-    output_sender: OutputSender,
-    gpu_ready_receiver: GpuReadyReceiver,
-    timing: Timing,
-    project: Option<Project>,
-    project_id: Option<AssetId<Project>>,
-    other_main_windows: HashMap<ViewportId, MainWindowAreas>,
-    blackout: bool,
-    selected_scene_instance: SceneInstancePath,
-    hovered_scene_instance: SceneInstancePath,
-    git_commit_message: String,
-    action_receiver: Receiver<UiAction>,
-    last_title_update: u64,
+    pub startup: bool,
+    pub areas: MainWindowAreas,
+    pub windows: Windows,
+    pub output_sender: OutputSender,
+    pub gpu_ready_receiver: GpuReadyReceiver,
+    pub timing: Timing,
+    pub project: Option<Project>,
+    pub project_id: Option<AssetId<Project>>,
+    pub other_main_windows: HashMap<ViewportId, MainWindowAreas>,
+    pub blackout: bool,
+    pub selected_scene_instance: SceneInstancePath,
+    pub hovered_scene_instance: SceneInstancePath,
+    pub git_commit_message: String,
+    pub ui_action_receiver: Receiver<UiAction>,
+    pub last_title_update: u64,
 }
 
 impl eframe::App for App {
@@ -58,71 +57,7 @@ impl eframe::App for App {
 
         self.timing.tick();
         Input::tick();
-
-        loop {
-            match (&mut self.project, self.action_receiver.try_recv().ok()) {
-                (Some(project), Some(UiAction::DeleteSelectedSceneInstance)) => {
-                    project.remove_scene_instance(&mut self.selected_scene_instance);
-                    UiAction::InitGPU.enqueue();
-                }
-                (Some(project), Some(UiAction::CloneSelectedSceneInstance)) => {
-                    if let Some(scene) = project
-                        .scene_instance(self.selected_scene_instance)
-                        .map(|scene_instance| scene_instance.scene)
-                    {
-                        project
-                            .deck(self.selected_scene_instance)
-                            .add_scene(&mut self.selected_scene_instance, scene);
-                        UiAction::InitGPU.enqueue();
-                    }
-                }
-                (Some(project), Some(UiAction::InitGPU)) => {
-                    project.init_gpu();
-                }
-                (Some(project), Some(UiAction::ReloadShaderCode(animation))) => {
-                    project.reload_shader_code(animation);
-                    self.windows.scenes.reload_shader_code(animation);
-                }
-                (Some(project), Some(UiAction::SendPositions)) => {
-                    project.send_positions();
-                }
-                (Some(project), Some(UiAction::SetSvg(svg))) => {
-                    project.svg = svg;
-                    project.remove_nonexistant_groups();
-                }
-                (_, Some(UiAction::SetProject(project))) => {
-                    if let Some(project) = Asset::get(project) {
-                        let mut persistant_state = PersistantState::get();
-                        persistant_state.last_project_id = Some(project.id);
-                        persistant_state.save();
-
-                        self.project_id = Some(project.id);
-                        let project = Arc::unwrap_or_clone(project).data;
-                        *ExtractOutput::get().routings.lock() = project.output_routings.clone();
-                        *ARTNET_CONFIG.lock() = project.artnet_config.clone();
-                        self.project = Some(project);
-                    } else {
-                        self.windows.artnet_input.close();
-                        self.windows.output_routings.close();
-                        self.windows.shortcuts.close();
-                        self.project.take();
-                        self.project_id.take();
-                    };
-                    UiAction::InitGPU.enqueue();
-                    svg::reset();
-                    self.selected_scene_instance = SceneInstancePath::default();
-                    self.hovered_scene_instance = SceneInstancePath::default();
-                }
-                (_, Some(UiAction::CloseWindow(viewport_id))) => {
-                    self.other_main_windows.remove(&viewport_id);
-                }
-                (_, Some(UiAction::OpenGitConfigWindow)) => {
-                    self.windows.git_config.open();
-                }
-                (_, None) => break,
-                (None, _) => (),
-            }
-        }
+        self.handle_ui_actions();
 
         if SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -302,7 +237,7 @@ impl App {
             other_main_windows: Default::default(),
             areas: Default::default(),
             git_commit_message: Default::default(),
-            action_receiver: UiAction::init_queue(),
+            ui_action_receiver: UiAction::init_queue(),
             last_title_update: 0,
         };
 
@@ -311,7 +246,7 @@ impl App {
 }
 
 #[derive(Clone, Copy)]
-struct MainWindowAreas {
+pub struct MainWindowAreas {
     fullscreen: bool,
     menu: bool,
     deck_a: bool,

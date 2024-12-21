@@ -12,7 +12,6 @@ pub struct Timing {
     last_frame: Instant,
     frame_count: usize,
     taps: Vec<Instant>,
-    freeze: bool,
     pub fade_mode: FadeMode,
 }
 
@@ -27,7 +26,6 @@ impl Default for Timing {
             last_frame: Instant::now(),
             frame_count: 0,
             taps: vec![],
-            freeze: false,
             fade_mode: Default::default(),
         }
     }
@@ -68,12 +66,10 @@ impl Timing {
     }
 
     fn progress_beat(&mut self) {
-        if !self.freeze {
-            let now = Instant::now();
-            self.beat_progression += (now.duration_since(self.last_beat_time).as_nanos() as f64
-                / self.beat_duration_nanoseconds()) as f32;
-            self.last_beat_time = now;
-        }
+        let now = Instant::now();
+        self.beat_progression += (now.duration_since(self.last_beat_time).as_nanos() as f64
+            / self.beat_duration_nanoseconds()) as f32;
+        self.last_beat_time = now;
     }
 
     #[inline]
@@ -128,14 +124,22 @@ impl Timing {
 
     pub fn half_button(&mut self, ui: &mut Ui) {
         if ui.add(Button::new("x½")).clicked() {
-            self.beats_per_minute /= 2.0;
+            self.multiply_speed(0.5);
         }
     }
 
     pub fn double_button(&mut self, ui: &mut Ui) {
         if ui.add(Button::new("x2")).clicked() {
-            self.beats_per_minute *= 2.0;
+            self.multiply_speed(2.0);
         }
+    }
+
+    pub fn multiply_speed(&mut self, multiplier: f32) {
+        self.beats_per_minute *= multiplier;
+    }
+
+    pub fn add_speed(&mut self, delta: f32) {
+        self.beats_per_minute += delta;
     }
 
     pub fn tap_button(&mut self, ui: &mut Ui, menu_button_size: Vec2, tap_input: bool) {
@@ -205,42 +209,28 @@ impl Timing {
         let tapped = response.clicked() || tap_input;
 
         if tapped {
-            let now = Instant::now();
-            self.taps.push(now);
-
-            if self.taps.len() > 1 {
-                if let (Some(first), Some(last)) = (self.taps.first(), self.taps.last()) {
-                    let beat_time_first = now.duration_since(*first);
-                    let beat_time_last = now.duration_since(*last);
-                    let avg_beat_time = (beat_time_first.as_nanos() - beat_time_last.as_nanos())
-                        / (self.taps.len() as u128 - 1);
-
-                    self.beats_per_minute = (60e+9f64 / f64::from(avg_beat_time as u32)) as f32;
-
-                    // adjust beat progression timing to last tap
-                    let offset = self.beat_progression % 4.0;
-                    let goal_offset = (self.taps.len() - 1) as f32 % 4.0;
-                    self.beat_progression += goal_offset - offset;
-                }
-            }
+            self.tap();
         }
     }
 
-    pub fn freeze_button(&mut self, ui: &mut Ui, menu_button_size: Vec2, freeze_input: bool) {
-        let underlined = TextFormat {
-            underline: Stroke::new(1.0, Color32::GRAY),
-            ..Default::default()
-        };
-        let mut freeze_text = LayoutJob::default();
-        freeze_text.append("F", 0.0, underlined);
-        freeze_text.append("reeze", 0.0, TextFormat::default());
+    pub fn tap(&mut self) {
+        let now = Instant::now();
+        self.taps.push(now);
 
-        let mut freeze = Button::new(freeze_text);
-        if self.freeze {
-            freeze = freeze.fill(Color32::DARK_RED);
-        }
-        if ui.add_sized(menu_button_size, freeze).clicked() || freeze_input {
-            self.freeze = !self.freeze;
+        if self.taps.len() > 1 {
+            if let (Some(first), Some(last)) = (self.taps.first(), self.taps.last()) {
+                let beat_time_first = now.duration_since(*first);
+                let beat_time_last = now.duration_since(*last);
+                let avg_beat_time = (beat_time_first.as_nanos() - beat_time_last.as_nanos())
+                    / (self.taps.len() as u128 - 1);
+
+                self.beats_per_minute = (60e+9f64 / f64::from(avg_beat_time as u32)) as f32;
+
+                // adjust beat progression timing to last tap
+                let offset = self.beat_progression % 4.0;
+                let goal_offset = (self.taps.len() - 1) as f32 % 4.0;
+                self.beat_progression += goal_offset - offset;
+            }
         }
     }
 }

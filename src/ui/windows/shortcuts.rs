@@ -38,13 +38,6 @@ impl ShortcutsWindow {
                         .map(Option::Some)
                         .chain(std::iter::once(None))
                         .collect::<Vec<_>>();
-                    let mut freeze_events = project
-                        .freeze_input_events
-                        .iter()
-                        .cloned()
-                        .map(Option::Some)
-                        .chain(std::iter::once(None))
-                        .collect::<Vec<_>>();
                     let mut blackout_events = project
                         .blackout_input_events
                         .iter()
@@ -58,11 +51,6 @@ impl ShortcutsWindow {
                         changed |= event.change_button(ui);
                     }
                     ui.separator();
-                    ui.heading("Freeze");
-                    for event in freeze_events.iter_mut() {
-                        changed |= event.change_button(ui);
-                    }
-                    ui.separator();
                     ui.heading("Blackout");
                     for event in blackout_events.iter_mut() {
                         changed |= event.change_button(ui);
@@ -70,7 +58,6 @@ impl ShortcutsWindow {
 
                     if changed {
                         project.tap_input_events = tap_events.into_iter().flatten().collect();
-                        project.freeze_input_events = freeze_events.into_iter().flatten().collect();
                         project.blackout_input_events =
                             blackout_events.into_iter().flatten().collect();
                     }

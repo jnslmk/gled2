@@ -23,7 +23,7 @@ egui_flex = "0.2"
 egui_ltreeview.git = "https://github.com/elwerene/egui_ltreeview.git"
 emath = "0.30"
 epaint = "0.30"
-fern = { version = "0.7", features = ["colored"] }
+env_logger = "0.11"
 gilrs = "0.11"
 home = "0.5"
 image = { version = "0.25", default-features = false, features = ["png"] }
@@ -34,6 +34,7 @@ keyring = { version = "3", features = [
 ] }
 kurbo = "0.11"
 log = "0.4"
+midir = "0.10"
 naga = "23"
 once_cell = "1.20"
 rayon = "1.10"

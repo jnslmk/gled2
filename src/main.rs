@@ -7,8 +7,7 @@ mod effect;
 mod extract_output;
 mod group;
 mod input;
-mod logging;
-mod opts;
+mod midi;
 mod output_clear;
 mod output_mix;
 mod output_routings;
@@ -54,9 +53,10 @@ const PRESENT_MODE: PresentMode = PresentMode::Immediate;
 const PRESENT_MODE: PresentMode = PresentMode::Mailbox;
 
 fn main() {
-    logging::init();
+    env_logger::init();
     storage::start_thread();
     temperature::start_thread();
+    midi::start_thread();
 
     #[cfg(not(debug_assertions))]
     update_check::Update::start_thread();
