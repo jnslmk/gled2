@@ -76,9 +76,7 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
         for j in 0x90..0x99 {
             for i in 0..127 {
                 //println!("Setting {i}");
-                if let Err(err) = connection.send(&[j, i, if on { 30 } else { 0 }, 127]) {
-                    log::error!("Failed to send blackout state: {}", err);
-                }
+                connection.send(&[j, i, if on { 30 } else { 0 }, 127]).ok();
                 //std::thread::sleep(Duration::from_secs(1));
                 std::thread::sleep(Duration::from_micros(200));
             }
@@ -86,30 +84,30 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
     }
 
     for state in state_receiver {
-        if let Err(err) = connection.send(&[0x90, 91, if state.blackout { 0 } else { 127 }, 127]) {
-            log::error!("Failed to send blackout state: {}", err);
-        }
+        connection
+            .send(&[0x90, 91, if state.blackout { 0 } else { 127 }, 127])
+            .ok();
 
         for flank in 0..4 {
-            if let Err(err) = connection.send(&[
-                0x90,
-                82 + flank,
-                match (state.beat_flank == flank, state.blackout) {
-                    (true, false) => 30,
-                    (_, true)
-                        if SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .map(|d| d.as_millis() / 200 % 2 == 0)
-                            .unwrap_or_default() =>
-                    {
-                        120
-                    }
-                    _ => 0,
-                },
-                127,
-            ]) {
-                log::error!("Failed to send blackout state: {}", err);
-            }
+            connection
+                .send(&[
+                    0x90,
+                    82 + flank,
+                    match (state.beat_flank == flank, state.blackout) {
+                        (true, false) => 30,
+                        (_, true)
+                            if SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .map(|d| d.as_millis() / 200 % 2 == 0)
+                                .unwrap_or_default() =>
+                        {
+                            120
+                        }
+                        _ => 0,
+                    },
+                    127,
+                ])
+                .ok();
         }
 
         for path in { 0..20 }
@@ -139,9 +137,7 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
                 (DeckPath::C, _) => [0x90 + path.scene_instance as u8, 48, value, 127],
                 _ => unreachable!(),
             };
-            if let Err(err) = connection.send(&message) {
-                log::error!("Failed to send scene active state: {}", err);
-            }
+            connection.send(&message).ok();
         }
     }
 }
