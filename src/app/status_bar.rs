@@ -59,6 +59,7 @@ impl App {
     }
 
     fn git_menu(&mut self, ui: &mut Ui) {
+        ui.set_max_width(300.0);
         ui.horizontal(|ui| {
             ui.heading("Assets ");
             if working() {
