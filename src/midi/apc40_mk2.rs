@@ -74,7 +74,7 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
     // Reset all lights
     for on in [true, false] {
         for j in 0x90..0x99 {
-            for i in 80..127 {
+            for i in 0..127 {
                 //println!("Setting {i}");
                 if let Err(err) = connection.send(&[j, i, if on { 30 } else { 0 }, 127]) {
                     log::error!("Failed to send blackout state: {}", err);
@@ -145,6 +145,3 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
         }
     }
 }
-
-//AB: 0-40
-//C0: 48
