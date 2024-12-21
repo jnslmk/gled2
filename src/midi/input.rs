@@ -1,18 +1,9 @@
-mod apc40_mk2;
+use crate::midi::apc40_mk2;
+use midir::MidiInput;
+use std::{collections::HashMap, thread::sleep, time::Duration};
 
-use midir::{MidiInput, MidiInputConnection};
-use std::{
-    collections::HashMap,
-    thread::{sleep, spawn},
-    time::Duration,
-};
-
-pub fn start_thread() {
-    spawn(discover_input_devices);
-}
-
-fn discover_input_devices() {
-    let mut connections: HashMap<String, MidiInputConnection<()>> = HashMap::new();
+pub fn discover() {
+    let mut connections = HashMap::new();
     let mut input = None;
 
     loop {
@@ -48,7 +39,7 @@ fn discover_input_devices() {
             log::trace!("Discovered midi input device \"{name}\" at \"{id}\"");
             match name.as_str() {
                 "APC40 mkII" => {
-                    log::info!("Connecting to \"{name}\" at \"{id}\"");
+                    log::info!("Connecting to input of \"{name}\" at \"{id}\"");
                     if let Some(input) = input.take() {
                         let connection = {
                             let id = id.clone();

@@ -1,5 +1,5 @@
 use crate::{
-    app::{svg, App, PersistantState, Svg},
+    app::{App, PersistantState, Svg},
     extract_output::ExtractOutput,
     input::ARTNET_CONFIG,
     storage::{Animation, Asset, AssetId, Project, SceneInstancePath, StaticOrCurve},
@@ -34,6 +34,7 @@ pub enum UiAction {
     /// This also activates the scene instance
     SetSceneOpacity(SceneInstancePath, f32),
     ToggleSceneActive(SceneInstancePath),
+    SetSceneActive(SceneInstancePath, bool),
     SetMainDimmer(f32),
 }
 
@@ -81,7 +82,6 @@ impl App {
                 (Some(project), UiAction::SetSceneOpacity(path, opacity)) => {
                     if let Some(scene_instance) = project.scene_instance(path) {
                         scene_instance.opacity = StaticOrCurve::new_static(opacity);
-                        scene_instance.active = true;
                     }
                 }
                 (Some(project), UiAction::SetMainDimmer(dimmer)) => {
@@ -90,6 +90,11 @@ impl App {
                 (Some(project), UiAction::ToggleSceneActive(path)) => {
                     if let Some(scene_instance) = project.scene_instance(path) {
                         scene_instance.active = !scene_instance.active;
+                    }
+                }
+                (Some(project), UiAction::SetSceneActive(path, active)) => {
+                    if let Some(scene_instance) = project.scene_instance(path) {
+                        scene_instance.active = active;
                     }
                 }
                 (_, UiAction::Tap) => {
@@ -123,7 +128,7 @@ impl App {
                         self.project_id.take();
                     };
                     UiAction::InitGPU.enqueue();
-                    svg::reset();
+                    Svg::reset();
                     self.selected_scene_instance = SceneInstancePath::default();
                     self.hovered_scene_instance = SceneInstancePath::default();
                 }

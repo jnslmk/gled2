@@ -71,30 +71,30 @@ impl Svg {
         }
         self.image.as_ref()
     }
-}
 
-pub fn reset() {
-    MEASUREMENT_POINTS.with_borrow_mut(|mp| {
-        *mp = MeasurementPoints::new();
-    });
-}
+    pub fn reset() {
+        MEASUREMENT_POINTS.with_borrow_mut(|mp| {
+            *mp = MeasurementPoints::new();
+        });
+    }
 
-pub fn groups() -> Vec<Group> {
-    MEASUREMENT_POINTS.with_borrow(|mp| mp.groups())
-}
+    pub fn groups() -> Vec<Group> {
+        MEASUREMENT_POINTS.with_borrow(|mp| mp.groups())
+    }
 
-pub fn positions(group: &Group) -> Positions {
-    MEASUREMENT_POINTS.with_borrow(|mp| mp.positions(group))
-}
+    pub fn positions(group: &Group) -> Positions {
+        MEASUREMENT_POINTS.with_borrow(|mp| mp.positions(group))
+    }
 
-pub fn preview_positions() -> Positions {
-    MEASUREMENT_POINTS.with_borrow(|mp| mp.preview_positions())
-}
+    pub fn preview_positions() -> Positions {
+        MEASUREMENT_POINTS.with_borrow(|mp| mp.preview_positions())
+    }
 
-pub fn preview_uv() -> Option<Rect> {
-    MEASUREMENT_POINTS.with_borrow_mut(|mp| mp.preview_uv())
-}
+    pub fn preview_uv() -> Option<Rect> {
+        MEASUREMENT_POINTS.with_borrow_mut(|mp| mp.preview_uv())
+    }
 
-pub fn universes() -> BTreeSet<u16> {
-    MEASUREMENT_POINTS.with_borrow(|mp| mp.universes())
+    pub fn universes() -> BTreeSet<u16> {
+        MEASUREMENT_POINTS.with_borrow(|mp| mp.universes())
+    }
 }

@@ -1,7 +1,12 @@
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use super::state::MidiState;
 use crate::{
     storage::{DeckPath, SceneInstancePath},
     ui::action::UiAction,
 };
+use crossbeam_channel::Receiver;
+use midir::MidiOutputConnection;
 
 pub fn handle_input(_stamp: u64, message: &[u8]) {
     if message.len() != 3 {
@@ -28,6 +33,14 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
             };
             UiAction::ToggleSceneActive(path)
         }
+        (128..136, 48, 127) => UiAction::SetSceneActive(
+            SceneInstancePath::new(DeckPath::C, status as usize - 128),
+            false,
+        ),
+        (144..152, 48, 127) => UiAction::SetSceneActive(
+            SceneInstancePath::new(DeckPath::C, status as usize - 144),
+            true,
+        ),
         (144, 91, 127) => UiAction::SetBlackout(false),
         (128, 91, 127) => UiAction::SetBlackout(true),
         (144, 99, 127) => UiAction::Tap,
@@ -56,3 +69,82 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
     }
     .enqueue();
 }
+
+pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutputConnection) {
+    // Reset all lights
+    for on in [true, false] {
+        for j in 0x90..0x99 {
+            for i in 80..127 {
+                //println!("Setting {i}");
+                if let Err(err) = connection.send(&[j, i, if on { 30 } else { 0 }, 127]) {
+                    log::error!("Failed to send blackout state: {}", err);
+                }
+                //std::thread::sleep(Duration::from_secs(1));
+                std::thread::sleep(Duration::from_micros(200));
+            }
+        }
+    }
+
+    for state in state_receiver {
+        if let Err(err) = connection.send(&[0x90, 91, if state.blackout { 0 } else { 127 }, 127]) {
+            log::error!("Failed to send blackout state: {}", err);
+        }
+
+        for flank in 0..4 {
+            if let Err(err) = connection.send(&[
+                0x90,
+                82 + flank,
+                match (state.beat_flank == flank, state.blackout) {
+                    (true, false) => 30,
+                    (_, true)
+                        if SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .map(|d| d.as_millis() / 200 % 2 == 0)
+                            .unwrap_or_default() =>
+                    {
+                        120
+                    }
+                    _ => 0,
+                },
+                127,
+            ]) {
+                log::error!("Failed to send blackout state: {}", err);
+            }
+        }
+
+        for path in { 0..20 }
+            .map(|index| SceneInstancePath::new(DeckPath::A, index))
+            .chain({ 0..20 }.map(|index| SceneInstancePath::new(DeckPath::B, index)))
+            .chain({ 0..8 }.map(|index| SceneInstancePath::new(DeckPath::C, index)))
+        {
+            let active = state.active_scenes.contains(&path);
+            let value = match (path.deck_path, active) {
+                (DeckPath::A, true) => 30,
+                (DeckPath::B, true) => 50,
+                (DeckPath::C, true) => 30,
+                _ => 0,
+            };
+
+            let message = match (path.deck_path, path.scene_instance) {
+                (DeckPath::A, 0..4) => [0x90, path.scene_instance as u8 + 32, value, 127],
+                (DeckPath::B, 0..4) => [0x90, path.scene_instance as u8 + 36, value, 127],
+                (DeckPath::A, 4..8) => [0x90, path.scene_instance as u8 + 20, value, 127],
+                (DeckPath::B, 4..8) => [0x90, path.scene_instance as u8 + 24, value, 127],
+                (DeckPath::A, 8..12) => [0x90, path.scene_instance as u8 + 8, value, 127],
+                (DeckPath::B, 8..12) => [0x90, path.scene_instance as u8 + 12, value, 127],
+                (DeckPath::A, 12..16) => [0x90, path.scene_instance as u8 + 4, value, 127],
+                (DeckPath::B, 12..16) => [0x90, path.scene_instance as u8, value, 127],
+                (DeckPath::A, 16..20) => [0x90, path.scene_instance as u8 - 16, value, 127],
+                (DeckPath::B, 16..20) => [0x90, path.scene_instance as u8 - 12, value, 127],
+                (DeckPath::C, _) => [0x90 + path.scene_instance as u8, 48, value, 127],
+                _ => unreachable!(),
+            };
+            if let Err(err) = connection.send(&message) {
+                log::error!("Failed to send scene active state: {}", err);
+            }
+        }
+    }
+}
+
+//AB: 0-40
+//C0: 48

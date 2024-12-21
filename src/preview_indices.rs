@@ -3,7 +3,7 @@
 //!  * 0xffffffff if it should stay black.
 //!  * index of output buffer where the color triplet starts.
 use crate::{
-    app::preview_positions,
+    app::Svg,
     constants::{
         LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE,
         PREVIEW_TEXTURE_SIZE, UNIVERSES,
@@ -40,7 +40,7 @@ impl PreviewIndices {
         PREVIEW_INDICES.get_or_init(|| {
             let device = wgpu_render_state().device;
 
-            let positions = preview_positions();
+            let positions = Svg::preview_positions();
             let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
             let positions = device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("Preview positions buffer"),
@@ -185,7 +185,7 @@ impl PreviewIndices {
         }
 
         debug!("Sending positions to gpu");
-        let positions = preview_positions();
+        let positions = Svg::preview_positions();
         let positions_contents: [u8; POSITIONS_BUFFER_SIZE as usize] = positions.into();
 
         if let Some(mut view) = queue.write_buffer_with(

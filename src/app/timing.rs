@@ -156,49 +156,59 @@ impl Timing {
         );
         let response = ui.add_sized(menu_button_size, Button::new(tap_text));
 
-        let beat_progression = self.beat_progression % 4.0;
         let mut alpha = None;
-        if (beat_progression % 1.0) < 0.10 {
+        let bar_progression = self.beat_progression % 1.0;
+        if bar_progression < 0.10 {
             alpha = Some(30.0);
-        } else if (beat_progression % 1.0) < 0.20 {
-            alpha = Some(20.0 - (((beat_progression % 1.0) - 0.1) * 200.0));
-        } else if (beat_progression % 1.0) > 0.9 {
-            alpha = Some(((beat_progression % 1.0) - 0.9) * 200.0);
+        } else if bar_progression < 0.20 {
+            alpha = Some(20.0 - ((bar_progression - 0.1) * 200.0));
+        } else if bar_progression > 0.9 {
+            alpha = Some((bar_progression - 0.9) * 200.0);
         }
         if let Some(alpha) = alpha {
             ui.painter().rect_filled(
-                if (0.5..=1.5).contains(&beat_progression) {
-                    // top right
-                    response
-                        .rect
-                        .split_left_right_at_fraction(0.5)
-                        .1
-                        .split_top_bottom_at_fraction(0.5)
-                        .0
-                } else if (1.5..=2.5).contains(&beat_progression) {
-                    // bottom left
-                    response
-                        .rect
-                        .split_left_right_at_fraction(0.5)
-                        .0
-                        .split_top_bottom_at_fraction(0.5)
-                        .1
-                } else if (2.5..=3.5).contains(&beat_progression) {
-                    // bottom right
-                    response
-                        .rect
-                        .split_left_right_at_fraction(0.5)
-                        .1
-                        .split_top_bottom_at_fraction(0.5)
-                        .1
-                } else {
+                match self.beat_flank() {
+                    0 =>
                     // top left
-                    response
-                        .rect
-                        .split_left_right_at_fraction(0.5)
-                        .0
-                        .split_top_bottom_at_fraction(0.5)
-                        .0
+                    {
+                        response
+                            .rect
+                            .split_left_right_at_fraction(0.5)
+                            .0
+                            .split_top_bottom_at_fraction(0.5)
+                            .0
+                    }
+                    1 =>
+                    // top right
+                    {
+                        response
+                            .rect
+                            .split_left_right_at_fraction(0.5)
+                            .1
+                            .split_top_bottom_at_fraction(0.5)
+                            .0
+                    }
+                    2 =>
+                    // bottom left
+                    {
+                        response
+                            .rect
+                            .split_left_right_at_fraction(0.5)
+                            .0
+                            .split_top_bottom_at_fraction(0.5)
+                            .1
+                    }
+                    3 =>
+                    // bottom right
+                    {
+                        response
+                            .rect
+                            .split_left_right_at_fraction(0.5)
+                            .1
+                            .split_top_bottom_at_fraction(0.5)
+                            .1
+                    }
+                    _ => unreachable!(),
                 }
                 .shrink(1.0),
                 Rounding::default(),
@@ -210,6 +220,15 @@ impl Timing {
 
         if tapped {
             self.tap();
+        }
+    }
+
+    pub fn beat_flank(&self) -> u8 {
+        match self.beat_progression % 4.0 {
+            0.5..1.5 => 1,
+            1.5..2.5 => 2,
+            2.5..3.5 => 3,
+            _ => 0,
         }
     }
 

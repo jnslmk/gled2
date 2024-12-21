@@ -1,10 +1,10 @@
-use super::App;
-use crate::{app::preview_uv, preview::Preview};
+use super::{App, Svg};
+use crate::preview::Preview;
 use egui::{load::SizedTexture, Color32, Context, Image, Vec2};
 
 impl App {
     pub fn preview(&mut self, ctx: &Context) {
-        if let Some(uv) = preview_uv() {
+        if let Some(uv) = Svg::preview_uv() {
             egui::CentralPanel::default().show(ctx, |ui| {
                 let size = if uv.max.x > uv.max.y {
                     Vec2::new(

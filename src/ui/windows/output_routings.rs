@@ -1,5 +1,5 @@
 use crate::{
-    app::svg::universes, extract_output::ExtractOutput, storage::Asset, ui::ChangeButton,
+    app::Svg, extract_output::ExtractOutput, storage::Asset, ui::ChangeButton,
     viewport_builder::default_viewport_builder,
 };
 use egui::{ComboBox, Context, Id, Layout, RichText, Vec2, ViewportId};
@@ -36,7 +36,7 @@ impl OutputRoutingsWindow {
                             let mut routings = extract_output.routings.lock();
 
                             ui.with_layout(Layout::top_down_justified(egui::Align::Min), |ui| {
-                                let universes = universes();
+                                let universes = Svg::universes();
                                 extract_output
                                     .universes
                                     .lock()

@@ -1,7 +1,7 @@
 mod state;
 
 use crate::{
-    app::positions,
+    app::Svg,
     group::Groups,
     storage::{
         Animation, AnimationConfig, Asset, AssetId, Palette, RangeDegrees, RangePercentage,
@@ -92,7 +92,7 @@ impl Effect {
 
         let group = groups.get(self.group_index);
         if effect_state.sent_group.as_ref() != group {
-            let positions = group.map(positions);
+            let positions = group.map(Svg::positions);
             effect_state
                 .texture_to_output
                 .set_positions(queue, positions.unwrap_or_default());

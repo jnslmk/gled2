@@ -7,11 +7,12 @@ mod preview;
 mod project_functions;
 mod status_bar;
 mod storage;
-pub mod svg;
+mod svg;
 mod timing;
 
 use crate::{
     input::Input,
+    midi::MidiState,
     output_sender::{self, GpuReadyReceiver, OutputSender},
     storage::{loading, Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
     ui::{action::UiAction, windows::Windows},
@@ -25,7 +26,7 @@ use std::{
 use storage::{show_storage_error, show_storage_loading};
 
 pub use persistant_state::PersistantState;
-pub use svg::{positions, preview_positions, preview_uv, Svg};
+pub use svg::Svg;
 pub use timing::Timing;
 
 pub struct App {
@@ -99,6 +100,21 @@ impl eframe::App for App {
                 self.timing.fade_duration(),
             );
         }
+
+        MidiState {
+            blackout: self.blackout,
+            beat_flank: self.timing.beat_flank(),
+            active_scenes: self
+                .project
+                .as_mut()
+                .map_or_else(Default::default, |project| {
+                    project
+                        .all_scene_instances()
+                        .filter_map(|(path, scene)| if scene.active { Some(path) } else { None })
+                        .collect()
+                }),
+        }
+        .enqueue();
 
         self.draw_main_window(ctx, None);
 

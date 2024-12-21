@@ -1,7 +1,7 @@
 mod grid;
 mod header;
 
-use super::{preview_uv, App};
+use super::{App, Svg};
 use crate::storage::SceneInstancePath;
 use egui::{Margin, Ui};
 
@@ -11,7 +11,7 @@ impl App {
             .svg_mut()
             .and_then(|svg| svg.image())
             .map(|image| image.texture_id(ui.ctx()));
-        let uv = preview_uv();
+        let uv = Svg::preview_uv();
         egui::Frame::none()
             .inner_margin(Margin::from(6.0))
             .show(ui, |ui| {

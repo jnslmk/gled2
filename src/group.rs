@@ -1,4 +1,4 @@
-use crate::{app::svg::groups, ui::ChangeButton};
+use crate::{app::Svg, ui::ChangeButton};
 use egui::{Button, Color32, RichText, Stroke, Ui};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -12,7 +12,7 @@ pub struct Group(pub String);
 
 impl Group {
     pub fn color(&self) -> Color32 {
-        let index = groups()
+        let index = Svg::groups()
             .iter()
             .position(|group| group == self)
             .unwrap_or_default();
@@ -59,7 +59,7 @@ impl Groups {
     }
 
     pub fn remove_nonexistant_groups(&mut self) {
-        self.0.retain(|_, group| groups().contains(group));
+        self.0.retain(|_, group| Svg::groups().contains(group));
     }
 
     pub fn is_empty(&self) -> bool {
@@ -92,7 +92,7 @@ impl ChangeButton for Option<Groups> {
 
 impl ChangeButton for Groups {
     fn change_button(&mut self, ui: &mut egui::Ui) -> bool {
-        if groups().is_empty() {
+        if Svg::groups().is_empty() {
             ui.label("No groups available");
             return false;
         }
@@ -181,7 +181,7 @@ impl ChangeButton for Groups {
 
 fn group_buttons(ui: &mut Ui, selected: &mut Option<Group>) -> bool {
     let mut changed = false;
-    for group in groups() {
+    for group in Svg::groups() {
         if ui
             .add(group_button(&group, selected.as_ref() == Some(&group)))
             .clicked()
