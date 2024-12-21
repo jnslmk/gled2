@@ -152,10 +152,8 @@ impl UiAction {
     }
 
     pub fn enqueue(self) {
-        ACTION_SENDER
-            .get()
-            .expect("Action sender not initialized")
-            .send(self)
-            .expect("Action receiver dropped");
+        if let Some(sender) = ACTION_SENDER.get() {
+            sender.send(self).expect("Action receiver dropped");
+        }
     }
 }

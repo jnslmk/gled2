@@ -29,6 +29,7 @@ pub fn discover() {
                 })
                 .collect::<Vec<_>>()
         };
+        connections.retain(|id, _| ports.iter().any(|(port, _)| port.id() == *id));
 
         for (port, name) in ports {
             let id = port.id();

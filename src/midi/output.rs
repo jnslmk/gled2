@@ -33,6 +33,8 @@ pub fn discover() {
                 })
                 .collect::<Vec<_>>()
         };
+        handled_devices.retain(|id| ports.iter().any(|(port, _)| port.id() == *id));
+
         for (port, name) in ports {
             let id = port.id();
             if handled_devices.contains(&id) {
