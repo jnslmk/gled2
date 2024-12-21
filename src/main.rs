@@ -24,6 +24,9 @@ mod transition;
 mod ui;
 mod viewport_builder;
 
+#[cfg(not(debug_assertions))]
+mod update_check;
+
 use app::App;
 use constants::OUTPUT_BUFFER_SIZE;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup};
@@ -54,6 +57,9 @@ fn main() {
     logging::init();
     storage::start_thread();
     temperature::start_thread();
+
+    #[cfg(not(debug_assertions))]
+    update_check::Update::start_thread();
 
     let mut wgpu_options = WgpuConfiguration::default();
     wgpu_options.present_mode = PRESENT_MODE;

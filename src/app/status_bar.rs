@@ -17,6 +17,15 @@ impl App {
                             ui.add(Label::new(format!("{framerate:.0} fps")));
                         }
 
+                        #[cfg(not(debug_assertions))]
+                        if let Some(version) = crate::update_check::Update::update_available() {
+                            if ui.button(format!("Update available: {version}")).clicked() {
+                                if let Some(url) = crate::update_check::Update::download_url() {
+                                    ui.ctx().open_url(egui::OpenUrl::new_tab(url));
+                                }
+                            }
+                        }
+
                         ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.add(Label::new(temperature()));
                             ui.add_space(4.0);
