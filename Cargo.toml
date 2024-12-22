@@ -76,6 +76,9 @@ winresource = "0.1"
 
 [profile.release]
 lto = "fat"
+
+[profile.profiling]
+inherits = "release"
 debug = true
 
 [profile.dev.package."*"]
