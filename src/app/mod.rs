@@ -45,6 +45,7 @@ pub struct App {
     pub git_commit_message: String,
     pub ui_action_receiver: Receiver<UiAction>,
     pub last_title_update: u64,
+    pub midi_output_active: bool,
 }
 
 impl eframe::App for App {
@@ -101,20 +102,24 @@ impl eframe::App for App {
             );
         }
 
-        MidiState {
-            blackout: self.blackout,
-            beat_flank: self.timing.beat_flank(),
-            active_scenes: self
-                .project
-                .as_mut()
-                .map_or_else(Default::default, |project| {
-                    project
-                        .all_scene_instances()
-                        .filter_map(|(path, scene)| if scene.active { Some(path) } else { None })
-                        .collect()
-                }),
+        if self.midi_output_active {
+            MidiState {
+                blackout: self.blackout,
+                beat_flank: self.timing.beat_flank(),
+                active_scenes: self
+                    .project
+                    .as_mut()
+                    .map_or_else(Default::default, |project| {
+                        project
+                            .all_scene_instances()
+                            .filter_map(
+                                |(path, scene)| if scene.active { Some(path) } else { None },
+                            )
+                            .collect()
+                    }),
+            }
+            .enqueue();
         }
-        .enqueue();
 
         self.draw_main_window(ctx, None);
 
@@ -255,6 +260,7 @@ impl App {
             git_commit_message: Default::default(),
             ui_action_receiver: UiAction::init_queue(),
             last_title_update: 0,
+            midi_output_active: false,
         };
 
         Some(app)

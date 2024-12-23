@@ -36,6 +36,7 @@ pub enum UiAction {
     ToggleSceneActive(SceneInstancePath),
     SetSceneActive(SceneInstancePath, bool),
     SetMainDimmer(f32),
+    MidiOutputActive(bool),
 }
 
 impl App {
@@ -137,6 +138,9 @@ impl App {
                 }
                 (_, UiAction::OpenGitConfigWindow) => {
                     self.windows.git_config.open();
+                }
+                (_, UiAction::MidiOutputActive(active)) => {
+                    self.midi_output_active = active;
                 }
                 (None, _) => log::trace!("Ingoring ui action which needs a loaded project"),
             }

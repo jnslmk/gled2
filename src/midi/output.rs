@@ -1,4 +1,7 @@
-use crate::midi::{apc40_mk2, state::new_receiver};
+use crate::{
+    midi::{apc40_mk2, state::new_receiver},
+    ui::action::UiAction,
+};
 use midir::MidiOutput;
 use std::{
     collections::HashSet,
@@ -7,6 +10,7 @@ use std::{
 };
 
 pub fn discover() {
+    let mut was_active = false;
     let mut handled_devices = HashSet::new();
     let mut output = None;
 
@@ -61,6 +65,18 @@ pub fn discover() {
                     log::trace!("Ignoring \"{name}\" at \"{id}\"")
                 }
             }
+        }
+
+        match (handled_devices.is_empty(), was_active) {
+            (true, true) => {
+                was_active = false;
+                UiAction::MidiOutputActive(false).enqueue();
+            }
+            (false, false) => {
+                was_active = true;
+                UiAction::MidiOutputActive(true).enqueue();
+            }
+            _ => {}
         }
 
         sleep(Duration::from_secs(1));
