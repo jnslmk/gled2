@@ -1,5 +1,5 @@
 #!/bin/bash
-set -xe
+set -e
 
 cargo install cargo-edit cargo-packager --locked
 
@@ -8,6 +8,9 @@ cargo set-version ${CI_COMMIT_TAG}
 
 if [[ $(uname) == "Linux" ]]; then
     cargo install cargo-generate-rpm cargo-xwin --locked
+
+    echo "Publishing to crates.io"
+    cargo publish
 
     echo "Building Linux rpm"
     cargo build --release
