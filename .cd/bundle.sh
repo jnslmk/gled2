@@ -9,8 +9,9 @@ cargo set-version ${CI_COMMIT_TAG}
 if [[ $(uname) == "Linux" ]]; then
     cargo install cargo-generate-rpm cargo-xwin --locked
 
-    echo "Publishing to crates.io"
-    cargo publish
+    #Currently not possible as we use a fork of ltreeview
+    #echo "Publishing to crates.io"
+    #cargo publish
 
     echo "Building Linux rpm"
     cargo build --release
