@@ -17,6 +17,10 @@ Download and install a [Release](https://gitlab.com/photonenkollektiv/gled2/-/re
 
 Linux RPMs contain a `yum.repos.d` file so that gled is automatically updated with your system.
 
+# Contribution
+
+Gled and its assets are open source (GPL). Please feel free to create merge requests for [gled](https://gitlab.com/photonenkollektiv/gled2) or its [asset library](https://gitlab.com/photonenkollektiv/gled2_assets)!
+
 # Photonenkollektiv
  * Many of the ideas and concepts in gled are inspired by the work of [Photonenkollektiv](https://photonenkollektiv.de/).
  * We created multiple different kind of custom lamps based on WS281X LED strips.
