@@ -1,6 +1,6 @@
 # Creating a SVG file for a lamp
 
-Create a svg file and set parameters of nodes by writing the parameters as JSON into description fields.
+Create a svg file and set parameters of nodes by writing the parameters as [Hjson](https://hjson.github.io/) into description fields.
 
 All fields are optional.
 
@@ -8,10 +8,10 @@ All fields are optional.
 
 ```hjson
 {
-    "groups": ["bla", "blub"],
-    "start": 42,
-    "universe": 100,
-    "count": 100
+    groups: ["bla", "blub"],
+    start: 42,
+    universe: 100,
+    count: 100
 }
 ```
 
@@ -43,6 +43,6 @@ You can have multiple lights all at the same positions but with different addres
 
 ## Example
 
-![Lamp with parameter](lamp_with_parameter.jpeg)
+![Lamp with parameters](lamp_with_parameters.png)
 
 > Be carefull to always press the **Set** button in inkscape!
