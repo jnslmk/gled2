@@ -6,7 +6,7 @@
 
 ![Inkscape with picture](svg1.jpeg)
 
-2. Include, clone and place your lamps in the right position, set the start addresses of your lamps (see [Determining start addresses](determining_start_addresses.md)).
+2. Include, clone and place your lamps in the right position, set the start addresses and universes of your lamps. We use far away universes for the lamps, so we have no overlap when we have more than 170 leds on a set of connected lamps.
 
 ![Inkscape with picture and lamp2](svg2.jpeg)
 
