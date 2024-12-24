@@ -1,0 +1,6 @@
+[book]
+authors = ["René Rössler"]
+language = "en"
+multilingual = false
+src = "src"
+title = "gled"

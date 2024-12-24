@@ -80,6 +80,7 @@ pages:
   script:
     - dnf -q -y install --allowerasing createrepo_c curl git dpkg-devel gnupg2 expect openssl reprepro findutils rpm-sign
     - mkdir -p public
+    - .cd/create_book.sh
     - .cd/create_rpm_repo.sh
     - mv rpm public/
   artifacts:

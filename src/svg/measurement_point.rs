@@ -1,4 +1,4 @@
-//! Save the list of LEDs, a position for color measurement and the current color for render groups.
+//! Save the list of LEDs, a position for color measurement and the current color for groups.
 
 use super::{Led, Parameter, ParsedSvg};
 use crate::{
@@ -18,7 +18,7 @@ pub type Universes = BTreeSet<u16>;
 
 #[derive(Clone, Debug, Default)]
 pub struct MeasurementPoints {
-    /// points for each render group
+    /// points for each group
     points: BTreeMap<Group, Vec<MeasurementPoint>>,
     /// Positions of each individual led
     preview_positions: Positions,

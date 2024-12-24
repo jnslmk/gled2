@@ -1,4 +1,4 @@
-//! Read parameters like fixture and render groups for each led from svg files
+//! Read parameters like fixture and groups for each led from svg files
 
 mod led;
 mod measurement_point;
