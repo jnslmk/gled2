@@ -1,5 +1,3 @@
-![Logo](../assets/logo.svg)
-
 gled is an application for creating spatial animations on light installations.
 
 # Features
