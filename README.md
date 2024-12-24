@@ -17,6 +17,8 @@ Download and install a [Release](https://gitlab.com/photonenkollektiv/gled2/-/re
 
 Linux RPMs contain a `yum.repos.d` file so that gled is automatically updated with your system.
 
+The Apple developer account for the signed Mac application is sponsored by [FreshX GmbH](https://freshx.de/).
+
 # Documentation
 
 The documentation is available at [photonenkollektiv.gitlab.io/gled2](https://photonenkollektiv.gitlab.io/gled2).
