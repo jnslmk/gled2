@@ -1,7 +1,7 @@
 # Summary
 
 [Overview](overview.md)
-* [SVG](svg/index.md)
+* [SVG (used for spatial orientation of lamps)](svg/index.md)
   * [Groups](svg/groups.md)
   * [Lamp](svg/lamp.md)
-  * [Installation](svg/installation.md)
+  * [Setting up an installation](svg/installation.md)
