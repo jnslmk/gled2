@@ -13,12 +13,18 @@ gled is an application for creating spatial animations on light installations.
    * DMX, currently the Enttec DMX USB Pro is supported
    * Two different modes for [WLED](https://kno.wled.ge/)
 
+# Installation
+
+Download and install a [Release](https://gitlab.com/photonenkollektiv/gled2/-/releases).
+
+Linux RPMs contain a `yum.repos.d` file so that gled is automatically updated with your system.
+
 # Photonenkollektiv
  * Many of the ideas and concepts in gled are inspired by the work of [Photonenkollektiv](https://photonenkollektiv.de/).
  * We created multiple different kind of custom lamps based on WS281X LED strips.
  * We use gled since its first version in 2019 to create animations for our installations.
 
-## Showcase of installations we made in 2024
+## Showcase of some installations we made in 2024 with gled
 
 <video style="width:100%;margin-top:32px;margin-bottom:32px" controls="">
     <source src="https://photonenkollektiv.de/videos/gled_2024.av1.mp4" type="video/mp4; codecs=av01.0.05M.08">
