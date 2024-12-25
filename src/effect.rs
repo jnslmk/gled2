@@ -101,7 +101,7 @@ impl Effect {
 
         effect_state
             .renderer
-            .set_buffers(queue, effect_state, palette);
+            .set_buffers(queue, effect_state, beat_progression, palette);
     }
 
     pub fn render(

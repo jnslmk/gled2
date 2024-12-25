@@ -73,7 +73,7 @@ impl EffectState {
         self.texture_id.0
     }
 
-    pub fn write_data(&self, data: &mut [u8]) {
+    pub fn write_data(&self, beat_progression: f32, data: &mut [u8]) {
         data[0..4].copy_from_slice(&self.beat_progression.to_le_bytes());
         data[4..8].copy_from_slice(&self.beats_per_minute.to_le_bytes());
         data[8..12].copy_from_slice(&self.framerate.to_le_bytes());
@@ -82,7 +82,7 @@ impl EffectState {
         data[20..24].copy_from_slice(&2f32.powi(self.speed_exponent).to_le_bytes());
         self.animation_config.write_data(
             &mut data[24..24 + AnimationConfig::size()],
-            self.beat_progression,
+            beat_progression,
         );
     }
 

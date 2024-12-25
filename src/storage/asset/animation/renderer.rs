@@ -129,13 +129,17 @@ impl AnimationRenderer {
         &self,
         queue: &Queue,
         state: &EffectState,
+        beat_progression: f32,
         palette: Option<Arc<Asset<Palette>>>,
     ) {
         let mut contents = [0; Palette::size() + EffectState::size()];
         if let Some(palette) = palette {
             palette.data.write_data(&mut contents[..Palette::size()]);
         }
-        state.write_data(&mut contents[Palette::size()..Palette::size() + EffectState::size()]);
+        state.write_data(
+            beat_progression,
+            &mut contents[Palette::size()..Palette::size() + EffectState::size()],
+        );
 
         if let Some(mut view) = queue.write_buffer_with(
             &self.uniform,
