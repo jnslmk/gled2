@@ -2,10 +2,9 @@ use super::{
     render_deactivated_scenes::RenderDeactivatedScenes, scene_instance_path::SceneInstancePath,
 };
 use crate::{
-    app::Timing,
+    app::timing::Timing,
     group::{Group, Groups},
-    scene_instance::SceneInstance,
-    storage::{Asset, AssetId, Palette, Scene},
+    storage::{scene::instance::SceneInstance, Asset, AssetId, Palette, Scene},
     transition::{Transition, TransitionGoal},
 };
 use rand::seq::SliceRandom;

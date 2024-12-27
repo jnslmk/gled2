@@ -22,7 +22,7 @@ impl OutputMix {
 
         let module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("OutputMix shader"),
-            source: ShaderSource::Wgsl(include_str!("./shaders/output_mix.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("../shaders/output_mix.wgsl").into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {

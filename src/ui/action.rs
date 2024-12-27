@@ -1,8 +1,16 @@
 use crate::{
-    app::{App, PersistantState, Svg},
-    extract_output::ExtractOutput,
-    input::ARTNET_CONFIG,
-    storage::{Animation, Asset, AssetId, Project, SceneInstancePath, StaticOrCurve},
+    app::{persistant_state::PersistantState, svg::Svg, App},
+    input::artnet::ARTNET_CONFIG,
+    pipeline::extract_output::ExtractOutput,
+    storage::{
+        asset::{
+            animation::Animation,
+            curve::static_or_curve::StaticOrCurve,
+            project::{scene_instance_path::SceneInstancePath, Project},
+            Asset,
+        },
+        asset_id::AssetId,
+    },
 };
 use egui::ViewportId;
 use once_cell::sync::OnceCell;

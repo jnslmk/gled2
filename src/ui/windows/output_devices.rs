@@ -1,6 +1,6 @@
 use crate::{
-    output_sender::enttec_usb_pro::serial_numbers,
-    storage::{Asset, OutputDevice},
+    pipeline::output_sender::enttec_usb_pro::serial_numbers,
+    storage::asset::{output_device::OutputDevice, Asset},
     ui::asset_tree::{AssetTree, TreeSelection},
     viewport_builder::default_viewport_builder,
 };

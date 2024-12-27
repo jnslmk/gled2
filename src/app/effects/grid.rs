@@ -1,7 +1,7 @@
 use super::App;
 use crate::{
     app::PersistantState,
-    storage::SceneInstancePath,
+    storage::asset::project::scene_instance_path::SceneInstancePath,
     transition::{Transition, TransitionGoal},
     ui::scene_instance::widget::SceneInstanceWidget,
 };

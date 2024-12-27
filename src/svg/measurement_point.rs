@@ -4,7 +4,7 @@ use super::{Led, Parameter, ParsedSvg};
 use crate::{
     constants::UNIVERSES,
     group::Group,
-    texture_to_output::{Lamp, Positions, Universe},
+    texture_to_output::positions::{Lamp, Positions, Universe},
 };
 use egui::{Pos2, Rect};
 use kurbo::{ParamCurve, ParamCurveArclen};

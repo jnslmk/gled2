@@ -1,16 +1,14 @@
-mod artnet;
-mod event;
+pub mod artnet;
+pub mod event;
 
 use egui::{mutex::Mutex, Context};
+use event::{GamepadEvent, InputEvent};
 use gilrs::{Axis, Button, Event, Gilrs};
 use log::debug;
 use std::{
     collections::{HashMap, HashSet},
     sync::{mpsc::Receiver, Arc, OnceLock},
 };
-
-pub use artnet::{ArtnetConfig, ARTNET_CONFIG};
-pub use event::{GamepadEvent, InputEvent};
 
 static INPUT: OnceLock<Arc<Mutex<Input>>> = OnceLock::new();
 

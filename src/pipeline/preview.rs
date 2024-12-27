@@ -1,13 +1,14 @@
 //! Render preview circles.
 use crate::{
     constants::{OUTPUT_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, PREVIEW_TEXTURE_SIZE},
-    preview_indices::PreviewIndices,
     wgpu_render_state, OUTPUT_BUFFER,
 };
 use egui::TextureId;
 use once_cell::unsync::OnceCell;
 use std::{cell::RefCell, num::NonZeroU64};
 use wgpu::*;
+
+use super::preview_indices::PreviewIndices;
 
 thread_local! {
     static PREVIEW: OnceCell<Preview> = const { OnceCell::new() };
@@ -49,12 +50,12 @@ impl Preview {
 
         let vertex_shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("preview vertex shader"),
-            source: ShaderSource::Wgsl(include_str!("shaders/vertex.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("../shaders/vertex.wgsl").into()),
         });
 
         let fragment_shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("preview fragment shader"),
-            source: ShaderSource::Wgsl(include_str!("shaders/preview.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("../shaders/preview.wgsl").into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {

@@ -1,8 +1,8 @@
 use super::Effect;
 use crate::{
     group::Group,
-    output_mix::OutputMix,
-    storage::{AnimationConfig, AnimationRenderer},
+    pipeline::output_mix::OutputMix,
+    storage::animation::{config::AnimationConfig, renderer::AnimationRenderer},
     texture_to_output::TextureToOutput,
     wgpu_render_state,
 };

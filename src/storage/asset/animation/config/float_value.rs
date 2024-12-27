@@ -1,4 +1,4 @@
-use crate::storage::{RangeDegrees, RangePercentage, StaticOrCurve};
+use crate::storage::curve::static_or_curve::{RangeDegrees, RangePercentage, StaticOrCurve};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]

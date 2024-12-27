@@ -1,4 +1,4 @@
-use crate::{app::{GitUiState, PersistantState}, storage::{branches, StorageAction, Branches}, viewport_builder::default_viewport_builder};
+use crate::{app::{persistant_state::PersistantState, GitUiState}, storage::{action::StorageAction, branches, Branches}, viewport_builder::default_viewport_builder};
 use egui::{Button, Color32, ComboBox, Context, Id, Layout, RichText, TextEdit, Vec2, ViewportId};
 use egui_flex::{item, Flex};
 use home::home_dir;

@@ -1,8 +1,12 @@
-use crate::storage::{Asset, AssetId, AssetTrait};
 use egui::{Button, Color32, Id, Label, Margin, Pos2, Rect, Stroke, Ui, Vec2};
 use egui_flex::{item, Flex};
 use egui_ltreeview::{node::NodeBuilder, Action, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
+
+use crate::storage::{
+    asset::{Asset, AssetTrait},
+    asset_id::AssetId,
+};
 
 pub const TREE_WIDTH: f32 = 250.0;
 

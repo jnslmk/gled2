@@ -17,7 +17,7 @@ impl OutputClear {
 
             let module = device.create_shader_module(ShaderModuleDescriptor {
                 label: Some("OutputClear shader"),
-                source: ShaderSource::Wgsl(include_str!("./shaders/output_clear.wgsl").into()),
+                source: ShaderSource::Wgsl(include_str!("../shaders/output_clear.wgsl").into()),
             });
 
             let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {

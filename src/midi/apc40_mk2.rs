@@ -2,7 +2,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use super::state::MidiState;
 use crate::{
-    storage::{DeckPath, SceneInstancePath},
+    storage::asset::project::{deck::DeckPath, scene_instance_path::SceneInstancePath},
     ui::action::UiAction,
 };
 use crossbeam_channel::Receiver;

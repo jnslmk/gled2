@@ -1,6 +1,8 @@
 use super::App;
 use crate::{
-    storage::{polynomials_fitting, staged_files, working, StorageAction},
+    storage::{
+        action::StorageAction, asset::curve::polynomial::polynomials_fitting, staged_files, working,
+    },
     temperature::temperature,
 };
 use egui::{Button, Context, Label, Layout, Margin, Spinner, TextEdit, Ui, ViewportId};

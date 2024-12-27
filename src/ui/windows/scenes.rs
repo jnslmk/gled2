@@ -1,10 +1,16 @@
 use crate::{
-    app::{PersistantState, Timing},
-    effect::{Effect, EffectState},
-    storage::{Animation, Asset, AssetId, Scene},
+    app::{persistant_state::PersistantState, timing::Timing},
+    storage::{
+        asset::{
+            animation::Animation,
+            scene::{effect::Effect, effect_state::EffectState, Scene},
+            Asset,
+        },
+        asset_id::AssetId,
+    },
     ui::{
         asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
-        effect::EffectWidget,
+        effect::widget::EffectWidget,
         ChangeButton,
     },
     viewport_builder::default_viewport_builder,

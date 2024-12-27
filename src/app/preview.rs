@@ -1,5 +1,5 @@
-use super::{App, Svg};
-use crate::preview::Preview;
+use super::{svg::Svg, App};
+use crate::pipeline::preview::Preview;
 use egui::{load::SizedTexture, Color32, Context, Image, Vec2};
 
 impl App {

@@ -1,5 +1,5 @@
 use super::ChangeButton;
-use crate::input::InputEvent;
+use crate::input::event::InputEvent;
 use egui::{Button, Color32, Ui};
 
 impl ChangeButton for Option<InputEvent> {

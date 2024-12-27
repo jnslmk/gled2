@@ -1,7 +1,7 @@
 pub mod widget;
 
 use super::{action::UiAction, ChangeButton};
-use crate::scene_instance::SceneInstance;
+use crate::storage::asset::scene::instance::SceneInstance;
 use egui::{Button, Checkbox, Color32, Context, Margin, Modifiers};
 
 impl SceneInstance {

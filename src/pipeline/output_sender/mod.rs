@@ -12,8 +12,8 @@ use std::{
 
 use crate::{
     constants::{UNIVERSES, UNIVERSE_BUFFER_SIZE},
-    extract_output::ExtractOutput,
-    storage::{Asset, OutputDevice},
+    pipeline::extract_output::ExtractOutput,
+    storage::asset::{output_device::OutputDevice, Asset},
 };
 pub type OutputSender = Sender<()>;
 pub type GpuReadyReceiver = Receiver<()>;

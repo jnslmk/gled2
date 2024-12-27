@@ -1,4 +1,4 @@
-use crate::{input::ARTNET_CONFIG, viewport_builder::default_viewport_builder};
+use crate::{input::artnet::ARTNET_CONFIG, viewport_builder::default_viewport_builder};
 use egui::{Context, Id, TextEdit, Vec2, ViewportId};
 
 #[derive(Default)]

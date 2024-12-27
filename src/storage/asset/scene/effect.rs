@@ -1,11 +1,10 @@
-mod state;
-
 use crate::{
-    app::Svg,
+    app::svg::Svg,
     group::Groups,
     storage::{
-        Animation, AnimationConfig, Asset, AssetId, Palette, RangeDegrees, RangePercentage,
-        StaticOrCurve,
+        animation::config::AnimationConfig,
+        curve::static_or_curve::{RangeDegrees, RangePercentage, StaticOrCurve},
+        Animation, Asset, AssetId, Palette,
     },
     OUTPUT_BUFFER,
 };
@@ -13,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use wgpu::{CommandEncoder, Queue};
 
-pub use state::EffectState;
+use super::effect_state::EffectState;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
@@ -61,8 +60,8 @@ impl Effect {
             .unwrap_or_else(|| {
                 format!(
                     "{}\n\n{}",
-                    include_str!("shaders/common.wgsl"),
-                    include_str!("shaders/red.wgsl")
+                    include_str!("../../../shaders/common.wgsl"),
+                    include_str!("../../../shaders/red.wgsl")
                 )
             })
     }

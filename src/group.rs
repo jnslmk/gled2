@@ -1,4 +1,4 @@
-use crate::{app::Svg, ui::ChangeButton};
+use crate::{app::svg::Svg, ui::ChangeButton};
 use egui::{Button, Color32, RichText, Stroke, Ui};
 use serde::{Deserialize, Serialize};
 use std::{

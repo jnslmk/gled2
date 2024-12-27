@@ -1,5 +1,8 @@
 use super::{asset_tree::AssetTree, ChangeButton};
-use crate::storage::{Asset, AssetId, AssetTrait};
+use crate::storage::{
+    asset::{Asset, AssetTrait},
+    asset_id::AssetId,
+};
 use egui::Ui;
 use egui_ltreeview::TreeViewState;
 

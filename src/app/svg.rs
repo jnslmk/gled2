@@ -1,6 +1,9 @@
 use crate::{
-    extract_output::ExtractOutput, group::Group, preview_indices::PreviewIndices,
-    svg::MeasurementPoints, texture_to_output::Positions, ui::action::UiAction,
+    group::Group,
+    pipeline::{extract_output::ExtractOutput, preview_indices::PreviewIndices},
+    svg::measurement_point::MeasurementPoints,
+    texture_to_output::positions::Positions,
+    ui::action::UiAction,
 };
 use anyhow::Result;
 use egui::Rect;

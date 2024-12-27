@@ -1,13 +1,12 @@
-mod widget;
+pub mod widget;
 
-use super::ChangeButton;
-use crate::{
-    effect::{Effect, EffectState},
-    storage::Asset,
+use crate::storage::asset::{
+    scene::{effect::Effect, effect_state::EffectState},
+    Asset,
 };
 use egui::{DragValue, Slider};
 
-pub use widget::EffectWidget;
+use super::ChangeButton;
 
 impl Effect {
     pub fn config_ui(

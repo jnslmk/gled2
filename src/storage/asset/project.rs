@@ -1,27 +1,35 @@
-mod deck;
-mod render_deactivated_scenes;
-mod scene_instance_path;
+pub mod deck;
+pub mod render_deactivated_scenes;
+pub mod scene_instance_path;
 
-use super::{Animation, AssetId, AssetTrait};
-use crate::{
-    app::{Svg, Timing},
-    extract_output::ExtractOutput,
-    input::{ArtnetConfig, GamepadEvent, InputEvent},
-    output_clear::OutputClear,
-    output_routings::OutputRoutings,
-    output_sender::{GpuReadyReceiver, OutputSender},
-    preview::Preview,
-    preview_indices::PreviewIndices,
-    scene_instance::SceneInstance,
-    wgpu_render_state,
-};
+use deck::{Deck, DeckPath};
+use render_deactivated_scenes::RenderDeactivatedScenes;
+use scene_instance_path::SceneInstancePath;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, iter::once, time::Duration};
 use wgpu::CommandEncoderDescriptor;
 
-pub use deck::{Deck, DeckPath};
-pub use render_deactivated_scenes::RenderDeactivatedScenes;
-pub use scene_instance_path::SceneInstancePath;
+use crate::{
+    app::{svg::Svg, timing::Timing},
+    input::{
+        artnet::ArtnetConfig,
+        event::{GamepadEvent, InputEvent},
+    },
+    pipeline::{
+        extract_output::ExtractOutput,
+        output_clear::OutputClear,
+        output_sender::{GpuReadyReceiver, OutputSender},
+        preview::Preview,
+        preview_indices::PreviewIndices,
+    },
+    storage::asset_id::AssetId,
+    wgpu_render_state,
+};
+
+use super::{
+    animation::Animation, output_device::routing::OutputRoutings, scene::instance::SceneInstance,
+    AssetTrait,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(default)]

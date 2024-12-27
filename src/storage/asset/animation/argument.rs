@@ -1,6 +1,6 @@
-mod variables;
+pub mod variables;
 
-use super::{config::FloatValue::F32, AnimationConfig};
+use super::{config::float_value::FloatValue, AnimationConfig};
 use crate::ui::ChangeButton;
 use egui::{
     load::SizedTexture, Button, Color32, ComboBox, CursorIcon, Image, Layout, Sense, TextureId, Ui,
@@ -9,7 +9,7 @@ use egui::{
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, EnumIter, IntoEnumIterator};
 
-pub use variables::{Variables, VariablesCount};
+use variables::{Variables, VariablesCount};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Argument {
@@ -156,10 +156,10 @@ impl Argument {
                         {
                             ui.output_mut(|o| o.cursor_icon = CursorIcon::Crosshair);
                             if let Some(float) = config.float(count.f32) {
-                                *float = F32(pos.x / size);
+                                *float = FloatValue::F32(pos.x / size);
                             }
                             if let Some(float) = config.float(count.f32 + 1) {
-                                *float = F32(1.0 - pos.y / size);
+                                *float = FloatValue::F32(1.0 - pos.y / size);
                             }
                             changed = true;
                         }

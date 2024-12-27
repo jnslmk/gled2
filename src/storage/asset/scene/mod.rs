@@ -1,10 +1,15 @@
-use super::{Animation, Asset, AssetTrait, Palette};
+pub mod effect;
+pub mod effect_state;
+pub mod instance;
+
+use super::{animation::Animation, palette::Palette, Asset, AssetTrait};
 use crate::{
-    effect::{Effect, EffectState},
     group::{GroupIndices, Groups},
     storage::AssetId,
     ui::pills::show_pills,
 };
+use effect::Effect;
+use effect_state::EffectState;
 use egui::{Color32, Vec2};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

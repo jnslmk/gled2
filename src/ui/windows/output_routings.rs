@@ -1,6 +1,6 @@
 use crate::{
-    app::Svg, extract_output::ExtractOutput, storage::Asset, ui::ChangeButton,
-    viewport_builder::default_viewport_builder,
+    app::svg::Svg, pipeline::extract_output::ExtractOutput, storage::asset::Asset,
+    ui::ChangeButton, viewport_builder::default_viewport_builder,
 };
 use egui::{ComboBox, Context, Id, Layout, RichText, Vec2, ViewportId};
 

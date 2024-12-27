@@ -1,4 +1,4 @@
-use crate::storage::SceneInstancePath;
+use crate::storage::asset::project::scene_instance_path::SceneInstancePath;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use egui::mutex::Mutex;
 use once_cell::sync::{Lazy, OnceCell};

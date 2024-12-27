@@ -1,5 +1,5 @@
 use crate::{
-    storage::{Asset, Curve},
+    storage::asset::{curve::Curve, Asset},
     ui::asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
     viewport_builder::default_viewport_builder,
 };

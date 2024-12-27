@@ -1,8 +1,8 @@
-mod grid;
-mod header;
+pub mod grid;
+pub mod header;
 
-use super::{App, Svg};
-use crate::storage::SceneInstancePath;
+use super::{svg::Svg, App};
+use crate::storage::asset::project::scene_instance_path::SceneInstancePath;
 use egui::{Margin, Ui};
 
 impl App {

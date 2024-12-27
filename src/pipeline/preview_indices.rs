@@ -3,7 +3,7 @@
 //!  * 0xffffffff if it should stay black.
 //!  * index of output buffer where the color triplet starts.
 use crate::{
-    app::Svg,
+    app::svg::Svg,
     constants::{
         LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE,
         PREVIEW_TEXTURE_SIZE, UNIVERSES,
@@ -81,7 +81,7 @@ impl PreviewIndices {
             let module = device.create_shader_module(ShaderModuleDescriptor {
                 label: Some("preview clear indices shader"),
                 source: ShaderSource::Wgsl(
-                    include_str!("./shaders/preview_indices_clear.wgsl").into(),
+                    include_str!("../shaders/preview_indices_clear.wgsl").into(),
                 ),
             });
 
@@ -106,7 +106,7 @@ impl PreviewIndices {
             let module = device.create_shader_module(ShaderModuleDescriptor {
                 label: Some("preview index indices shader"),
                 source: ShaderSource::Wgsl(
-                    include_str!("./shaders/preview_indices_index.wgsl").into(),
+                    include_str!("../shaders/preview_indices_index.wgsl").into(),
                 ),
             });
 

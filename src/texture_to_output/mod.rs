@@ -1,21 +1,24 @@
 //! Extract colors out of a texture into output buffers
 
-mod positions;
+pub mod positions;
 
 use crate::{
     constants::{OUTPUT_BUFFER_SIZE, POSITIONS_BUFFER_SIZE, UNIVERSES},
-    effect::EffectState,
-    storage::Palette,
+    storage::asset::{palette::Palette, scene::effect_state::EffectState},
     wgpu_render_state,
 };
 use log::debug;
+use positions::Positions;
 use std::num::{NonZero, NonZeroU64};
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
-    *,
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType,
+    BufferDescriptor, BufferUsages, CommandEncoder, ComputePassDescriptor, ComputePipeline,
+    ComputePipelineDescriptor, PipelineLayoutDescriptor, Queue, SamplerBindingType,
+    SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, ShaderStages, Texture,
+    TextureSampleType, TextureViewDescriptor, TextureViewDimension,
 };
-
-pub use positions::{Lamp, Positions, Universe};
 
 #[derive(Debug)]
 pub struct TextureToOutput {

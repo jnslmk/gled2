@@ -2,8 +2,7 @@
 use super::AnimationConfig;
 use crate::{
     constants::TEXTURE_SIZE,
-    effect::EffectState,
-    storage::{Asset, Palette},
+    storage::{scene::effect_state::EffectState, Asset, Palette},
     wgpu_render_state,
 };
 use std::{

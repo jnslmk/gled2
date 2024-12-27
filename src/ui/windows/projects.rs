@@ -1,5 +1,5 @@
 use crate::{
-    storage::{Project, SceneInstancePath},
+    storage::asset::project::{scene_instance_path::SceneInstancePath, Project},
     ui::{
         action::UiAction,
         asset_tree::{AssetTree, TreeSelection},

@@ -1,17 +1,18 @@
-use crate::{app::Timing, storage::Project};
 use egui::Context;
 
-mod about;
-mod animation;
-mod artnet_input;
-mod curves;
-mod git_config;
-mod output_devices;
-mod output_routings;
-mod palettes;
-mod projects;
-mod scenes;
-mod shortcuts;
+use crate::{app::timing::Timing, storage::asset::project::Project};
+
+pub mod about;
+pub mod animation;
+pub mod artnet_input;
+pub mod curves;
+pub mod git_config;
+pub mod output_devices;
+pub mod output_routings;
+pub mod palettes;
+pub mod projects;
+pub mod scenes;
+pub mod shortcuts;
 
 #[derive(Default)]
 pub struct Windows {

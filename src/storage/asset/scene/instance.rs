@@ -1,9 +1,14 @@
+use super::{effect_state::EffectState, Scene};
 use crate::{
-    app::Timing,
-    effect::EffectState,
+    app::timing::Timing,
     group::{GroupIndices, Groups},
-    input::InputEvent,
-    storage::{Animation, Asset, AssetId, Palette, RangePercentage, Scene, StaticOrCurve},
+    input::event::InputEvent,
+    storage::{
+        animation::Animation,
+        curve::static_or_curve::{RangePercentage, StaticOrCurve},
+        palette::Palette,
+        Asset, AssetId,
+    },
     transition::Transition,
 };
 use egui::TextureId;

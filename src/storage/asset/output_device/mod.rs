@@ -1,3 +1,5 @@
+pub mod routing;
+
 use super::AssetTrait;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;

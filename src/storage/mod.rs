@@ -1,13 +1,22 @@
-mod action;
-mod asset;
-mod asset_id;
-mod collection;
-mod git;
+pub mod action;
+pub mod asset;
+pub mod asset_id;
+pub mod collection;
+pub mod git;
 
+use crate::app::persistant_state::PersistantState;
+
+use self::{action::StorageAction, asset::*, asset_id::AssetId};
+use animation::Animation;
 use collection::Collection;
+use curve::Curve;
 use directories::BaseDirs;
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
+use output_device::OutputDevice;
+use palette::Palette;
+use project::Project;
+use scene::Scene;
 use std::{
     fmt::Debug,
     fs::remove_dir_all,
@@ -19,11 +28,6 @@ use std::{
 use strum::Display;
 use typemap::ShareDebugMap;
 use uuid::Uuid;
-
-use crate::app::PersistantState;
-
-pub use self::{action::StorageAction, asset::*, asset_id::AssetId};
-pub use git::GitCredentials;
 
 pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
     BaseDirs::new()

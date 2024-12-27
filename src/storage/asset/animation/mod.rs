@@ -1,16 +1,13 @@
-mod argument;
-mod config;
-mod renderer;
+pub mod argument;
+pub mod config;
+pub mod renderer;
 
 use super::AssetTrait;
-use argument::VariablesCount;
+use argument::{variables::VariablesCount, Argument};
+use config::AnimationConfig;
 use egui::{Color32, Margin, Stroke, TextureId, Ui};
 use egui_extras::syntax_highlighting::CodeTheme;
 use serde::{Deserialize, Serialize};
-
-pub use argument::Argument;
-pub use config::AnimationConfig;
-pub use renderer::AnimationRenderer;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]

@@ -1,8 +1,8 @@
-mod float_value;
+pub mod float_value;
 
 use serde::{Deserialize, Serialize};
 
-pub use float_value::FloatValue;
+use float_value::FloatValue;
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq)]
 #[serde(default)]

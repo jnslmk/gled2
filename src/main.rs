@@ -1,30 +1,22 @@
 #![windows_subsystem = "windows"]
 #![allow(deprecated)]
 
-mod app;
-mod constants;
-mod effect;
-mod extract_output;
-mod group;
-mod input;
-mod midi;
-mod output_clear;
-mod output_mix;
-mod output_routings;
-mod output_sender;
-mod preview;
-mod preview_indices;
-mod scene_instance;
-mod storage;
-mod svg;
-mod temperature;
-mod texture_to_output;
-mod transition;
-mod ui;
-mod viewport_builder;
+pub mod app;
+pub mod constants;
+pub mod group;
+pub mod input;
+pub mod midi;
+pub mod pipeline;
+pub mod storage;
+pub mod svg;
+pub mod temperature;
+pub mod texture_to_output;
+pub mod transition;
+pub mod ui;
+pub mod viewport_builder;
 
 #[cfg(not(debug_assertions))]
-mod update_check;
+pub mod update_check;
 
 use app::App;
 use constants::OUTPUT_BUFFER_SIZE;

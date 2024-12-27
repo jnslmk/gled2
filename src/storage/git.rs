@@ -1,5 +1,6 @@
+use crate::app::persistant_state::PersistantState;
+
 use super::STORAGE_DIR;
-use crate::app::PersistantState;
 use git2::{
     build::RepoBuilder, Cred, Error, ErrorCode, FetchOptions, PushOptions, Reference,
     RemoteCallbacks, Repository, Signature,

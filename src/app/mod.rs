@@ -1,33 +1,41 @@
-mod config;
-mod effects;
-mod menu;
-mod no_project;
-mod persistant_state;
-mod preview;
-mod project_functions;
-mod status_bar;
-mod storage;
-mod svg;
-mod timing;
+pub mod config;
+pub mod effects;
+pub mod menu;
+pub mod no_project;
+pub mod persistant_state;
+pub mod preview;
+pub mod project_functions;
+pub mod status_bar;
+pub mod storage;
+pub mod svg;
+pub mod timing;
 
 use crate::{
     input::Input,
-    midi::MidiState,
-    output_sender::{self, GpuReadyReceiver, OutputSender},
-    storage::{loading, Asset, AssetId, Project, RenderDeactivatedScenes, SceneInstancePath},
+    midi::state::MidiState,
+    pipeline::output_sender::{self, GpuReadyReceiver, OutputSender},
+    storage::{
+        asset::{
+            project::{
+                render_deactivated_scenes::RenderDeactivatedScenes,
+                scene_instance_path::SceneInstancePath, Project,
+            },
+            Asset,
+        },
+        asset_id::AssetId,
+        loading,
+    },
     ui::{action::UiAction, windows::Windows},
     viewport_builder::default_viewport_builder,
 };
 use egui::{ahash::HashMap, Key, Modifiers, SidePanel, TopBottomPanel, ViewportId};
+use persistant_state::PersistantState;
 use std::{
     sync::mpsc::Receiver,
     time::{SystemTime, UNIX_EPOCH},
 };
 use storage::{show_storage_error, show_storage_loading};
-
-pub use persistant_state::PersistantState;
-pub use svg::Svg;
-pub use timing::Timing;
+use timing::Timing;
 
 pub struct App {
     pub startup: bool,

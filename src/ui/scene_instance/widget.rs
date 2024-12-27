@@ -1,7 +1,8 @@
 use crate::{
     group::Groups,
-    scene_instance::SceneInstance,
-    storage::{Asset, SceneInstancePath},
+    storage::asset::{
+        project::scene_instance_path::SceneInstancePath, scene::instance::SceneInstance, Asset,
+    },
     ui::pills::show_pills,
 };
 use egui::{

@@ -1,5 +1,5 @@
 use crate::{
-    storage::{Asset, Palette},
+    storage::asset::{palette::Palette, Asset},
     ui::asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
     viewport_builder::default_viewport_builder,
 };

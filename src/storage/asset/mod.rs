@@ -1,21 +1,14 @@
-mod animation;
-mod curve;
-mod output_device;
-mod palette;
-mod project;
-mod scene;
+pub mod animation;
+pub mod curve;
+pub mod output_device;
+pub mod palette;
+pub mod project;
+pub mod scene;
 
 use super::{collection::Collection, AssetId, StorageAction, COLLECTIONS};
 use egui::Rect;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, fs::File, sync::Arc};
-
-pub use animation::{Animation, AnimationConfig, AnimationRenderer};
-pub use curve::{polynomials_fitting, Curve, RangeDegrees, RangePercentage, StaticOrCurve};
-pub use output_device::OutputDevice;
-pub use palette::Palette;
-pub use project::{DeckPath, Project, RenderDeactivatedScenes, SceneInstancePath};
-pub use scene::Scene;
 
 pub trait AssetTrait:
     Serialize + DeserializeOwned + Debug + Default + Send + Sync + Clone + 'static

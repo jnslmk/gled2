@@ -1,4 +1,8 @@
-use crate::storage::{AssetId, GitCredentials, Palette, Project};
+use crate::storage::{
+    asset::{palette::Palette, project::Project},
+    asset_id::AssetId,
+    git::GitCredentials,
+};
 use egui::mutex::Mutex;
 use log::{error, info};
 use once_cell::sync::Lazy;

@@ -1,11 +1,9 @@
-mod apc40_mk2;
-mod input;
-mod output;
-mod state;
+pub mod apc40_mk2;
+pub mod input;
+pub mod output;
+pub mod state;
 
 use std::thread::spawn;
-
-pub use state::MidiState;
 
 pub fn start_thread() {
     spawn(state::start);

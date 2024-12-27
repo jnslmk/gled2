@@ -1,6 +1,9 @@
 use super::App;
 use crate::{
-    storage::{AssetId, Scene, SceneInstancePath},
+    storage::{
+        asset::{project::scene_instance_path::SceneInstancePath, scene::Scene},
+        asset_id::AssetId,
+    },
     ui::{action, ChangeButton},
 };
 use egui::{Color32, RichText, Slider, Ui};

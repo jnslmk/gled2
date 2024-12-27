@@ -1,5 +1,5 @@
 use crate::{
-    effect::{Effect, EffectState},
+    storage::asset::scene::{effect::Effect, effect_state::EffectState},
     ui::pills::show_pills,
 };
 use egui::{

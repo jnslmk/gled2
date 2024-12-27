@@ -2,8 +2,8 @@
 
 use crate::{
     constants::{OUTPUT_BUFFER_SIZE, UNIVERSES, UNIVERSE_BUFFER_SIZE},
-    output_routings::OutputRoutings,
-    svg::Universes,
+    storage::asset::output_device::routing::OutputRoutings,
+    svg::measurement_point::Universes,
     wgpu_render_state, OUTPUT_BUFFER,
 };
 use egui::mutex::Mutex;

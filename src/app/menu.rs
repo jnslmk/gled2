@@ -1,8 +1,8 @@
 use super::{svg::Svg, App, PersistantState};
 use crate::{
-    extract_output::ExtractOutput,
-    input::ARTNET_CONFIG,
-    storage::{Asset, STORAGE_DIR},
+    input::artnet::ARTNET_CONFIG,
+    pipeline::extract_output::ExtractOutput,
+    storage::{asset::Asset, STORAGE_DIR},
     ui::{action::UiAction, logo::logo_image},
 };
 use egui::{

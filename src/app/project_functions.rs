@@ -1,4 +1,4 @@
-use super::{App, Svg};
+use super::{svg::Svg, App};
 
 impl App {
     pub fn svg(&self) -> Option<&Svg> {
