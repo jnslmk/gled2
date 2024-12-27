@@ -9,9 +9,11 @@ pub mod logo;
 pub mod pills;
 pub mod scene_instance;
 pub mod temperature;
-pub mod update_check;
 pub mod viewport_builder;
 pub mod windows;
+
+#[cfg(not(debug_assertions))]
+pub mod update_check;
 
 pub trait ChangeButton {
     fn change_button(&mut self, ui: &mut Ui) -> bool;

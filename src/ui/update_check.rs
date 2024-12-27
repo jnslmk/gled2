@@ -1,7 +1,6 @@
-use std::time::Duration;
-
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
+use std::time::Duration;
 
 static RELEASES_URL: &str = "https://gitlab.com/api/v4/projects/45830832/releases";
 static AVAILABLE_UPDATE: Lazy<Mutex<Option<Update>>> = Lazy::new(|| Mutex::new(None));

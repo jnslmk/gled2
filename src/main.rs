@@ -9,9 +9,6 @@ pub mod storage;
 pub mod svg;
 pub mod ui;
 
-#[cfg(not(debug_assertions))]
-pub mod update_check;
-
 use app::App;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup};
 use egui::ThemePreference;
@@ -45,7 +42,7 @@ fn main() {
     midi::start_thread();
 
     #[cfg(not(debug_assertions))]
-    update_check::Update::start_thread();
+    ui::update_check::Update::start_thread();
 
     let mut wgpu_options = WgpuConfiguration::default();
     wgpu_options.present_mode = PRESENT_MODE;

@@ -20,9 +20,9 @@ impl App {
                         }
 
                         #[cfg(not(debug_assertions))]
-                        if let Some(version) = crate::update_check::Update::update_available() {
+                        if let Some(version) = crate::ui::update_check::Update::update_available() {
                             if ui.button(format!("Update available: {version}")).clicked() {
-                                if let Some(url) = crate::update_check::Update::download_url() {
+                                if let Some(url) = crate::ui::update_check::Update::download_url() {
                                     ui.ctx().open_url(egui::OpenUrl::new_tab(url));
                                 }
                             }
