@@ -11,8 +11,10 @@ use std::{
 };
 
 use crate::{
-    constants::{UNIVERSES, UNIVERSE_BUFFER_SIZE},
-    pipeline::extract_output::ExtractOutput,
+    pipeline::{
+        constants::{UNIVERSES, UNIVERSE_BUFFER_SIZE},
+        extract_output::ExtractOutput,
+    },
     storage::asset::{output_device::OutputDevice, Asset},
 };
 pub type OutputSender = Sender<()>;

@@ -3,8 +3,8 @@ use crate::{
     ui::{
         action::UiAction,
         asset_tree::{AssetTree, TreeSelection},
+        viewport_builder::default_viewport_builder,
     },
-    viewport_builder::default_viewport_builder,
 };
 use egui::{Button, Id, Vec2, ViewportId};
 use log::{debug, error};

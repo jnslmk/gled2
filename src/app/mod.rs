@@ -25,8 +25,7 @@ use crate::{
         asset_id::AssetId,
         loading,
     },
-    ui::{action::UiAction, windows::Windows},
-    viewport_builder::default_viewport_builder,
+    ui::{action::UiAction, viewport_builder::default_viewport_builder, windows::Windows},
 };
 use egui::{ahash::HashMap, Key, Modifiers, SidePanel, TopBottomPanel, ViewportId};
 use persistant_state::PersistantState;

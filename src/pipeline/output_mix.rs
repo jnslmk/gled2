@@ -1,5 +1,5 @@
 //! Combine two output buffers into one output buffer.
-use crate::{constants::OUTPUT_BUFFER_SIZE, wgpu_render_state};
+use crate::{pipeline::constants::OUTPUT_BUFFER_SIZE, wgpu_render_state};
 use std::num::NonZeroU64;
 use wgpu::*;
 

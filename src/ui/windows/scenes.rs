@@ -11,9 +11,9 @@ use crate::{
     ui::{
         asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
         effect::widget::EffectWidget,
+        viewport_builder::default_viewport_builder,
         ChangeButton,
     },
-    viewport_builder::default_viewport_builder,
     wgpu_render_state,
 };
 use egui::{

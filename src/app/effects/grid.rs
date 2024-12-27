@@ -1,8 +1,8 @@
 use super::App;
 use crate::{
     app::PersistantState,
+    pipeline::transition::{Transition, TransitionGoal},
     storage::asset::project::scene_instance_path::SceneInstancePath,
-    transition::{Transition, TransitionGoal},
     ui::scene_instance::widget::SceneInstanceWidget,
 };
 use egui::{scroll_area::ScrollBarVisibility, Color32, Rect, TextureId, Ui, Vec2};

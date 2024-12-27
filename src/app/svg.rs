@@ -1,8 +1,9 @@
 use crate::{
-    group::Group,
-    pipeline::{extract_output::ExtractOutput, preview_indices::PreviewIndices},
+    pipeline::{
+        extract_output::ExtractOutput, group::Group, preview_indices::PreviewIndices,
+        texture_to_output::positions::Positions,
+    },
     svg::measurement_point::MeasurementPoints,
-    texture_to_output::positions::Positions,
     ui::action::UiAction,
 };
 use anyhow::Result;

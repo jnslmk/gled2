@@ -4,7 +4,7 @@ pub mod instance;
 
 use super::{animation::Animation, palette::Palette, Asset, AssetTrait};
 use crate::{
-    group::{GroupIndices, Groups},
+    pipeline::group::{GroupIndices, Groups},
     storage::AssetId,
     ui::pills::show_pills,
 };

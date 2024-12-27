@@ -1,9 +1,7 @@
 use super::Effect;
 use crate::{
-    group::Group,
-    pipeline::output_mix::OutputMix,
+    pipeline::{group::Group, output_mix::OutputMix, texture_to_output::TextureToOutput},
     storage::animation::{config::AnimationConfig, renderer::AnimationRenderer},
-    texture_to_output::TextureToOutput,
     wgpu_render_state,
 };
 use arboard::{Clipboard, ImageData};

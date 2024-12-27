@@ -1,7 +1,7 @@
 //! Save the list of LEDs, a position for color measurement and the current color for groups.
 
 use super::{Led, Parameter, ParsedSvg};
-use crate::{
+use crate::pipeline::{
     constants::UNIVERSES,
     group::Group,
     texture_to_output::positions::{Lamp, Positions, Universe},

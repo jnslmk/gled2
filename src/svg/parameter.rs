@@ -1,7 +1,7 @@
 //! Parameters as set in a SVG file.
-use crate::{constants::LAMPS_PER_UNIVERSE, group::Group};
 
 use super::Led;
+use crate::pipeline::{constants::LAMPS_PER_UNIVERSE, group::Group};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

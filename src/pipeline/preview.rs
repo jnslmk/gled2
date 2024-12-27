@@ -1,6 +1,6 @@
 //! Render preview circles.
 use crate::{
-    constants::{OUTPUT_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, PREVIEW_TEXTURE_SIZE},
+    pipeline::constants::{OUTPUT_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, PREVIEW_TEXTURE_SIZE},
     wgpu_render_state, OUTPUT_BUFFER,
 };
 use egui::TextureId;

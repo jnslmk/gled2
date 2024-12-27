@@ -1,7 +1,7 @@
 //! Copy a output buffer to the cpu and return.
 
 use crate::{
-    constants::{OUTPUT_BUFFER_SIZE, UNIVERSES, UNIVERSE_BUFFER_SIZE},
+    pipeline::constants::{OUTPUT_BUFFER_SIZE, UNIVERSES, UNIVERSE_BUFFER_SIZE},
     storage::asset::output_device::routing::OutputRoutings,
     svg::measurement_point::Universes,
     wgpu_render_state, OUTPUT_BUFFER,

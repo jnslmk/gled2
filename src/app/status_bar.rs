@@ -3,7 +3,7 @@ use crate::{
     storage::{
         action::StorageAction, asset::curve::polynomial::polynomials_fitting, staged_files, working,
     },
-    temperature::temperature,
+    ui::temperature::temperature,
 };
 use egui::{Button, Context, Label, Layout, Margin, Spinner, TextEdit, Ui, ViewportId};
 use egui_flex::{item, Flex};

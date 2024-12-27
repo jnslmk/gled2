@@ -3,7 +3,7 @@
 pub mod positions;
 
 use crate::{
-    constants::{OUTPUT_BUFFER_SIZE, POSITIONS_BUFFER_SIZE, UNIVERSES},
+    pipeline::constants::{OUTPUT_BUFFER_SIZE, POSITIONS_BUFFER_SIZE, UNIVERSES},
     storage::asset::{palette::Palette, scene::effect_state::EffectState},
     wgpu_render_state,
 };
@@ -35,7 +35,7 @@ impl TextureToOutput {
 
         let module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("TextureToArtnet shader"),
-            source: ShaderSource::Wgsl(include_str!("../shaders/texture_to_output.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("../../shaders/texture_to_output.wgsl").into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {

@@ -4,7 +4,7 @@
 //!  * index of output buffer where the color triplet starts.
 use crate::{
     app::svg::Svg,
-    constants::{
+    pipeline::constants::{
         LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE,
         PREVIEW_TEXTURE_SIZE, UNIVERSES,
     },

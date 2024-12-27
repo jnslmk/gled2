@@ -1,5 +1,5 @@
 //! Clear output buffer.
-use crate::{constants::OUTPUT_BUFFER_SIZE, wgpu_render_state, OUTPUT_BUFFER};
+use crate::{pipeline::constants::OUTPUT_BUFFER_SIZE, wgpu_render_state, OUTPUT_BUFFER};
 use std::{num::NonZeroU64, sync::OnceLock};
 use wgpu::*;
 

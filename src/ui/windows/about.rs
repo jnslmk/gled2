@@ -1,4 +1,4 @@
-use crate::{ui::logo::logo_image, viewport_builder::default_viewport_builder};
+use crate::ui::{logo::logo_image, viewport_builder::default_viewport_builder};
 use egui::{load::SizedTexture, Id, Layout, RichText, Vec2, ViewportId};
 
 #[derive(Default)]

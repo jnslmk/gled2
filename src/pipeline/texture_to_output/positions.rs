@@ -1,4 +1,6 @@
-use crate::constants::{LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, TEXTURE_SIZE, UNIVERSES};
+use crate::pipeline::constants::{
+    LAMPS_PER_UNIVERSE, POSITIONS_BUFFER_SIZE, TEXTURE_SIZE, UNIVERSES,
+};
 
 #[derive(Debug, Clone)]
 pub struct Positions {

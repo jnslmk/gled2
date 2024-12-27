@@ -2,30 +2,24 @@
 #![allow(deprecated)]
 
 pub mod app;
-pub mod constants;
-pub mod group;
 pub mod input;
 pub mod midi;
 pub mod pipeline;
 pub mod storage;
 pub mod svg;
-pub mod temperature;
-pub mod texture_to_output;
-pub mod transition;
 pub mod ui;
-pub mod viewport_builder;
 
 #[cfg(not(debug_assertions))]
 pub mod update_check;
 
 use app::App;
-use constants::OUTPUT_BUFFER_SIZE;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup};
 use egui::ThemePreference;
 use input::Input;
 use once_cell::sync::Lazy;
+use pipeline::constants::OUTPUT_BUFFER_SIZE;
 use std::sync::OnceLock;
-use viewport_builder::default_viewport_builder;
+use ui::viewport_builder::default_viewport_builder;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
 
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
@@ -47,7 +41,7 @@ const PRESENT_MODE: PresentMode = PresentMode::Mailbox;
 fn main() {
     env_logger::init();
     storage::start_thread();
-    temperature::start_thread();
+    ui::temperature::start_thread();
     midi::start_thread();
 
     #[cfg(not(debug_assertions))]

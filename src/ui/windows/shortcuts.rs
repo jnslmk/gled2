@@ -1,5 +1,6 @@
 use crate::{
-    storage::asset::project::Project, ui::ChangeButton, viewport_builder::default_viewport_builder,
+    storage::asset::project::Project, ui::viewport_builder::default_viewport_builder,
+    ui::ChangeButton,
 };
 use egui::{Context, Id, Vec2, ViewportId};
 

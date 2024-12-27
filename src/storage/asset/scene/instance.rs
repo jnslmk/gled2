@@ -1,15 +1,17 @@
 use super::{effect_state::EffectState, Scene};
 use crate::{
     app::timing::Timing,
-    group::{GroupIndices, Groups},
     input::event::InputEvent,
+    pipeline::{
+        group::{GroupIndices, Groups},
+        transition::Transition,
+    },
     storage::{
         animation::Animation,
         curve::static_or_curve::{RangePercentage, StaticOrCurve},
         palette::Palette,
         Asset, AssetId,
     },
-    transition::Transition,
 };
 use egui::TextureId;
 use serde::{Deserialize, Serialize};

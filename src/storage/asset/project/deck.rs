@@ -3,9 +3,11 @@ use super::{
 };
 use crate::{
     app::timing::Timing,
-    group::{Group, Groups},
+    pipeline::{
+        group::{Group, Groups},
+        transition::{Transition, TransitionGoal},
+    },
     storage::{scene::instance::SceneInstance, Asset, AssetId, Palette, Scene},
-    transition::{Transition, TransitionGoal},
 };
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};

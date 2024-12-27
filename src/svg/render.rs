@@ -1,6 +1,5 @@
-use crate::constants::PREVIEW_TEXTURE_SIZE;
-
 use super::ParsedSvg;
+use crate::pipeline::constants::PREVIEW_TEXTURE_SIZE;
 use anyhow::{Context, Result};
 use egui::ColorImage;
 use egui_extras::RetainedImage;

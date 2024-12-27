@@ -1,7 +1,7 @@
 //! Renders to a texture
 use super::AnimationConfig;
 use crate::{
-    constants::TEXTURE_SIZE,
+    pipeline::constants::TEXTURE_SIZE,
     storage::{scene::effect_state::EffectState, Asset, Palette},
     wgpu_render_state,
 };

@@ -9,9 +9,9 @@ use crate::{
         action::UiAction,
         asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
         effect::widget::EffectWidget,
+        viewport_builder::default_viewport_builder,
         ChangeButton,
     },
-    viewport_builder::default_viewport_builder,
     wgpu_render_state,
 };
 use egui::{Color32, Context, Id, Margin, Stroke, Vec2, ViewportId};

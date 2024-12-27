@@ -1,8 +1,10 @@
 use crate::{
     pipeline::output_sender::enttec_usb_pro::serial_numbers,
     storage::asset::{output_device::OutputDevice, Asset},
-    ui::asset_tree::{AssetTree, TreeSelection},
-    viewport_builder::default_viewport_builder,
+    ui::{
+        asset_tree::{AssetTree, TreeSelection},
+        viewport_builder::default_viewport_builder,
+    },
 };
 use egui::{ComboBox, Id, TextEdit, Ui, Vec2, ViewportId};
 use strum::{EnumIter, IntoEnumIterator, IntoStaticStr};

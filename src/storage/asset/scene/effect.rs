@@ -1,6 +1,6 @@
 use crate::{
     app::svg::Svg,
-    group::Groups,
+    pipeline::group::Groups,
     storage::{
         animation::config::AnimationConfig,
         curve::static_or_curve::{RangeDegrees, RangePercentage, StaticOrCurve},

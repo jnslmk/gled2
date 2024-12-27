@@ -1,5 +1,5 @@
 use crate::{
-    group::Groups,
+    pipeline::group::Groups,
     storage::asset::{
         project::scene_instance_path::SceneInstancePath, scene::instance::SceneInstance, Asset,
     },
