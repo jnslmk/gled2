@@ -3,7 +3,7 @@ fn main() {
         let mut res = winresource::WindowsResource::new();
         res.set_ar_path("x86_64-w64-mingw32-gcc-ar");
         res.set_windres_path("x86_64-w64-mingw32-windres");
-        res.set_icon("assets/logo.ico");
+        res.set_icon("logo/logo.ico");
         res.compile().expect("Could not compile");
     }
 }

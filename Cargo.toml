@@ -89,12 +89,12 @@ assets = [
     { source = "target/release/gled", dest = "/usr/bin/gled", mode = "555" },
     { source = ".rpm/gled.desktop", dest = "/usr/share/applications/gled.desktop", mode = "444" },
     { source = ".rpm/gled.repo", dest = "/etc/yum.repos.d/gled.repo", mode = "444" },
-    { source = "assets/logo.svg", dest = "/usr/share/icons/application-gled.svg", mode = "444" },
+    { source = "logo/logo.svg", dest = "/usr/share/icons/application-gled.svg", mode = "444" },
 ]
 
 [package.metadata.packager]
 product-name = "Gled"
 identifier = "de.photonenkollektiv.gled"
-resources = ["assets/logo.png", "assets/logo.icns"]
-icons = ["assets/logo.png", "assets/logo.icns"]
+resources = ["logo/logo.png", "logo/logo.icns"]
+icons = ["logo/logo.png", "logo/logo.icns"]
 macos = { "signingIdentity" = "Developer ID Application: FreshX GmbH (V5GQY7AUWA)" }

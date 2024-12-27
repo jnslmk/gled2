@@ -2,7 +2,7 @@ use egui::{ColorImage, IconData};
 use egui_extras::RetainedImage;
 use std::sync::OnceLock;
 
-static LOGO: &[u8; 38897] = include_bytes!("../../assets/logo.png");
+static LOGO: &[u8; 38897] = include_bytes!("../../logo/logo.png");
 
 pub fn icon() -> IconData {
     let (icon_rgba, icon_width, icon_height) = {
