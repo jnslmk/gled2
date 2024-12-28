@@ -13,7 +13,11 @@ pub mod timing;
 use crate::{
     input::Input,
     midi::state::MidiState,
-    pipeline::output_sender::{self, GpuReadyReceiver, OutputSender},
+    pipeline::{
+        extract_output::ExtractOutput,
+        output_sender::{self, GpuReadyReceiver, OutputSender},
+        renderer_callback::RendererCallback,
+    },
     storage::{
         asset::{
             project::{
@@ -27,7 +31,8 @@ use crate::{
     },
     ui::{action::UiAction, viewport_builder::default_viewport_builder, windows::Windows},
 };
-use egui::{ahash::HashMap, Key, Modifiers, SidePanel, TopBottomPanel, ViewportId};
+use eframe::egui_wgpu::Callback;
+use egui::{ahash::HashMap, Key, Modifiers, Rect, SidePanel, TopBottomPanel, ViewportId};
 use persistant_state::PersistantState;
 use std::{
     sync::mpsc::Receiver,
@@ -57,6 +62,11 @@ pub struct App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        ExtractOutput::trigger_output_sender(&self.output_sender);
+        self.gpu_ready_receiver
+            .recv()
+            .expect("GPU ready sender lost");
+
         if loading().is_none() && self.startup {
             self.startup = false;
             if let Some(project) = PersistantState::get().last_project_id {
@@ -93,8 +103,6 @@ impl eframe::App for App {
 
         if let Some(project) = &mut self.project {
             project.render(
-                &mut self.output_sender,
-                &mut self.gpu_ready_receiver,
                 &self.timing,
                 self.blackout,
                 if PersistantState::effects_always_render() {
@@ -153,6 +161,9 @@ impl eframe::App for App {
 
         self.windows
             .update(ctx, &self.timing, self.project.as_mut());
+
+        let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
+        ctx.debug_painter().add(callback);
         ctx.request_repaint();
     }
 }

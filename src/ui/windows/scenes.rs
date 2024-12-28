@@ -1,5 +1,6 @@
 use crate::{
     app::{persistant_state::PersistantState, timing::Timing},
+    pipeline::renderer_callback::RendererCallback,
     storage::{
         asset::{
             animation::Animation,
@@ -20,7 +21,6 @@ use egui::{
     scroll_area::ScrollBarVisibility, Button, Color32, Context, Id, Margin, Stroke, Vec2,
     ViewportId,
 };
-use std::iter::once;
 use wgpu::CommandEncoderDescriptor;
 
 #[derive(Default)]
@@ -176,7 +176,7 @@ impl ScenesWindow {
                             scene
                                 .data
                                 .render(&mut self.effect_states, &mut encoder, false);
-                            queue.submit(once(encoder.finish()));
+                            RendererCallback::add(encoder.finish());
                         }
 
                         egui::ScrollArea::vertical()

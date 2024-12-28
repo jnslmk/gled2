@@ -17,7 +17,8 @@ use crate::{
     },
     storage::asset::{output_device::OutputDevice, Asset},
 };
-pub type OutputSender = Sender<()>;
+pub type OutputSender = Sender<bool>;
+pub type GpuReadySender = Sender<()>;
 pub type GpuReadyReceiver = Receiver<()>;
 
 /// Start output thread.
@@ -29,7 +30,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
     enttec_usb_pro::start();
 
     debug!("Spawning output thread");
-    let (output_sender, output_receiver) = channel::<()>();
+    let (output_sender, output_receiver) = channel();
     let (gpu_ready_sender, gpu_ready_receiver) = channel::<()>();
     gpu_ready_sender.send(()).ok();
 
@@ -51,11 +52,11 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
 
             let extract_output = ExtractOutput::get();
 
-            for _ in output_receiver.iter() {
+            for use_first_output_buffer in output_receiver.iter() {
                 trace!("Sending output data");
                 let packages: Vec<(SocketAddr, Vec<u8>)> = {
-                    let output_data = extract_output.poll_output_buffer();
-                    gpu_ready_sender.send(()).ok();
+                    let output_data = extract_output.poll_output_buffer(use_first_output_buffer);
+                    gpu_ready_sender.send(()).expect("GPU ready receiver lost");
 
                     let mut routings = extract_output.routings.lock();
 

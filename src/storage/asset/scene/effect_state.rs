@@ -1,12 +1,15 @@
 use super::Effect;
 use crate::{
-    pipeline::{group::Group, output_mix::OutputMix, texture_to_output::TextureToOutput},
+    pipeline::{
+        group::Group, output_mix::OutputMix, renderer_callback::RendererCallback,
+        texture_to_output::TextureToOutput,
+    },
     storage::animation::{config::AnimationConfig, renderer::AnimationRenderer},
     wgpu_render_state,
 };
 use arboard::{Clipboard, ImageData};
 use egui::TextureId;
-use wgpu::{Maintain, MapMode, Queue};
+use wgpu::{Maintain, MapMode};
 
 #[derive(Debug)]
 pub struct EffectState {
@@ -90,7 +93,7 @@ impl EffectState {
         SIZE
     }
 
-    pub fn copy_rendered_image_to_clipboard(&self, queue: &Queue) {
+    pub fn copy_rendered_image_to_clipboard(&self) {
         let texture = self.renderer.texture();
         let texture_size = texture.size();
         let buffer_size = (texture_size.width * texture_size.height * 4) as wgpu::BufferAddress;
@@ -126,7 +129,7 @@ impl EffectState {
             texture_size,
         );
 
-        queue.submit(Some(encoder.finish()));
+        RendererCallback::add(encoder.finish());
 
         let buffer_slice = buffer.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();

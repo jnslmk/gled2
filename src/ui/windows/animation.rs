@@ -1,5 +1,6 @@
 use crate::{
     app::{persistant_state::PersistantState, timing::Timing},
+    pipeline::renderer_callback::RendererCallback,
     storage::asset::{
         animation::Animation,
         scene::{effect::Effect, effect_state::EffectState},
@@ -19,7 +20,7 @@ use naga::{
     front::wgsl::parse_str,
     valid::{Capabilities, ValidationFlags, Validator},
 };
-use std::{iter::once, sync::Arc};
+use std::sync::Arc;
 use wgpu::CommandEncoderDescriptor;
 
 #[derive(Default)]
@@ -101,9 +102,10 @@ impl AnimationWindow {
             effect.render(effect_state, &mut encoder, false);
             if self.copy_rendered_image_to_clipboard {
                 self.copy_rendered_image_to_clipboard = false;
-                effect_state.copy_rendered_image_to_clipboard(queue);
+                effect_state.copy_rendered_image_to_clipboard();
             }
-            queue.submit(once(encoder.finish()));
+
+            RendererCallback::add(encoder.finish());
         }
 
         if self.preview {

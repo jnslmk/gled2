@@ -6,5 +6,6 @@ pub mod output_mix;
 pub mod output_sender;
 pub mod preview;
 pub mod preview_indices;
+pub mod renderer_callback;
 pub mod texture_to_output;
 pub mod transition;

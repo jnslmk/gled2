@@ -16,11 +16,8 @@ use crate::{
         event::{GamepadEvent, InputEvent},
     },
     pipeline::{
-        extract_output::ExtractOutput,
-        output_clear::OutputClear,
-        output_sender::{GpuReadyReceiver, OutputSender},
-        preview::Preview,
-        preview_indices::PreviewIndices,
+        extract_output::ExtractOutput, output_clear::OutputClear, preview::Preview,
+        preview_indices::PreviewIndices, renderer_callback::RendererCallback,
     },
     storage::asset_id::AssetId,
     wgpu_render_state,
@@ -153,8 +150,6 @@ impl Project {
     #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self,
-        output_sender: &mut OutputSender,
-        gpu_ready_receiver: &mut GpuReadyReceiver,
         timing: &Timing,
         blackout: bool,
         render_deactivated_scenes: RenderDeactivatedScenes,
@@ -205,13 +200,7 @@ impl Project {
         PreviewIndices::get().run(&mut encoder);
         Preview::run(&mut encoder);
 
-        //wait for gpu to be ready for the next queue submission
-        gpu_ready_receiver.recv().ok();
-        queue.submit(once(encoder.finish()));
-
-        output_sender
-            .send(())
-            .expect("Output sender closed its channel");
+        RendererCallback::add(encoder.finish());
     }
 
     pub fn tap_input_is_new(&self) -> bool {

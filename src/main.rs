@@ -14,7 +14,7 @@ use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup};
 use egui::ThemePreference;
 use input::Input;
 use once_cell::sync::Lazy;
-use pipeline::constants::OUTPUT_BUFFER_SIZE;
+use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallback};
 use std::sync::OnceLock;
 use ui::viewport_builder::default_viewport_builder;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
@@ -36,6 +36,7 @@ const PRESENT_MODE: PresentMode = PresentMode::Immediate;
 const PRESENT_MODE: PresentMode = PresentMode::Mailbox;
 
 fn main() {
+    RendererCallback::init();
     env_logger::init();
     storage::start_thread();
     ui::temperature::start_thread();
