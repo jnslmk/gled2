@@ -14,6 +14,7 @@ impl App {
             return;
         };
         let deck = project.deck(path);
+        let mut init_gpu = false;
 
         ui.horizontal(|ui| {
             ui.label(RichText::new(path.deck_path.name()).heading());
@@ -22,6 +23,7 @@ impl App {
             scene.change_button(ui);
             if let Some(scene) = scene {
                 deck.add_scene(&mut self.selected_scene_instance, scene);
+                init_gpu = true;
             }
 
             ui.menu_button(
@@ -69,6 +71,7 @@ impl App {
                 ),
             );
         }
+
         ui.scope(|ui| {
             ui.horizontal(|ui| {
                 if deck.groups.change_button(ui) {
@@ -76,5 +79,9 @@ impl App {
                 }
             });
         });
+
+        if init_gpu {
+            project.init_gpu();
+        }
     }
 }
