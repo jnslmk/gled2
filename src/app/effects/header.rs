@@ -69,10 +69,12 @@ impl App {
                 ),
             );
         }
-        ui.horizontal(|ui| {
-            if deck.groups.change_button(ui) {
-                action::UiAction::InitGPU.enqueue();
-            }
+        ui.scope(|ui| {
+            ui.horizontal(|ui| {
+                if deck.groups.change_button(ui) {
+                    action::UiAction::InitGPU.enqueue();
+                }
+            });
         });
     }
 }
