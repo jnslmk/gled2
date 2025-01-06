@@ -43,8 +43,6 @@ fn main() {
     ui::temperature::start_thread();
     midi::start_thread();
 
-    UiAction::Error("This is a test error".to_string()).enqueue();
-
     #[cfg(not(debug_assertions))]
     ui::update_check::Update::start_thread();
 
