@@ -258,7 +258,7 @@ impl App {
             self.no_project(ctx);
         }
     }
-    pub fn new() -> Option<Self> {
+    pub fn new(ui_action_receiver: Receiver<UiAction>) -> Option<Self> {
         let (output_sender, gpu_ready_receiver) =
             output_sender::start().expect("Could not start output sender");
 
@@ -276,7 +276,7 @@ impl App {
             other_main_windows: Default::default(),
             areas: Default::default(),
             git_commit_message: Default::default(),
-            ui_action_receiver: UiAction::init_queue(),
+            ui_action_receiver,
             last_title_update: 0,
             midi_output_active: false,
         };

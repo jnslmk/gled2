@@ -26,12 +26,12 @@ pub fn discover() {
                     Ok(name) => match name.split(':').next() {
                         Some(name) => Some((port, name.to_owned())),
                         None => {
-                            log::error!("Midi port name is empty");
+                            UiAction::Error("Midi port name is empty".to_string()).enqueue();
                             None
                         }
                     },
                     Err(err) => {
-                        log::error!("Could not get midi port name: {err:?}");
+                        UiAction::Error(format!("Could not get midi port name: {err:?}")).enqueue();
                         None
                     }
                 })
@@ -53,7 +53,10 @@ pub fn discover() {
                         let connection = match output.connect(&port, "gled_write_output") {
                             Ok(connection) => connection,
                             Err(err) => {
-                                log::error!("Could not connect to midi output: {err:?}");
+                                UiAction::Error(format!(
+                                    "Could not connect to midi output: {err:?}"
+                                ))
+                                .enqueue();
                                 continue;
                             }
                         };

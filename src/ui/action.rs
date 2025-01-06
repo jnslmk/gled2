@@ -13,6 +13,7 @@ use crate::{
     },
 };
 use egui::ViewportId;
+use notify_rust::Notification;
 use once_cell::sync::OnceCell;
 use std::sync::{
     mpsc::{Receiver, Sender},
@@ -45,6 +46,7 @@ pub enum UiAction {
     SetSceneActive(SceneInstancePath, bool),
     SetMainDimmer(f32),
     MidiOutputActive(bool),
+    Error(String),
 }
 
 impl App {
@@ -150,6 +152,20 @@ impl App {
                 (_, UiAction::MidiOutputActive(active)) => {
                     self.midi_output_active = active;
                 }
+                (_, UiAction::Error(error)) => {
+                    log::error!("{error}");
+
+                    if let Err(err) = Notification::new()
+                        .summary("Error")
+                        .body(&error)
+                        .icon("application-gled")
+                        .show()
+                    {
+                        log::error!("Could not show notification: {err:?}");
+                    }
+
+                    self.windows.errors.entries.push(error);
+                }
                 (None, _) => log::trace!("Ingoring ui action which needs a loaded project"),
             }
         }
@@ -164,8 +180,10 @@ impl UiAction {
     }
 
     pub fn enqueue(self) {
-        if let Some(sender) = ACTION_SENDER.get() {
-            sender.send(self).expect("Action receiver dropped");
-        }
+        ACTION_SENDER
+            .get()
+            .expect("Action sender not initialized")
+            .send(self)
+            .expect("Action receiver dropped");
     }
 }

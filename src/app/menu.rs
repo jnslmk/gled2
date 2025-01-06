@@ -9,7 +9,7 @@ use egui::{
     load::SizedTexture, text::LayoutJob, Button, Color32, Context, Id, ImageButton, Key, Label,
     Modifiers, Rect, RichText, Slider, Stroke, TextFormat, TextStyle, Vec2, ViewportId, WidgetText,
 };
-use log::{debug, error};
+use log::debug;
 use rand::Rng;
 use std::{
     sync::Arc,
@@ -178,10 +178,12 @@ impl App {
                                     Some(svg)
                                 }
                                 Err(err) => {
-                                    error!(
+                                    UiAction::Error(format!(
                                         "Could not load svg file \"{}\": {err:?}",
                                         path.display()
-                                    );
+                                    ))
+                                    .enqueue();
+
                                     None
                                 }
                             })
@@ -202,7 +204,11 @@ impl App {
                                 debug!("Saved svg file \"{}\"", path.display());
                             }
                             Err(err) => {
-                                error!("Could not save svg file \"{}\": {err:?}", path.display());
+                                UiAction::Error(format!(
+                                    "Could not save svg file \"{}\": {err:?}",
+                                    path.display()
+                                ))
+                                .enqueue();
                             }
                         };
                     }

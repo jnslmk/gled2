@@ -1,4 +1,4 @@
-use crate::midi::apc40_mk2;
+use crate::{midi::apc40_mk2, ui::action::UiAction};
 use midir::MidiInput;
 use std::{collections::HashMap, thread::sleep, time::Duration};
 
@@ -18,12 +18,12 @@ pub fn discover() {
                     Ok(name) => match name.split(':').next() {
                         Some(name) => Some((port, name.to_owned())),
                         None => {
-                            log::error!("Midi port name is empty");
+                            UiAction::Error("Midi port name is empty".to_string()).enqueue();
                             None
                         }
                     },
                     Err(err) => {
-                        log::error!("Could not get midi port name: {err:?}");
+                        UiAction::Error(format!("Could not get midi port name: {err:?}")).enqueue();
                         None
                     }
                 })
@@ -57,7 +57,10 @@ pub fn discover() {
                             ) {
                                 Ok(connection) => connection,
                                 Err(err) => {
-                                    log::error!("Could not connect to midi input: {err:?}");
+                                    UiAction::Error(format!(
+                                        "Could not connect to midi input: {err:?}"
+                                    ))
+                                    .enqueue();
                                     continue;
                                 }
                             }

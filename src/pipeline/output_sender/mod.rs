@@ -1,9 +1,9 @@
-//! Send data via Art-Net udp protocol.
+//! Send data to output devices.
 
 pub mod enttec_usb_pro;
 
 use anyhow::{Context, Result};
-use log::{debug, error, trace};
+use log::{debug, trace, warn};
 use std::{
     net::{SocketAddr, ToSocketAddrs, UdpSocket},
     sync::mpsc::{channel, Receiver, Sender},
@@ -146,7 +146,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                     debug!("Sending package to {addr}");
                     trace!("Package data: {data:02x?}");
                     if let Err(err) = socket.send_to(&data, addr) {
-                        error!("Could not send data: {:?}", err)
+                        warn!("Could not send data: {:?}", err)
                     };
                 }
             }

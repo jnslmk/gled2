@@ -1,4 +1,4 @@
-use crate::app::persistant_state::PersistantState;
+use crate::{app::persistant_state::PersistantState, ui::action::UiAction};
 
 use super::STORAGE_DIR;
 use git2::{
@@ -15,7 +15,7 @@ use std::{
 
 pub static SSH_KEY_PASSPHRASE_ENTRY: Lazy<Option<keyring::Entry>> = Lazy::new(|| {
     keyring::Entry::new("gled2", "ssh_key_passphrase")
-        .map_err(|err| log::error!("Could not get keyring entry: {err:?}"))
+        .map_err(|err| UiAction::Error(format!("Could not get keyring entry: {err:?}")).enqueue())
         .ok()
 });
 
@@ -436,7 +436,10 @@ impl GitCredentials {
     pub fn set_passphrase(&mut self, passphrase: String) {
         if let Some(entry) = SSH_KEY_PASSPHRASE_ENTRY.as_ref() {
             if let Err(err) = entry.set_password(&passphrase) {
-                log::error!("Could not set passphrase in system keychain: {err}");
+                UiAction::Error(format!(
+                    "Could not set passphrase in system keychain: {err:?}"
+                ))
+                .enqueue();
             }
         }
     }

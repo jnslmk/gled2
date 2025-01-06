@@ -1,11 +1,11 @@
-use egui::Context;
-
 use crate::{app::timing::Timing, storage::asset::project::Project};
+use egui::Context;
 
 pub mod about;
 pub mod animation;
 pub mod artnet_input;
 pub mod curves;
+pub mod errors;
 pub mod git_config;
 pub mod output_devices;
 pub mod output_routings;
@@ -19,6 +19,7 @@ pub struct Windows {
     pub about: about::AboutWindow,
     pub animations: animation::AnimationWindow,
     pub artnet_input: artnet_input::ArtnetInputWindow,
+    pub errors: errors::ErrorsWindow,
     pub curves: curves::CurvesWindow,
     pub git_config: git_config::GitConfigWindow,
     pub output_devices: output_devices::OutputDevicesWindow,
@@ -34,6 +35,7 @@ impl Windows {
         self.about.update(ctx);
         self.animations.update(ctx, timing);
         self.curves.update(ctx);
+        self.errors.update(ctx);
         self.git_config.update(ctx);
         self.artnet_input.update(ctx);
         self.output_devices.update(ctx);

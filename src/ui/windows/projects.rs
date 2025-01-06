@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use egui::{Button, Id, Vec2, ViewportId};
-use log::{debug, error};
+use log::debug;
 
 #[derive(Default)]
 pub struct ProjectsWindow {
@@ -96,10 +96,11 @@ impl ProjectsWindow {
                                                 debug!("Saved svg file \"{}\"", path.display());
                                             }
                                             Err(err) => {
-                                                error!(
+                                                UiAction::Error(format!(
                                                     "Could not save svg file \"{}\": {err:?}",
                                                     path.display()
-                                                );
+                                                ))
+                                                .enqueue();
                                             }
                                         };
                                     }

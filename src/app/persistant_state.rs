@@ -1,10 +1,13 @@
-use crate::storage::{
-    asset::{palette::Palette, project::Project},
-    asset_id::AssetId,
-    git::GitCredentials,
+use crate::{
+    storage::{
+        asset::{palette::Palette, project::Project},
+        asset_id::AssetId,
+        git::GitCredentials,
+    },
+    ui::action::UiAction,
 };
 use egui::mutex::Mutex;
-use log::{error, info};
+use log::info;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -79,16 +82,16 @@ impl PersistantState {
 
         std::thread::spawn(move || {
             let Some(path) = Self::path() else {
-                error!("Could not determine persistant state path");
+                UiAction::Error("Could not determine persistant state path".to_string()).enqueue();
                 return;
             };
             let Ok(contents) = serde_json::to_string_pretty(&self) else {
-                error!("Could not serialize persistant state");
+                UiAction::Error("Could not serialize persistant state".to_string()).enqueue();
                 return;
             };
 
             if let Err(err) = std::fs::write(path, contents) {
-                error!("Could not persist state: {err:?}");
+                UiAction::Error(format!("Could not persist state: {err:?}")).enqueue();
             }
 
             info!("Saved persistant state");

@@ -16,7 +16,7 @@ use input::Input;
 use once_cell::sync::Lazy;
 use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallback};
 use std::sync::OnceLock;
-use ui::viewport_builder::default_viewport_builder;
+use ui::{action::UiAction, viewport_builder::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
 
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
@@ -36,11 +36,14 @@ const PRESENT_MODE: PresentMode = PresentMode::Immediate;
 const PRESENT_MODE: PresentMode = PresentMode::Mailbox;
 
 fn main() {
-    RendererCallback::init();
     env_logger::init();
+    let ui_action_receiver = UiAction::init_queue();
+    RendererCallback::init();
     storage::start_thread();
     ui::temperature::start_thread();
     midi::start_thread();
+
+    UiAction::Error("This is a test error".to_string()).enqueue();
 
     #[cfg(not(debug_assertions))]
     ui::update_check::Update::start_thread();
@@ -87,7 +90,9 @@ fn main() {
                 )
                 .map_err(|_err| ())
                 .expect("Could not set wgpu render state");
-            Ok(Box::new(App::new().expect("Could not create new App")))
+            Ok(Box::new(
+                App::new(ui_action_receiver).expect("Could not create new App"),
+            ))
         }),
     )
     .expect("Could not run native");

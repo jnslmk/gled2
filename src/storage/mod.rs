@@ -4,7 +4,7 @@ pub mod asset_id;
 pub mod collection;
 pub mod git;
 
-use crate::app::persistant_state::PersistantState;
+use crate::{app::persistant_state::PersistantState, ui::action::UiAction};
 
 use self::{action::StorageAction, asset::*, asset_id::AssetId};
 use animation::Animation;
@@ -270,7 +270,7 @@ pub fn start_thread() {
                         json,
                     } => {
                         if let Err(err) = git.write_asset(&asset_path(uuid, dir_name), json) {
-                            log::error!("Could not write asset: {err:?}");
+                            UiAction::Error(format!("Could not write asset: {err}")).enqueue();
                         }
 
                         StorageAction::CountStagedFiles.enqueue();

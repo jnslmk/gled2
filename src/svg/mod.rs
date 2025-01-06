@@ -6,13 +6,14 @@ pub mod parameter;
 pub mod render;
 
 use anyhow::{Context, Result};
-use image::EncodableLayout;
 use led::Led;
-use log::{debug, error};
+use log::debug;
 use parameter::Parameter;
 use std::collections::{HashMap, HashSet};
 use svgdom::{Document, ElementId, FilterSvg, Node};
 use usvg::Tree;
+
+use crate::ui::action::UiAction;
 
 pub struct ParsedSvg {
     pub parameters: HashMap<String, Parameter>,
@@ -83,8 +84,11 @@ fn traverse_node(
                 .and_then(|child| {
                     serde_hjson::from_str::<Parameter>(&child.text())
                         .map_err(|err| {
-                            eprintln!("{:?}", child.text().as_bytes().as_bytes());
-                            error!("Could not parse parameter of {}: {err:?}", node.id())
+                            UiAction::Error(format!(
+                                "Could not parse parameter of {}: {err:?}",
+                                node.id(),
+                            ))
+                            .enqueue();
                         })
                         .ok()
                 })

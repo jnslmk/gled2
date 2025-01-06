@@ -5,6 +5,7 @@ use crate::{
         texture_to_output::TextureToOutput,
     },
     storage::animation::{config::AnimationConfig, renderer::AnimationRenderer},
+    ui::action::UiAction,
     wgpu_render_state,
 };
 use arboard::{Clipboard, ImageData};
@@ -155,7 +156,8 @@ impl EffectState {
                     width: texture_size.width as usize,
                     height: texture_size.height as usize,
                 }) {
-                    log::error!("Could not copy rendered image to clipboard: {}", err);
+                    UiAction::Error(format!("Could not copy rendered image to clipboard: {err}"))
+                        .enqueue();
                 } else {
                     log::info!("Copied rendered image to clipboard");
                 }

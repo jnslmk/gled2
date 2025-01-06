@@ -2,7 +2,7 @@ use super::{
     asset::{Asset, AssetTrait},
     STORAGE_DIR,
 };
-use crate::storage::AssetId;
+use crate::{storage::AssetId, ui::action::UiAction};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use std::{collections::HashMap, fmt::Debug, str::FromStr, sync::Arc};
 use typemap::Key;
@@ -52,10 +52,11 @@ impl<T: AssetTrait> Collection<T> {
                         AssetId::from_uuid(id),
                     )
                     .map_err(|err| {
-                        log::error!(
+                        UiAction::Error(format!(
                             "Could not read/parse asset {}: {err:?}",
                             entry.path().display()
-                        )
+                        ))
+                        .enqueue();
                     })
                     .ok()?;
 
