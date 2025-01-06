@@ -1,4 +1,4 @@
-use crate::ui::UiAction;
+use crate::ui::action::UiAction;
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use std::time::Duration;
