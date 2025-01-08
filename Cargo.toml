@@ -77,6 +77,7 @@ winresource = "0.1"
 
 [profile.release]
 lto = "fat"
+codegen-units = 1
 
 [profile.profiling]
 inherits = "release"
