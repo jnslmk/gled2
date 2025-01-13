@@ -59,7 +59,7 @@ wgpu = "23"
 rand = "0.8"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 network-interface = "2"
-directories = "5.0"
+directories = "6"
 git2 = "0.20"
 whoami = "1.5"
 mkdirp = "1.0"
