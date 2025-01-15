@@ -1,5 +1,5 @@
-use egui::{Button, Color32, Id, Label, Margin, Pos2, Rect, Stroke, Ui, Vec2};
-use egui_flex::{item, Flex};
+use egui::{Button, Color32, Id, Label, Layout, Margin, Pos2, Rangef, Rect, Stroke, Ui, Vec2};
+use egui_extras::StripBuilder;
 use egui_ltreeview::{node::NodeBuilder, Action, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -331,73 +331,97 @@ impl<T: AssetTrait> AssetTree<T> {
 
                 ui.add_space(4.0);
 
-                Flex::horizontal().show(ui, |flex| {
-                    if flex
-                        .add(
-                            item().grow(1.0),
-                            Button::new(format!("Save{}", if *dirty { "*" } else { "" })),
-                        )
-                        .on_hover_ui(|ui| {
-                            ui.label("Save to disk");
-                        })
-                        .clicked()
-                    {
-                        *dirty = false;
+                StripBuilder::new(ui)
+                    .sizes(
+                        egui_extras::Size::Remainder {
+                            range: Rangef::new(0.0, f32::INFINITY),
+                        },
+                        4,
+                    )
+                    .horizontal(|mut strip| {
+                        strip.cell(|ui| {
+                            ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
+                                if ui
+                                    .add(Button::new(format!(
+                                        "Save{}",
+                                        if *dirty { "*" } else { "" }
+                                    )))
+                                    .on_hover_ui(|ui| {
+                                        ui.label("Save to disk");
+                                    })
+                                    .clicked()
+                                {
+                                    *dirty = false;
 
-                        if let TreeSelection::Asset(asset) = &self.selection {
-                            asset.clone().save();
-                        }
+                                    if let TreeSelection::Asset(asset) = &self.selection {
+                                        asset.clone().save();
+                                    }
 
-                        changed = true;
-                    }
-                    if flex
-                        .add(item().grow(1.0), Button::new("Save Copy"))
-                        .on_hover_ui(|ui| {
-                            ui.label("Save copy to disk");
-                        })
-                        .clicked()
-                    {
-                        *dirty = false;
+                                    changed = true;
+                                }
+                            });
+                        });
+                        strip.cell(|ui| {
+                            ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
+                                if ui
+                                    .add(Button::new("Save Copy"))
+                                    .on_hover_ui(|ui| {
+                                        ui.label("Save copy to disk");
+                                    })
+                                    .clicked()
+                                {
+                                    *dirty = false;
 
-                        if let TreeSelection::Asset(asset) = &self.selection {
-                            asset.copy().save();
-                        }
+                                    if let TreeSelection::Asset(asset) = &self.selection {
+                                        asset.copy().save();
+                                    }
 
-                        changed = true;
-                    }
-                    if flex
-                        .add(
-                            item().grow(1.0),
-                            Button::new(format!("Reset{}", if *dirty { "*" } else { "" }))
-                                .fill(Color32::DARK_RED),
-                        )
-                        .on_hover_ui(|ui| {
-                            ui.label("Reset to state on disk");
-                        })
-                        .clicked()
-                    {
-                        *dirty = false;
-                        if let TreeSelection::Asset(asset) = &mut self.selection {
-                            *asset = Arc::unwrap_or_clone(Asset::get(asset.id).unwrap_or_default());
-                        }
+                                    changed = true;
+                                }
+                            });
+                        });
+                        strip.cell(|ui| {
+                            ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
+                                if ui
+                                    .add(
+                                        Button::new(format!(
+                                            "Reset{}",
+                                            if *dirty { "*" } else { "" }
+                                        ))
+                                        .fill(Color32::DARK_RED),
+                                    )
+                                    .on_hover_ui(|ui| {
+                                        ui.label("Reset to state on disk");
+                                    })
+                                    .clicked()
+                                {
+                                    *dirty = false;
+                                    if let TreeSelection::Asset(asset) = &mut self.selection {
+                                        *asset = Arc::unwrap_or_clone(
+                                            Asset::get(asset.id).unwrap_or_default(),
+                                        );
+                                    }
 
-                        changed = true;
-                    }
-                    if flex
-                        .add(
-                            item().grow(1.0),
-                            Button::new("Delete").fill(Color32::DARK_RED),
-                        )
-                        .clicked()
-                    {
-                        if let TreeSelection::Asset(asset) = &self.selection {
-                            asset.delete();
-                        }
-                        self.selection = TreeSelection::None;
+                                    changed = true;
+                                }
+                            });
+                        });
+                        strip.cell(|ui| {
+                            ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
+                                if ui
+                                    .add(Button::new("Delete").fill(Color32::DARK_RED))
+                                    .clicked()
+                                {
+                                    if let TreeSelection::Asset(asset) = &self.selection {
+                                        asset.delete();
+                                    }
+                                    self.selection = TreeSelection::None;
 
-                        changed = true
-                    }
-                });
+                                    changed = true
+                                }
+                            });
+                        });
+                    });
             });
 
         changed
