@@ -20,7 +20,7 @@ eframe = { version = "0.30", features = [
 egui = { version = "0.30", features = ["persistence"] }
 egui_extras = { version = "0.30", features = ["image", "syntect"] }
 egui_flex = "0.2"
-egui_ltreeview = { git = "https://github.com/elwerene/egui_ltreeview.git", features = [
+egui_ltreeview = { git = "https://github.com/LennysLounge/egui_ltreeview.git", features = [
     "persistence",
 ] }
 emath = "0.30"
