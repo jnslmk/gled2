@@ -1,7 +1,6 @@
 #!/bin/bash
 
 echo "We need to enable system perf events, so please enter your user password:"
-echo '1' | sudo tee /proc/sys/kernel/perf_event_paranoid
 echo '-1' | sudo tee /proc/sys/kernel/perf_event_paranoid
 
 echo "Installing samply"

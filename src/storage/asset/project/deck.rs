@@ -9,7 +9,7 @@ use crate::{
     },
     storage::{scene::instance::SceneInstance, Asset, AssetId, Palette, Scene},
 };
-use rand::seq::SliceRandom;
+use rand::seq::IndexedMutRandom;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashSet},
