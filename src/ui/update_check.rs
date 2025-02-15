@@ -45,10 +45,10 @@ impl Update {
         }
 
         reqwest::blocking::get(RELEASES_URL)
-            .map_err(|err| UiAction::Error(format!("Failed to fetch releases: {err:?}")).enqueue())
+            .map_err(|err| log::warn!("Failed to fetch releases: {err:?}"))
             .ok()?
             .json::<Vec<GitlabRelease>>()
-            .map_err(|err| UiAction::Error(format!("Failed to parse releases: {err:?}")).enqueue())
+            .map_err(|err| log::warn!("Failed to parse releases: {err:?}"))
             .ok()?
             .into_iter()
             .next()
