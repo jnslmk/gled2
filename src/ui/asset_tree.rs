@@ -331,6 +331,8 @@ impl<T: AssetTrait> AssetTree<T> {
 
                 ui.add_space(4.0);
 
+                //TODO: FIX
+                ui.set_max_height(20.0);
                 StripBuilder::new(ui)
                     .sizes(
                         egui_extras::Size::Remainder {
