@@ -1,4 +1,4 @@
-use egui::{Color32, Pos2, Rect, Rounding, Shape, Stroke, Vec2};
+use egui::{Color32, CornerRadius, Pos2, Rect, Shape, Stroke, Vec2};
 use emath::RectTransform;
 use serde::{Deserialize, Serialize};
 
@@ -48,9 +48,12 @@ impl CurvePoint {
                     stroke,
                 )
             }
-            CurvePoint::Inner(_) => {
-                Shape::rect_stroke(self.point_rect(to_screen), Rounding::default(), stroke)
-            }
+            CurvePoint::Inner(_) => Shape::rect_stroke(
+                self.point_rect(to_screen),
+                CornerRadius::default(),
+                stroke,
+                egui::StrokeKind::Inside,
+            ),
             CurvePoint::Bezier(_) => {
                 Shape::circle_stroke(self.screen_pos(to_screen), CONTROL_POINT_RADIUS, stroke)
             }

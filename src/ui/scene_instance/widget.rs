@@ -1,13 +1,13 @@
 use crate::{
     pipeline::group::Groups,
     storage::asset::{
-        project::scene_instance_path::SceneInstancePath, scene::instance::SceneInstance, Asset,
+        Asset, project::scene_instance_path::SceneInstancePath, scene::instance::SceneInstance,
     },
     ui::pills::show_pills,
 };
 use egui::{
-    epaint::RectShape, load::SizedTexture, pos2, Align, Button, Checkbox, Color32, Image, Layout,
-    Margin, Rect, Rounding, Sense, Shape, TextureId, Ui, Vec2, Widget,
+    Align, Button, Checkbox, Color32, CornerRadius, Image, Layout, Margin, Rect, Sense, Shape,
+    TextureId, Ui, Vec2, Widget, epaint::RectShape, load::SizedTexture, pos2,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -43,7 +43,7 @@ impl Widget for SceneInstanceWidget<'_> {
                 Color32::TRANSPARENT
             })
             .inner_margin(Margin::from(10.0))
-            .rounding(Rounding::from(4.0))
+            .corner_radius(CornerRadius::from(4.0))
             .show(ui, |ui| {
                 egui::Frame::none()
                     .fill(if self.scene_instance.flash {
@@ -122,22 +122,24 @@ impl Widget for SceneInstanceWidget<'_> {
                                 ui.allocate_rect(rect, Sense::hover());
                                 ui.painter().add(Shape::Rect(RectShape::filled(
                                     rect,
-                                    Rounding::default(),
+                                    CornerRadius::default(),
                                     Color32::BLACK,
                                 )));
 
                                 for texture_id in self.scene_instance.texture_ids() {
-                                    ui.painter().add(Shape::Rect(RectShape {
-                                        rect,
-                                        rounding: Rounding::default(),
-                                        blur_width: 0.0,
-                                        fill_texture_id: texture_id,
-                                        uv: uv.unwrap_or_else(|| {
-                                            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0))
-                                        }),
-                                        fill: Color32::WHITE,
-                                        stroke: Default::default(),
-                                    }));
+                                    ui.painter().add(Shape::Rect(
+                                        RectShape::filled(
+                                            rect,
+                                            CornerRadius::default(),
+                                            Color32::WHITE,
+                                        )
+                                        .with_texture(
+                                            texture_id,
+                                            uv.unwrap_or_else(|| {
+                                                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0))
+                                            }),
+                                        ),
+                                    ));
                                 }
 
                                 if let Some(svg_texture_id) = self.svg {

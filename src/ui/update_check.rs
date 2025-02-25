@@ -1,4 +1,3 @@
-use crate::ui::action::UiAction;
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use std::time::Duration;
@@ -69,9 +68,11 @@ impl Update {
 
     /// Start thread which checks for updates every 10 minutes
     pub fn start_thread() {
-        std::thread::spawn(|| loop {
-            *AVAILABLE_UPDATE.lock() = Self::available_update();
-            std::thread::sleep(Duration::from_secs(10 * 60));
+        std::thread::spawn(|| {
+            loop {
+                *AVAILABLE_UPDATE.lock() = Self::available_update();
+                std::thread::sleep(Duration::from_secs(10 * 60));
+            }
         });
     }
 }

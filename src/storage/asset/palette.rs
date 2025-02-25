@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use super::AssetTrait;
 use egui::{
-    epaint::{Vertex, WHITE_UV},
     Color32, Mesh, Rect, Shape, Vec2,
+    epaint::{Vertex, WHITE_UV},
 };
 use serde::{Deserialize, Serialize};
 
@@ -136,7 +138,7 @@ impl AssetTrait for Palette {
 
             mesh
         };
-        ui.painter().add(Shape::Mesh(mesh));
+        ui.painter().add(Shape::Mesh(Arc::new(mesh)));
     }
 }
 

@@ -1,5 +1,5 @@
 use super::PersistantState;
-use egui::{text::LayoutJob, Button, Color32, Rounding, Stroke, TextFormat, Ui, Vec2};
+use egui::{Button, Color32, CornerRadius, Stroke, TextFormat, Ui, Vec2, text::LayoutJob};
 use log::debug;
 use std::time::{Duration, Instant};
 
@@ -211,7 +211,7 @@ impl Timing {
                     _ => unreachable!(),
                 }
                 .shrink(1.0),
-                Rounding::default(),
+                CornerRadius::default(),
                 Color32::from_white_alpha(alpha as u8),
             );
         }

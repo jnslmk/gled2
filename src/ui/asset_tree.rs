@@ -1,6 +1,6 @@
 use egui::{Button, Color32, Id, Label, Layout, Margin, Pos2, Rangef, Rect, Stroke, Ui, Vec2};
 use egui_extras::StripBuilder;
-use egui_ltreeview::{node::NodeBuilder, Action, TreeView, TreeViewBuilder};
+use egui_ltreeview::{Action, TreeView, TreeViewBuilder, node::NodeBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::storage::{
@@ -167,7 +167,7 @@ impl<T: AssetTrait> AssetTree<T> {
         let assets = Asset::all();
         for asset in assets {
             let pos = Self::add_dir(&mut root, asset.dir());
-            if let TreeEntry::Dir(_, ref mut dir) = pos {
+            if let TreeEntry::Dir(_, dir) = pos {
                 dir.entry(asset.path.last().cloned().unwrap_or_default())
                     .or_insert_with(|| TreeEntry::Asset(asset));
             } else {
@@ -187,7 +187,7 @@ impl<T: AssetTrait> AssetTree<T> {
     fn add_dir(root: &mut TreeEntry<T>, dir: Vec<String>) -> &mut TreeEntry<T> {
         let mut pos = root;
         for (i, name) in dir.clone().into_iter().enumerate() {
-            if let TreeEntry::Dir(_, ref mut children) = pos {
+            if let TreeEntry::Dir(_, children) = pos {
                 pos = children.entry(name).or_insert_with(|| {
                     TreeEntry::Dir(dir.iter().take(i + 1).cloned().collect(), BTreeMap::new())
                 });

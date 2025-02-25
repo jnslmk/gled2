@@ -3,7 +3,7 @@ use crate::{
     ui::pills::show_pills,
 };
 use egui::{
-    pos2, Button, Color32, Margin, Rect, Response, Rounding, Sense, Shape, Ui, Vec2, Widget,
+    Button, Color32, CornerRadius, Margin, Rect, Response, Sense, Shape, Ui, Vec2, Widget, pos2,
 };
 use epaint::RectShape;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -34,11 +34,11 @@ impl Widget for EffectWidget<'_> {
                     Color32::TRANSPARENT
                 })
                 .inner_margin(Margin::from(10.0))
-                .rounding(Rounding::from(4.0))
+                .corner_radius(CornerRadius::from(4.0))
         } else {
             egui::Frame::none()
                 .inner_margin(Margin::from(10.0))
-                .rounding(Rounding::from(4.0))
+                .corner_radius(CornerRadius::from(4.0))
         };
 
         let response = frame
@@ -47,18 +47,15 @@ impl Widget for EffectWidget<'_> {
                 ui.allocate_rect(rect, Sense::hover());
                 ui.painter().add(Shape::Rect(RectShape::filled(
                     rect,
-                    Rounding::default(),
+                    CornerRadius::default(),
                     Color32::BLACK,
                 )));
-                ui.painter().add(Shape::Rect(RectShape {
-                    rect,
-                    rounding: Rounding::default(),
-                    blur_width: 0.0,
-                    fill_texture_id: self.effect_state.texture_id(),
-                    uv: Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-                    fill: Color32::WHITE,
-                    stroke: Default::default(),
-                }));
+                ui.painter().add(Shape::Rect(
+                    RectShape::filled(rect, CornerRadius::default(), Color32::WHITE).with_texture(
+                        self.effect_state.texture_id(),
+                        Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                    ),
+                ));
 
                 if self.show_group {
                     show_pills(

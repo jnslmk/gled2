@@ -1,13 +1,14 @@
-use super::{svg::Svg, App, PersistantState};
+use super::{App, PersistantState, svg::Svg};
 use crate::{
     input::artnet::ARTNET_CONFIG,
     pipeline::extract_output::ExtractOutput,
-    storage::{asset::Asset, STORAGE_DIR},
+    storage::{STORAGE_DIR, asset::Asset},
     ui::{action::UiAction, logo::logo_image},
 };
 use egui::{
-    load::SizedTexture, text::LayoutJob, Button, Color32, Context, Id, ImageButton, Key, Label,
-    Modifiers, Rect, RichText, Slider, Stroke, TextFormat, TextStyle, Vec2, ViewportId, WidgetText,
+    Button, Color32, Context, Id, ImageButton, Key, Label, Modifiers, Rect, RichText, Slider,
+    Stroke, TextFormat, TextStyle, Vec2, ViewportId, WidgetText, load::SizedTexture,
+    text::LayoutJob,
 };
 use log::debug;
 use rand::Rng;
@@ -387,7 +388,7 @@ impl App {
                     self.other_main_windows.insert(
                         ViewportId(Id::new(format!(
                             "Second Window {}",
-                            rand::thread_rng().gen::<u64>()
+                            rand::thread_rng().random::<u64>()
                         ))),
                         Default::default(),
                     );
@@ -396,7 +397,7 @@ impl App {
                     self.other_main_windows.insert(
                         ViewportId(Id::new(format!(
                             "Preview Window {}",
-                            rand::thread_rng().gen::<u64>()
+                            rand::thread_rng().random::<u64>()
                         ))),
                         super::MainWindowAreas {
                             fullscreen: false,

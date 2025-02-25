@@ -1,4 +1,4 @@
-use egui::{Align2, Color32, Pos2, Rect, Rounding, TextStyle, Ui, Vec2, WidgetText};
+use egui::{Align2, Color32, CornerRadius, Pos2, Rect, TextStyle, Ui, Vec2, WidgetText};
 
 pub fn show_pills(ui: &mut Ui, start: Pos2, texts: Vec<(String, Color32)>) {
     const PADDING: f32 = 5.0;
@@ -22,7 +22,7 @@ pub fn show_pills(ui: &mut Ui, start: Pos2, texts: Vec<(String, Color32)>) {
     for (text, bg_color, size) in pills {
         let rect = Rect::from_min_size(start, size);
         ui.painter()
-            .rect_filled(rect, Rounding::same(5.0), bg_color);
+            .rect_filled(rect, CornerRadius::same(5), bg_color);
         ui.painter().text(
             rect.center(),
             Align2::CENTER_CENTER,

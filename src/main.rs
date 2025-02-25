@@ -10,7 +10,7 @@ pub mod svg;
 pub mod ui;
 
 use app::App;
-use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup};
+use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
 use egui::ThemePreference;
 use input::Input;
 use once_cell::sync::Lazy;
@@ -49,15 +49,10 @@ fn main() {
     let mut wgpu_options = WgpuConfiguration::default();
     wgpu_options.present_mode = PRESENT_MODE;
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
-        WgpuSetup::CreateNew {
-            supported_backends,
-            device_descriptor,
-            ..
-        } => WgpuSetup::CreateNew {
-            supported_backends,
+        WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
             power_preference: PowerPreference::HighPerformance,
-            device_descriptor,
-        },
+            ..create_new
+        }),
         existing => existing,
     };
 

@@ -2,16 +2,16 @@ use crate::{
     app::{persistant_state::PersistantState, timing::Timing},
     pipeline::renderer_callback::RendererCallback,
     storage::asset::{
+        Asset,
         animation::Animation,
         scene::{effect::Effect, effect_state::EffectState},
-        Asset,
     },
     ui::{
+        ChangeButton,
         action::UiAction,
-        asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
+        asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
         effect::widget::EffectWidget,
         viewport_builder::default_viewport_builder,
-        ChangeButton,
     },
     wgpu_render_state,
 };
@@ -252,7 +252,7 @@ impl AnimationWindow {
                         (&mut self.effect, &mut self.effect_state)
                     {
                         egui::Frame::default()
-                            .outer_margin(Margin::same(4.0))
+                            .outer_margin(Margin::same(4))
                             .show(ui, |ui| {
                                 ui.add_sized(
                                     Vec2::splat(300.0),
