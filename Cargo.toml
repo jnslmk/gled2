@@ -2,7 +2,7 @@
 name = "gled"
 description = "gled is an application for creating animations and effects on artnet or wled light installations"
 version = "2.0.0"
-edition = "2024"
+edition = "2021"
 license = "GPL-3.0-or-later"
 
 [dependencies]
