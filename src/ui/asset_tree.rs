@@ -1,6 +1,6 @@
 use egui::{Button, Color32, Id, Label, Layout, Margin, Pos2, Rangef, Rect, Stroke, Ui, Vec2};
 use egui_extras::StripBuilder;
-use egui_ltreeview::{Action, TreeView, TreeViewBuilder, node::NodeBuilder};
+use egui_ltreeview::{Action, DragAndDrop, NodeBuilder, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::storage::{
@@ -85,12 +85,7 @@ impl<T: AssetTrait> TreeEntry<T> {
                                 });
                             }
                         })
-                        .label(|ui| {
-                            ui.add(
-                                Label::new(dir.last().cloned().unwrap_or_default())
-                                    .selectable(false),
-                            );
-                        }),
+                        .label(dir.last().cloned().unwrap_or_default()),
                 );
                 for entry in children
                     .values()
@@ -108,7 +103,7 @@ impl<T: AssetTrait> TreeEntry<T> {
             }
             TreeEntry::Asset(asset) => {
                 tree_ids.push(TreeId::File(asset.id));
-                builder.node(NodeBuilder::leaf(tree_ids.len() - 1).label(|ui| {
+                builder.node(NodeBuilder::leaf(tree_ids.len() - 1).label_ui(|ui| {
                     ui.add(Label::new(asset.name()).selectable(false));
 
                     let min = Pos2::new(
@@ -238,22 +233,24 @@ impl<T: AssetTrait> AssetTree<T> {
         }
 
         let actions = TreeView::new(id)
-            .show(ui, |mut builder| {
+            .show(ui, |builder| {
                 for entry in entries.iter() {
                     entry.build(
                         &mut self.empty_dirs,
                         &mut tree_ids,
-                        &mut builder,
+                        builder,
                         self.only_asset_selection,
                     );
                 }
             })
-            .actions;
+            .1;
 
         for action in actions {
             match action {
                 Action::SetSelected(index) => {
                     self.selection = index
+                        .first()
+                        .copied()
                         .map(|index| tree_ids.remove(index))
                         .and_then(|id| match id {
                             TreeId::File(id) => Asset::get(id)
@@ -266,25 +263,26 @@ impl<T: AssetTrait> AssetTree<T> {
                         .unwrap_or_default();
                     selection_changed = true;
                 }
-                Action::Move {
-                    source, mut target, ..
-                } => {
-                    if source < target {
-                        target -= 1;
-                    }
+                Action::Move(DragAndDrop { source, target, .. }) => {
+                    for source in source {
+                        let mut target = target;
+                        if source < target {
+                            target -= 1;
+                        }
 
-                    let source = tree_ids.remove(source);
-                    let target = tree_ids.remove(target);
+                        let source = tree_ids.remove(source);
+                        let target = tree_ids.remove(target);
 
-                    if let (TreeId::File(source), TreeId::Dir(target)) = (source, target) {
-                        let target = target.clone();
-                        if let Some(asset) = Asset::get(source) {
-                            let mut asset = Arc::unwrap_or_clone(asset);
-                            asset.path = target
-                                .into_iter()
-                                .chain(std::iter::once(asset.path.last().unwrap().clone()))
-                                .collect();
-                            asset.save();
+                        if let (TreeId::File(source), TreeId::Dir(target)) = (source, target) {
+                            let target = target.clone();
+                            if let Some(asset) = Asset::get(source) {
+                                let mut asset = Arc::unwrap_or_clone(asset);
+                                asset.path = target
+                                    .into_iter()
+                                    .chain(std::iter::once(asset.path.last().unwrap().clone()))
+                                    .collect();
+                                asset.save();
+                            }
                         }
                     }
                 }

@@ -2,7 +2,7 @@
 name = "gled"
 description = "gled is an application for creating animations and effects on artnet or wled light installations"
 version = "2.0.0"
-edition = "2021"
+edition = "2024"
 license = "GPL-3.0-or-later"
 
 [dependencies]
@@ -19,9 +19,7 @@ eframe = { version = "0.31", features = [
 ], default-features = false }
 egui = { version = "0.31", features = ["persistence"] }
 egui_extras = { version = "0.31", features = ["image", "syntect"] }
-egui_ltreeview = { git = "https://github.com/elwerene/egui_ltreeview.git", features = [
-    "persistence",
-] }
+egui_ltreeview = { version = "0.1", features = ["persistence"] }
 emath = "0.31"
 epaint = "0.31"
 env_logger = "0.11"
