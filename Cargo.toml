@@ -2,7 +2,7 @@
 name = "gled"
 description = "gled is an application for creating animations and effects on artnet or wled light installations"
 version = "2.1.0"
-edition = "2024"
+edition = "2021"
 repository = "https://gitlab.com/photonenkollektiv/gled2"
 homepage = "https://photonenkollektiv.gitlab.io/gled2"
 documentation = "https://photonenkollektiv.gitlab.io/gled2"
