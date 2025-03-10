@@ -3,9 +3,6 @@ set -e
 
 cargo install cargo-edit cargo-packager --locked
 
-echo "Setting version to ${CI_COMMIT_TAG}"
-cargo set-version ${CI_COMMIT_TAG}
-
 if [[ $(uname) == "Linux" ]]; then
     cargo install cargo-generate-rpm cargo-xwin --locked
 
