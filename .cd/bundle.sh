@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-cargo install cargo-edit cargo-packager --locked
+cargo install cargo-packager --locked
 
 if [[ $(uname) == "Linux" ]]; then
     cargo install cargo-generate-rpm cargo-xwin --locked
