@@ -122,14 +122,14 @@ impl Timing {
         }
     }
 
-    pub fn half_button(&mut self, ui: &mut Ui) {
-        if ui.add(Button::new("x½")).clicked() {
+    pub fn half_button(&mut self, ui: &mut Ui, tap_input: bool) {
+        if ui.add(Button::new("x½")).clicked() || tap_input {
             self.multiply_speed(0.5);
         }
     }
 
-    pub fn double_button(&mut self, ui: &mut Ui) {
-        if ui.add(Button::new("x2")).clicked() {
+    pub fn double_button(&mut self, ui: &mut Ui, tap_input: bool) {
+        if ui.add(Button::new("x2")).clicked() || tap_input {
             self.multiply_speed(2.0);
         }
     }

@@ -24,8 +24,8 @@ use crate::{
 };
 
 use super::{
-    animation::Animation, output_device::routing::OutputRoutings, scene::instance::SceneInstance,
-    AssetTrait,
+    AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
+    scene::instance::SceneInstance,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -41,6 +41,8 @@ pub struct Project {
     pub artnet_config: ArtnetConfig,
     pub tap_input_events: BTreeSet<InputEvent>,
     pub blackout_input_events: BTreeSet<InputEvent>,
+    pub half_input_events: BTreeSet<InputEvent>,
+    pub double_input_events: BTreeSet<InputEvent>,
     pub main_dimmer: f32,
 }
 
@@ -60,6 +62,8 @@ impl Default for Project {
             blackout_input_events: std::iter::once(InputEvent::Key(egui::Key::B))
                 .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Start(0))))
                 .collect(),
+            half_input_events: std::iter::once(InputEvent::Key(egui::Key::Minus)).collect(),
+            double_input_events: std::iter::once(InputEvent::Key(egui::Key::Plus)).collect(),
             main_dimmer: 1.0,
         }
     }
@@ -211,6 +215,14 @@ impl Project {
         self.blackout_input_events
             .iter()
             .any(|event| event.is_new())
+    }
+
+    pub fn half_input_is_new(&self) -> bool {
+        self.half_input_events.iter().any(|event| event.is_new())
+    }
+
+    pub fn double_input_is_new(&self) -> bool {
+        self.double_input_events.iter().any(|event| event.is_new())
     }
 
     pub fn remove_nonexistant_groups(&mut self) {

@@ -451,8 +451,20 @@ impl App {
                     );
 
                     ui.separator();
-                    self.timing.half_button(ui);
-                    self.timing.double_button(ui);
+                    self.timing.half_button(
+                        ui,
+                        self.project
+                            .as_ref()
+                            .map(|project| project.half_input_is_new())
+                            .unwrap_or_default(),
+                    );
+                    self.timing.double_button(
+                        ui,
+                        self.project
+                            .as_ref()
+                            .map(|project| project.double_input_is_new())
+                            .unwrap_or_default(),
+                    );
                     ui.separator();
 
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {

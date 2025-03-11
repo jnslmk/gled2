@@ -1,6 +1,6 @@
 use crate::{
-    storage::asset::project::Project, ui::viewport_builder::default_viewport_builder,
-    ui::ChangeButton,
+    storage::asset::project::Project, ui::ChangeButton,
+    ui::viewport_builder::default_viewport_builder,
 };
 use egui::{Context, Id, Vec2, ViewportId};
 
@@ -48,6 +48,20 @@ impl ShortcutsWindow {
                         .map(Option::Some)
                         .chain(std::iter::once(None))
                         .collect::<Vec<_>>();
+                    let mut half_events = project
+                        .half_input_events
+                        .iter()
+                        .cloned()
+                        .map(Option::Some)
+                        .chain(std::iter::once(None))
+                        .collect::<Vec<_>>();
+                    let mut double_events = project
+                        .double_input_events
+                        .iter()
+                        .cloned()
+                        .map(Option::Some)
+                        .chain(std::iter::once(None))
+                        .collect::<Vec<_>>();
 
                     ui.heading("Tap");
                     for event in tap_events.iter_mut() {
@@ -58,11 +72,23 @@ impl ShortcutsWindow {
                     for event in blackout_events.iter_mut() {
                         changed |= event.change_button(ui);
                     }
+                    ui.separator();
+                    ui.heading("Half the speed");
+                    for event in half_events.iter_mut() {
+                        changed |= event.change_button(ui);
+                    }
+                    ui.separator();
+                    ui.heading("Double the speed");
+                    for event in double_events.iter_mut() {
+                        changed |= event.change_button(ui);
+                    }
 
                     if changed {
                         project.tap_input_events = tap_events.into_iter().flatten().collect();
                         project.blackout_input_events =
                             blackout_events.into_iter().flatten().collect();
+                        project.half_input_events = half_events.into_iter().flatten().collect();
+                        project.double_input_events = double_events.into_iter().flatten().collect();
                     }
                 });
             },
