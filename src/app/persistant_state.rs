@@ -25,6 +25,7 @@ pub struct PersistantState {
     pub last_project_id: Option<AssetId<Project>>,
     pub git_url: String,
     pub git_credentials: GitCredentials,
+    pub prefer_discrete_gpu: bool,
 }
 
 impl Default for PersistantState {
@@ -37,6 +38,7 @@ impl Default for PersistantState {
             last_project_id: Default::default(),
             git_url: "https://gitlab.com/photonenkollektiv/gled2_assets.git".to_string(),
             git_credentials: Default::default(),
+            prefer_discrete_gpu: true,
         }
     }
 }
@@ -67,6 +69,10 @@ impl PersistantState {
 
     pub fn git_url() -> String {
         PERSISTANT_STATE.lock().git_url.clone()
+    }
+
+    pub fn prefer_discrete_gpu() -> bool {
+        PERSISTANT_STATE.lock().prefer_discrete_gpu
     }
 
     pub fn get() -> Self {

@@ -9,7 +9,7 @@ pub mod storage;
 pub mod svg;
 pub mod ui;
 
-use app::App;
+use app::{App, persistant_state::PersistantState};
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
 use egui::ThemePreference;
 use input::Input;
@@ -50,7 +50,11 @@ fn main() {
     wgpu_options.present_mode = PRESENT_MODE;
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
-            power_preference: PowerPreference::HighPerformance,
+            power_preference: if PersistantState::prefer_discrete_gpu() {
+                PowerPreference::HighPerformance
+            } else {
+                PowerPreference::LowPower
+            },
             ..create_new
         }),
         existing => existing,

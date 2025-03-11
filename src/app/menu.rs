@@ -254,6 +254,20 @@ impl App {
 
                     ui.separator();
 
+                    ui.label("GPU preference");
+                    let mut prefer_discrete_gpu = PersistantState::prefer_discrete_gpu();
+                    if ui
+                        .checkbox(
+                            &mut prefer_discrete_gpu,
+                            "Prefer discrete GPU (changing requires restart of GLED)",
+                        )
+                        .on_hover_text("Needs restart of gled")
+                        .changed()
+                    {
+                        let mut persistant_state = PersistantState::get();
+                        persistant_state.prefer_discrete_gpu = prefer_discrete_gpu;
+                        persistant_state.save();
+                    }
                     ui.label("Framerate Limiter");
                     let mut fps_limit = PersistantState::fps_limit();
                     ui.spacing_mut().slider_width = 290.0;
