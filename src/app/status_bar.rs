@@ -5,8 +5,8 @@ use crate::{
     },
     ui::temperature::temperature,
 };
-use egui::{Button, Context, Label, Layout, Margin, Rangef, Spinner, TextEdit, Ui, ViewportId};
-use egui_extras::StripBuilder;
+use egui::{Button, Context, Label, Layout, Margin, Spinner, TextEdit, Ui, ViewportId};
+use egui_flex::{item, Flex};
 
 impl App {
     pub fn status_bar(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
@@ -89,36 +89,19 @@ impl App {
                         && ui.ctx().input(|input| input.key_pressed(egui::Key::Enter));
                 });
 
-                StripBuilder::new(ui)
-                    .sizes(
-                        egui_extras::Size::Remainder {
-                            range: Rangef::new(0.0, f32::INFINITY),
-                        },
-                        3,
-                    )
-                    .horizontal(|mut strip| {
-                        strip.cell(|ui| {
-                            ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
-                                if ui.add(Button::new("Commit")).clicked() {
-                                    commit = true;
-                                }
-                            });
-                        });
-                        strip.cell(|ui| {
-                            ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
-                                if ui.add(Button::new("⬆Push")).clicked() {
-                                    StorageAction::Push.enqueue();
-                                }
-                            });
-                        });
-                        strip.cell(|ui| {
-                            ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
-                                if ui.add(Button::new("⬇Pull")).clicked() {
-                                    StorageAction::Pull.enqueue();
-                                }
-                            });
-                        });
-                    });
+                Flex::horizontal().show(ui, |flex| {
+                    if flex.add(item().grow(1.0), Button::new("Commit")).clicked() {
+                        commit = true;
+                    }
+
+                    if flex.add(item().grow(1.0), Button::new("⬆Push")).clicked() {
+                        StorageAction::Push.enqueue();
+                    }
+
+                    if flex.add(item().grow(1.0), Button::new("⬇Pull")).clicked() {
+                        StorageAction::Pull.enqueue();
+                    }
+                });
 
                 if commit {
                     StorageAction::Commit {

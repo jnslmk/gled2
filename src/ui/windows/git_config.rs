@@ -1,6 +1,6 @@
 use crate::{app::{persistant_state::PersistantState, GitUiState}, storage::{action::StorageAction, branches, Branches}, ui::viewport_builder::default_viewport_builder};
-use egui::{Button, Color32, ComboBox, Context, Id, Layout, Rangef, RichText, TextEdit, Vec2, ViewportId};
-use egui_extras::StripBuilder;
+use egui::{Button, Color32, ComboBox, Context, Id, Layout, RichText, TextEdit, Vec2, ViewportId};
+use egui_flex::{item, Flex};
 use home::home_dir;
 
 #[derive(Default)]
@@ -65,41 +65,26 @@ impl GitConfigWindow {
                         }
                     });
 
+                    Flex::horizontal().show(ui, |flex| {
+                        if flex.add(item().grow(1.0), Button::new("Apply").fill(Color32::DARK_RED))
+                            .on_hover_text("This deletes all assets on disk and starts from scratch by cloning the repository!")
+                            .clicked()
+                        {
+                            let mut persistant = PersistantState::get();
+                            persistant.git_url = self.git_ui_state.url.clone();
+                            persistant.save();
+                            self.git_ui_state.url = GitUiState::default().url;
 
-                    StripBuilder::new(ui)
-                    .sizes(
-                        egui_extras::Size::Remainder {
-                            range: Rangef::new(0.0, f32::INFINITY),
-                        },
-                        2,
-                    )
-                    .horizontal(|mut strip| {
-                        strip.cell(|ui| {
-                            ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
-                                if ui.add(Button::new("Apply").fill(Color32::DARK_RED))
-                                    .on_hover_text("This deletes all assets on disk and starts from scratch by cloning the repository!")
-                                    .clicked()
-                                {
-                                    let mut persistant = PersistantState::get();
-                                    persistant.git_url = self.git_ui_state.url.clone();
-                                    persistant.save();
-                                    self.git_ui_state.url = GitUiState::default().url;
+                            StorageAction::Nuke.enqueue();
+                        }
 
-                                    StorageAction::Nuke.enqueue();
-                                }
-                            });
-                        });
-                        strip.cell(|ui| {
-                            ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
-                                if ui.add(Button::new("Reset"))
-                                    .clicked()
-                                {
-                                    self.git_ui_state.url = GitUiState::default().url;
-                                }
-                            });
-                        });
+                        if flex.add(item().grow(1.0), Button::new("Reset"))
+                            .clicked()
+                        {
+                            self.git_ui_state.url = GitUiState::default().url;
+                        }
                     });
-                
+
                     ui.add_space(30.0);
 
                     ui.horizontal(|ui| {

@@ -23,6 +23,7 @@ eframe = { version = "0.31", features = [
 egui = { version = "0.31", features = ["persistence"] }
 egui_extras = { version = "0.31", features = ["image", "syntect"] }
 egui_ltreeview = { version = "0.1", features = ["persistence"] }
+egui_flex = "0.3"
 emath = "0.31"
 epaint = "0.31"
 env_logger = "0.11"
