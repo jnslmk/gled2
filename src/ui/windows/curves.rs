@@ -1,11 +1,12 @@
 use crate::{
-    storage::asset::{curve::Curve, Asset},
+    storage::asset::{Asset, curve::Curve},
     ui::{
-        asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
+        asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
         viewport_builder::default_viewport_builder,
     },
 };
-use egui::{Context, Id, Rect, Ui, Vec2, ViewportId};
+use egui::{Button, Context, Id, Rect, Ui, Vec2, ViewportId};
+use egui_flex::{Flex, item};
 
 #[derive(Default)]
 pub struct CurvesWindow {
@@ -60,6 +61,23 @@ impl CurvesWindow {
 }
 
 fn curve_editor(ui: &mut Ui, curve: &mut Asset<Curve>, dirty: &mut bool) {
+    Flex::horizontal().show(ui, |flex| {
+        if flex
+            .add(item().grow(1.0), Button::new("Invert X-Axis ↔".to_string()))
+            .clicked()
+        {
+            curve.data.invert_x_axis();
+            *dirty = true;
+        }
+        if flex
+            .add(item().grow(1.0), Button::new("Invert Y-Axis ↕".to_string()))
+            .clicked()
+        {
+            curve.data.invert_y_axis();
+            *dirty = true;
+        }
+    });
+
     *dirty |= curve.data.draw(
         ui,
         true,

@@ -37,6 +37,18 @@ impl Curve {
         }
     }
 
+    pub fn invert_y_axis(&mut self) {
+        self.points
+            .iter_mut()
+            .for_each(|point| point.invert_y_axis());
+    }
+
+    pub fn invert_x_axis(&mut self) {
+        self.points
+            .iter_mut()
+            .for_each(|point| point.invert_x_axis());
+    }
+
     fn linear_points(points: Vec<(f32, f32)>) -> Vec<CurvePoint> {
         let mut linear_points = Vec::with_capacity(2 * points.len() - 1);
         let mut prev = None;

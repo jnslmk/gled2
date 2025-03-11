@@ -15,6 +15,23 @@ pub enum CurvePoint {
 }
 
 impl CurvePoint {
+    pub fn invert_y_axis(&mut self) {
+        let mut pos = self.pos();
+        pos.y = 1.0 - pos.y;
+        self.set_pos(pos);
+    }
+
+    pub fn invert_x_axis(&mut self) {
+        let mut pos = self.pos();
+        pos.x = 4.0 - pos.x;
+        *self = match self {
+            CurvePoint::First(_) => CurvePoint::Last(pos),
+            CurvePoint::Inner(_) => CurvePoint::Inner(pos),
+            CurvePoint::Bezier(_) => CurvePoint::Bezier(pos),
+            CurvePoint::Last(_) => CurvePoint::First(pos),
+        };
+    }
+
     pub fn is_inner(&self) -> bool {
         matches!(self, CurvePoint::Inner(_))
     }
