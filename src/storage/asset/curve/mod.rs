@@ -4,7 +4,7 @@ pub mod static_or_curve;
 
 use self::point::CurvePoint;
 use super::AssetTrait;
-use egui::{epaint::QuadraticBezierShape, Color32, Pos2, Rect, Sense, Shape, Stroke, Ui, Vec2};
+use egui::{Color32, Pos2, Rect, Sense, Shape, Stroke, Ui, Vec2, epaint::QuadraticBezierShape};
 use epaint::PathShape;
 use polynomial::BezierCurve;
 use serde::{Deserialize, Serialize};
@@ -277,7 +277,8 @@ impl Curve {
             panic!("Beat position out of range 0.0..=4.0: {beat_position}");
         }
 
-        self.points
+        let value = self
+            .points
             .iter()
             .position(|point| point.pos().x > beat_position)
             .and_then(|i| {
@@ -298,7 +299,10 @@ impl Curve {
                 })
             })
             .map(|curve| curve.value(beat_position))
-            .unwrap_or_default()
+            .unwrap_or_default();
+
+        // invert the value as the curve is upside down
+        1.0 - value
     }
 }
 
