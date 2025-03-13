@@ -20,11 +20,11 @@ use crate::{
     },
     storage::{
         asset::{
-            project::{
-                render_deactivated_scenes::RenderDeactivatedScenes,
-                scene_instance_path::SceneInstancePath, Project,
-            },
             Asset,
+            project::{
+                Project, render_deactivated_scenes::RenderDeactivatedScenes,
+                scene_instance_path::SceneInstancePath,
+            },
         },
         asset_id::AssetId,
         loading,
@@ -32,10 +32,11 @@ use crate::{
     ui::{action::UiAction, viewport_builder::default_viewport_builder, windows::Windows},
 };
 use eframe::egui_wgpu::Callback;
-use egui::{ahash::HashMap, Key, Modifiers, Rect, SidePanel, TopBottomPanel, ViewportId};
+use egui::{Rect, ViewportId, ahash::HashMap, mutex::Mutex};
+use egui_tiles::Tree;
 use persistant_state::PersistantState;
 use std::{
-    sync::mpsc::Receiver,
+    sync::{Arc, mpsc::Receiver},
     time::{SystemTime, UNIX_EPOCH},
 };
 use storage::{show_storage_error, show_storage_loading};
@@ -43,14 +44,13 @@ use timing::Timing;
 
 pub struct App {
     pub startup: bool,
-    pub areas: MainWindowAreas,
     pub windows: Windows,
     pub output_sender: OutputSender,
     pub gpu_ready_receiver: GpuReadyReceiver,
     pub timing: Timing,
     pub project: Option<Project>,
     pub project_id: Option<AssetId<Project>>,
-    pub other_main_windows: HashMap<ViewportId, MainWindowAreas>,
+    pub other_main_windows: HashMap<ViewportId, Arc<Mutex<Tree<Pane>>>>,
     pub blackout: bool,
     pub selected_scene_instance: SceneInstancePath,
     pub hovered_scene_instance: SceneInstancePath,
@@ -58,6 +58,7 @@ pub struct App {
     pub ui_action_receiver: Receiver<UiAction>,
     pub last_title_update: u64,
     pub midi_output_active: bool,
+    pub tree: Arc<Mutex<Tree<Pane>>>,
 }
 
 impl eframe::App for App {
@@ -170,47 +171,12 @@ impl eframe::App for App {
 
 impl App {
     pub fn draw_main_window(&mut self, ctx: &egui::Context, viewport_id: Option<ViewportId>) {
-        let areas = {
-            let areas = viewport_id
-                .and_then(|viewport| self.other_main_windows.get_mut(&viewport))
-                .unwrap_or(&mut self.areas);
-            if ctx.input_mut(|i| i.consume_key(Modifiers::ALT, Key::Enter)) {
-                areas.fullscreen = !areas.fullscreen;
-                ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(areas.fullscreen));
-            }
-            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num1))
-                && viewport_id.is_some()
-            {
-                areas.menu = !areas.menu;
-            }
-            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num2)) {
-                areas.preview = !areas.preview;
-            }
-            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num3)) {
-                areas.deck_a = !areas.deck_a;
-            }
-            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num4)) {
-                areas.deck_b = !areas.deck_b;
-            }
-            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num5)) {
-                areas.deck_c = !areas.deck_c;
-            }
-            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num6)) {
-                areas.config = !areas.config;
-            }
-            if ctx.input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::Num7)) {
-                areas.status_bar = !areas.status_bar;
-            }
-            *areas
-        };
+        let tree = viewport_id
+            .and_then(|viewport| self.other_main_windows.get(&viewport).cloned())
+            .unwrap_or(self.tree.clone());
 
-        if areas.menu {
-            self.menu(ctx, viewport_id);
-        }
-
-        if areas.status_bar {
-            self.status_bar(ctx, viewport_id);
-        }
+        self.menu(ctx, viewport_id);
+        self.status_bar(ctx, viewport_id);
 
         if let Some(error) = crate::storage::error() {
             show_storage_error(ctx, error);
@@ -221,39 +187,9 @@ impl App {
         }
 
         if self.project.is_some() {
-            if areas.deck_c {
-                TopBottomPanel::bottom(format!("{viewport_id:?} deck c"))
-                    .resizable(true)
-                    .min_height(100.0)
-                    .show(ctx, |ui| {
-                        self.scenes(ui, SceneInstancePath::DECK_C);
-                    });
-            }
-            if areas.deck_a {
-                SidePanel::left(format!("{viewport_id:?} deck a"))
-                    .resizable(true)
-                    .default_width(250.0)
-                    .min_width(100.0)
-                    .show(ctx, |ui| {
-                        self.scenes(ui, SceneInstancePath::DECK_A);
-                    });
-            }
-            if areas.deck_b {
-                SidePanel::right(format!("{viewport_id:?} deck b"))
-                    .resizable(true)
-                    .default_width(250.0)
-                    .min_width(100.0)
-                    .show(ctx, |ui| {
-                        self.scenes(ui, SceneInstancePath::DECK_B);
-                    });
-            }
-
-            if areas.config {
-                self.config(ctx, viewport_id);
-            }
-            if areas.preview {
-                self.preview(ctx);
-            }
+            egui::CentralPanel::default().show(ctx, |ui| {
+                tree.lock().ui(self, ui);
+            });
         } else {
             self.no_project(ctx);
         }
@@ -274,41 +210,14 @@ impl App {
             project_id: Default::default(),
             windows: Default::default(),
             other_main_windows: Default::default(),
-            areas: Default::default(),
             git_commit_message: Default::default(),
             ui_action_receiver,
             last_title_update: 0,
             midi_output_active: false,
+            tree: new_tree(None, false),
         };
 
         Some(app)
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct MainWindowAreas {
-    fullscreen: bool,
-    menu: bool,
-    deck_a: bool,
-    deck_b: bool,
-    deck_c: bool,
-    preview: bool,
-    config: bool,
-    status_bar: bool,
-}
-
-impl Default for MainWindowAreas {
-    fn default() -> Self {
-        Self {
-            fullscreen: false,
-            menu: true,
-            deck_a: true,
-            deck_b: true,
-            deck_c: true,
-            preview: true,
-            config: true,
-            status_bar: true,
-        }
     }
 }
 
@@ -328,4 +237,68 @@ impl Default for GitUiState {
             passphrase: Default::default(),
         }
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Pane {
+    Deck(SceneInstancePath),
+    Config,
+    Preview,
+}
+
+impl egui_tiles::Behavior<Pane> for App {
+    fn pane_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        _tile_id: egui_tiles::TileId,
+        pane: &mut Pane,
+    ) -> egui_tiles::UiResponse {
+        match pane {
+            Pane::Deck(scene_instance_path) => self.scenes(ui, *scene_instance_path),
+            Pane::Config => self.config(ui),
+            Pane::Preview => self.preview(ui),
+        }
+    }
+
+    fn tab_title_for_pane(&mut self, pane: &Pane) -> egui::WidgetText {
+        match *pane {
+            Pane::Deck(SceneInstancePath::DECK_A) => "Deck A".into(),
+            Pane::Deck(SceneInstancePath::DECK_B) => "Deck B".into(),
+            Pane::Deck(SceneInstancePath::DECK_C) => "Deck C".into(),
+            Pane::Config => "Config".into(),
+            Pane::Preview => "Preview".into(),
+            _ => unreachable!(),
+        }
+    }
+
+    fn gap_width(&self, _style: &egui::Style) -> f32 {
+        4.0
+    }
+}
+
+pub fn new_tree(viewport_id: Option<ViewportId>, only_preview: bool) -> Arc<Mutex<Tree<Pane>>> {
+    let mut tiles = egui_tiles::Tiles::default();
+    let root = if only_preview {
+        tiles.insert_pane(Pane::Preview)
+    } else {
+        let mid_vertical = vec![
+            tiles.insert_pane(Pane::Preview),
+            tiles.insert_pane(Pane::Config),
+        ];
+        let horizontal = vec![
+            tiles.insert_pane(Pane::Deck(SceneInstancePath::DECK_A)),
+            tiles.insert_vertical_tile(mid_vertical),
+            tiles.insert_pane(Pane::Deck(SceneInstancePath::DECK_B)),
+        ];
+        let vertical = vec![
+            tiles.insert_horizontal_tile(horizontal),
+            tiles.insert_pane(Pane::Deck(SceneInstancePath::DECK_C)),
+        ];
+        tiles.insert_vertical_tile(vertical)
+    };
+    Arc::new(Mutex::new(egui_tiles::Tree::new(
+        format!("tiles_{viewport_id:?}"),
+        root,
+        tiles,
+    )))
 }

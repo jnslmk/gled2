@@ -1,11 +1,19 @@
 pub mod widget;
 
-use super::{action::UiAction, ChangeButton};
+use super::{ChangeButton, action::UiAction};
 use crate::storage::asset::scene::instance::SceneInstance;
-use egui::{Button, Checkbox, Color32, Context, Margin, Modifiers};
+use egui::{Button, Checkbox, Color32, Margin, Modifiers, Rect, Vec2};
+use egui_tiles::UiResponse;
 
 impl SceneInstance {
-    pub fn config_ui(&mut self, ctx: &Context, ui: &mut egui::Ui) {
+    pub fn config_ui(&mut self, ui: &mut egui::Ui) -> UiResponse {
+        let drag_button_rect = {
+            let mut pos = ui.next_widget_position();
+            pos.y += 2.0;
+            pos.x += ui.available_width() - 22.0;
+            Rect::from_min_size(pos, Vec2::splat(20.0))
+        };
+
         let width = ui.available_width() - 20.0;
         ui.horizontal(|ui| {
             egui::Frame::none()
@@ -68,8 +76,8 @@ impl SceneInstance {
                         .add(Button::new("🗑 Remove Scene").fill(Color32::DARK_RED))
                         .clicked()
                         || {
-                            !ctx.wants_keyboard_input()
-                                && ctx.input_mut(|i| {
+                            !ui.ctx().wants_keyboard_input()
+                                && ui.ctx().input_mut(|i| {
                                     i.consume_key(Modifiers::default(), egui::Key::Backspace)
                                         || i.consume_key(Modifiers::default(), egui::Key::Delete)
                                 })
@@ -79,5 +87,17 @@ impl SceneInstance {
                     }
                 });
             });
+
+        if ui
+            .put(
+                drag_button_rect,
+                egui::Button::new("✊").sense(egui::Sense::drag()),
+            )
+            .drag_started()
+        {
+            UiResponse::DragStarted
+        } else {
+            UiResponse::None
+        }
     }
 }

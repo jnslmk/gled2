@@ -1,4 +1,4 @@
-use super::{App, PersistantState, svg::Svg};
+use super::{App, PersistantState, new_tree, svg::Svg};
 use crate::{
     input::artnet::ARTNET_CONFIG,
     pipeline::extract_output::ExtractOutput,
@@ -6,9 +6,8 @@ use crate::{
     ui::{action::UiAction, logo::logo_image},
 };
 use egui::{
-    Button, Color32, Context, Id, ImageButton, Key, Label, Modifiers, Rect, RichText, Slider,
-    Stroke, TextFormat, TextStyle, Vec2, ViewportId, WidgetText, load::SizedTexture,
-    text::LayoutJob,
+    Button, Color32, Context, Id, ImageButton, Key, Modifiers, Slider, Stroke, TextFormat, Vec2,
+    ViewportId, load::SizedTexture, text::LayoutJob,
 };
 use log::debug;
 use rand::Rng;
@@ -336,94 +335,23 @@ impl App {
                         open_new_preview_window = true;
                         ui.close_menu();
                     }
-
-                    ui.separator();
-
-                    let areas = viewport_id
-                        .and_then(|viewport| self.other_main_windows.get_mut(&viewport))
-                        .unwrap_or(&mut self.areas);
-                    let checkbox_with_shortcut =
-                        |ui: &mut egui::Ui, check: &mut bool, text: &str, shortcut: &str| {
-                            let res = ui.checkbox(check, text);
-                            let rect = res.rect;
-                            let shortcut = RichText::new(shortcut).color(Color32::DARK_GRAY);
-                            let size = WidgetText::from(shortcut.clone())
-                                .into_galley(ui, None, ui.available_width(), TextStyle::Body)
-                                .rect
-                                .size();
-                            ui.put(
-                                Rect::from_min_max(rect.right_bottom() - size, rect.right_bottom()),
-                                Label::new(shortcut).selectable(false),
-                            );
-                            res.changed()
-                        };
-
-                    if checkbox_with_shortcut(ui, &mut areas.fullscreen, "Fullscreen", "Alt+Enter")
-                    {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(areas.fullscreen));
-                    }
-                    if viewport_id.is_some() {
-                        checkbox_with_shortcut(ui, &mut areas.menu, "Show Menu", "Ctrl+Shift+1");
-                    }
-                    checkbox_with_shortcut(ui, &mut areas.preview, "Show Preview", "Ctrl+Shift+2");
-                    checkbox_with_shortcut(ui, &mut areas.deck_a, "Show Deck A", "Ctrl+Shift+3");
-                    checkbox_with_shortcut(ui, &mut areas.deck_b, "Show Deck B", "Ctrl+Shift+4");
-                    checkbox_with_shortcut(ui, &mut areas.deck_c, "Show Deck C", "Ctrl+Shift+5");
-                    checkbox_with_shortcut(ui, &mut areas.config, "Show Config", "Ctrl+Shift+6");
-                    checkbox_with_shortcut(
-                        ui,
-                        &mut areas.status_bar,
-                        "Show Status Bar",
-                        "Ctrl+Shift+7",
-                    );
-
-                    ui.separator();
-
-                    if ui.button("Show All").clicked() {
-                        areas.menu = true;
-                        areas.deck_a = true;
-                        areas.deck_b = true;
-                        areas.deck_c = true;
-                        areas.config = true;
-                        areas.preview = true;
-                        areas.status_bar = true;
-                    }
-                    if ui.button("Hide All").clicked() {
-                        areas.deck_a = false;
-                        areas.deck_b = false;
-                        areas.deck_c = false;
-                        areas.config = false;
-                        areas.preview = false;
-                        areas.status_bar = false;
-                    }
                 });
 
                 if open_new_window {
-                    self.other_main_windows.insert(
-                        ViewportId(Id::new(format!(
-                            "Second Window {}",
-                            rand::thread_rng().random::<u64>()
-                        ))),
-                        Default::default(),
-                    );
+                    let viewport_id = ViewportId(Id::new(format!(
+                        "Second Window {}",
+                        rand::thread_rng().random::<u64>()
+                    )));
+                    self.other_main_windows
+                        .insert(viewport_id, new_tree(Some(viewport_id), false));
                 }
                 if open_new_preview_window {
-                    self.other_main_windows.insert(
-                        ViewportId(Id::new(format!(
-                            "Preview Window {}",
-                            rand::thread_rng().random::<u64>()
-                        ))),
-                        super::MainWindowAreas {
-                            fullscreen: false,
-                            menu: false,
-                            deck_a: false,
-                            deck_b: false,
-                            deck_c: false,
-                            preview: true,
-                            config: false,
-                            status_bar: false,
-                        },
-                    );
+                    let viewport_id = ViewportId(Id::new(format!(
+                        "Preview Window {}",
+                        rand::thread_rng().random::<u64>()
+                    )));
+                    self.other_main_windows
+                        .insert(viewport_id, new_tree(Some(viewport_id), true));
                 }
 
                 ui.separator();

@@ -4,7 +4,7 @@ use crate::{
         asset::{project::scene_instance_path::SceneInstancePath, scene::Scene},
         asset_id::AssetId,
     },
-    ui::{action, ChangeButton},
+    ui::{ChangeButton, action},
 };
 use egui::{Color32, RichText, Slider, Ui};
 
@@ -50,7 +50,9 @@ impl App {
             );
 
             ui.scope(|ui| {
+                ui.set_max_width(ui.available_width() - 24.0);
                 ui.vertical_centered_justified(|ui| {
+                    ui.add_space(2.0);
                     deck.palette.change_button(ui);
                 });
             });
