@@ -38,7 +38,7 @@ keyring = { version = "3", features = [
 ] }
 kurbo = "0.11"
 log = "0.4"
-midir = "0.10"
+midir = { version = "0.10", features = ["winrt"] }
 naga = "24"
 once_cell = "1.20"
 rayon = "1.10"
@@ -51,7 +51,7 @@ serialport = "4"
 svgdom = "0.18"
 static_assertions = "1"
 strum = { version = "0.27", features = ["derive"] }
-sysinfo = "0.33"
+sysinfo = "0.35"
 tiny-skia = { version = "0.11", default-features = false, features = [
     "simd",
     "std",
