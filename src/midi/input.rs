@@ -39,7 +39,7 @@ pub fn discover() {
 
             log::trace!("Discovered midi input device \"{name}\" at \"{id}\"");
             match name.as_str() {
-                "APC40 mkII" => {
+                "APC40 mkII" | "APC40 mkII [0]" | "APC40 mkII [1]" => {
                     log::info!("Connecting to input of \"{name}\" at \"{id}\"");
                     if let Some(input) = input.take() {
                         let connection = {
