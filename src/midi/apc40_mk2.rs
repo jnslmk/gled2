@@ -72,42 +72,45 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
 
 pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutputConnection) {
     // Reset all lights
+    log::trace!("Resetting all lights..");
     for on in [true, false] {
         for j in 0x90..0x99 {
             for i in 0..127 {
-                //println!("Setting {i}");
-                connection.send(&[j, i, if on { 30 } else { 0 }, 127]).ok();
-                //std::thread::sleep(Duration::from_secs(1));
+                if let Err(err) = connection.send(&[j, i, if on { 30 } else { 0 }, 127]) {
+                    log::error!("Could not send value: {err:?}")
+                }
                 std::thread::sleep(Duration::from_micros(200));
             }
         }
     }
+    log::trace!("Done resetting all lights!");
 
+    log::trace!("Waiting for first state of state receiver..");
     for state in state_receiver {
-        connection
-            .send(&[0x90, 91, if state.blackout { 0 } else { 127 }, 127])
-            .ok();
+        if let Err(err) = connection.send(&[0x90, 91, if state.blackout { 0 } else { 127 }, 127]) {
+            log::error!("Error sending blackout value: {err:?}")
+        }
 
         for flank in 0..4 {
-            connection
-                .send(&[
-                    0x90,
-                    82 + flank,
-                    match (state.beat_flank == flank, state.blackout) {
-                        (true, false) => 30,
-                        (_, true)
-                            if SystemTime::now()
-                                .duration_since(UNIX_EPOCH)
-                                .map(|d| d.as_millis() / 200 % 2 == 0)
-                                .unwrap_or_default() =>
-                        {
-                            120
-                        }
-                        _ => 0,
-                    },
-                    127,
-                ])
-                .ok();
+            if let Err(err) = connection.send(&[
+                0x90,
+                82 + flank,
+                match (state.beat_flank == flank, state.blackout) {
+                    (true, false) => 30,
+                    (_, true)
+                        if SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .map(|d| d.as_millis() / 200 % 2 == 0)
+                            .unwrap_or_default() =>
+                    {
+                        120
+                    }
+                    _ => 0,
+                },
+                127,
+            ]) {
+                log::error!("Error sending flank value: {err:?}");
+            }
         }
 
         for path in { 0..20 }
@@ -137,7 +140,11 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
                 (DeckPath::C, _) => [0x90 + path.scene_instance as u8, 48, value, 127],
                 _ => unreachable!(),
             };
-            connection.send(&message).ok();
+            if let Err(err) = connection.send(&message) {
+                log::error!("Error sending scene value: {err:?}");
+            }
         }
+
+        log::trace!("Waiting for next state of state receiver..");
     }
 }
