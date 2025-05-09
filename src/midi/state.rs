@@ -1,13 +1,14 @@
 use crate::storage::asset::project::scene_instance_path::SceneInstancePath;
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, unbounded};
 use egui::mutex::Mutex;
 use once_cell::sync::{Lazy, OnceCell};
 use std::collections::HashSet;
 
 static SENDER: OnceCell<Sender<MidiState>> = OnceCell::new();
+static PREVIOUS_STATE: OnceCell<Mutex<MidiState>> = OnceCell::new();
 static SENDERS: Lazy<Mutex<Vec<Sender<MidiState>>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MidiState {
     pub blackout: bool,
     pub beat_flank: u8,
@@ -16,6 +17,13 @@ pub struct MidiState {
 
 impl MidiState {
     pub fn enqueue(self) {
+        let mut previous = PREVIOUS_STATE
+            .get_or_init(|| Mutex::new(self.clone()))
+            .lock();
+        if *previous == self {
+            return;
+        }
+        *previous = self.clone();
         SENDER
             .get()
             .expect("Could not get sender")
