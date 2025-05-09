@@ -24,6 +24,9 @@ impl Parameter {
             return vec![];
         };
 
+        let color_channels =
+            serde_json::from_str(&format!("\"{}\"", self.color_channels)).unwrap_or_default();
+
         { 0..self.count }
             .map(|led| {
                 let mut num = start + led;
@@ -36,7 +39,7 @@ impl Parameter {
                 Led {
                     universe,
                     num,
-                    color_channels: serde_json::from_str(&self.color_channels).unwrap_or_default(),
+                    color_channels,
                 }
             })
             .collect()

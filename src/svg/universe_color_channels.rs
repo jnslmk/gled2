@@ -36,10 +36,10 @@ impl From<&ParsedSvg> for UniverseColorChannels {
             if parameter.start.is_none() {
                 continue;
             }
-            let universe = universes
-                .entry(parameter.universe)
-                .or_insert([ColorChannels::Rgb; LAMPS_PER_UNIVERSE as usize]);
             for led in parameter.leds() {
+                let universe = universes
+                    .entry(led.universe)
+                    .or_insert([ColorChannels::Rgb; LAMPS_PER_UNIVERSE as usize]);
                 universe[led.num] = led.color_channels;
             }
         }
