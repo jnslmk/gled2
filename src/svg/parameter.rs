@@ -1,6 +1,6 @@
 //! Parameters as set in a SVG file.
 
-use super::{Led, color_channels::ColorChannels};
+use super::Led;
 use crate::pipeline::{constants::LAMPS_PER_UNIVERSE, group::Group};
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +12,7 @@ pub struct Parameter {
     #[serde(alias = "render_groups")]
     pub groups: Vec<Group>,
     pub count: usize,
-    pub color_channels: ColorChannels,
+    color_channels: String,
 
     #[serde(skip)]
     pub leds: Vec<Led>,
@@ -36,7 +36,7 @@ impl Parameter {
                 Led {
                     universe,
                     num,
-                    color_channels: self.color_channels,
+                    color_channels: serde_json::from_str(&self.color_channels).unwrap_or_default(),
                 }
             })
             .collect()
