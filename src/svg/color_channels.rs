@@ -14,31 +14,23 @@ pub enum ColorChannels {
 
 impl ColorChannels {
     pub fn correct(&self, triple: &mut [u8]) {
-        let r = triple[0];
-        let g = triple[1];
-        let b = triple[2];
         match self {
             ColorChannels::Bgr => {
-                triple[0] = b;
-                triple[2] = r;
+                triple.swap(0, 2);
             }
             ColorChannels::Brg => {
-                triple[0] = g;
-                triple[1] = b;
-                triple[2] = r;
+                triple.swap(0, 1); // grb
+                triple.swap(0, 2);
             }
             ColorChannels::Gbr => {
-                triple[0] = g;
-                triple[1] = b;
-                triple[2] = r;
+                triple.swap(0, 1); // grb
+                triple.swap(1, 2);
             }
             ColorChannels::Grb => {
-                triple[0] = g;
-                triple[1] = r;
+                triple.swap(0, 1);
             }
             ColorChannels::Rbg => {
-                triple[1] = b;
-                triple[2] = g;
+                triple.swap(1, 2);
             }
             ColorChannels::Rgb => {}
         }
