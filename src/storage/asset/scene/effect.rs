@@ -1,12 +1,12 @@
 use crate::{
+    OUTPUT_BUFFER,
     app::svg::Svg,
     pipeline::group::Groups,
     storage::{
+        Animation, Asset, AssetId, Palette,
         animation::config::AnimationConfig,
         curve::static_or_curve::{RangeDegrees, RangePercentage, StaticOrCurve},
-        Animation, Asset, AssetId, Palette,
     },
-    OUTPUT_BUFFER,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -68,7 +68,9 @@ impl Effect {
 
     pub fn set_output_mix_buffers(&self, state: &mut EffectState) {
         let other = state.texture_to_output.output_buffer();
-        state.output_mix.set_buffers(&OUTPUT_BUFFER, other);
+        state
+            .output_mix
+            .set_output_mix_buffers(&OUTPUT_BUFFER, other);
     }
 
     pub fn prepare(

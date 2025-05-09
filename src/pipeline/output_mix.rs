@@ -73,7 +73,7 @@ impl OutputMix {
         }
     }
 
-    pub fn set_buffers(&mut self, main: &Buffer, other: &Buffer) {
+    pub fn set_output_mix_buffers(&mut self, main: &Buffer, other: &Buffer) {
         let device = wgpu_render_state().device;
         self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
             label: Some("OutputMix bind group"),

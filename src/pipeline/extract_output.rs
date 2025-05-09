@@ -2,18 +2,19 @@
 
 use super::output_sender::OutputSender;
 use crate::{
-    pipeline::constants::{OUTPUT_BUFFER_SIZE, UNIVERSES, UNIVERSE_BUFFER_SIZE},
+    OUTPUT_BUFFER,
+    pipeline::constants::{OUTPUT_BUFFER_SIZE, UNIVERSE_BUFFER_SIZE, UNIVERSES},
     storage::asset::output_device::routing::OutputRoutings,
     svg::measurement_point::Universes,
-    wgpu_render_state, OUTPUT_BUFFER,
+    wgpu_render_state,
 };
 use egui::mutex::Mutex;
 use std::{
     collections::BTreeSet,
     sync::{
+        Arc, OnceLock,
         atomic::{AtomicBool, Ordering::Relaxed},
         mpsc::channel,
-        Arc, OnceLock,
     },
 };
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, Maintain, MapMode};

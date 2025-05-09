@@ -1,10 +1,13 @@
 //! Read parameters like fixture and groups for each led from svg files
 
+pub mod color_channels;
 pub mod led;
 pub mod measurement_point;
 pub mod parameter;
 pub mod render;
+pub mod universe_color_channels;
 
+use crate::ui::action::UiAction;
 use anyhow::{Context, Result};
 use led::Led;
 use log::debug;
@@ -12,8 +15,6 @@ use parameter::Parameter;
 use std::collections::{HashMap, HashSet};
 use svgdom::{Document, ElementId, FilterSvg, Node};
 use usvg::Tree;
-
-use crate::ui::action::UiAction;
 
 pub struct ParsedSvg {
     pub parameters: HashMap<String, Parameter>,

@@ -3,7 +3,7 @@ use crate::{
         extract_output::ExtractOutput, group::Group, preview_indices::PreviewIndices,
         texture_to_output::positions::Positions,
     },
-    svg::measurement_point::MeasurementPoints,
+    svg::{measurement_point::MeasurementPoints, universe_color_channels::UniverseColorChannels},
     ui::action::UiAction,
 };
 use anyhow::Result;
@@ -61,6 +61,7 @@ impl Svg {
             self.image = {
                 let svg = crate::svg::ParsedSvg::parse(&self.svg_contents).ok()?;
                 let measurement_points = MeasurementPoints::from(&svg);
+                UniverseColorChannels::from(&svg).set();
                 let universes = measurement_points.universes();
                 MEASUREMENT_POINTS.with_borrow_mut(|mp| {
                     *mp = measurement_points;

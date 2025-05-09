@@ -6,16 +6,17 @@ use anyhow::{Context, Result};
 use log::{debug, trace, warn};
 use std::{
     net::{SocketAddr, ToSocketAddrs, UdpSocket},
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::mpsc::{Receiver, Sender, channel},
     thread,
 };
 
 use crate::{
     pipeline::{
-        constants::{UNIVERSES, UNIVERSE_BUFFER_SIZE},
+        constants::{UNIVERSE_BUFFER_SIZE, UNIVERSES},
         extract_output::ExtractOutput,
     },
-    storage::asset::{output_device::OutputDevice, Asset},
+    storage::asset::{Asset, output_device::OutputDevice},
+    svg::universe_color_channels::UniverseColorChannels,
 };
 pub type OutputSender = Sender<bool>;
 pub type GpuReadySender = Sender<()>;
@@ -55,7 +56,8 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
             for use_first_output_buffer in output_receiver.iter() {
                 trace!("Sending output data");
                 let packages: Vec<(SocketAddr, Vec<u8>)> = {
-                    let output_data = extract_output.poll_output_buffer(use_first_output_buffer);
+                    let mut output_data =
+                        extract_output.poll_output_buffer(use_first_output_buffer);
                     gpu_ready_sender.send(()).expect("GPU ready receiver lost");
 
                     let mut routings = extract_output.routings.lock();
@@ -65,10 +67,11 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                         .lock()
                         .iter()
                         .take(UNIVERSES as usize)
-                        .zip(output_data.chunks(UNIVERSE_BUFFER_SIZE as usize))
+                        .zip(output_data.chunks_exact_mut(UNIVERSE_BUFFER_SIZE as usize))
                         .filter_map(|(universe, data)| {
                             let routing = routings.universe_output_routing(*universe);
                             let device = routing.device.and_then(Asset::get)?;
+                            UniverseColorChannels::correct(*universe, data);
 
                             match &device.data {
                                 OutputDevice::Artnet { ip, universes, .. } => {

@@ -2,7 +2,7 @@ pub mod effect;
 pub mod effect_state;
 pub mod instance;
 
-use super::{animation::Animation, palette::Palette, Asset, AssetTrait};
+use super::{Asset, AssetTrait, animation::Animation, palette::Palette};
 use crate::{
     pipeline::group::{GroupIndices, Groups},
     storage::AssetId,
