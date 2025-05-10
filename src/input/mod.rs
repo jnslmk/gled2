@@ -1,13 +1,13 @@
 pub mod artnet;
 pub mod event;
 
-use egui::{mutex::Mutex, Context};
+use egui::{Context, mutex::Mutex};
 use event::{GamepadEvent, InputEvent};
 use gilrs::{Axis, Button, Event, Gilrs};
 use log::debug;
 use std::{
     collections::{HashMap, HashSet},
-    sync::{mpsc::Receiver, Arc, OnceLock},
+    sync::{Arc, OnceLock, mpsc::Receiver},
 };
 
 static INPUT: OnceLock<Arc<Mutex<Input>>> = OnceLock::new();
@@ -18,6 +18,8 @@ pub struct Input {
     ctx: Context,
     artnet_receiver: Receiver<artnet::ArtnetEvent>,
     events: HashMap<InputEvent, u8>,
+    /// must be copied to `new_events`` on tick after clearing `new_events`
+    new_artnet_events: HashSet<InputEvent>,
     new_events: HashSet<InputEvent>,
 }
 
@@ -33,6 +35,7 @@ impl Input {
                 ctx,
                 artnet_receiver,
                 events: HashMap::new(),
+                new_artnet_events: HashSet::new(),
                 new_events: HashSet::new(),
             })))
             .map_err(|_| {})
@@ -50,7 +53,7 @@ impl Input {
         let input = Self::get();
         let mut input = input.lock();
 
-        input.new_events.clear();
+        input.new_events = std::mem::take(&mut input.new_artnet_events);
 
         if !input.ctx.wants_keyboard_input() {
             let keys_down = input.ctx.input(|i| i.keys_down.clone());
@@ -69,12 +72,16 @@ impl Input {
         }
 
         while let Ok(event) = input.artnet_receiver.try_recv() {
+            log::trace!("Received Artnet event: {:?}", event);
             if event.value == 0 {
                 input.events.remove(&InputEvent::Artnet(event.channel));
             } else {
                 input
                     .events
                     .insert(InputEvent::Artnet(event.channel), event.value);
+                input
+                    .new_artnet_events
+                    .insert(InputEvent::Artnet(event.channel));
             }
         }
 

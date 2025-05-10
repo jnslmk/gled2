@@ -11,7 +11,8 @@ pub struct Timing {
     avg_fps_time: Instant,
     last_frame: Instant,
     frame_count: usize,
-    taps: Vec<Instant>,
+    taps: [Option<Instant>; 4],
+    tap_count: usize,
     pub fade_mode: FadeMode,
 }
 
@@ -25,7 +26,8 @@ impl Default for Timing {
             avg_fps_time: Instant::now(),
             last_frame: Instant::now(),
             frame_count: 0,
-            taps: vec![],
+            taps: [None; 4],
+            tap_count: 0,
             fade_mode: Default::default(),
         }
     }
@@ -103,22 +105,19 @@ impl Timing {
     }
 
     fn remove_old_taps(&mut self) {
-        let Some(last) = self.taps.last() else {
-            return;
-        };
-        let max_age = if self.taps.len() < 2 {
-            None
-        } else {
-            self.taps
-                .get(self.taps.len() - 2)
-                .map(|tap| last.duration_since(*tap).as_secs_f32())
+        let mut reset_tap_count = true;
+        for tap in self.taps.iter_mut() {
+            if let Some(date) = tap {
+                if date.elapsed() > Duration::from_secs(10) {
+                    tap.take();
+                } else {
+                    reset_tap_count = false;
+                }
+            }
         }
-        .unwrap_or(1.5)
-        .min(1.5)
-            * 2.0;
 
-        if Instant::now().duration_since(*last).as_secs_f32() > max_age {
-            self.taps.clear();
+        if reset_tap_count {
+            self.tap_count = 0;
         }
     }
 
@@ -150,7 +149,16 @@ impl Timing {
         let mut tap_text = LayoutJob::default();
         tap_text.append("T", 0.0, underlined);
         tap_text.append(
-            &format!("ap{}", vec!["."; self.taps.len()].join("")),
+            &format!(
+                "ap{}",
+                match (self.tap_count, self.tap_count % 4) {
+                    (0, _) => "",
+                    (_, 0) => "/",
+                    (_, 1) => "–",
+                    (_, 2) => "\\",
+                    _ => "|",
+                }
+            ),
             0.0,
             TextFormat::default(),
         );
@@ -233,23 +241,30 @@ impl Timing {
     }
 
     pub fn tap(&mut self) {
+        self.tap_count += 1;
         let now = Instant::now();
-        self.taps.push(now);
+        self.taps[0] = Some(now);
+        self.taps.sort();
 
-        if self.taps.len() > 1 {
-            if let (Some(first), Some(last)) = (self.taps.first(), self.taps.last()) {
-                let beat_time_first = now.duration_since(*first);
-                let beat_time_last = now.duration_since(*last);
-                let avg_beat_time = (beat_time_first.as_nanos() - beat_time_last.as_nanos())
-                    / (self.taps.len() as u128 - 1);
-
-                self.beats_per_minute = (60e+9f64 / f64::from(avg_beat_time as u32)) as f32;
-
-                // adjust beat progression timing to last tap
-                let offset = self.beat_progression % 4.0;
-                let goal_offset = (self.taps.len() - 1) as f32 % 4.0;
-                self.beat_progression += goal_offset - offset;
-            }
+        let first = self
+            .taps
+            .iter()
+            .filter_map(|tap| *tap)
+            .next()
+            .expect("There must be at least one entry");
+        if first == now {
+            return;
         }
+
+        let beat_time_first = now.duration_since(first);
+        let avg_beat_time = (beat_time_first.as_nanos())
+            / (self.taps.iter().filter(|tap| tap.is_some()).count() as u128 - 1);
+
+        self.beats_per_minute = (60e+9f64 / f64::from(avg_beat_time as u32)) as f32;
+
+        // adjust beat progression timing to last tap
+        let offset = self.beat_progression % 4.0;
+        let goal_offset = (self.tap_count - 1) as f32 % 4.0;
+        self.beat_progression += goal_offset - offset;
     }
 }

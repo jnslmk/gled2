@@ -12,7 +12,7 @@ pub enum InputEvent {
 
 impl InputEvent {
     pub fn get() -> Option<Self> {
-        Input::first_new_event().into_iter().next()
+        Input::first_new_event()
     }
 
     pub fn is_new(&self) -> bool {
