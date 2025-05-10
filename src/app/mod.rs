@@ -133,6 +133,24 @@ impl eframe::App for App {
                             )
                             .collect()
                     }),
+                available_scenes_a: self.project.as_mut().map_or(0, |project| {
+                    project
+                        .deck(SceneInstancePath::DECK_A)
+                        .scenes_instances
+                        .len()
+                }),
+                available_scenes_b: self.project.as_mut().map_or(0, |project| {
+                    project
+                        .deck(SceneInstancePath::DECK_B)
+                        .scenes_instances
+                        .len()
+                }),
+                available_scenes_c: self.project.as_mut().map_or(0, |project| {
+                    project
+                        .deck(SceneInstancePath::DECK_C)
+                        .scenes_instances
+                        .len()
+                }),
             }
             .enqueue();
         }

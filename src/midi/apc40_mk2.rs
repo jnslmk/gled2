@@ -123,6 +123,8 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
                 (DeckPath::A, true) => 30,
                 (DeckPath::B, true) => 50,
                 (DeckPath::C, true) => 30,
+                (DeckPath::A, false) if state.available_scenes_a > path.scene_instance => 11,
+                (DeckPath::B, false) if state.available_scenes_b > path.scene_instance => 11,
                 _ => 0,
             };
 
