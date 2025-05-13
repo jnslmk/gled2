@@ -4,14 +4,14 @@ pub mod asset_id;
 pub mod collection;
 pub mod git;
 
-use crate::{app::persistant_state::PersistantState, ui::action::UiAction};
-
 use self::{action::StorageAction, asset::*, asset_id::AssetId};
+use crate::{app::persistant_state::PersistantState, ui::action::UiAction};
 use animation::Animation;
 use collection::Collection;
 use curve::Curve;
 use directories::BaseDirs;
 use egui::mutex::Mutex;
+use git::Git;
 use once_cell::sync::Lazy;
 use output_device::OutputDevice;
 use palette::Palette;
@@ -19,7 +19,7 @@ use project::Project;
 use scene::Scene;
 use std::{
     fmt::Debug,
-    fs::remove_dir_all,
+    fs::{read_to_string, remove_dir_all},
     path::PathBuf,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed},
     thread::sleep,
@@ -35,13 +35,13 @@ pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
         .data_dir()
         .join("gled2")
 });
+static STORAGE_VERSION_FILE: Lazy<PathBuf> = Lazy::new(|| STORAGE_DIR.join("version"));
 static WORKING: AtomicBool = AtomicBool::new(true);
 static ERROR: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
 static LOADING: Lazy<Mutex<Option<Loading>>> = Lazy::new(|| Mutex::new(None));
 static COLLECTIONS: Lazy<Mutex<Option<ShareDebugMap>>> = Lazy::new(|| Mutex::new(None));
 static BRANCHES: Lazy<Mutex<Option<Branches>>> = Lazy::new(|| Mutex::new(None));
 static STAGED_FILES: AtomicUsize = AtomicUsize::new(0);
-
 #[derive(Debug, Clone)]
 pub struct Branches {
     pub available: Vec<String>,
@@ -143,6 +143,9 @@ pub fn start_thread() {
                     StorageAction::Restart => {
                         break;
                     }
+                    StorageAction::Stop => {
+                        return;
+                    }
                     StorageAction::CountStagedFiles => match git.count_staged_files() {
                         Err(err) => {
                             ERROR
@@ -219,6 +222,29 @@ pub fn start_thread() {
                         ERROR.lock().take();
                     }
                     StorageAction::LoadAssets => {
+                        let version_file = STORAGE_DIR.join("version");
+                        match read_to_string(version_file).ok().and_then(|version| {
+                            semver::Version::parse(version.trim())
+                                .map_err(|err| log::error!("Could not parse version file: {err:?}"))
+                                .ok()
+                        }) {
+                            Some(version) => {
+                                if version
+                                    > semver::Version::parse(env!("CARGO_PKG_VERSION"))
+                                        .expect("Could not parse cargo pkg version")
+                                {
+                                    log::error!(
+                                        "Gled version is too old. Please update to the latest version."
+                                    );
+                                    ERROR.lock().replace("Gled version is too old. Please update to the latest version.".to_string());
+                                    continue;
+                                }
+                            }
+                            None => {
+                                write_storage_version_file(&mut git);
+                            }
+                        }
+
                         if let Err(err) = mkdirp::mkdirp(STORAGE_DIR.join("svg")) {
                             ERROR
                                 .lock()
@@ -273,6 +299,8 @@ pub fn start_thread() {
                             UiAction::Error(format!("Could not write asset: {err}")).enqueue();
                         }
 
+                        write_storage_version_file(&mut git);
+
                         StorageAction::CountStagedFiles.enqueue();
                     }
                     StorageAction::DeleteAsset { uuid, dir_name } => {
@@ -292,4 +320,35 @@ pub fn start_thread() {
 
 pub fn asset_path(id: Uuid, dir_name: &str) -> PathBuf {
     STORAGE_DIR.join(dir_name).join(format!("{}.json", id))
+}
+
+pub fn write_storage_version_file(git: &mut Git) {
+    static STORAGE_VERSION_WRITTEN: AtomicBool = AtomicBool::new(false);
+
+    if STORAGE_VERSION_WRITTEN.load(Relaxed) {
+        return;
+    }
+
+    if let Err(err) = std::fs::write(
+        STORAGE_VERSION_FILE.as_path(),
+        format!("{}\n", env!("CARGO_PKG_VERSION")),
+    ) {
+        log::error!("Could not write storage version file: {err}");
+        ERROR
+            .lock()
+            .replace(format!("Could not write storage version file: {err}"));
+        StorageAction::Stop.enqueue();
+        return;
+    }
+
+    if let Err(err) = git.add(STORAGE_VERSION_FILE.as_path()) {
+        log::error!("Could not add storage version file to git: {err}");
+        ERROR
+            .lock()
+            .replace(format!("Could not add storage version file to git: {err}"));
+        StorageAction::Stop.enqueue();
+        return;
+    }
+
+    STORAGE_VERSION_WRITTEN.store(true, Relaxed);
 }

@@ -2,8 +2,8 @@ use crate::{app::persistant_state::PersistantState, ui::action::UiAction};
 
 use super::STORAGE_DIR;
 use git2::{
-    build::RepoBuilder, Cred, Error, ErrorCode, FetchOptions, PushOptions, Reference,
-    RemoteCallbacks, Repository, Signature,
+    Cred, Error, ErrorCode, FetchOptions, PushOptions, Reference, RemoteCallbacks, Repository,
+    Signature, build::RepoBuilder,
 };
 use mkdirp::mkdirp;
 use once_cell::sync::Lazy;
@@ -258,7 +258,7 @@ impl Git {
         Ok(())
     }
 
-    fn add(&self, file: &Path) -> Result<(), Error> {
+    pub fn add(&self, file: &Path) -> Result<(), Error> {
         log::info!("Adding file: {}", file.display());
 
         let repository = self

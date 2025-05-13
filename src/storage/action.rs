@@ -1,6 +1,6 @@
 use std::sync::{
-    mpsc::{Receiver, Sender},
     OnceLock,
+    mpsc::{Receiver, Sender},
 };
 use uuid::Uuid;
 
@@ -18,6 +18,8 @@ pub enum StorageAction {
     Nuke,
     /// Restart the storage system
     Restart,
+    /// Stop the storage system
+    Stop,
     LoadBranches,
     LoadAssets,
     SwitchBranch(String),

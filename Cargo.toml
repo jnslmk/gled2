@@ -44,6 +44,7 @@ once_cell = "1.20"
 rayon = "1.10"
 resvg = { version = "0.45", default-features = false }
 rfd = "0.15"
+semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde-hjson = "1"
 serde_json = "1"
