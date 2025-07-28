@@ -5,13 +5,13 @@ use crate::{
     storage::asset::project::scene_instance_path::SceneInstancePath,
     ui::scene_instance::widget::SceneInstanceWidget,
 };
-use egui::{scroll_area::ScrollBarVisibility, Color32, Rect, TextureId, Ui, Vec2};
+use egui::{Color32, Rect, TextureHandle, Ui, Vec2, scroll_area::ScrollBarVisibility};
 
 impl App {
     pub fn effects_grid(
         &mut self,
         ui: &mut Ui,
-        svg: Option<TextureId>,
+        svg: Option<TextureHandle>,
         uv: Option<Rect>,
         path: SceneInstancePath,
     ) {
@@ -38,7 +38,7 @@ impl App {
                                 hovered_scene_instance: &mut self.hovered_scene_instance,
                                 path,
                                 scene_instance,
-                                svg,
+                                svg: svg.clone(),
                                 effects_size,
                                 live_color: Color32::DARK_GREEN,
                                 uv,

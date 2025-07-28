@@ -4,7 +4,7 @@ use log::{debug, trace, warn};
 use once_cell::sync::{Lazy, OnceCell};
 use serialport::SerialPort;
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{HashMap, hash_map::Entry},
     thread,
     time::{Duration, Instant},
 };
@@ -75,7 +75,7 @@ pub fn start() {
                                 }
                             }
                             Err(err) => {
-                                warn!("Could not open port: {}", err);
+                                warn!("Could not open port: {err}");
                             }
                         }
                     }
@@ -89,29 +89,31 @@ pub fn start() {
 
 fn find_devices() {
     debug!("Spawning enttec dmx usb pro discovery thread");
-    thread::spawn(|| loop {
-        let mut serial_numbers_port = HashMap::new();
-        let ports = match serialport::available_ports() {
-            Ok(ports) => ports,
-            Err(err) => {
-                warn!("Error listing serial ports: {}", err);
-                std::thread::sleep(Duration::from_secs(60));
-                continue;
-            }
-        };
-        for port in ports {
-            if let serialport::SerialPortType::UsbPort(usb_port_info) = port.port_type {
-                if usb_port_info.manufacturer == Some("ENTTEC".to_owned())
-                    && usb_port_info.product == Some("DMX USB PRO".to_owned())
-                {
-                    if let Some(serial_number) = usb_port_info.serial_number {
-                        serial_numbers_port.insert(serial_number, port.port_name);
+    thread::spawn(|| {
+        loop {
+            let mut serial_numbers_port = HashMap::new();
+            let ports = match serialport::available_ports() {
+                Ok(ports) => ports,
+                Err(err) => {
+                    warn!("Error listing serial ports: {err}");
+                    std::thread::sleep(Duration::from_secs(60));
+                    continue;
+                }
+            };
+            for port in ports {
+                if let serialport::SerialPortType::UsbPort(usb_port_info) = port.port_type {
+                    if usb_port_info.manufacturer == Some("ENTTEC".to_owned())
+                        && usb_port_info.product == Some("DMX USB PRO".to_owned())
+                    {
+                        if let Some(serial_number) = usb_port_info.serial_number {
+                            serial_numbers_port.insert(serial_number, port.port_name);
+                        }
                     }
                 }
             }
+            *SERIAL_NUMBERS_PORT.lock() = serial_numbers_port;
+            std::thread::sleep(Duration::from_secs(1));
         }
-        *SERIAL_NUMBERS_PORT.lock() = serial_numbers_port;
-        std::thread::sleep(Duration::from_secs(1));
     });
 }
 
@@ -122,7 +124,7 @@ pub fn serial_numbers() -> Vec<String> {
 pub fn send(serial_number: String, data: [u8; 512]) {
     if let Some(sender) = SENDER.get() {
         if let Err(err) = sender.send((serial_number, data)) {
-            warn!("Could not send data to enttec dmx usb pro thread: {}", err);
+            warn!("Could not send data to enttec dmx usb pro thread: {err}");
         }
     } else {
         warn!("enttec dmx usb pro thread not started");

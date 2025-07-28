@@ -44,11 +44,11 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                 .expect("Could not find a port which we can use");
             match socket.set_broadcast(true) {
                 Ok(_) => debug!("Activated sending to broadcast"),
-                Err(e) => debug!("Could not activate sending to broadcast: {}", e),
+                Err(e) => debug!("Could not activate sending to broadcast: {e}"),
             }
             match socket.set_nonblocking(true) {
                 Ok(_) => debug!("Activated non-blocking mode"),
-                Err(e) => debug!("Could not activate non-blocking mode: {}", e),
+                Err(e) => debug!("Could not activate non-blocking mode: {e}"),
             };
 
             let extract_output = ExtractOutput::get();
@@ -149,7 +149,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                     debug!("Sending package to {addr}");
                     trace!("Package data: {data:02x?}");
                     if let Err(err) = socket.send_to(&data, addr) {
-                        warn!("Could not send data: {:?}", err)
+                        warn!("Could not send data: {err:?}")
                     };
                 }
             }

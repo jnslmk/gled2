@@ -3,8 +3,9 @@ use std::marker::PhantomData;
 use super::Curve;
 use crate::{
     storage::{Asset, AssetId, AssetTrait},
-    ui::{asset_tree::AssetTree, ChangeButton},
+    ui::{ChangeButton, asset_tree::AssetTree},
 };
+use egui::UiKind;
 use egui_ltreeview::TreeViewState;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -127,7 +128,7 @@ impl<R: Range> ChangeButton for StaticOrCurve<R> {
                                             ui.make_persistent_id(Curve::NAME),
                                         )
                                     });
-                                    ui.close_menu();
+                                    ui.close_kind(UiKind::Menu);
                                     changed = true;
                                 }
                             });

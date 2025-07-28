@@ -15,10 +15,7 @@ impl App {
             Rect::from_min_size(pos, Vec2::splat(20.0))
         };
 
-        let svg = self
-            .svg_mut()
-            .and_then(|svg| svg.image())
-            .map(|image| image.texture_id(ui.ctx()));
+        let svg = self.svg_mut().and_then(|svg| svg.image(ui.ctx()));
         let uv = Svg::preview_uv();
 
         self.effects_header(ui, path);

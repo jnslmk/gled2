@@ -1,6 +1,4 @@
-use egui::{ColorImage, IconData};
-use egui_extras::RetainedImage;
-use std::sync::OnceLock;
+use egui::{IconData, ImageSource};
 
 static LOGO: &[u8; 38897] = include_bytes!("../../logo/logo.png");
 
@@ -21,17 +19,10 @@ pub fn icon() -> IconData {
     }
 }
 
-pub fn logo_image() -> &'static RetainedImage {
-    static LOGO_IMAGE: OnceLock<RetainedImage> = OnceLock::new();
-    LOGO_IMAGE.get_or_init(|| {
-        let image = image::load_from_memory(LOGO)
-            .expect("Failed to parse logo.png")
-            .into_rgba8();
-        let dimensions = image.dimensions();
-        let image = ColorImage::from_rgba_unmultiplied(
-            [dimensions.0 as usize, dimensions.1 as usize],
-            &image.into_raw(),
-        );
-        RetainedImage::from_color_image("logo", image)
-    })
+pub fn logo_image() -> ImageSource<'static> {
+    const IMAGE_SOURCE: ImageSource = ImageSource::Bytes {
+        uri: std::borrow::Cow::Borrowed("../../logo/logo.png"),
+        bytes: egui::load::Bytes::Static(LOGO),
+    };
+    IMAGE_SOURCE
 }

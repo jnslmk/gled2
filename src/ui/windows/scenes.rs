@@ -3,23 +3,23 @@ use crate::{
     pipeline::renderer_callback::RendererCallback,
     storage::{
         asset::{
-            animation::Animation,
-            scene::{effect::Effect, effect_state::EffectState, Scene},
             Asset,
+            animation::Animation,
+            scene::{Scene, effect::Effect, effect_state::EffectState},
         },
         asset_id::AssetId,
     },
     ui::{
-        asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
+        ChangeButton,
+        asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
         effect::widget::EffectWidget,
         viewport_builder::default_viewport_builder,
-        ChangeButton,
     },
     wgpu_render_state,
 };
 use egui::{
-    scroll_area::ScrollBarVisibility, Button, Color32, Context, Id, Margin, Stroke, Vec2,
-    ViewportId,
+    Button, Color32, Context, Id, Margin, Stroke, Vec2, ViewportId,
+    scroll_area::ScrollBarVisibility,
 };
 use wgpu::CommandEncoderDescriptor;
 
@@ -137,7 +137,7 @@ impl ScenesWindow {
                             }
                         }
 
-                        egui::Frame::none()
+                        egui::Frame::NONE
                             .inner_margin(Margin::from(6.0))
                             .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
                             .show(ui, |ui| {

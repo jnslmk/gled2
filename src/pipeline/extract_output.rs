@@ -17,7 +17,7 @@ use std::{
         mpsc::channel,
     },
 };
-use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, Maintain, MapMode};
+use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, MapMode, PollType};
 
 static USE_FIRST_OUTPUT_BUFFER: AtomicBool = AtomicBool::new(true);
 
@@ -93,7 +93,10 @@ impl ExtractOutput {
             tx.send(v).expect("Could not send on oneshot sender")
         });
 
-        wgpu_render_state().device.poll(Maintain::Wait);
+        wgpu_render_state()
+            .device
+            .poll(PollType::Wait)
+            .expect("Could not poll device");
 
         rx.recv()
             .expect("Could not receive on gpu rx")

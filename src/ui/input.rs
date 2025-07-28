@@ -1,6 +1,6 @@
 use super::ChangeButton;
 use crate::input::event::InputEvent;
-use egui::{Button, Color32, Ui};
+use egui::{Button, Color32, Ui, UiKind};
 
 impl ChangeButton for Option<InputEvent> {
     fn change_button(&mut self, ui: &mut Ui) -> bool {
@@ -26,7 +26,7 @@ impl ChangeButton for Option<InputEvent> {
                         ui.label("Please press a key or provide artnet input!");
                         if let Some(event) = InputEvent::get() {
                             *self = Some(event);
-                            ui.close_menu();
+                            ui.close_kind(UiKind::Menu);
                             changed = true;
                         }
                     },

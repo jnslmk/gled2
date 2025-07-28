@@ -15,7 +15,7 @@ use crate::{
     },
     wgpu_render_state,
 };
-use egui::{Color32, Context, Id, Margin, Stroke, Vec2, ViewportId};
+use egui::{Color32, Context, Id, Margin, Stroke, UiKind, Vec2, ViewportId};
 use naga::{
     front::wgsl::parse_str,
     valid::{Capabilities, ValidationFlags, Validator},
@@ -169,7 +169,7 @@ impl AnimationWindow {
                     if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
                         if let Some(mut error) = self.error.as_deref() {
                             let lines = error.lines().count().max(1);
-                            egui::Frame::none()
+                            egui::Frame::NONE
                                 .inner_margin(Margin::from(3.0))
                                 .stroke(Stroke::new(2.0, Color32::RED))
                                 .fill(Color32::DARK_RED)
@@ -184,8 +184,8 @@ impl AnimationWindow {
                                     )
                                     .context_menu(|ui| {
                                         if ui.button("🖹 Copy error").clicked() {
-                                            ui.output_mut(|o| o.copied_text = error.to_owned());
-                                            ui.close_menu();
+                                            ui.ctx().copy_text(error.to_owned());
+                                            ui.close_kind(UiKind::Menu);
                                         }
                                     });
                                 });
@@ -233,7 +233,7 @@ impl AnimationWindow {
                 }
 
                 egui::CentralPanel::default().show(ctx, |ui| {
-                    egui::Frame::none()
+                    egui::Frame::NONE
                         .inner_margin(Margin::from(6.0))
                         .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
                         .show(ui, |ui| {

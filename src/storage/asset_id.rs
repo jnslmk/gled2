@@ -1,5 +1,5 @@
 use super::AssetTrait;
-use crate::storage::{collection::Collection, StorageAction, COLLECTIONS};
+use crate::storage::{COLLECTIONS, StorageAction, collection::Collection};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
@@ -48,7 +48,7 @@ impl<T: AssetTrait> AssetId<T> {
     }
 
     pub fn delete(self) {
-        log::info!("Deleting palette from cache: {:?}", self);
+        log::info!("Deleting palette from cache: {self:?}");
 
         std::thread::spawn(move || {
             if let Some(collections) = COLLECTIONS.lock().as_mut() {

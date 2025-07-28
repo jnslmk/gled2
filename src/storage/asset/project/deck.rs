@@ -7,7 +7,7 @@ use crate::{
         group::{Group, Groups},
         transition::{Transition, TransitionGoal},
     },
-    storage::{scene::instance::SceneInstance, Asset, AssetId, Palette, Scene},
+    storage::{Asset, AssetId, Palette, Scene, scene::instance::SceneInstance},
 };
 use rand::seq::IndexedMutRandom;
 use serde::{Deserialize, Serialize};
@@ -110,7 +110,7 @@ impl Deck {
 
                     let mut disable_count = (paths.len() + 1).saturating_sub(auto_mode_max_scenes);
                     while disable_count > 0 {
-                        if let Some(path) = paths.choose_mut(&mut rand::thread_rng()).copied() {
+                        if let Some(path) = paths.choose_mut(&mut rand::rng()).copied() {
                             if prev.insert(path) {
                                 disable_count -= 1;
                                 if let Some(scene) = self.scene_instance(path) {
@@ -128,7 +128,7 @@ impl Deck {
                     .scene_instances(path)
                     .filter(|(index, _scene)| !prev.contains(index))
                     .collect::<Vec<_>>();
-                if let Some((_index, scene)) = scenes.choose_mut(&mut rand::thread_rng()) {
+                if let Some((_index, scene)) = scenes.choose_mut(&mut rand::rng()) {
                     scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
                 }
 

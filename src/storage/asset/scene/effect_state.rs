@@ -10,7 +10,7 @@ use crate::{
 };
 use arboard::{Clipboard, ImageData};
 use egui::TextureId;
-use wgpu::{Maintain, MapMode};
+use wgpu::{MapMode, PollType};
 
 #[derive(Debug)]
 pub struct EffectState {
@@ -113,15 +113,15 @@ impl EffectState {
                     label: Some("Copy Texture to Buffer"),
                 });
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: self.renderer.texture(),
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &buffer,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(texture_size.width * 4),
                     rows_per_image: Some(texture_size.height),
@@ -137,7 +137,10 @@ impl EffectState {
         buffer_slice.map_async(MapMode::Read, move |v| {
             tx.send(v).expect("Could not send on oneshot sender")
         });
-        wgpu_render_state().device.poll(Maintain::Wait);
+        wgpu_render_state()
+            .device
+            .poll(PollType::Wait)
+            .expect("Could not poll device");
         rx.recv()
             .expect("Could not receive on gpu rx")
             .expect("Error receiving answer to output_data map on gpu");

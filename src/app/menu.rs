@@ -6,8 +6,8 @@ use crate::{
     ui::{action::UiAction, logo::logo_image},
 };
 use egui::{
-    Button, Color32, Context, Id, ImageButton, Key, Modifiers, Slider, Stroke, TextFormat, Vec2,
-    ViewportId, load::SizedTexture, text::LayoutJob,
+    Button, Color32, Context, Id, Image, ImageButton, Key, Modifiers, Slider, Stroke, TextFormat,
+    UiKind, Vec2, ViewportId, text::LayoutJob,
 };
 use log::debug;
 use rand::Rng;
@@ -20,19 +20,13 @@ impl App {
     pub fn menu(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
         egui::TopBottomPanel::top(format!("{viewport_id:?} menu")).show(ctx, |ui| {
             if crate::storage::loading().is_some() {
-                ui.set_enabled(false);
+                ui.disable();
             }
 
-            egui::menu::bar(ui, |ui| {
+            egui::MenuBar::new().ui(ui, |ui| {
                 let menu_button_size = Vec2::new(100.0, ui.available_height());
 
-                if ui
-                    .add(ImageButton::new(SizedTexture::new(
-                        logo_image().texture_id(ctx),
-                        Vec2::splat(ui.available_height()),
-                    )))
-                    .clicked()
-                {
+                if ui.add(ImageButton::new(Image::new(logo_image()))).clicked() {
                     self.windows.about.open();
                 };
 
@@ -61,7 +55,7 @@ impl App {
                         .clicked()
                     {
                         open_project = true;
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
 
                     if ui
@@ -72,7 +66,7 @@ impl App {
                         .clicked()
                     {
                         save_project = true;
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
 
                     if ui
@@ -80,7 +74,7 @@ impl App {
                         .clicked()
                     {
                         self.project.take();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
 
                     ui.separator();
@@ -93,7 +87,7 @@ impl App {
                         .clicked()
                     {
                         open_svg_file = true;
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
 
                     if ui
@@ -104,12 +98,12 @@ impl App {
                         .clicked()
                     {
                         save_svg_file = true;
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
 
                     if ui.button("Open SVG templates folder").clicked() {
                         open::that(STORAGE_DIR.join("svg")).ok();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
 
                     ui.separator();
@@ -119,21 +113,21 @@ impl App {
                         .clicked()
                     {
                         self.windows.artnet_input.open();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
                     if ui
                         .add_enabled(self.project.is_some(), Button::new("Output Routings"))
                         .clicked()
                     {
                         self.windows.output_routings.open();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
                     if ui
                         .add_enabled(self.project.is_some(), Button::new("Shortcuts"))
                         .clicked()
                     {
                         self.windows.shortcuts.open();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
 
                     if let Some(project) = self.project.as_mut() {
@@ -219,27 +213,27 @@ impl App {
 
                     if ui.button("Animations").clicked() {
                         self.windows.animations.open();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
                     if ui.button("Curves").clicked() {
                         self.windows.curves.open();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
                     if ui.button("Output Devices").clicked() {
                         self.windows.output_devices.open();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
                     if ui.button("Palettes").clicked() {
                         self.windows.palettes.open();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
                     if ui.button("Projects").clicked() {
                         self.windows.projects.open();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
                     if ui.button("Scenes").clicked() {
                         self.windows.scenes.open();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
                 });
 
@@ -248,7 +242,7 @@ impl App {
 
                     if ui.button("Git Configuration").clicked() {
                         self.windows.git_config.open();
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
 
                     ui.separator();
@@ -325,7 +319,7 @@ impl App {
                         .clicked()
                     {
                         open_new_window = true;
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
 
                     if ui
@@ -333,14 +327,14 @@ impl App {
                         .clicked()
                     {
                         open_new_preview_window = true;
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                     }
                 });
 
                 if open_new_window {
                     let viewport_id = ViewportId(Id::new(format!(
                         "Second Window {}",
-                        rand::thread_rng().random::<u64>()
+                        rand::rng().random::<u64>()
                     )));
                     self.other_main_windows
                         .insert(viewport_id, new_tree(Some(viewport_id), false));
@@ -348,7 +342,7 @@ impl App {
                 if open_new_preview_window {
                     let viewport_id = ViewportId(Id::new(format!(
                         "Preview Window {}",
-                        rand::thread_rng().random::<u64>()
+                        rand::rng().random::<u64>()
                     )));
                     self.other_main_windows
                         .insert(viewport_id, new_tree(Some(viewport_id), true));
@@ -416,7 +410,7 @@ impl App {
                         }
                         ui.add(
                             Slider::new(&mut self.timing.beats_per_minute, 1.0..=240.0)
-                                .custom_formatter(|n, _| format!("{:.1} bpm", n)),
+                                .custom_formatter(|n, _| format!("{n:.1} bpm")),
                         );
                     });
                 });

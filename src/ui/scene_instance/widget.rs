@@ -7,7 +7,7 @@ use crate::{
 };
 use egui::{
     Align, Button, Checkbox, Color32, CornerRadius, Image, Layout, Margin, Rect, Sense, Shape,
-    TextureId, Ui, Vec2, Widget, epaint::RectShape, load::SizedTexture, pos2,
+    TextureHandle, Ui, Vec2, Widget, epaint::RectShape, load::SizedTexture, pos2,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -17,7 +17,7 @@ pub struct SceneInstanceWidget<'a> {
     pub path: SceneInstancePath,
     pub scene_instance: &'a mut SceneInstance,
     pub deck_groups: &'a Groups,
-    pub svg: Option<TextureId>,
+    pub svg: Option<TextureHandle>,
     pub effects_size: f32,
     pub live_color: Color32,
     pub uv: Option<Rect>,
@@ -27,7 +27,7 @@ impl Widget for SceneInstanceWidget<'_> {
     fn ui(self, ui: &mut Ui) -> egui::Response {
         let mut checkbox_rect = None;
 
-        let mut response = egui::Frame::none()
+        let mut response = egui::Frame::NONE
             .fill(if *self.selected_scene_instance == self.path {
                 Color32::GOLD.linear_multiply(
                     ((SystemTime::now()
@@ -45,7 +45,7 @@ impl Widget for SceneInstanceWidget<'_> {
             .inner_margin(Margin::from(10.0))
             .corner_radius(CornerRadius::from(4.0))
             .show(ui, |ui| {
-                egui::Frame::none()
+                egui::Frame::NONE
                     .fill(if self.scene_instance.flash {
                         Color32::WHITE
                     } else if self.scene_instance.active {
@@ -142,10 +142,12 @@ impl Widget for SceneInstanceWidget<'_> {
                                     ));
                                 }
 
-                                if let Some(svg_texture_id) = self.svg {
+                                if let Some(svg_texture_handle) = self.svg {
                                     ui.put(rect, {
-                                        let mut image =
-                                            Image::new(SizedTexture::new(svg_texture_id, size));
+                                        let mut image = Image::new(SizedTexture::new(
+                                            svg_texture_handle.id(),
+                                            size,
+                                        ));
                                         if let Some(uv) = uv {
                                             image = image.uv(uv);
                                         }

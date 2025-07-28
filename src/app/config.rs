@@ -40,7 +40,7 @@ impl App {
                 ui.label("B");
             });
 
-            egui::Frame::none()
+            egui::Frame::NONE
                 .inner_margin(Margin::from(6.0))
                 .show(ui, |ui| {
                     ui.set_min_width(ui.available_width());

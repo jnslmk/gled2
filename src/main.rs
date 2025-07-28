@@ -1,5 +1,4 @@
 #![windows_subsystem = "windows"]
-#![allow(deprecated)]
 
 pub mod app;
 pub mod input;
@@ -12,6 +11,7 @@ pub mod ui;
 use app::{App, persistant_state::PersistantState};
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
 use egui::ThemePreference;
+use egui_extras::install_image_loaders;
 use input::Input;
 use once_cell::sync::Lazy;
 use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallback};
@@ -77,6 +77,7 @@ fn main() {
         Box::new(|cc| {
             cc.egui_ctx
                 .options_mut(|options| options.theme_preference = ThemePreference::Dark);
+            install_image_loaders(&cc.egui_ctx);
             Input::init(&cc.egui_ctx);
 
             WGPU_RENDER_STATE

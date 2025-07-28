@@ -6,12 +6,12 @@ use crate::{
     ui::temperature::temperature,
 };
 use egui::{Button, Context, Label, Layout, Margin, Spinner, TextEdit, Ui, ViewportId};
-use egui_flex::{item, Flex};
+use egui_flex::{Flex, item};
 
 impl App {
     pub fn status_bar(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
         egui::TopBottomPanel::bottom(format!("{viewport_id:?} status bar")).show(ctx, |ui| {
-            egui::Frame::none()
+            egui::Frame::NONE
                 .inner_margin(Margin::from(1.0))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
@@ -70,7 +70,7 @@ impl App {
         });
 
         let staged_files = staged_files();
-        egui::Frame::none()
+        egui::Frame::NONE
             .inner_margin(Margin::from(6.0))
             .show(ui, |ui| {
                 let mut commit = false;

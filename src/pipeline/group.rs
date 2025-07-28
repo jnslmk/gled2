@@ -1,5 +1,5 @@
 use crate::{app::svg::Svg, ui::ChangeButton};
-use egui::{Button, Color32, RichText, Stroke, Ui};
+use egui::{Button, Color32, RichText, Stroke, Ui, UiKind};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -119,13 +119,13 @@ impl ChangeButton for Groups {
                     .add(Button::new("🗑 Remove").fill(Color32::DARK_RED))
                     .clicked()
                 {
-                    ui.close_menu();
+                    ui.close_kind(UiKind::Menu);
                     *remove = Some(index);
                     *changed = true;
                 }
                 let mut group = Some(group.to_owned());
                 if group_buttons(ui, &mut group) {
-                    ui.close_menu();
+                    ui.close_kind(UiKind::Menu);
                     if let Some(group) = group {
                         *insert = Some((index, group));
                     } else {
@@ -140,7 +140,7 @@ impl ChangeButton for Groups {
         ui.menu_button(format!("+ Add Group {next_index}"), |ui| {
             ui.set_min_width(200.0);
             if group_buttons(ui, &mut new_group) {
-                ui.close_menu();
+                ui.close_kind(UiKind::Menu);
                 if let Some(group) = new_group {
                     insert = Some((next_index, group));
                     changed = true;

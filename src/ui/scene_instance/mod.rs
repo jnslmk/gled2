@@ -16,7 +16,7 @@ impl SceneInstance {
 
         let width = ui.available_width() - 20.0;
         ui.horizontal(|ui| {
-            egui::Frame::none()
+            egui::Frame::NONE
                 .inner_margin(Margin::from(3.0))
                 .show(ui, |ui| {
                     ui.set_max_width(width / 2.0);
@@ -31,7 +31,7 @@ impl SceneInstance {
                         self.dimmer_input.change_button(ui);
                     });
                 });
-            egui::Frame::none()
+            egui::Frame::NONE
                 .inner_margin(Margin::from(3.0))
                 .show(ui, |ui| {
                     ui.set_max_width(width / 2.0);
@@ -52,14 +52,14 @@ impl SceneInstance {
                 });
         });
 
-        egui::Frame::none()
+        egui::Frame::NONE
             .inner_margin(Margin::from(6.0))
             .show(ui, |ui| {
                 ui.set_min_width(ui.available_width());
                 self.groups.change_button(ui);
             });
 
-        egui::Frame::none()
+        egui::Frame::NONE
             .inner_margin(Margin::from(6.0))
             .show(ui, |ui| {
                 ui.vertical_centered_justified(|ui| {

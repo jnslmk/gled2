@@ -2,10 +2,9 @@ use super::ParsedSvg;
 use crate::pipeline::constants::PREVIEW_TEXTURE_SIZE;
 use anyhow::{Context, Result};
 use egui::ColorImage;
-use egui_extras::RetainedImage;
 
 impl ParsedSvg {
-    pub fn render(&self) -> Result<RetainedImage> {
+    pub fn render(&self) -> Result<ColorImage> {
         let mut pixmap =
             tiny_skia::Pixmap::new(PREVIEW_TEXTURE_SIZE as u32, PREVIEW_TEXTURE_SIZE as u32)
                 .context("Could not create pixmap for svg")?;
@@ -20,8 +19,7 @@ impl ParsedSvg {
         );
         let image =
             ColorImage::from_rgba_unmultiplied([PREVIEW_TEXTURE_SIZE as usize; 2], pixmap.data());
-        let retained_image = RetainedImage::from_color_image("svg image", image);
 
-        Ok(retained_image)
+        Ok(image)
     }
 }

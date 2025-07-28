@@ -1,10 +1,10 @@
 pub mod variables;
 
-use super::{config::float_value::FloatValue, AnimationConfig};
+use super::{AnimationConfig, config::float_value::FloatValue};
 use crate::ui::ChangeButton;
 use egui::{
-    load::SizedTexture, Button, Color32, ComboBox, CursorIcon, Image, Layout, Sense, TextureId, Ui,
-    Vec2,
+    Button, Color32, ComboBox, CursorIcon, Image, Layout, Sense, TextureId, Ui, UiKind, Vec2,
+    load::SizedTexture,
 };
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, EnumIter, IntoEnumIterator};
@@ -67,7 +67,7 @@ impl Argument {
                 .on_disabled_hover_text(format!("Click to copy \"{}()\"", self.function_name()))
                 .clicked()
             {
-                ui.output_mut(|o| o.copied_text = format!("{}()", self.function_name()));
+                ui.ctx().copy_text(format!("{}()", self.function_name()));
             }
         });
 
@@ -164,7 +164,7 @@ impl Argument {
                             changed = true;
                         }
                         if res.clicked() {
-                            ui.close_menu();
+                            ui.close_kind(UiKind::Menu);
                         }
                     });
                 });

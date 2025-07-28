@@ -1,9 +1,9 @@
-use super::{asset_tree::AssetTree, ChangeButton};
+use super::{ChangeButton, asset_tree::AssetTree};
 use crate::storage::{
     asset::{Asset, AssetTrait},
     asset_id::AssetId,
 };
-use egui::Ui;
+use egui::{Ui, UiKind};
 use egui_ltreeview::TreeViewState;
 
 impl<T: AssetTrait> ChangeButton for Option<AssetId<T>> {
@@ -30,7 +30,7 @@ impl<T: AssetTrait> ChangeButton for Option<AssetId<T>> {
                         ui.data_mut(|d| {
                             d.remove::<TreeViewState<usize>>(ui.make_persistent_id(T::NAME))
                         });
-                        ui.close_menu();
+                        ui.close_kind(UiKind::Menu);
                         changed = true;
                     }
                 },

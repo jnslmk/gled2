@@ -15,18 +15,18 @@ artnet_protocol = "0.4"
 chrono = "0.4"
 clap = { version = "4", features = ["derive"] }
 crossbeam-channel = "0.5"
-eframe = { version = "0.31", features = [
+eframe = { version = "0.32", features = [
     "wgpu",
     "default_fonts",
     "wayland",
 ], default-features = false }
-egui = { version = "0.31", features = ["persistence"] }
-egui_extras = { version = "0.31", features = ["image", "syntect"] }
-egui_ltreeview = { version = "0.1", features = ["persistence"] }
-egui_flex = "0.3"
-egui_tiles = "0.12"
-emath = "0.31"
-epaint = "0.31"
+egui = { version = "0.32", features = ["persistence"] }
+egui_extras = { version = "0.32", features = ["image", "syntect"] }
+egui_ltreeview = { version = "0.5", features = ["persistence"] }
+egui_flex = "0.4"
+egui_tiles = "0.13"
+emath = "0.32"
+epaint = "0.32"
 env_logger = "0.11"
 gilrs = "0.11"
 home = "0.5"
@@ -39,7 +39,7 @@ keyring = { version = "3", features = [
 kurbo = "0.11"
 log = "0.4"
 midir = { version = "0.10", features = ["winrt"] }
-naga = "24"
+naga = "25"
 once_cell = "1.20"
 rayon = "1.10"
 resvg = { version = "0.45", default-features = false }
@@ -52,7 +52,7 @@ serialport = "4"
 svgdom = "0.18"
 static_assertions = "1"
 strum = { version = "0.27", features = ["derive"] }
-sysinfo = "0.35"
+sysinfo = "0.36"
 tiny-skia = { version = "0.11", default-features = false, features = [
     "simd",
     "std",
@@ -60,7 +60,7 @@ tiny-skia = { version = "0.11", default-features = false, features = [
 open = "5"
 uuid = { version = "1", features = ["v4", "serde"] }
 usvg = "0.45"
-wgpu = "24"
+wgpu = "25"
 rand = "0.9"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 network-interface = "2"

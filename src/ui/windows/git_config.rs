@@ -1,5 +1,5 @@
 use crate::{app::{persistant_state::PersistantState, GitUiState}, storage::{action::StorageAction, branches, Branches}, ui::viewport_builder::default_viewport_builder};
-use egui::{Button, Color32, ComboBox, Context, Id, Layout, RichText, TextEdit, Vec2, ViewportId};
+use egui::{Button, Color32, ComboBox, Context, Id, Layout, RichText, TextEdit, UiKind, Vec2, ViewportId};
 use egui_flex::{item, Flex};
 use home::home_dir;
 
@@ -56,7 +56,7 @@ impl GitConfigWindow {
                                                 .selectable_value(&mut current, branch.clone(), branch.clone())
                                                 .changed()
                                             {
-                                                ui.close_menu();
+                                                ui.close_kind(UiKind::Menu);
                                                 StorageAction::SwitchBranch(branch).enqueue();
                                             };
                                         }

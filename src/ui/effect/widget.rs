@@ -18,7 +18,7 @@ pub struct EffectWidget<'a> {
 impl Widget for EffectWidget<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let frame = if let Some((selected_effect, index)) = &self.selectable {
-            egui::Frame::none()
+            egui::Frame::NONE
                 .fill(if *selected_effect == index {
                     Color32::GOLD.linear_multiply(
                         ((SystemTime::now()
@@ -36,7 +36,7 @@ impl Widget for EffectWidget<'_> {
                 .inner_margin(Margin::from(10.0))
                 .corner_radius(CornerRadius::from(4.0))
         } else {
-            egui::Frame::none()
+            egui::Frame::NONE
                 .inner_margin(Margin::from(10.0))
                 .corner_radius(CornerRadius::from(4.0))
         };

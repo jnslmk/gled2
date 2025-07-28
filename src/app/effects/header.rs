@@ -39,7 +39,7 @@ impl App {
                     ui.add_enabled(
                         deck.auto_mode_active,
                         Slider::new(&mut deck.auto_mode_seconds, 1..=240)
-                            .custom_formatter(|n, _| format!("{} s", n)),
+                            .custom_formatter(|n, _| format!("{n} s")),
                     );
                     ui.label("Max concurrent scenes");
                     ui.add_enabled(

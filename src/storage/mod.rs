@@ -319,7 +319,7 @@ pub fn start_thread() {
 }
 
 pub fn asset_path(id: Uuid, dir_name: &str) -> PathBuf {
-    STORAGE_DIR.join(dir_name).join(format!("{}.json", id))
+    STORAGE_DIR.join(dir_name).join(format!("{id}.json"))
 }
 
 pub fn write_storage_version_file(git: &mut Git) {

@@ -72,7 +72,7 @@ impl Input {
         }
 
         while let Ok(event) = input.artnet_receiver.try_recv() {
-            log::trace!("Received Artnet event: {:?}", event);
+            log::trace!("Received Artnet event: {event:?}");
             if event.value == 0 {
                 input.events.remove(&InputEvent::Artnet(event.channel));
             } else {
@@ -91,7 +91,7 @@ impl Input {
              }| {
                 let gamepad_id: usize = id.into();
 
-                debug!("{:?} New event from {}: {:?}", time, id, event);
+                debug!("{time:?} New event from {id}: {event:?}");
                 match event {
                     gilrs::EventType::ButtonChanged(button, value, _) => {
                         let button = match button {

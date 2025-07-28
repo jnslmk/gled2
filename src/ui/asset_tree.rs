@@ -2,7 +2,7 @@ use crate::storage::{
     asset::{Asset, AssetTrait},
     asset_id::AssetId,
 };
-use egui::{Button, Color32, Id, Label, Margin, Pos2, Rect, Stroke, Ui, Vec2};
+use egui::{Button, Color32, Id, Label, Margin, Pos2, Rect, Stroke, Ui, UiKind, Vec2};
 use egui_flex::{Flex, item};
 use egui_ltreeview::{Action, DragAndDrop, NodeBuilder, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
@@ -56,7 +56,7 @@ impl<T: AssetTrait> TreeEntry<T> {
                                         .clicked()
                                     {
                                         empty_dirs.push(new_dir_name);
-                                        ui.close_menu();
+                                        ui.close_kind(UiKind::Menu);
                                     }
 
                                     let new_asset_name = {
@@ -79,7 +79,7 @@ impl<T: AssetTrait> TreeEntry<T> {
                                         let mut asset = Asset::<T>::new(new_asset_name);
                                         asset.change_dir(dir);
                                         asset.save();
-                                        ui.close_menu();
+                                        ui.close_kind(UiKind::Menu);
                                     }
                                 });
                             }
@@ -299,7 +299,7 @@ impl<T: AssetTrait> AssetTree<T> {
     pub fn common_settings(&mut self, ui: &mut Ui, dirty: &mut bool) -> bool {
         let mut changed = false;
 
-        egui::Frame::none()
+        egui::Frame::NONE
             .inner_margin(Margin::from(6.0))
             .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
             .show(ui, |ui| {

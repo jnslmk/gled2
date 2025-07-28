@@ -3,24 +3,19 @@ use crate::{
     ui::{action::UiAction, logo::logo_image},
 };
 use egui::{
-    pos2, Color32, Context, Label, Margin, Pos2, Rect, RichText, Spinner, Stroke, Ui, Vec2,
+    Color32, Context, Image, Label, Margin, Pos2, Rect, RichText, Spinner, Stroke, Ui, Vec2,
 };
 
 fn draw_background_logo(ui: &mut Ui) {
-    ui.painter().image(
-        logo_image().texture_id(ui.ctx()),
-        {
-            let rect = ui.available_rect_before_wrap();
-            let size = rect.size();
-            if size.x > size.y {
-                Rect::from_center_size(rect.center(), Vec2::splat(size.y - 10.0))
-            } else {
-                Rect::from_center_size(rect.center(), Vec2::splat(size.x - 10.0))
-            }
-        },
-        Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-        Color32::from_white_alpha(1),
-    );
+    Image::new(logo_image()).paint_at(ui, {
+        let rect = ui.available_rect_before_wrap();
+        let size = rect.size();
+        if size.x > size.y {
+            Rect::from_center_size(rect.center(), Vec2::splat(size.y - 10.0))
+        } else {
+            Rect::from_center_size(rect.center(), Vec2::splat(size.x - 10.0))
+        }
+    });
 }
 
 pub fn show_storage_loading(ctx: &Context, loading: Loading) {
@@ -56,7 +51,7 @@ pub fn show_storage_error(ctx: &Context, error: String) {
         ui.vertical_centered(|ui| {
             ui.add_space(0f32.max((ui.available_height() - 200.0) / 2.0));
             ui.heading("Storage error!");
-            egui::Frame::none()
+            egui::Frame::NONE
                 .inner_margin(Margin::from(3.0))
                 .fill(Color32::DARK_RED)
                 .stroke(Stroke::new(1.0, Color32::RED))

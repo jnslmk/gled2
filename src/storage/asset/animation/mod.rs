@@ -3,9 +3,9 @@ pub mod config;
 pub mod renderer;
 
 use super::AssetTrait;
-use argument::{variables::VariablesCount, Argument};
+use argument::{Argument, variables::VariablesCount};
 use config::AnimationConfig;
-use egui::{Color32, Margin, Stroke, TextureId, Ui};
+use egui::{Color32, Margin, Stroke, TextureId, Ui, UiKind};
 use egui_extras::syntax_highlighting::CodeTheme;
 use serde::{Deserialize, Serialize};
 
@@ -38,12 +38,12 @@ impl Animation {
     pub fn change_shader_code_ui(&mut self, ui: &mut Ui) -> bool {
         let mut changed = false;
 
-        let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
+        let mut layouter = |ui: &egui::Ui, buf: &dyn egui::TextBuffer, wrap_width: f32| {
             let mut layout_job = egui_extras::syntax_highlighting::highlight(
                 ui.ctx(),
                 ui.style(),
                 &CodeTheme::default(),
-                string,
+                buf.as_str(),
                 "rust",
             );
             layout_job.wrap.max_width = wrap_width;
@@ -66,8 +66,8 @@ impl Animation {
                     );
                     response.context_menu(|ui| {
                         if ui.button("🖹 Copy whole source code").clicked() {
-                            ui.output_mut(|o| o.copied_text = self.shader_code_complete());
-                            ui.close_menu();
+                            ui.ctx().copy_text(self.shader_code_complete());
+                            ui.close_kind(UiKind::Menu);
                         }
                     });
                     changed = response.changed();
@@ -88,7 +88,7 @@ impl Animation {
         }
         if !count.possible() {
             ui.vertical_centered_justified(|ui| {
-                egui::Frame::none()
+                egui::Frame::NONE
                     .inner_margin(Margin::from(3.0))
                     .stroke(Stroke::new(2.0, Color32::RED))
                     .fill(Color32::DARK_RED)
@@ -110,7 +110,7 @@ impl Animation {
         egui::ScrollArea::vertical().show(ui, |ui| {
             for (index, argument) in self.arguments.iter_mut().enumerate() {
                 count += argument.kind.variables().count();
-                egui::Frame::none()
+                egui::Frame::NONE
                     .inner_margin(Margin::from(3.0))
                     .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
                     .show(ui, |ui| {

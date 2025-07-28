@@ -1,5 +1,5 @@
 use crate::ui::{logo::logo_image, viewport_builder::default_viewport_builder};
-use egui::{load::SizedTexture, Id, Layout, RichText, Vec2, ViewportId};
+use egui::{Id, Image, Layout, RichText, Vec2, ViewportId};
 
 #[derive(Default)]
 pub struct AboutWindow {
@@ -16,7 +16,7 @@ impl AboutWindow {
             ViewportId(Id::new("about window")),
             default_viewport_builder()
                 .with_title("Gled: About")
-                .with_inner_size(Vec2::new(200.0, 150.0))
+                .with_inner_size(Vec2::new(250.0, 150.0))
                 .with_minimize_button(false)
                 .with_maximize_button(false)
                 .with_resizable(false),
@@ -29,10 +29,7 @@ impl AboutWindow {
 
                 egui::CentralPanel::default().show(ctx, |ui| {
                     ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
-                        ui.image(SizedTexture::new(
-                            logo_image().texture_id(ctx),
-                            Vec2::splat(100.0),
-                        ));
+                        ui.add(Image::new(logo_image()).fit_to_exact_size(Vec2::splat(50.0)));
                         ui.label(RichText::new("gled").text_style(egui::TextStyle::Heading));
                         ui.spacing();
                         ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));

@@ -7,8 +7,7 @@ use crate::{
     ui::action::UiAction,
 };
 use anyhow::Result;
-use egui::Rect;
-use egui_extras::RetainedImage;
+use egui::{Context, Rect, TextureHandle};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, collections::BTreeSet, path::Path};
 
@@ -20,7 +19,7 @@ thread_local! {
 pub struct Svg {
     svg_contents: String,
     #[serde(skip)]
-    image: Option<RetainedImage>,
+    image: Option<TextureHandle>,
 }
 
 impl std::fmt::Debug for Svg {
@@ -56,7 +55,7 @@ impl Svg {
         Ok(())
     }
 
-    pub fn image(&mut self) -> Option<&RetainedImage> {
+    pub fn image(&mut self, context: &Context) -> Option<TextureHandle> {
         if self.image.is_none() {
             self.image = {
                 let svg = crate::svg::ParsedSvg::parse(&self.svg_contents).ok()?;
@@ -71,10 +70,13 @@ impl Svg {
                 *ExtractOutput::get().universes.lock() = universes;
                 UiAction::SendPositions.enqueue();
 
-                Some(image)
+                let texture_handle =
+                    context.load_texture("svg_preview", image, egui::TextureOptions::default());
+
+                Some(texture_handle)
             };
         }
-        self.image.as_ref()
+        self.image.clone()
     }
 
     pub fn reset() {

@@ -22,13 +22,16 @@ impl App {
                 )
             };
 
-            let res = self.svg_mut().and_then(|svg| svg.image()).map(|image| {
-                ui.add(
-                    Image::new(SizedTexture::new(image.texture_id(ui.ctx()), size))
-                        .uv(uv)
-                        .bg_fill(Color32::BLACK),
-                )
-            });
+            let res =
+                self.svg_mut()
+                    .and_then(|svg| svg.image(ui.ctx()))
+                    .map(|svg_texture_handle| {
+                        ui.add(
+                            Image::new(SizedTexture::new(svg_texture_handle.id(), size))
+                                .uv(uv)
+                                .bg_fill(Color32::BLACK),
+                        )
+                    });
             let preview = Image::new(SizedTexture::new(Preview::texture_id(), size))
                 .uv(uv)
                 .sense(Sense::drag());
