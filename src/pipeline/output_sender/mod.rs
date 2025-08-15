@@ -146,11 +146,19 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                 };
 
                 for (addr, data) in packages {
-                    debug!("Sending package to {addr}");
-                    trace!("Package data: {data:02x?}");
-                    if let Err(err) = socket.send_to(&data, addr) {
-                        warn!("Could not send data: {err:?}")
-                    };
+                    loop {
+                        debug!("Sending package to {addr}");
+                        trace!("Package data: {data:02x?}");
+                        match socket.send_to(&data, addr) {
+                            Err(err) => {
+                                warn!("Could not send data: {err:?}")
+                            }
+                            Ok(_) => {
+                                debug!("Sent data to {addr}");
+                                break;
+                            }
+                        };
+                    }
                 }
             }
         })
