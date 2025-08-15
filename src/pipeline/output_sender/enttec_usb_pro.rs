@@ -35,6 +35,7 @@ pub fn start() {
                     6,    // DMX output message
                     0,    // Data length LSB
                     2,    // Data length MSB
+                    0,    // I don't know
                 ];
                 enttec_data.extend_from_slice(&data);
                 enttec_data.push(0xE7); // End of message
