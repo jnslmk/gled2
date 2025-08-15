@@ -38,7 +38,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
     thread::Builder::new()
         .name("gled:output:tx".to_owned())
         .spawn(move || {
-            let socket = { 6000..7000 }
+            let socket = { 6454..7000 }
                 .filter_map(|port| UdpSocket::bind(("0.0.0.0", port)).ok())
                 .next()
                 .expect("Could not find a port which we can use");
