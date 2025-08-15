@@ -1,8 +1,7 @@
 pub mod float_value;
 
-use serde::{Deserialize, Serialize};
-
 use float_value::FloatValue;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq)]
 #[serde(default)]
@@ -16,7 +15,6 @@ pub struct AnimationConfig {
     pub float_3: FloatValue,
     pub float_4: FloatValue,
     pub float_5: FloatValue,
-    pub float_6: FloatValue,
 }
 
 impl AnimationConfig {
@@ -30,11 +28,10 @@ impl AnimationConfig {
         data[24..28].copy_from_slice(&self.float_3.value(beat_progression).to_le_bytes());
         data[28..32].copy_from_slice(&self.float_4.value(beat_progression).to_le_bytes());
         data[32..36].copy_from_slice(&self.float_5.value(beat_progression).to_le_bytes());
-        data[36..40].copy_from_slice(&self.float_6.value(beat_progression).to_le_bytes());
     }
 
     pub const fn size() -> usize {
-        40
+        36
     }
 
     pub fn u32(&mut self, index: usize) -> Option<&mut u32> {
@@ -54,7 +51,6 @@ impl AnimationConfig {
             3 => &mut self.float_3,
             4 => &mut self.float_4,
             5 => &mut self.float_5,
-            6 => &mut self.float_6,
             _ => return None,
         })
     }

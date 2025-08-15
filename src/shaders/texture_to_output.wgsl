@@ -17,6 +17,7 @@ struct Uniforms {
     gradient_colors: array<vec3<f32>, 16>,
 
     // state: 64 bytes
+    random: f32,
     beat_progression: f32,
     beats_per_minute: f32,
     frame_rate: f32,
@@ -32,7 +33,6 @@ struct Uniforms {
     f32_3: f32,
     f32_4: f32,
     f32_5: f32,
-    f32_6: f32,
 };
 
 @group(0) @binding(4)

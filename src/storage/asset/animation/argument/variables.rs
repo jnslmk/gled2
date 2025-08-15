@@ -16,7 +16,7 @@ impl AddAssign for VariablesCount {
 
 impl VariablesCount {
     pub fn possible(&self) -> bool {
-        self.u32 <= 3 && self.f32 <= 7
+        self.u32 <= 3 && self.f32 <= 6
     }
 }
 

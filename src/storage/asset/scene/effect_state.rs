@@ -10,6 +10,7 @@ use crate::{
 };
 use arboard::{Clipboard, ImageData};
 use egui::TextureId;
+use rand::Rng;
 use wgpu::{MapMode, PollType};
 
 #[derive(Debug)]
@@ -76,20 +77,21 @@ impl EffectState {
     }
 
     pub fn write_data(&self, beat_progression: f32, data: &mut [u8]) {
-        data[0..4].copy_from_slice(&self.beat_progression.to_le_bytes());
-        data[4..8].copy_from_slice(&self.beats_per_minute.to_le_bytes());
-        data[8..12].copy_from_slice(&self.framerate.to_le_bytes());
-        data[12..16].copy_from_slice(&self.opacity.to_le_bytes());
-        data[16..20].copy_from_slice(&self.color_shift.to_le_bytes());
-        data[20..24].copy_from_slice(&2f32.powi(self.speed_exponent).to_le_bytes());
+        data[0..4].copy_from_slice(&rand::rng().random::<f32>().to_le_bytes());
+        data[4..8].copy_from_slice(&self.beat_progression.to_le_bytes());
+        data[8..12].copy_from_slice(&self.beats_per_minute.to_le_bytes());
+        data[12..16].copy_from_slice(&self.framerate.to_le_bytes());
+        data[16..20].copy_from_slice(&self.opacity.to_le_bytes());
+        data[20..24].copy_from_slice(&self.color_shift.to_le_bytes());
+        data[24..28].copy_from_slice(&2f32.powi(self.speed_exponent).to_le_bytes());
         self.animation_config.write_data(
-            &mut data[24..24 + AnimationConfig::size()],
+            &mut data[28..28 + AnimationConfig::size()],
             beat_progression,
         );
     }
 
     pub const fn size() -> usize {
-        const SIZE: usize = 24 + AnimationConfig::size();
+        const SIZE: usize = 28 + AnimationConfig::size();
         static_assertions::const_assert_eq!(SIZE % 16, 0);
         SIZE
     }
