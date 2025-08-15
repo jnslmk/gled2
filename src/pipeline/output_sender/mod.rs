@@ -146,12 +146,19 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                 };
 
                 for (addr, data) in packages {
+                    let mut count = 0;
                     loop {
+                        count += 1;
                         debug!("Sending package to {addr}");
                         trace!("Package data: {data:02x?}");
                         match socket.send_to(&data, addr) {
+                            Err(err) if count == 10 => {
+                                warn!("Could not send data on try {count}, giving up - {err:?}");
+                                break;
+                            }
                             Err(err) => {
-                                warn!("Could not send data: {err:?}")
+                                warn!("Could not send data on try {count} - {err:?}");
+                                std::thread::sleep(std::time::Duration::from_nanos(1));
                             }
                             Ok(_) => {
                                 debug!("Sent data to {addr}");
