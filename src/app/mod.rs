@@ -52,6 +52,7 @@ pub struct App {
     pub project_id: Option<AssetId<Project>>,
     pub other_main_windows: HashMap<ViewportId, Arc<Mutex<Tree<Pane>>>>,
     pub blackout: bool,
+    pub blackout_hold: bool,
     pub selected_scene_instance: SceneInstancePath,
     pub hovered_scene_instance: SceneInstancePath,
     pub git_commit_message: String,
@@ -105,7 +106,7 @@ impl eframe::App for App {
         if let Some(project) = &mut self.project {
             project.render(
                 &self.timing,
-                self.blackout,
+                self.blackout || self.blackout_hold,
                 if PersistantState::effects_always_render() {
                     RenderDeactivatedScenes::Always
                 } else {
@@ -120,7 +121,7 @@ impl eframe::App for App {
 
         if self.midi_output_active {
             MidiState {
-                blackout: self.blackout,
+                blackout: self.blackout || self.blackout_hold,
                 beat_flank: self.timing.beat_flank(),
                 active_scenes: self
                     .project
@@ -222,6 +223,7 @@ impl App {
             gpu_ready_receiver,
             timing: Default::default(),
             blackout: true,
+            blackout_hold: false,
             selected_scene_instance: Default::default(),
             hovered_scene_instance: Default::default(),
             project: Default::default(),

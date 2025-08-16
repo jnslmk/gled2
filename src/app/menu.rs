@@ -377,6 +377,12 @@ impl App {
                         self.blackout = !self.blackout;
                     }
 
+                    self.blackout_hold = self
+                        .project
+                        .as_ref()
+                        .map(|project| project.blackout_hold_input_is_live())
+                        .unwrap_or_default();
+
                     self.timing.tap_button(
                         ui,
                         menu_button_size,

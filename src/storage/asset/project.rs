@@ -41,6 +41,7 @@ pub struct Project {
     pub artnet_config: ArtnetConfig,
     pub tap_input_events: BTreeSet<InputEvent>,
     pub blackout_input_events: BTreeSet<InputEvent>,
+    pub blackout_hold_input_events: BTreeSet<InputEvent>,
     pub half_input_events: BTreeSet<InputEvent>,
     pub double_input_events: BTreeSet<InputEvent>,
     pub main_dimmer: f32,
@@ -59,7 +60,8 @@ impl Default for Project {
             tap_input_events: std::iter::once(InputEvent::Key(egui::Key::T))
                 .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Mode(0))))
                 .collect(),
-            blackout_input_events: std::iter::once(InputEvent::Key(egui::Key::B))
+            blackout_input_events: std::iter::once(InputEvent::Key(egui::Key::B)).collect(),
+            blackout_hold_input_events: std::iter::once(InputEvent::Key(egui::Key::N))
                 .chain(std::iter::once(InputEvent::Gamepad(GamepadEvent::Start(0))))
                 .collect(),
             half_input_events: std::iter::once(InputEvent::Key(egui::Key::Minus)).collect(),
@@ -215,6 +217,12 @@ impl Project {
         self.blackout_input_events
             .iter()
             .any(|event| event.is_new())
+    }
+
+    pub fn blackout_hold_input_is_live(&self) -> bool {
+        self.blackout_hold_input_events
+            .iter()
+            .any(|event| event.is_live())
     }
 
     pub fn half_input_is_new(&self) -> bool {
