@@ -33,7 +33,7 @@ pub fn start() {
                 let mut enttec_data = vec![
                     0x7E, // Start of message
                     6,    // DMX output message
-                    0,    // Data length LSB
+                    1,    // Data length LSB
                     2,    // Data length MSB
                     0,    // DMX start code
                 ];
