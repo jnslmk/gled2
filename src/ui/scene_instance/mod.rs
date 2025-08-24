@@ -27,6 +27,11 @@ impl SceneInstance {
                         ui.label("Flash Input");
                         self.flash_input.change_button(ui);
 
+                        if self.flash_input.is_some() {
+                            ui.label("Set Offset On Flash");
+                            ui.checkbox(&mut self.set_offset_on_flash, "");
+                        }
+
                         ui.label("Dimmer Input");
                         self.dimmer_input.change_button(ui);
                     });

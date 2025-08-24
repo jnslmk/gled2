@@ -20,14 +20,24 @@ use wgpu::{CommandEncoder, Queue};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SceneInstance {
+    #[serde(default)]
     pub active: bool,
+    #[serde(default)]
     pub opacity: StaticOrCurve<RangePercentage>,
+    #[serde(default)]
     pub input_dimmer: f32,
+    #[serde(default)]
     pub beat_progression_offset: StaticOrCurve<RangePercentage>,
+    #[serde(default)]
     pub activation_input: Option<InputEvent>,
+    #[serde(default)]
     pub flash_input: Option<InputEvent>,
+    #[serde(default)]
+    pub set_offset_on_flash: bool,
+    #[serde(default)]
     pub dimmer_input: Option<InputEvent>,
     pub scene: AssetId<Scene>,
+    #[serde(default)]
     pub groups: Option<Groups>,
 
     #[serde(skip)]
@@ -49,6 +59,7 @@ impl Clone for SceneInstance {
             beat_progression_offset: self.beat_progression_offset,
             activation_input: self.activation_input,
             flash_input: self.flash_input,
+            set_offset_on_flash: self.set_offset_on_flash,
             dimmer_input: self.dimmer_input,
             scene: self.scene,
             groups: self.groups.clone(),
@@ -69,6 +80,7 @@ impl From<AssetId<Scene>> for SceneInstance {
             beat_progression_offset: StaticOrCurve::new_static(0.0),
             activation_input: Default::default(),
             flash_input: Default::default(),
+            set_offset_on_flash: Default::default(),
             dimmer_input: Default::default(),
             effect_states: Default::default(),
             transition: Default::default(),
@@ -103,6 +115,10 @@ impl SceneInstance {
         main_dimmer: f32,
     ) {
         if let Some(event) = self.flash_input.as_ref() {
+            if !self.flash && event.is_live() && self.set_offset_on_flash {
+                self.beat_progression_offset =
+                    StaticOrCurve::new_static(4.0 - timing.beat_progression() % 4.0);
+            }
             self.flash = event.is_live();
         }
         if let Some(event) = self.dimmer_input.as_ref() {
