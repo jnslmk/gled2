@@ -9,7 +9,6 @@ gled is an application for creating spatial animations on light installations.
  * Support for multiple kind of output devices:
    * Artnet
    * DMX, currently the Enttec DMX USB Pro is supported
-   * Two different modes for [WLED](https://kno.wled.ge/)
 
 # Installation
 

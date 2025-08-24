@@ -1,6 +1,6 @@
 [package]
 name = "gled"
-description = "gled is an application for creating animations and effects on artnet or wled light installations"
+description = "gled is an application for creating animations and effects on artnet or dmx installations"
 version = "2.8.1"
 edition = "2024"
 repository = "https://gitlab.com/photonenkollektiv/gled2"

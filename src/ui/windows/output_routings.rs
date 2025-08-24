@@ -1,10 +1,16 @@
 use crate::{
     app::svg::Svg,
     pipeline::extract_output::ExtractOutput,
-    storage::asset::Asset,
+    storage::asset::{Asset, output_device::routing::OutputRouting},
     ui::{ChangeButton, viewport_builder::default_viewport_builder},
 };
-use egui::{Color32, ComboBox, Context, Id, Layout, RichText, Vec2, ViewportId, WidgetText};
+use egui::{
+    Color32, ComboBox, Context, Id, Layout, RichText, Vec2, ViewportId, WidgetText, mutex::Mutex,
+};
+use once_cell::sync::Lazy;
+
+pub static HOVERED_OUTPUT_ROUTING: Lazy<Mutex<Option<OutputRouting>>> =
+    Lazy::new(|| Mutex::new(None));
 
 #[derive(Default)]
 pub struct OutputRoutingsWindow {
@@ -17,6 +23,7 @@ impl OutputRoutingsWindow {
             return;
         }
 
+        let mut hovered_output_routing = None;
         ctx.show_viewport_immediate(
             ViewportId(Id::new("output routings window")),
             default_viewport_builder()
@@ -95,13 +102,17 @@ impl OutputRoutingsWindow {
                                                     .width(150.0)
                                                     .show_ui(ui, |ui| {
                                                         for device_universe in device_universes {
-                                                            if ui
+                                                            let res = ui
                                                                 .selectable_value(
                                                                     &mut output_routing
                                                                         .universe,
                                                                     Some(*device_universe),
                                                                     device_universe.to_string(),
-                                                                )
+                                                                );
+                                                            if res.hovered() {
+                                                                hovered_output_routing = Some(OutputRouting { device: Some(device.id), universe: Some(*device_universe) });
+                                                            }
+                                                            if res
                                                                 .changed()
                                                             {
                                                                 set_routing = Some((
@@ -177,6 +188,8 @@ impl OutputRoutingsWindow {
                 });
             },
         );
+
+        *HOVERED_OUTPUT_ROUTING.lock() = hovered_output_routing;
     }
 
     pub fn open(&mut self) {

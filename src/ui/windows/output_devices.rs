@@ -1,6 +1,8 @@
 use crate::{
-    pipeline::output_sender::enttec_usb_pro::serial_numbers,
-    storage::asset::{output_device::OutputDevice, Asset},
+    storage::asset::{
+        Asset,
+        output_device::{OutputDevice, enttec_usb_pro::serial_numbers},
+    },
     ui::{
         asset_tree::{AssetTree, TreeSelection},
         viewport_builder::default_viewport_builder,
@@ -13,8 +15,6 @@ use strum::{EnumIter, IntoEnumIterator, IntoStaticStr};
 pub enum OutputDeviceKind {
     Artnet,
     EnttecDmxUsbPro,
-    WledDRGB,
-    WledDNRGB,
 }
 
 impl OutputDevice {
@@ -22,8 +22,6 @@ impl OutputDevice {
         match self {
             OutputDevice::Artnet { .. } => OutputDeviceKind::Artnet,
             OutputDevice::EnttecDmxUsbPro { .. } => OutputDeviceKind::EnttecDmxUsbPro,
-            OutputDevice::WledDRGB { .. } => OutputDeviceKind::WledDRGB,
-            OutputDevice::WledDNRGB { .. } => OutputDeviceKind::WledDNRGB,
         }
     }
 }
@@ -39,9 +37,7 @@ pub struct OutputDevicesWindow {
 #[derive(Default)]
 struct DeviceStrings {
     ip: Option<String>,
-    port: Option<String>,
     universes: Option<String>,
-    start: Option<String>,
 }
 
 impl OutputDevicesWindow {
@@ -133,19 +129,6 @@ fn output_device_editor(
                                 serial_number: String::new(),
                             }
                         }
-                        OutputDeviceKind::WledDRGB => {
-                            output_device.data = OutputDevice::WledDRGB {
-                                ip: [127, 0, 0, 1].into(),
-                                port: 1324,
-                            }
-                        }
-                        OutputDeviceKind::WledDNRGB => {
-                            output_device.data = OutputDevice::WledDNRGB {
-                                ip: [127, 0, 0, 1].into(),
-                                port: 1324,
-                                start: 0,
-                            }
-                        }
                     }
                     *device_strings = Default::default();
                     *dirty = true;
@@ -182,49 +165,6 @@ fn output_device_editor(
                 .collect();
             output_device.data.set_univeres(universes);
             *dirty = true;
-        }
-    }
-
-    if let OutputDevice::WledDRGB { port, .. } | OutputDevice::WledDNRGB { port, .. } =
-        output_device.data
-    {
-        ui.heading("Port:");
-        let port = device_strings.port.get_or_insert_with(|| port.to_string());
-
-        if ui.add(TextEdit::singleline(port)).changed() {
-            if let Ok(port) = port.parse() {
-                match output_device.data.clone() {
-                    OutputDevice::WledDRGB { ip, .. } => {
-                        output_device.data = OutputDevice::WledDRGB { ip, port };
-                    }
-                    OutputDevice::WledDNRGB { ip, start, .. } => {
-                        output_device.data = OutputDevice::WledDNRGB { ip, port, start };
-                    }
-                    _ => {}
-                }
-            }
-
-            *dirty = true;
-        }
-    }
-
-    if let OutputDevice::WledDNRGB {
-        start, port, ip, ..
-    } = &output_device.data
-    {
-        ui.heading("Start:");
-        let start = device_strings
-            .start
-            .get_or_insert_with(|| start.to_string());
-
-        if ui.add(TextEdit::singleline(start)).changed() {
-            if let Ok(start) = start.parse() {
-                output_device.data = OutputDevice::WledDNRGB {
-                    ip: *ip,
-                    port: *port,
-                    start,
-                };
-            }
         }
     }
 

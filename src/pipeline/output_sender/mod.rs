@@ -1,11 +1,9 @@
 //! Send data to output devices.
 
-pub mod enttec_usb_pro;
-
 use anyhow::{Context, Result};
 use log::{debug, trace, warn};
 use std::{
-    net::{SocketAddr, ToSocketAddrs, UdpSocket},
+    net::{SocketAddr, UdpSocket},
     sync::mpsc::{Receiver, Sender, channel},
     thread,
 };
@@ -15,8 +13,9 @@ use crate::{
         constants::{UNIVERSE_BUFFER_SIZE, UNIVERSES},
         extract_output::ExtractOutput,
     },
-    storage::asset::{Asset, output_device::OutputDevice},
+    storage::asset::{Asset, output_device::enttec_usb_pro},
     svg::universe_color_channels::UniverseColorChannels,
+    ui::windows::output_routings::HOVERED_OUTPUT_ROUTING,
 };
 pub type OutputSender = Sender<bool>;
 pub type GpuReadySender = Sender<()>;
@@ -61,8 +60,9 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                     gpu_ready_sender.send(()).expect("GPU ready receiver lost");
 
                     let mut routings = extract_output.routings.lock();
+                    let hovered_output_routing = HOVERED_OUTPUT_ROUTING.lock().clone();
 
-                    extract_output
+                    let mut packages = extract_output
                         .universes
                         .lock()
                         .iter()
@@ -70,79 +70,26 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                         .zip(output_data.chunks_exact_mut(UNIVERSE_BUFFER_SIZE as usize))
                         .filter_map(|(universe, data)| {
                             let routing = routings.universe_output_routing(*universe);
+                            if Some(&*routing) == hovered_output_routing.as_ref() {
+                                return None;
+                            }
                             let device = routing.device.and_then(Asset::get)?;
                             UniverseColorChannels::correct(*universe, data);
 
-                            match &device.data {
-                                OutputDevice::Artnet { ip, universes, .. } => {
-                                    let universe = routing.universe?;
-                                    if !universes.contains(&universe) {
-                                        log::warn!("Universe which is not configured: {universe}");
-                                        return None;
-                                    }
-
-                                    log::debug!("Preparing artnet command for universe {universe}");
-                                    let output = artnet_protocol::Output {
-                                        data: artnet_protocol::PaddedData::from(data.to_vec()),
-                                        port_address: artnet_protocol::PortAddress::try_from(
-                                            universe,
-                                        )
-                                        .ok()?,
-                                        ..Default::default()
-                                    };
-
-                                    (*ip, 6454)
-                                        .to_socket_addrs()
-                                        .ok()
-                                        .and_then(|mut addrs| addrs.next())
-                                        .and_then(|addr| {
-                                            artnet_protocol::ArtCommand::Output(output)
-                                                .write_to_buffer()
-                                                .ok()
-                                                .map(|data| (addr, data))
-                                        })
-                                }
-                                OutputDevice::EnttecDmxUsbPro { serial_number } => {
-                                    let mut send_data = [0u8; 512];
-                                    send_data[..data.len()].copy_from_slice(data);
-                                    enttec_usb_pro::send(serial_number.to_owned(), send_data);
-                                    None
-                                }
-                                OutputDevice::WledDRGB { ip, port, .. } => {
-                                    log::debug!("Preparing wled drgb data for universe {universe}");
-                                    let mut wled_data = Vec::with_capacity(512);
-                                    wled_data.push(2); // DRGB
-                                    wled_data.push(255); // Seconds of no signal after which to switch to auto. 255 is infinite.
-                                    wled_data.extend(&data[..510]);
-
-                                    (*ip, *port)
-                                        .to_socket_addrs()
-                                        .ok()
-                                        .and_then(|mut addrs| addrs.next())
-                                        .map(|addr| (addr, wled_data))
-                                }
-                                OutputDevice::WledDNRGB {
-                                    ip, port, start, ..
-                                } => {
-                                    log::debug!(
-                                        "Preparing wled dnrgb data for universe {universe}"
-                                    );
-                                    let mut wled_data = Vec::with_capacity(514);
-                                    wled_data.push(4); // DNRGB
-                                    wled_data.push(255); // Seconds of no signal after which to switch to auto. 255 is infinite.
-                                    wled_data.push(start.to_be_bytes()[0]);
-                                    wled_data.push(start.to_be_bytes()[1]);
-                                    wled_data.extend(&data[..510]);
-
-                                    (*ip, *port)
-                                        .to_socket_addrs()
-                                        .ok()
-                                        .and_then(|mut addrs| addrs.next())
-                                        .map(|addr| (addr, wled_data))
-                                }
-                            }
+                            device.data.prepare_package(routing.universe, data)
                         })
-                        .collect()
+                        .collect::<Vec<_>>();
+                    if let Some(routing) = hovered_output_routing {
+                        if let Some(device) = routing.device.and_then(Asset::get) {
+                            if let Some((addr, data)) = device.data.prepare_package(
+                                routing.universe,
+                                &[255; UNIVERSE_BUFFER_SIZE as usize],
+                            ) {
+                                packages.push((addr, data));
+                            }
+                        }
+                    }
+                    packages
                 };
 
                 for (addr, data) in packages {

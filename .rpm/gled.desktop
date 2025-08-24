@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=gled
-Comment=Create animations and effects on artnet or wled light installations
+Comment=Create animations and effects on artnet or dmx light installations
 Exec=gled
 Icon=application-gled
 Terminal=false

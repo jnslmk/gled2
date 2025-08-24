@@ -49,7 +49,7 @@ impl OutputRoutings {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 pub struct OutputRouting {
     pub device: Option<AssetId<OutputDevice>>,
     pub universe: Option<u16>,
