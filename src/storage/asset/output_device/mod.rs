@@ -4,7 +4,7 @@ use super::AssetTrait;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub enum OutputDevice {
     Artnet { ip: IpAddr, universes: Vec<u16> },
     EnttecDmxUsbPro { serial_number: String },

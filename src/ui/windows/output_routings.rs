@@ -2,9 +2,9 @@ use crate::{
     app::svg::Svg,
     pipeline::extract_output::ExtractOutput,
     storage::asset::Asset,
-    ui::{viewport_builder::default_viewport_builder, ChangeButton},
+    ui::{ChangeButton, viewport_builder::default_viewport_builder},
 };
-use egui::{ComboBox, Context, Id, Layout, RichText, Vec2, ViewportId};
+use egui::{Color32, ComboBox, Context, Id, Layout, RichText, Vec2, ViewportId, WidgetText};
 
 #[derive(Default)]
 pub struct OutputRoutingsWindow {
@@ -31,14 +31,24 @@ impl OutputRoutingsWindow {
                 });
 
                 egui::CentralPanel::default().show(ctx, |ui| {
+                    let extract_output = ExtractOutput::get();
+                    let mut routings = extract_output.routings.lock();
+                    let used_multiple_times = routings.output_universes_which_are_used_multiple_times();
+                    if !used_multiple_times.is_empty() {
+                        ui.colored_label(
+                            Color32::RED,
+                            RichText::new("Some output universes are used multiple times! This can lead to unexpected results.")
+                                .heading(),
+                        );
+                    }
+
                     egui::ScrollArea::vertical()
                         .id_salt("output_scroll")
                         .show(ui, |ui| {
-                            let extract_output = ExtractOutput::get();
-                            let mut routings = extract_output.routings.lock();
-
                             ui.with_layout(Layout::top_down_justified(egui::Align::Min), |ui| {
                                 let universes = Svg::universes();
+                                routings.remove_old(&universes);
+
                                 extract_output
                                     .universes
                                     .lock()
@@ -72,8 +82,15 @@ impl OutputRoutingsWindow {
                                             if !device_universes.is_empty() {
                                                 ComboBox::new(format!("{universe}_universe"), "")
                                                     .selected_text(match output_routing.universe {
-                                                        None => "No universe selected".to_string(),
-                                                        Some(universe) => universe.to_string(),
+                                                        None => WidgetText::from("No universe selected"),
+                                                        Some(universe) => {
+                                                            let text = WidgetText::from(universe.to_string());
+                                                            if used_multiple_times.contains(&(device.id, universe)) {
+                                                                text.color(Color32::RED)
+                                                            } else {
+                                                                text
+                                                            }
+                                                        }
                                                     })
                                                     .width(150.0)
                                                     .show_ui(ui, |ui| {
@@ -81,9 +98,8 @@ impl OutputRoutingsWindow {
                                                             if ui
                                                                 .selectable_value(
                                                                     &mut output_routing
-                                                                        .universe
-                                                                        .unwrap_or_default(),
-                                                                    *device_universe,
+                                                                        .universe,
+                                                                    Some(*device_universe),
                                                                     device_universe.to_string(),
                                                                 )
                                                                 .changed()

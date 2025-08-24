@@ -1,6 +1,7 @@
 use crate::storage::{AssetId, OutputDevice};
 use egui::ahash::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct OutputRoutings {
@@ -24,6 +25,27 @@ where
 impl OutputRoutings {
     pub fn universe_output_routing(&mut self, universe: u16) -> &mut OutputRouting {
         self.routings.entry(universe).or_default()
+    }
+
+    pub fn remove_old(&mut self, universes: &BTreeSet<u16>) {
+        self.routings
+            .retain(|universe, _| universes.contains(universe));
+    }
+
+    pub fn output_universes_which_are_used_multiple_times(
+        &self,
+    ) -> BTreeSet<(AssetId<OutputDevice>, u16)> {
+        let mut used = BTreeSet::new();
+        let mut used_multiple_times = BTreeSet::new();
+        for routing in self.routings.values() {
+            if let (Some(device), Some(universe)) = (routing.device, routing.universe) {
+                let key = (device, universe);
+                if !used.insert(key) {
+                    used_multiple_times.insert(key);
+                }
+            }
+        }
+        used_multiple_times
     }
 }
 
