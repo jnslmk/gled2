@@ -49,6 +49,9 @@ impl SceneInstance {
                             self.opacity.change_button(ui);
                         });
 
+                        ui.label("Ignore Main Dimmer");
+                        ui.add(Checkbox::new(&mut self.ignore_main_dimmer, ""));
+
                         ui.label("Beat offset");
                         ui.vertical_centered_justified(|ui| {
                             self.beat_progression_offset.change_button(ui);

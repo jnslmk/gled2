@@ -27,6 +27,8 @@ pub struct SceneInstance {
     #[serde(default)]
     pub input_dimmer: f32,
     #[serde(default)]
+    pub ignore_main_dimmer: bool,
+    #[serde(default)]
     pub beat_progression_offset: StaticOrCurve<RangePercentage>,
     #[serde(default)]
     pub activation_input: Option<InputEvent>,
@@ -56,6 +58,7 @@ impl Clone for SceneInstance {
             active: self.active,
             opacity: self.opacity,
             input_dimmer: self.input_dimmer,
+            ignore_main_dimmer: self.ignore_main_dimmer,
             beat_progression_offset: self.beat_progression_offset,
             activation_input: self.activation_input,
             flash_input: self.flash_input,
@@ -77,6 +80,7 @@ impl From<AssetId<Scene>> for SceneInstance {
             active: Default::default(),
             opacity: StaticOrCurve::new_static(1.0),
             input_dimmer: 1.0,
+            ignore_main_dimmer: false,
             beat_progression_offset: StaticOrCurve::new_static(0.0),
             activation_input: Default::default(),
             flash_input: Default::default(),
@@ -148,8 +152,11 @@ impl SceneInstance {
 
         if always_render || self.active || self.flash {
             let groups = self.groups.as_ref().unwrap_or(deck_groups);
-            let main_opacity = main_dimmer
-                * opacity_factor
+            let main_opacity = if self.ignore_main_dimmer {
+                1.0
+            } else {
+                main_dimmer
+            } * opacity_factor
                 * self.opacity.value(beat_progression)
                 * self.input_dimmer;
             if let Some(scene) = Asset::get(self.scene) {
