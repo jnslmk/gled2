@@ -3,6 +3,7 @@ use crate::{
     ui::{
         asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
         viewport_builder::default_viewport_builder,
+        windows::window_decorations::gled_window_frame,
     },
 };
 use egui::{Button, Context, Id, Rect, Ui, Vec2, ViewportId};
@@ -25,7 +26,6 @@ impl CurvesWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("curves window")),
             default_viewport_builder()
-                .with_title("Gled: Curves")
                 .with_inner_size(Vec2::new(600.0, 500.0))
                 .with_min_inner_size(Vec2::new(600.0, 500.0)),
             |ctx, _viewport_class| {
@@ -35,21 +35,23 @@ impl CurvesWindow {
                     }
                 });
 
-                egui::SidePanel::left("curves tree")
-                    .exact_width(TREE_WIDTH)
-                    .resizable(false)
-                    .show(ctx, |ui| {
-                        if self.tree.show(ui, ui.make_persistent_id("curves_tree")) {
-                            self.dirty = false;
+                gled_window_frame(ctx, "Curves", |ui| {
+                    egui::SidePanel::left("curves tree")
+                        .exact_width(TREE_WIDTH)
+                        .resizable(false)
+                        .show_inside(ui, |ui| {
+                            if self.tree.show(ui, ui.make_persistent_id("curves_tree")) {
+                                self.dirty = false;
+                            }
+                        });
+
+                    egui::CentralPanel::default().show_inside(ui, |ui| {
+                        self.tree.common_settings(ui, &mut self.dirty);
+
+                        if let TreeSelection::Asset(curve) = &mut self.tree.selected() {
+                            curve_editor(ui, curve, &mut self.dirty);
                         }
                     });
-
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    self.tree.common_settings(ui, &mut self.dirty);
-
-                    if let TreeSelection::Asset(curve) = &mut self.tree.selected() {
-                        curve_editor(ui, curve, &mut self.dirty);
-                    }
                 });
             },
         );

@@ -6,6 +6,7 @@ use crate::{
     ui::{
         asset_tree::{AssetTree, TreeSelection},
         viewport_builder::default_viewport_builder,
+        windows::window_decorations::gled_window_frame,
     },
 };
 use egui::{ComboBox, Id, TextEdit, Ui, Vec2, ViewportId};
@@ -49,7 +50,6 @@ impl OutputDevicesWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("output devices window")),
             default_viewport_builder()
-                .with_title("Gled: Output Devices")
                 .with_inner_size(Vec2::new(500.0, 500.0))
                 .with_min_inner_size(Vec2::new(500.0, 500.0)),
             |ctx, _viewport_class| {
@@ -59,29 +59,31 @@ impl OutputDevicesWindow {
                     }
                 });
 
-                egui::SidePanel::left("output devices tree")
-                    .exact_width(200.0)
-                    .resizable(false)
-                    .show(ctx, |ui| {
-                        if self
-                            .tree
-                            .show(ui, ui.make_persistent_id("output_devices_tree"))
-                        {
-                            self.dirty = false;
-                            self.device_strings = Default::default();
+                gled_window_frame(ctx, "Output Devices", |ui| {
+                    egui::SidePanel::left("output devices tree")
+                        .exact_width(200.0)
+                        .resizable(false)
+                        .show_inside(ui, |ui| {
+                            if self
+                                .tree
+                                .show(ui, ui.make_persistent_id("output_devices_tree"))
+                            {
+                                self.dirty = false;
+                                self.device_strings = Default::default();
+                            }
+                        });
+
+                    egui::CentralPanel::default().show_inside(ui, |ui| {
+                        self.tree.common_settings(ui, &mut self.dirty);
+                        if let TreeSelection::Asset(output_device) = &mut self.tree.selected() {
+                            output_device_editor(
+                                ui,
+                                output_device,
+                                &mut self.dirty,
+                                &mut self.device_strings,
+                            );
                         }
                     });
-
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    self.tree.common_settings(ui, &mut self.dirty);
-                    if let TreeSelection::Asset(output_device) = &mut self.tree.selected() {
-                        output_device_editor(
-                            ui,
-                            output_device,
-                            &mut self.dirty,
-                            &mut self.device_strings,
-                        );
-                    }
                 });
             },
         );

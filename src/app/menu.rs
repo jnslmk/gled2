@@ -3,10 +3,14 @@ use crate::{
     input::artnet::ARTNET_CONFIG,
     pipeline::extract_output::ExtractOutput,
     storage::{STORAGE_DIR, asset::Asset},
-    ui::{action::UiAction, logo::logo_image, windows::channel_overwrites::ChannelOverwrites},
+    ui::{
+        action::UiAction,
+        logo::logo_image,
+        windows::{channel_overwrites::ChannelOverwrites, window_decorations::window_buttons},
+    },
 };
 use egui::{
-    Button, Color32, Context, Id, Image, ImageButton, Key, Modifiers, Slider, Stroke, TextFormat,
+    Button, Color32, Id, Image, ImageButton, Key, Modifiers, Slider, Stroke, TextFormat, Ui,
     UiKind, Vec2, ViewportId, text::LayoutJob,
 };
 use log::debug;
@@ -17,8 +21,8 @@ use std::{
 };
 
 impl App {
-    pub fn menu(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
-        egui::TopBottomPanel::top(format!("{viewport_id:?} menu")).show(ctx, |ui| {
+    pub fn menu(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
+        egui::TopBottomPanel::top(format!("{viewport_id:?} menu")).show_inside(ui, |ui| {
             if crate::storage::loading().is_some() {
                 ui.disable();
             }
@@ -32,11 +36,17 @@ impl App {
 
                 ui.separator();
 
-                let mut open_project = ctx.input_mut(|i| i.consume_key(Modifiers::CTRL, Key::O));
-                let mut save_project = ctx.input_mut(|i| i.consume_key(Modifiers::CTRL, Key::S));
-                let mut open_svg_file = ctx
+                let mut open_project = ui
+                    .ctx()
+                    .input_mut(|i| i.consume_key(Modifiers::CTRL, Key::O));
+                let mut save_project = ui
+                    .ctx()
+                    .input_mut(|i| i.consume_key(Modifiers::CTRL, Key::S));
+                let mut open_svg_file = ui
+                    .ctx()
                     .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::O));
-                let mut save_svg_file = ctx
+                let mut save_svg_file = ui
+                    .ctx()
                     .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::S));
 
                 ui.menu_button("Project", |ui| {
@@ -315,9 +325,11 @@ impl App {
                     };
                 });
 
-                let mut open_new_window = ctx
+                let mut open_new_window = ui
+                    .ctx()
                     .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::N));
-                let mut open_new_preview_window = ctx
+                let mut open_new_preview_window = ui
+                    .ctx()
                     .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::P));
                 ui.menu_button("Window", |ui| {
                     ui.set_min_width(300.0);
@@ -359,6 +371,8 @@ impl App {
                 ui.separator();
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    window_buttons(ui);
+
                     let underlined = TextFormat {
                         underline: Stroke::new(1.0, Color32::GRAY),
                         ..Default::default()

@@ -5,12 +5,12 @@ use crate::{
     },
     ui::temperature::temperature,
 };
-use egui::{Button, Context, Label, Layout, Margin, Spinner, TextEdit, Ui, ViewportId};
+use egui::{Button, Label, Layout, Margin, Spinner, TextEdit, Ui, ViewportId};
 use egui_flex::{Flex, item};
 
 impl App {
-    pub fn status_bar(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
-        egui::TopBottomPanel::bottom(format!("{viewport_id:?} status bar")).show(ctx, |ui| {
+    pub fn status_bar(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
+        egui::TopBottomPanel::bottom(format!("{viewport_id:?} status bar")).show_inside(ui, |ui| {
             egui::Frame::NONE
                 .inner_margin(Margin::from(1.0))
                 .show(ui, |ui| {

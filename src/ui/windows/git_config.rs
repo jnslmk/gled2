@@ -1,4 +1,4 @@
-use crate::{app::{persistant_state::PersistantState, GitUiState}, storage::{action::StorageAction, branches, Branches}, ui::viewport_builder::default_viewport_builder};
+use crate::{app::{persistant_state::PersistantState, GitUiState}, storage::{action::StorageAction, branches, Branches}, ui::{viewport_builder::default_viewport_builder, windows::window_decorations::gled_window_frame}};
 use egui::{Button, Color32, ComboBox, Context, Id, Layout, RichText, TextEdit, UiKind, Vec2, ViewportId};
 use egui_flex::{item, Flex};
 use home::home_dir;
@@ -18,7 +18,6 @@ impl GitConfigWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("git config window")),
             default_viewport_builder()
-                .with_title("Gled: Shortcuts")
                 .with_inner_size(Vec2::new(500.0, 180.0))
                 .with_min_inner_size(Vec2::new(500.0, 180.0))
                 .with_resizable(false)
@@ -30,7 +29,7 @@ impl GitConfigWindow {
                     }
                 });
 
-                egui::CentralPanel::default().show(ctx, |ui| {
+                gled_window_frame(ctx, "Shortcuts", |ui| {
                     ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
                         ui.label(RichText::new("Any change here can nuke all you progress!").color(Color32::RED).heading());
                     });

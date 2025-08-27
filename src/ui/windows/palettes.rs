@@ -1,8 +1,9 @@
 use crate::{
-    storage::asset::{palette::Palette, Asset},
+    storage::asset::{Asset, palette::Palette},
     ui::{
-        asset_tree::{AssetTree, TreeSelection, TREE_WIDTH},
+        asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
         viewport_builder::default_viewport_builder,
+        windows::window_decorations::gled_window_frame,
     },
 };
 use egui::{Context, Id, Ui, Vec2, ViewportId};
@@ -24,7 +25,6 @@ impl PalettesWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("palettes window")),
             default_viewport_builder()
-                .with_title("Gled: Palettes")
                 .with_inner_size(Vec2::new(500.0, 500.0))
                 .with_min_inner_size(Vec2::new(500.0, 500.0)),
             |ctx, _viewport_class| {
@@ -34,21 +34,23 @@ impl PalettesWindow {
                     }
                 });
 
-                egui::SidePanel::left("palettes tree")
-                    .exact_width(TREE_WIDTH)
-                    .resizable(false)
-                    .show(ctx, |ui| {
-                        if self.tree.show(ui, ui.make_persistent_id("palettes_tree")) {
-                            self.dirty = false;
+                gled_window_frame(ctx, "Palettes", |ui| {
+                    egui::SidePanel::left("palettes tree")
+                        .exact_width(TREE_WIDTH)
+                        .resizable(false)
+                        .show_inside(ui, |ui| {
+                            if self.tree.show(ui, ui.make_persistent_id("palettes_tree")) {
+                                self.dirty = false;
+                            }
+                        });
+
+                    egui::CentralPanel::default().show_inside(ui, |ui| {
+                        self.tree.common_settings(ui, &mut self.dirty);
+
+                        if let TreeSelection::Asset(palette) = &mut self.tree.selected() {
+                            palette_editor(ui, palette, &mut self.dirty);
                         }
                     });
-
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    self.tree.common_settings(ui, &mut self.dirty);
-
-                    if let TreeSelection::Asset(palette) = &mut self.tree.selected() {
-                        palette_editor(ui, palette, &mut self.dirty);
-                    }
                 });
             },
         );

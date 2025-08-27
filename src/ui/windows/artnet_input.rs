@@ -1,4 +1,9 @@
-use crate::{input::artnet::ARTNET_CONFIG, ui::viewport_builder::default_viewport_builder};
+use crate::{
+    input::artnet::ARTNET_CONFIG,
+    ui::{
+        viewport_builder::default_viewport_builder, windows::window_decorations::gled_window_frame,
+    },
+};
 use egui::{Context, Id, TextEdit, Vec2, ViewportId};
 
 #[derive(Default)]
@@ -18,8 +23,8 @@ impl ArtnetInputWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("artnet inputs window")),
             default_viewport_builder()
-                .with_title("Gled: Artnet Inputs")
-                .with_inner_size(Vec2::new(160.0, 110.0))
+                .with_inner_size(Vec2::new(260.0, 110.0))
+                .with_min_inner_size(Vec2::new(260.0, 110.0))
                 .with_resizable(false)
                 .with_minimize_button(false)
                 .with_maximize_button(false),
@@ -30,7 +35,7 @@ impl ArtnetInputWindow {
                     }
                 });
 
-                egui::CentralPanel::default().show(ctx, |ui| {
+                gled_window_frame(ctx, "Artnet Inputs", |ui| {
                     let mut config = ARTNET_CONFIG.lock();
 
                     ui.label("Active");

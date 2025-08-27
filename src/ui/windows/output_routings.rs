@@ -2,7 +2,10 @@ use crate::{
     app::svg::Svg,
     pipeline::extract_output::ExtractOutput,
     storage::asset::{Asset, output_device::routing::OutputRouting},
-    ui::{ChangeButton, viewport_builder::default_viewport_builder},
+    ui::{
+        ChangeButton, viewport_builder::default_viewport_builder,
+        windows::window_decorations::gled_window_frame,
+    },
 };
 use egui::{
     Color32, ComboBox, Context, Id, Layout, RichText, Vec2, ViewportId, WidgetText, mutex::Mutex,
@@ -27,9 +30,8 @@ impl OutputRoutingsWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("output routings window")),
             default_viewport_builder()
-                .with_title("Gled: Output Routings")
-                .with_inner_size(Vec2::new(300.0, 500.0))
-                .with_min_inner_size(Vec2::new(300.0, 500.0)),
+                .with_inner_size(Vec2::new(340.0, 500.0))
+                .with_min_inner_size(Vec2::new(340.0, 500.0)),
             |ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {
@@ -37,7 +39,7 @@ impl OutputRoutingsWindow {
                     }
                 });
 
-                egui::CentralPanel::default().show(ctx, |ui| {
+                gled_window_frame(ctx, "Output Routings", |ui| {
                     let extract_output = ExtractOutput::get();
                     let mut routings = extract_output.routings.lock();
                     let used_multiple_times = routings.output_universes_which_are_used_multiple_times();

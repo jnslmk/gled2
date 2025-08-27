@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap};
 use crate::{
     storage::{
-        asset::{Asset, output_device::OutputDevice},
+        asset::{output_device::OutputDevice, Asset},
         asset_id::AssetId,
     },
-    ui::{ChangeButton, viewport_builder::default_viewport_builder, windows::channel_overwrites},
+    ui::{viewport_builder::default_viewport_builder, windows::{channel_overwrites, window_decorations::gled_window_frame}, ChangeButton},
 };
 use egui::{
     Color32, ComboBox, Context, Id, Layout, RichText, Vec2, ViewportId, mutex::Mutex,
@@ -40,7 +40,6 @@ impl ChannelOverwritesWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("channel overwrites window")),
             default_viewport_builder()
-                .with_title("Gled: Channel Overwrites")
                 .with_inner_size(Vec2::new(600.0, 500.0))
                 .with_min_inner_size(Vec2::new(600.0, 500.0)),
             |ctx, _viewport_class| {
@@ -50,7 +49,7 @@ impl ChannelOverwritesWindow {
                     }
                 });
 
-                egui::CentralPanel::default().show(ctx, |ui| {
+                gled_window_frame(ctx, "Channel Overwrites", |ui| {
                     let mut channel_overwrites = channel_overwrites::ChannelOverwrites::get();
 
                     ui.horizontal(|ui| {

@@ -1,4 +1,6 @@
-use crate::ui::viewport_builder::default_viewport_builder;
+use crate::ui::{
+    viewport_builder::default_viewport_builder, windows::window_decorations::gled_window_frame,
+};
 use egui::{Color32, Frame, Id, Layout, Vec2, ViewportId};
 
 #[derive(Default)]
@@ -15,7 +17,6 @@ impl ErrorsWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("errors window")),
             default_viewport_builder()
-                .with_title("Gled: Errors")
                 .with_inner_size(Vec2::new(200.0, 150.0))
                 .with_minimize_button(false)
                 .with_maximize_button(true)
@@ -27,19 +28,21 @@ impl ErrorsWindow {
                     }
                 });
 
-                egui::CentralPanel::default()
-                    .frame(Frame::default().fill(Color32::DARK_RED))
-                    .show(ctx, |ui| {
-                        ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
-                            ui.heading("Errors!");
-                            ui.spacing();
-                            ui.vertical_centered_justified(|ui| {
-                                for error in &self.entries {
-                                    ui.label(error);
-                                }
+                gled_window_frame(ctx, "Errors", |ui| {
+                    egui::CentralPanel::default()
+                        .frame(Frame::default().fill(Color32::DARK_RED))
+                        .show_inside(ui, |ui| {
+                            ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
+                                ui.heading("Errors!");
+                                ui.spacing();
+                                ui.vertical_centered_justified(|ui| {
+                                    for error in &self.entries {
+                                        ui.label(error);
+                                    }
+                                });
                             });
                         });
-                    });
+                });
             },
         );
     }

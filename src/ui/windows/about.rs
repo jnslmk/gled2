@@ -1,4 +1,7 @@
-use crate::ui::{logo::logo_image, viewport_builder::default_viewport_builder};
+use crate::ui::{
+    logo::logo_image, viewport_builder::default_viewport_builder,
+    windows::window_decorations::gled_window_frame,
+};
 use egui::{Id, Image, Layout, RichText, Vec2, ViewportId};
 
 #[derive(Default)]
@@ -15,8 +18,7 @@ impl AboutWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("about window")),
             default_viewport_builder()
-                .with_title("Gled: About")
-                .with_inner_size(Vec2::new(250.0, 150.0))
+                .with_inner_size(Vec2::new(250.0, 210.0))
                 .with_minimize_button(false)
                 .with_maximize_button(false)
                 .with_resizable(false),
@@ -27,7 +29,7 @@ impl AboutWindow {
                     }
                 });
 
-                egui::CentralPanel::default().show(ctx, |ui| {
+                gled_window_frame(ctx, "About", |ui| {
                     ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
                         ui.add(Image::new(logo_image()).fit_to_exact_size(Vec2::splat(50.0)));
                         ui.label(RichText::new("gled").text_style(egui::TextStyle::Heading));

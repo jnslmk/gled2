@@ -32,7 +32,7 @@ use crate::{
     ui::{action::UiAction, viewport_builder::default_viewport_builder, windows::Windows},
 };
 use eframe::egui_wgpu::Callback;
-use egui::{Rect, ViewportId, ahash::HashMap, mutex::Mutex};
+use egui::{CentralPanel, Rect, UiBuilder, ViewportId, ahash::HashMap, mutex::Mutex};
 use egui_tiles::Tree;
 use persistant_state::PersistantState;
 use std::{
@@ -163,7 +163,6 @@ impl eframe::App for App {
             ctx.show_viewport_immediate(
                 viewport_id,
                 default_viewport_builder()
-                    .with_title("Gled: Second Window")
                     .with_inner_size([1300.0, 1024.0])
                     .with_drag_and_drop(true)
                     .with_min_inner_size([300.0, 200.0]),
@@ -190,28 +189,36 @@ impl eframe::App for App {
 
 impl App {
     pub fn draw_main_window(&mut self, ctx: &egui::Context, viewport_id: Option<ViewportId>) {
-        let tree = viewport_id
-            .and_then(|viewport| self.other_main_windows.get(&viewport).cloned())
-            .unwrap_or(self.tree.clone());
+        let panel_frame = egui::Frame::new()
+            .fill(ctx.style().visuals.window_fill())
+            .stroke(ctx.style().visuals.widgets.noninteractive.fg_stroke);
 
-        self.menu(ctx, viewport_id);
-        self.status_bar(ctx, viewport_id);
+        CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
+            let mut ui = ui.new_child(UiBuilder::new().max_rect(ui.max_rect().shrink(4.0)));
 
-        if let Some(error) = crate::storage::error() {
-            show_storage_error(ctx, error);
-            return;
-        } else if let Some(loading) = crate::storage::loading() {
-            show_storage_loading(ctx, loading);
-            return;
-        }
+            let tree = viewport_id
+                .and_then(|viewport| self.other_main_windows.get(&viewport).cloned())
+                .unwrap_or(self.tree.clone());
 
-        if self.project.is_some() {
-            egui::CentralPanel::default().show(ctx, |ui| {
-                tree.lock().ui(self, ui);
-            });
-        } else {
-            self.no_project(ctx);
-        }
+            self.menu(&mut ui, viewport_id);
+            self.status_bar(&mut ui, viewport_id);
+
+            if let Some(error) = crate::storage::error() {
+                show_storage_error(&mut ui, error);
+                return;
+            } else if let Some(loading) = crate::storage::loading() {
+                show_storage_loading(&mut ui, loading);
+                return;
+            }
+
+            if self.project.is_some() {
+                egui::CentralPanel::default().show_inside(&mut ui, |ui| {
+                    tree.lock().ui(self, ui);
+                });
+            } else {
+                self.no_project(&mut ui);
+            }
+        });
     }
     pub fn new(ui_action_receiver: Receiver<UiAction>) -> Option<Self> {
         let (output_sender, gpu_ready_receiver) =

@@ -12,6 +12,7 @@ use crate::{
         asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
         effect::widget::EffectWidget,
         viewport_builder::default_viewport_builder,
+        windows::window_decorations::gled_window_frame,
     },
     wgpu_render_state,
 };
@@ -115,9 +116,8 @@ impl AnimationWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("animations window")),
             default_viewport_builder()
-                .with_title("Gled: Animations")
-                .with_inner_size(Vec2::new(1000.0, 500.0))
-                .with_min_inner_size(Vec2::new(1000.0, 500.0)),
+                .with_inner_size(Vec2::new(1000.0, 540.0))
+                .with_min_inner_size(Vec2::new(1000.0, 540.0)),
             |ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {
@@ -125,77 +125,81 @@ impl AnimationWindow {
                     }
                 });
 
-                egui::SidePanel::left("animations tree")
-                    .exact_width(TREE_WIDTH)
-                    .resizable(false)
-                    .show(ctx, |ui| {
-                        if self.tree.show(ui, ui.make_persistent_id("animations_tree")) {
-                            self.dirty = false;
-                            validate = true;
-                            self.effect_state.take();
-                        }
-                    });
+                gled_window_frame(ctx, "Animations", |ui| {
+                    egui::SidePanel::left("animations tree")
+                        .exact_width(TREE_WIDTH)
+                        .resizable(false)
+                        .show_inside(ui, |ui| {
+                            if self.tree.show(ui, ui.make_persistent_id("animations_tree")) {
+                                self.dirty = false;
+                                validate = true;
+                                self.effect_state.take();
+                            }
+                        });
 
-                egui::SidePanel::right("animation editor")
-                    .exact_width(300.0)
-                    .resizable(false)
-                    .show(ctx, |ui| {
-                        if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
-                            ui.vertical_centered_justified(|ui| {
-                                if self.preview {
-                                    if ui.button("👁 Close Preview").clicked() {
-                                        self.preview = false;
+                    egui::SidePanel::right("animation editor")
+                        .exact_width(300.0)
+                        .resizable(false)
+                        .show_inside(ui, |ui| {
+                            if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
+                                ui.vertical_centered_justified(|ui| {
+                                    if self.preview {
+                                        if ui.button("👁 Close Preview").clicked() {
+                                            self.preview = false;
+                                        }
+                                    } else if ui.button("👁 Open Preview").clicked() {
+                                        self.preview = true;
                                     }
-                                } else if ui.button("👁 Open Preview").clicked() {
-                                    self.preview = true;
+                                });
+                                if animation.data.change_arguments_ui(ui) {
+                                    validate = true;
+                                    self.dirty = true;
                                 }
-                            });
-                            if animation.data.change_arguments_ui(ui) {
+                            }
+                        });
+
+                    egui::CentralPanel::default().show_inside(ui, |ui| {
+                        if self.tree.common_settings(ui, &mut self.dirty) {
+                            self.effect_state.take();
+                            validate = true;
+                            if let TreeSelection::Asset(animation) = &self.tree.selected() {
+                                UiAction::ReloadShaderCode(animation.id).enqueue();
+                            }
+                        }
+
+                        if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
+                            if let Some(mut error) = self.error.as_deref() {
+                                let lines = error.lines().count().max(1);
+                                egui::Frame::NONE
+                                    .inner_margin(Margin::from(3.0))
+                                    .stroke(Stroke::new(2.0, Color32::RED))
+                                    .fill(Color32::DARK_RED)
+                                    .show(ui, |ui| {
+                                        ui.heading("Error compiling shader code:");
+                                        ui.add(
+                                            egui::TextEdit::multiline(&mut error)
+                                                .font(egui::TextStyle::Monospace)
+                                                .code_editor()
+                                                .desired_rows(lines)
+                                                .desired_width(f32::INFINITY),
+                                        )
+                                        .context_menu(
+                                            |ui| {
+                                                if ui.button("🖹 Copy error").clicked() {
+                                                    ui.ctx().copy_text(error.to_owned());
+                                                    ui.close_kind(UiKind::Menu);
+                                                }
+                                            },
+                                        );
+                                    });
+                            }
+
+                            if animation.data.change_shader_code_ui(ui) {
                                 validate = true;
                                 self.dirty = true;
                             }
                         }
                     });
-
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    if self.tree.common_settings(ui, &mut self.dirty) {
-                        self.effect_state.take();
-                        validate = true;
-                        if let TreeSelection::Asset(animation) = &self.tree.selected() {
-                            UiAction::ReloadShaderCode(animation.id).enqueue();
-                        }
-                    }
-
-                    if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
-                        if let Some(mut error) = self.error.as_deref() {
-                            let lines = error.lines().count().max(1);
-                            egui::Frame::NONE
-                                .inner_margin(Margin::from(3.0))
-                                .stroke(Stroke::new(2.0, Color32::RED))
-                                .fill(Color32::DARK_RED)
-                                .show(ui, |ui| {
-                                    ui.heading("Error compiling shader code:");
-                                    ui.add(
-                                        egui::TextEdit::multiline(&mut error)
-                                            .font(egui::TextStyle::Monospace)
-                                            .code_editor()
-                                            .desired_rows(lines)
-                                            .desired_width(f32::INFINITY),
-                                    )
-                                    .context_menu(|ui| {
-                                        if ui.button("🖹 Copy error").clicked() {
-                                            ui.ctx().copy_text(error.to_owned());
-                                            ui.close_kind(UiKind::Menu);
-                                        }
-                                    });
-                                });
-                        }
-
-                        if animation.data.change_shader_code_ui(ui) {
-                            validate = true;
-                            self.dirty = true;
-                        }
-                    }
                 });
             },
         );
@@ -213,7 +217,6 @@ impl AnimationWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("animation preview window")),
             default_viewport_builder()
-                .with_title("Gled: Animation Preview")
                 .with_inner_size(Vec2::new(630.0, 400.0))
                 .with_min_inner_size(Vec2::new(630.0, 400.0)),
             |ctx, _viewport_class| {
@@ -223,57 +226,59 @@ impl AnimationWindow {
                     }
                 });
 
-                if let (Some(effect), Some(effect_state)) =
-                    (&mut self.effect, &mut self.effect_state)
-                {
-                    egui::SidePanel::right("animation preview right side")
-                        .exact_width(300.0)
-                        .resizable(false)
-                        .show(ctx, |ui| effect.config_ui(effect_state, ui, false));
-                }
-
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    egui::Frame::NONE
-                        .inner_margin(Margin::from(6.0))
-                        .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
-                        .show(ui, |ui| {
-                            ui.label("Preview Palette");
-                            ui.vertical_centered_justified(|ui| {
-                                let mut persistant_state = PersistantState::get();
-                                if persistant_state.preview_palette.change_button(ui) {
-                                    persistant_state.save();
-                                }
-                            });
-                        });
-
-                    ui.add_space(4.0);
-
+                gled_window_frame(ctx, "Animation Preview", |ui| {
                     if let (Some(effect), Some(effect_state)) =
                         (&mut self.effect, &mut self.effect_state)
                     {
-                        egui::Frame::default()
-                            .outer_margin(Margin::same(4))
-                            .show(ui, |ui| {
-                                ui.add_sized(
-                                    Vec2::splat(300.0),
-                                    EffectWidget {
-                                        show_group: false,
-                                        selectable: None,
-                                        effect,
-                                        effect_state,
-                                    },
-                                );
-                                if ui
-                                    .vertical_centered_justified(|ui| {
-                                        ui.button("🖹 Copy Image to Clipboard")
-                                    })
-                                    .inner
-                                    .clicked()
-                                {
-                                    self.copy_rendered_image_to_clipboard = true;
-                                }
-                            });
+                        egui::SidePanel::right("animation preview right side")
+                            .exact_width(300.0)
+                            .resizable(false)
+                            .show_inside(ui, |ui| effect.config_ui(effect_state, ui, false));
                     }
+
+                    egui::CentralPanel::default().show_inside(ui, |ui| {
+                        egui::Frame::NONE
+                            .inner_margin(Margin::from(6.0))
+                            .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
+                            .show(ui, |ui| {
+                                ui.label("Preview Palette");
+                                ui.vertical_centered_justified(|ui| {
+                                    let mut persistant_state = PersistantState::get();
+                                    if persistant_state.preview_palette.change_button(ui) {
+                                        persistant_state.save();
+                                    }
+                                });
+                            });
+
+                        ui.add_space(4.0);
+
+                        if let (Some(effect), Some(effect_state)) =
+                            (&mut self.effect, &mut self.effect_state)
+                        {
+                            egui::Frame::default()
+                                .outer_margin(Margin::same(4))
+                                .show(ui, |ui| {
+                                    ui.add_sized(
+                                        Vec2::splat(300.0),
+                                        EffectWidget {
+                                            show_group: false,
+                                            selectable: None,
+                                            effect,
+                                            effect_state,
+                                        },
+                                    );
+                                    if ui
+                                        .vertical_centered_justified(|ui| {
+                                            ui.button("🖹 Copy Image to Clipboard")
+                                        })
+                                        .inner
+                                        .clicked()
+                                    {
+                                        self.copy_rendered_image_to_clipboard = true;
+                                    }
+                                });
+                        }
+                    });
                 });
             },
         );

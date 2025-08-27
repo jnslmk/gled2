@@ -1,6 +1,9 @@
 use crate::{
-    storage::asset::project::Project, ui::ChangeButton,
-    ui::viewport_builder::default_viewport_builder,
+    storage::asset::project::Project,
+    ui::{
+        ChangeButton, viewport_builder::default_viewport_builder,
+        windows::window_decorations::gled_window_frame,
+    },
 };
 use egui::{Context, Id, Vec2, ViewportId};
 
@@ -21,7 +24,6 @@ impl ShortcutsWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("shortcuts window")),
             default_viewport_builder()
-                .with_title("Gled: Shortcuts")
                 .with_inner_size(Vec2::new(500.0, 500.0))
                 .with_min_inner_size(Vec2::new(500.0, 500.0)),
             |ctx, _viewport_class| {
@@ -31,7 +33,7 @@ impl ShortcutsWindow {
                     }
                 });
 
-                egui::CentralPanel::default().show(ctx, |ui| {
+                gled_window_frame(ctx, "Shortcuts", |ui| {
                     let mut changed = false;
 
                     let mut tap_events = project

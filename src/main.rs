@@ -62,7 +62,6 @@ fn main() {
 
     let options = eframe::NativeOptions {
         viewport: default_viewport_builder()
-            .with_title("Gled")
             .with_inner_size([1300.0, 1024.0])
             .with_drag_and_drop(true)
             .with_min_inner_size([300.0, 200.0]),
