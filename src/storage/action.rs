@@ -12,7 +12,7 @@ pub fn init() -> Receiver<StorageAction> {
     rx
 }
 
-#[allow(dead_code)]
+#[derive(Debug)]
 pub enum StorageAction {
     /// Nuke the storage folder and restart from scratch
     Nuke,

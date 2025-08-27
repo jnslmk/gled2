@@ -15,7 +15,7 @@ use crate::{
     },
     storage::asset::{Asset, output_device::enttec_usb_pro},
     svg::universe_color_channels::UniverseColorChannels,
-    ui::windows::output_routings::HOVERED_OUTPUT_ROUTING,
+    ui::windows::{channel_overwrites::ChannelOverwrites, output_routings::HOVERED_OUTPUT_ROUTING},
 };
 pub type OutputSender = Sender<bool>;
 pub type GpuReadySender = Sender<()>;
@@ -61,6 +61,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
 
                     let mut routings = extract_output.routings.lock();
                     let hovered_output_routing = HOVERED_OUTPUT_ROUTING.lock().clone();
+                    let mut channel_overwrites = ChannelOverwrites::get();
 
                     let mut packages = extract_output
                         .universes
@@ -75,6 +76,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                             }
                             let device = routing.device.and_then(Asset::get)?;
                             UniverseColorChannels::correct(*universe, data);
+                            channel_overwrites.overwrite_data(device.id, routing.universe, data);
 
                             device.data.prepare_package(routing.universe, data)
                         })
@@ -85,6 +87,14 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                                 routing.universe,
                                 &[255; UNIVERSE_BUFFER_SIZE as usize],
                             ) {
+                                packages.push((addr, data));
+                            }
+                        }
+                    }
+                    for (device, universe, data) in channel_overwrites.other_universes() {
+                        if let Some(device) = Asset::get(device) {
+                            if let Some((addr, data)) = device.data.prepare_package(universe, &data)
+                            {
                                 packages.push((addr, data));
                             }
                         }

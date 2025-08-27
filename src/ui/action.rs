@@ -1,13 +1,13 @@
 use crate::{
-    app::{persistant_state::PersistantState, svg::Svg, App},
+    app::{App, persistant_state::PersistantState, svg::Svg},
     input::artnet::ARTNET_CONFIG,
     pipeline::extract_output::ExtractOutput,
     storage::{
         asset::{
+            Asset,
             animation::Animation,
             curve::static_or_curve::StaticOrCurve,
-            project::{scene_instance_path::SceneInstancePath, Project},
-            Asset,
+            project::{Project, scene_instance_path::SceneInstancePath},
         },
         asset_id::AssetId,
     },
@@ -16,8 +16,8 @@ use egui::ViewportId;
 use notify_rust::Notification;
 use once_cell::sync::OnceCell;
 use std::sync::{
-    mpsc::{Receiver, Sender},
     Arc,
+    mpsc::{Receiver, Sender},
 };
 
 static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
@@ -130,6 +130,7 @@ impl App {
                         let project = Arc::unwrap_or_clone(project).data;
                         *ExtractOutput::get().routings.lock() = project.output_routings.clone();
                         *ARTNET_CONFIG.lock() = project.artnet_config.clone();
+                        project.channel_overwrites.clone().set();
                         self.project = Some(project);
                     } else {
                         self.windows.artnet_input.close();

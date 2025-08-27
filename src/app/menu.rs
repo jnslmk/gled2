@@ -3,7 +3,7 @@ use crate::{
     input::artnet::ARTNET_CONFIG,
     pipeline::extract_output::ExtractOutput,
     storage::{STORAGE_DIR, asset::Asset},
-    ui::{action::UiAction, logo::logo_image},
+    ui::{action::UiAction, logo::logo_image, windows::channel_overwrites::ChannelOverwrites},
 };
 use egui::{
     Button, Color32, Context, Id, Image, ImageButton, Key, Modifiers, Slider, Stroke, TextFormat,
@@ -116,6 +116,13 @@ impl App {
                         ui.close_kind(UiKind::Menu);
                     }
                     if ui
+                        .add_enabled(self.project.is_some(), Button::new("Channel Overwrites"))
+                        .clicked()
+                    {
+                        self.windows.channel_overwrites.open();
+                        ui.close_kind(UiKind::Menu);
+                    }
+                    if ui
                         .add_enabled(self.project.is_some(), Button::new("Output Routings"))
                         .clicked()
                     {
@@ -155,6 +162,7 @@ impl App {
                         asset.data = project.to_owned();
                         asset.data.artnet_config = ARTNET_CONFIG.lock().clone();
                         asset.data.output_routings = ExtractOutput::get().routings.lock().clone();
+                        asset.data.channel_overwrites = ChannelOverwrites::get();
                         asset.save();
                     }
                 }

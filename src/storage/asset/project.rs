@@ -2,13 +2,10 @@ pub mod deck;
 pub mod render_deactivated_scenes;
 pub mod scene_instance_path;
 
-use deck::{Deck, DeckPath};
-use render_deactivated_scenes::RenderDeactivatedScenes;
-use scene_instance_path::SceneInstancePath;
-use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, iter::once, time::Duration};
-use wgpu::CommandEncoderDescriptor;
-
+use super::{
+    AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
+    scene::instance::SceneInstance,
+};
 use crate::{
     app::{svg::Svg, timing::Timing},
     input::{
@@ -20,13 +17,15 @@ use crate::{
         preview_indices::PreviewIndices, renderer_callback::RendererCallback,
     },
     storage::asset_id::AssetId,
+    ui::windows::channel_overwrites::ChannelOverwrites,
     wgpu_render_state,
 };
-
-use super::{
-    AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
-    scene::instance::SceneInstance,
-};
+use deck::{Deck, DeckPath};
+use render_deactivated_scenes::RenderDeactivatedScenes;
+use scene_instance_path::SceneInstancePath;
+use serde::{Deserialize, Serialize};
+use std::{collections::BTreeSet, iter::once, time::Duration};
+use wgpu::CommandEncoderDescriptor;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(default)]
@@ -37,6 +36,7 @@ pub struct Project {
     /// 0.0 = A, 0.5 = A + B, 1.0 = B
     pub cross_fader: f32,
     pub svg: Option<Svg>,
+    pub channel_overwrites: ChannelOverwrites,
     pub output_routings: OutputRoutings,
     pub artnet_config: ArtnetConfig,
     pub tap_input_events: BTreeSet<InputEvent>,
@@ -55,6 +55,7 @@ impl Default for Project {
             c: Default::default(),
             cross_fader: Default::default(),
             svg: Default::default(),
+            channel_overwrites: Default::default(),
             output_routings: Default::default(),
             artnet_config: Default::default(),
             tap_input_events: std::iter::once(InputEvent::Key(egui::Key::T))

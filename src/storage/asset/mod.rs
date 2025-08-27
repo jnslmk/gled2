@@ -5,9 +5,9 @@ pub mod palette;
 pub mod project;
 pub mod scene;
 
-use super::{collection::Collection, AssetId, StorageAction, COLLECTIONS};
+use super::{AssetId, COLLECTIONS, StorageAction, collection::Collection};
 use egui::Rect;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
 pub trait AssetTrait:
@@ -85,9 +85,8 @@ impl<T: AssetTrait> Asset<T> {
     }
 
     pub fn save(self) {
-        log::info!("Setting asset in cache: {:?}", self.id);
-
         std::thread::spawn(move || {
+            log::info!("Setting asset in cache: {:?}", self.id);
             if let Some(collections) = COLLECTIONS.lock().as_mut() {
                 collections
                     .entry::<Collection<T>>()
@@ -95,14 +94,18 @@ impl<T: AssetTrait> Asset<T> {
                     .set_asset(self.clone());
             }
 
+            log::info!("Saving asset: {:?}", self.id);
             let uuid = self.id.id;
-            if let Ok(json) = self.into_json() {
-                StorageAction::SaveAsset {
-                    dir_name: T::DIR_NAME,
-                    uuid,
-                    json,
+            match self.into_json() {
+                Ok(json) => {
+                    StorageAction::SaveAsset {
+                        dir_name: T::DIR_NAME,
+                        uuid,
+                        json,
+                    }
+                    .enqueue();
                 }
-                .enqueue();
+                Err(err) => log::error!("Could not serialize asset {uuid}: {err}"),
             }
         });
     }
