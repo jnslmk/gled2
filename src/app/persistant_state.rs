@@ -21,6 +21,7 @@ pub struct PersistantState {
     pub effects_size: f32,
     pub effects_always_render: bool,
     pub fps_limit: f32,
+    pub always_render_fps: f32,
     pub preview_palette: Option<AssetId<Palette>>,
     pub last_project_id: Option<AssetId<Project>>,
     pub git_url: String,
@@ -34,6 +35,7 @@ impl Default for PersistantState {
             effects_size: 100.0,
             effects_always_render: false,
             fps_limit: 120.0,
+            always_render_fps: 0.0,
             preview_palette: Default::default(),
             last_project_id: Default::default(),
             git_url: "https://gitlab.com/photonenkollektiv/gled2_assets.git".to_string(),
@@ -57,6 +59,10 @@ impl PersistantState {
 
     pub fn fps_limit() -> f32 {
         PERSISTANT_STATE.lock().fps_limit
+    }
+
+    pub fn always_render_fps() -> f32 {
+        PERSISTANT_STATE.lock().always_render_fps
     }
 
     pub fn effects_always_render() -> bool {

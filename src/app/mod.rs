@@ -37,7 +37,7 @@ use egui_tiles::Tree;
 use persistant_state::PersistantState;
 use std::{
     sync::{Arc, mpsc::Receiver},
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Instant, SystemTime, UNIX_EPOCH},
 };
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
@@ -48,6 +48,7 @@ pub struct App {
     pub output_sender: OutputSender,
     pub gpu_ready_receiver: GpuReadyReceiver,
     pub timing: Timing,
+    pub last_always_render_fps_frame: Instant,
     pub project: Option<Project>,
     pub project_id: Option<AssetId<Project>>,
     pub other_main_windows: HashMap<ViewportId, Arc<Mutex<Tree<Pane>>>>,
@@ -107,7 +108,12 @@ impl eframe::App for App {
             project.render(
                 &self.timing,
                 self.blackout || self.blackout_hold,
-                if PersistantState::effects_always_render() {
+                if PersistantState::effects_always_render() || {
+                    PersistantState::always_render_fps() > 0.0
+                        && self.last_always_render_fps_frame.elapsed().as_secs_f32()
+                            > 1.0 / PersistantState::always_render_fps()
+                } {
+                    self.last_always_render_fps_frame = Instant::now();
                     RenderDeactivatedScenes::Always
                 } else {
                     RenderDeactivatedScenes::Some(
@@ -229,6 +235,7 @@ impl App {
             output_sender,
             gpu_ready_receiver,
             timing: Default::default(),
+            last_always_render_fps_frame: Instant::now(),
             blackout: true,
             blackout_hold: false,
             selected_scene_instance: Default::default(),
