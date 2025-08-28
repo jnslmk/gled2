@@ -1,4 +1,4 @@
-use super::{App, PersistantState, new_tree, svg::Svg};
+use super::{App, PersistantState, svg::Svg};
 use crate::{
     input::artnet::ARTNET_CONFIG,
     pipeline::extract_output::ExtractOutput,
@@ -343,9 +343,6 @@ impl App {
                 let mut open_new_window = ui
                     .ctx()
                     .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::N));
-                let mut open_new_preview_window = ui
-                    .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::P));
                 ui.menu_button("Window", |ui| {
                     ui.set_min_width(300.0);
 
@@ -356,14 +353,6 @@ impl App {
                         open_new_window = true;
                         ui.close_kind(UiKind::Menu);
                     }
-
-                    if ui
-                        .add(Button::new("Open new preview window").shortcut_text("Ctrl+Shift+P"))
-                        .clicked()
-                    {
-                        open_new_preview_window = true;
-                        ui.close_kind(UiKind::Menu);
-                    }
                 });
 
                 if open_new_window {
@@ -371,16 +360,7 @@ impl App {
                         "Second Window {}",
                         rand::rng().random::<u64>()
                     )));
-                    self.other_main_windows
-                        .insert(viewport_id, new_tree(Some(viewport_id), false));
-                }
-                if open_new_preview_window {
-                    let viewport_id = ViewportId(Id::new(format!(
-                        "Preview Window {}",
-                        rand::rng().random::<u64>()
-                    )));
-                    self.other_main_windows
-                        .insert(viewport_id, new_tree(Some(viewport_id), true));
+                    self.other_main_windows.insert(viewport_id);
                 }
 
                 ui.separator();

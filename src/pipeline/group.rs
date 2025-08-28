@@ -46,7 +46,7 @@ impl Display for Group {
 
 pub type GroupIndices = BTreeSet<usize>;
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 pub struct Groups(#[serde(deserialize_with = "deserialize_groups")] BTreeMap<usize, Group>);
 
 impl Groups {

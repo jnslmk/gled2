@@ -13,9 +13,8 @@ pub struct MidiState {
     pub blackout: bool,
     pub beat_flank: u8,
     pub active_scenes: HashSet<SceneInstancePath>,
-    pub available_scenes_a: usize,
-    pub available_scenes_b: usize,
-    pub available_scenes_c: usize,
+    pub available_scenes_grid: usize,
+    pub available_scenes_quick: usize,
 }
 
 impl MidiState {

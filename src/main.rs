@@ -76,6 +76,8 @@ fn main() {
         Box::new(|cc| {
             cc.egui_ctx
                 .options_mut(|options| options.theme_preference = ThemePreference::Dark);
+            cc.egui_ctx
+                .style_mut(|style| style.always_scroll_the_only_direction = true);
             install_image_loaders(&cc.egui_ctx);
             Input::init(&cc.egui_ctx);
 

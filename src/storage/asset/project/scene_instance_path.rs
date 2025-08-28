@@ -1,4 +1,4 @@
-use super::deck::DeckPath;
+use crate::storage::asset::project::DeckPath;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SceneInstancePath {
@@ -14,24 +14,19 @@ impl SceneInstancePath {
         }
     }
 
-    pub const DECK_A: Self = Self {
-        deck_path: DeckPath::A,
+    pub const GRID: Self = Self {
+        deck_path: DeckPath::Grid,
         scene_instance: 0,
     };
 
-    pub const DECK_B: Self = Self {
-        deck_path: DeckPath::B,
-        scene_instance: 0,
-    };
-
-    pub const DECK_C: Self = Self {
-        deck_path: DeckPath::C,
+    pub const QUICK: Self = Self {
+        deck_path: DeckPath::Quick,
         scene_instance: 0,
     };
 }
 
 impl Default for SceneInstancePath {
     fn default() -> Self {
-        Self::DECK_A
+        Self::GRID
     }
 }

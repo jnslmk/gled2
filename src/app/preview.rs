@@ -1,10 +1,9 @@
 use super::{App, svg::Svg};
 use crate::pipeline::preview::Preview;
-use egui::{Color32, Image, Sense, Vec2, load::SizedTexture};
-use egui_tiles::UiResponse;
+use egui::{Color32, Image, Vec2, load::SizedTexture};
 
 impl App {
-    pub fn preview(&mut self, ui: &mut egui::Ui) -> UiResponse {
+    pub fn preview(&mut self, ui: &mut egui::Ui) {
         if let Some(uv) = Svg::preview_uv() {
             let size = if uv.max.x > uv.max.y {
                 Vec2::new(
@@ -32,21 +31,15 @@ impl App {
                                 .bg_fill(Color32::BLACK),
                         )
                     });
-            let preview = Image::new(SizedTexture::new(Preview::texture_id(), size))
-                .uv(uv)
-                .sense(Sense::drag());
+            let preview = Image::new(SizedTexture::new(Preview::texture_id(), size)).uv(uv);
             match res {
                 Some(res) => {
-                    if ui.put(res.rect, preview).drag_started() {
-                        return UiResponse::DragStarted;
-                    }
+                    ui.put(res.rect, preview);
                 }
                 None => {
                     ui.add(preview);
                 }
             }
         }
-
-        UiResponse::None
     }
 }

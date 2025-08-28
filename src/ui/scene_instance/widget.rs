@@ -6,8 +6,8 @@ use crate::{
     ui::pills::show_pills,
 };
 use egui::{
-    Align, Button, Checkbox, Color32, CornerRadius, Image, Layout, Margin, Rect, Sense, Shape,
-    TextureHandle, Ui, Vec2, Widget, epaint::RectShape, load::SizedTexture, pos2,
+    Align, Button, Checkbox, Color32, CornerRadius, Image, Label, Layout, Margin, Rect, Sense,
+    Shape, TextureHandle, Ui, Vec2, Widget, epaint::RectShape, load::SizedTexture, pos2,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -16,7 +16,7 @@ pub struct SceneInstanceWidget<'a> {
     pub hovered_scene_instance: &'a mut SceneInstancePath,
     pub path: SceneInstancePath,
     pub scene_instance: &'a mut SceneInstance,
-    pub deck_groups: &'a Groups,
+    pub groups: &'a Groups,
     pub svg: Option<TextureHandle>,
     pub effects_size: f32,
     pub live_color: Color32,
@@ -88,30 +88,15 @@ impl Widget for SceneInstanceWidget<'_> {
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
                                 ui.set_max_width(size.x);
-                                ui.label(
-                                    Asset::get(self.scene_instance.scene)
-                                        .map(|asset| asset.name().to_owned())
-                                        .unwrap_or_default(),
+                                ui.add(
+                                    Label::new(
+                                        Asset::get(self.scene_instance.scene)
+                                            .map(|asset| asset.name().to_owned())
+                                            .unwrap_or_default(),
+                                    )
+                                    .truncate(),
                                 );
-                                if let Some(hotkey) = self
-                                    .scene_instance
-                                    .activation_input
-                                    .as_ref()
-                                    .map(|key| format!("{key}"))
-                                {
-                                    ui.add_enabled(false, Button::new(hotkey));
-                                }
-                                if let Some(flash_hotkey) = self
-                                    .scene_instance
-                                    .flash_input
-                                    .as_ref()
-                                    .map(|key| format!("{key}"))
-                                {
-                                    ui.add_enabled(
-                                        false,
-                                        Button::new(flash_hotkey).fill(Color32::WHITE),
-                                    );
-                                }
+
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     checkbox_rect = Some(ui.checkbox(&mut false, "").rect);
                                 });
@@ -155,11 +140,8 @@ impl Widget for SceneInstanceWidget<'_> {
                                     });
                                 }
 
-                                let groups = self
-                                    .scene_instance
-                                    .groups
-                                    .as_ref()
-                                    .unwrap_or(self.deck_groups);
+                                let groups =
+                                    self.scene_instance.groups.as_ref().unwrap_or(self.groups);
 
                                 let texts = self
                                     .scene_instance

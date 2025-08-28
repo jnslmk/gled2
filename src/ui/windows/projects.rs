@@ -49,24 +49,17 @@ impl ProjectsWindow {
                         self.tree.common_settings(ui, &mut self.dirty);
                         if let TreeSelection::Asset(project) = self.tree.selected() {
                             ui.label(format!(
-                                "Scenes in Deck A: {}",
+                                "Scenes in Grid: {}",
                                 project
                                     .data
-                                    .scene_instances(SceneInstancePath::DECK_A)
+                                    .scene_instances(SceneInstancePath::GRID)
                                     .count()
                             ));
                             ui.label(format!(
-                                "Scenes in Deck B: {}",
+                                "Scenes in Quick: {}",
                                 project
                                     .data
-                                    .scene_instances(SceneInstancePath::DECK_B)
-                                    .count()
-                            ));
-                            ui.label(format!(
-                                "Scenes in Common Deck: {}",
-                                project
-                                    .data
-                                    .scene_instances(SceneInstancePath::DECK_C)
+                                    .scene_instances(SceneInstancePath::QUICK)
                                     .count()
                             ));
                             ui.vertical_centered_justified(|ui| {

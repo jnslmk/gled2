@@ -33,7 +33,6 @@ pub enum UiAction {
     CloseWindow(ViewportId),
     SetSvg(Option<Svg>),
     OpenGitConfigWindow,
-    SetCrossFader(f32),
     Tap,
     SpeedAdd(f32),
     SpeedMultiply(f32),
@@ -67,9 +66,7 @@ impl App {
                         .scene_instance(self.selected_scene_instance)
                         .map(|scene_instance| scene_instance.scene)
                     {
-                        project
-                            .deck(self.selected_scene_instance)
-                            .add_scene(&mut self.selected_scene_instance, scene);
+                        project.add_scene(&mut self.selected_scene_instance, scene);
                         UiAction::InitGPU.enqueue();
                     }
                 }
@@ -86,9 +83,6 @@ impl App {
                 (Some(project), UiAction::SetSvg(svg)) => {
                     project.svg = svg;
                     project.remove_nonexistant_groups();
-                }
-                (Some(project), UiAction::SetCrossFader(fader)) => {
-                    project.cross_fader = fader;
                 }
                 (Some(project), UiAction::SetSceneOpacity(path, opacity)) => {
                     if let Some(scene_instance) = project.scene_instance(path) {

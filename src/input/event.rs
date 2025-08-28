@@ -35,8 +35,8 @@ impl std::fmt::Display for InputEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&match self {
             InputEvent::Key(key) => format!("Key: {key:?}"),
-            InputEvent::Gamepad(event) => format!("Gamepad event: {event}"),
-            InputEvent::Artnet(channel) => format!("Artnet channel: {channel}"),
+            InputEvent::Gamepad(event) => format!("Gamepad: {event}"),
+            InputEvent::Artnet(channel) => format!("Artnet: {channel}"),
         })
     }
 }

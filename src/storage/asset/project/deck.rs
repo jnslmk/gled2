@@ -20,19 +20,8 @@ use wgpu::CommandEncoder;
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DeckPath {
     #[default]
-    A,
-    B,
-    C,
-}
-
-impl DeckPath {
-    pub fn name(&self) -> &str {
-        match self {
-            Self::A => "A",
-            Self::B => "B",
-            Self::C => "Common Scenes",
-        }
-    }
+    Grid,
+    Quick,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]

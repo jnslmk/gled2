@@ -1,4 +1,3 @@
-pub mod deck;
 pub mod render_deactivated_scenes;
 pub mod scene_instance_path;
 
@@ -13,28 +12,45 @@ use crate::{
         event::{GamepadEvent, InputEvent},
     },
     pipeline::{
-        extract_output::ExtractOutput, output_clear::OutputClear, preview::Preview,
-        preview_indices::PreviewIndices, renderer_callback::RendererCallback,
+        extract_output::ExtractOutput,
+        group::{Group, Groups},
+        output_clear::OutputClear,
+        preview::Preview,
+        preview_indices::PreviewIndices,
+        renderer_callback::RendererCallback,
+        transition::{Transition, TransitionGoal},
     },
-    storage::asset_id::AssetId,
+    storage::{
+        asset::{Asset, palette::Palette, scene::Scene},
+        asset_id::AssetId,
+    },
     ui::windows::channel_overwrites::ChannelOverwrites,
     wgpu_render_state,
 };
-use deck::{Deck, DeckPath};
+use rand::seq::IndexedMutRandom;
 use render_deactivated_scenes::RenderDeactivatedScenes;
 use scene_instance_path::SceneInstancePath;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, iter::once, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashSet},
+    time::{Duration, Instant},
+};
 use wgpu::CommandEncoderDescriptor;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(default)]
 pub struct Project {
-    a: Deck,
-    b: Deck,
-    c: Deck,
-    /// 0.0 = A, 0.5 = A + B, 1.0 = B
-    pub cross_fader: f32,
+    pub palette: Option<AssetId<Palette>>,
+    pub auto_mode_active: bool,
+    pub auto_mode_seconds: u64,
+    pub auto_mode_max_scenes: usize,
+    #[serde(deserialize_with = "deserialize_groups")]
+    pub groups: Groups,
+    pub scenes_instances_grid: Vec<SceneInstance>,
+    pub scenes_instances_quick: Vec<SceneInstance>,
+
+    #[serde(skip)]
+    pub auto_mode_last_change: Option<Instant>,
     pub svg: Option<Svg>,
     pub channel_overwrites: ChannelOverwrites,
     pub output_routings: OutputRoutings,
@@ -50,10 +66,14 @@ pub struct Project {
 impl Default for Project {
     fn default() -> Self {
         Self {
-            a: Default::default(),
-            b: Default::default(),
-            c: Default::default(),
-            cross_fader: Default::default(),
+            palette: None,
+            auto_mode_active: false,
+            auto_mode_seconds: 10,
+            auto_mode_max_scenes: 2,
+            groups: Groups::default(),
+            scenes_instances_grid: Vec::new(),
+            scenes_instances_quick: Vec::new(),
+            auto_mode_last_change: None,
             svg: Default::default(),
             channel_overwrites: Default::default(),
             output_routings: Default::default(),
@@ -72,20 +92,41 @@ impl Default for Project {
     }
 }
 
-impl Project {
-    #[inline(always)]
-    pub fn decks(&mut self) -> impl Iterator<Item = (SceneInstancePath, &mut Deck)> {
-        once((SceneInstancePath::DECK_A, &mut self.a))
-            .chain(once((SceneInstancePath::DECK_B, &mut self.b)))
-            .chain(once((SceneInstancePath::DECK_C, &mut self.c)))
-    }
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DeckPath {
+    #[default]
+    Grid,
+    Quick,
+}
 
+impl Project {
     #[inline(always)]
     pub fn all_scene_instances(
         &mut self,
     ) -> impl Iterator<Item = (SceneInstancePath, &mut SceneInstance)> {
-        self.decks()
-            .flat_map(|(path, deck)| deck.scene_instances(path))
+        self.scenes_instances_grid
+            .iter_mut()
+            .enumerate()
+            .map(|(scene_instance, si)| {
+                (
+                    SceneInstancePath {
+                        deck_path: DeckPath::Grid,
+                        scene_instance,
+                    },
+                    si,
+                )
+            })
+            .chain(self.scenes_instances_quick.iter_mut().enumerate().map(
+                |(scene_instance, si)| {
+                    (
+                        SceneInstancePath {
+                            deck_path: DeckPath::Quick,
+                            scene_instance,
+                        },
+                        si,
+                    )
+                },
+            ))
     }
 
     pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
@@ -119,17 +160,11 @@ impl Project {
     }
 
     #[inline(always)]
-    pub fn deck(&mut self, path: SceneInstancePath) -> &mut Deck {
-        match path.deck_path {
-            DeckPath::A => &mut self.a,
-            DeckPath::B => &mut self.b,
-            DeckPath::C => &mut self.c,
-        }
-    }
-
-    #[inline(always)]
     pub fn scene_instance(&mut self, path: SceneInstancePath) -> Option<&mut SceneInstance> {
-        self.deck(path).scene_instance(path)
+        match path.deck_path {
+            DeckPath::Grid => self.scenes_instances_grid.get_mut(path.scene_instance),
+            DeckPath::Quick => self.scenes_instances_quick.get_mut(path.scene_instance),
+        }
     }
 
     #[inline(always)]
@@ -137,14 +172,33 @@ impl Project {
         &mut self,
         path: SceneInstancePath,
     ) -> impl Iterator<Item = (SceneInstancePath, &mut SceneInstance)> {
-        self.deck(path).scene_instances(path)
+        let scene_instances = match path.deck_path {
+            DeckPath::Grid => &mut self.scenes_instances_grid,
+            DeckPath::Quick => &mut self.scenes_instances_quick,
+        };
+        scene_instances
+            .iter_mut()
+            .enumerate()
+            .map(move |(scene_instance, si)| {
+                (
+                    SceneInstancePath {
+                        deck_path: path.deck_path,
+                        scene_instance,
+                    },
+                    si,
+                )
+            })
     }
 
     /// Remove scene instance at path and update path to the next scene instance
     pub fn remove_scene_instance(&mut self, path: &mut SceneInstancePath) {
-        self.deck(*path)
-            .scenes_instances
-            .remove(path.scene_instance);
+        let scene_instances = match path.deck_path {
+            DeckPath::Grid => &mut self.scenes_instances_grid,
+            DeckPath::Quick => &mut self.scenes_instances_quick,
+        };
+        if path.scene_instance < scene_instances.len() {
+            scene_instances.remove(path.scene_instance);
+        }
 
         while path.scene_instance > 0 {
             if self.scene_instance(*path).is_some() {
@@ -166,30 +220,71 @@ impl Project {
         let device = wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
 
-        self.a.prepare(
-            SceneInstancePath::DECK_A,
-            queue,
-            timing,
-            render_deactivated_scenes,
-            fade_duration,
-            self.main_dimmer * (1.0 - self.cross_fader),
-        );
-        self.b.prepare(
-            SceneInstancePath::DECK_B,
-            queue,
-            timing,
-            render_deactivated_scenes,
-            fade_duration,
-            self.main_dimmer * self.cross_fader,
-        );
-        self.c.prepare(
-            SceneInstancePath::DECK_C,
-            queue,
-            timing,
-            render_deactivated_scenes,
-            fade_duration,
-            self.main_dimmer,
-        );
+        if self.auto_mode_active {
+            if self
+                .auto_mode_last_change
+                .get_or_insert_with(Instant::now)
+                .elapsed()
+                .as_secs()
+                > self.auto_mode_seconds
+            {
+                let auto_mode_max_scenes = self.auto_mode_max_scenes;
+                let mut prev = HashSet::new();
+                {
+                    let mut indices = self
+                        .scenes_instances_grid
+                        .iter()
+                        .enumerate()
+                        .filter(|(_index, scene)| scene.active)
+                        .map(|(index, _scene)| index)
+                        .collect::<Vec<_>>();
+
+                    let mut disable_count =
+                        (indices.len() + 1).saturating_sub(auto_mode_max_scenes);
+                    while disable_count > 0 {
+                        if let Some(index) = indices.choose_mut(&mut rand::rng()).copied() {
+                            if prev.insert(index) {
+                                disable_count -= 1;
+                                if let Some(scene) = self.scenes_instances_grid.get_mut(index) {
+                                    scene.set_transition(Transition::new(
+                                        TransitionGoal::TurnOff,
+                                        fade_duration,
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let mut scenes = self
+                    .scenes_instances_grid
+                    .iter_mut()
+                    .enumerate()
+                    .filter(|(index, _scene)| !prev.contains(index))
+                    .collect::<Vec<_>>();
+                if let Some((_index, scene)) = scenes.choose_mut(&mut rand::rng()) {
+                    scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
+                }
+
+                self.auto_mode_last_change.take();
+            }
+        } else {
+            self.auto_mode_last_change.take();
+        }
+
+        let palette = self.palette.and_then(Asset::get);
+        let deck_groups = self.groups.clone();
+        let main_dimmer = self.main_dimmer;
+        for (path, scene_instance) in self.all_scene_instances() {
+            scene_instance.prepare(
+                queue,
+                render_deactivated_scenes.should_render(path),
+                palette.clone(),
+                &deck_groups,
+                timing,
+                main_dimmer,
+            );
+        }
 
         PreviewIndices::get().prepare(queue);
 
@@ -199,9 +294,13 @@ impl Project {
 
         OutputClear::get().run(&mut encoder);
 
-        self.decks().for_each(|(path, deck)| {
-            deck.render(path, &mut encoder, blackout, render_deactivated_scenes)
-        });
+        for (path, scene_instance) in self.all_scene_instances() {
+            scene_instance.render(
+                &mut encoder,
+                blackout,
+                render_deactivated_scenes.should_render(path),
+            );
+        }
 
         ExtractOutput::get().run(&mut encoder);
         PreviewIndices::get().run(&mut encoder);
@@ -234,10 +333,23 @@ impl Project {
         self.double_input_events.iter().any(|event| event.is_new())
     }
 
+    pub fn add_scene(&mut self, path: &mut SceneInstancePath, scene: AssetId<Scene>) {
+        let mut scene_instance: SceneInstance = scene.into();
+        scene_instance.init_states();
+
+        let scene_instances = match path.deck_path {
+            DeckPath::Grid => &mut self.scenes_instances_grid,
+            DeckPath::Quick => &mut self.scenes_instances_quick,
+        };
+        scene_instances.push(scene_instance);
+        path.scene_instance = scene_instances.len() - 1;
+    }
+
     pub fn remove_nonexistant_groups(&mut self) {
-        self.decks().for_each(|(_, deck)| {
-            deck.remove_nonexistant_groups();
-        });
+        self.groups.remove_nonexistant_groups();
+        for (_path, scene_instance) in self.all_scene_instances() {
+            scene_instance.remove_nonexistant_groups();
+        }
     }
 }
 
@@ -245,4 +357,17 @@ impl AssetTrait for Project {
     const DIR_NAME: &'static str = "projects";
     const NAME: &'static str = "Project";
     const SHOW_NAME_IF_SELECTED: bool = true;
+}
+
+fn deserialize_groups<'de, D>(deserializer: D) -> Result<Groups, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    BTreeMap::<String, Group>::deserialize(deserializer).map(|map| {
+        Groups::new(
+            map.into_iter()
+                .filter_map(|(index, group)| index.parse().ok().map(|index| (index, group)))
+                .collect(),
+        )
+    })
 }

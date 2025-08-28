@@ -2,18 +2,10 @@ pub mod widget;
 
 use super::{ChangeButton, action::UiAction};
 use crate::storage::asset::scene::instance::SceneInstance;
-use egui::{Button, Checkbox, Color32, Margin, Modifiers, Rect, Vec2};
-use egui_tiles::UiResponse;
+use egui::{Button, Checkbox, Color32, Margin, Modifiers};
 
 impl SceneInstance {
-    pub fn config_ui(&mut self, ui: &mut egui::Ui) -> UiResponse {
-        let drag_button_rect = {
-            let mut pos = ui.next_widget_position();
-            pos.y += 2.0;
-            pos.x += ui.available_width() - 22.0;
-            Rect::from_min_size(pos, Vec2::splat(20.0))
-        };
-
+    pub fn config_ui(&mut self, ui: &mut egui::Ui) {
         let width = ui.available_width() - 20.0;
         ui.horizontal(|ui| {
             egui::Frame::NONE
@@ -95,17 +87,5 @@ impl SceneInstance {
                     }
                 });
             });
-
-        if ui
-            .put(
-                drag_button_rect,
-                egui::Button::new("✊").sense(egui::Sense::drag()),
-            )
-            .drag_started()
-        {
-            UiResponse::DragStarted
-        } else {
-            UiResponse::None
-        }
     }
 }
