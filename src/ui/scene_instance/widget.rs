@@ -51,7 +51,6 @@ impl Widget for SceneInstanceWidget<'_> {
             .inner_margin(Margin::from(10.0))
             .corner_radius(CornerRadius::from(4.0))
             .show(ui, |ui| {
-                ui.set_clip_rect(ui.max_rect());
                 egui::Frame::NONE
                     .fill(if self.scene_instance.flash {
                         Color32::WHITE
@@ -163,6 +162,7 @@ impl Widget for SceneInstanceWidget<'_> {
                                             Some((group.0.clone(), group.color()))
                                         })
                                         .collect();
+                                    ui.set_clip_rect(rect);
                                     show_pills(ui, rect.right_top() + Vec2::new(0.0, 5.0), texts);
                                 });
                             })

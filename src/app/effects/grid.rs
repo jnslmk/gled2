@@ -2,7 +2,7 @@ use super::App;
 use crate::{
     app::PersistantState,
     pipeline::transition::{Transition, TransitionGoal},
-    storage::asset::project::DeckPath,
+    storage::asset::project::{DeckPath, scene_instance_path::SceneInstancePathId},
     ui::scene_instance::widget::SceneInstanceWidget,
 };
 use egui::{Color32, Rect, TextureHandle, Ui, Vec2, scroll_area::ScrollBarVisibility};
@@ -52,7 +52,12 @@ impl App {
         let response = dnd(ui, deck_path).show_sized(
             scene_instances.iter_mut(),
             Vec2::new(effects_size + 40.0, effects_size + 60.0),
-            |ui, scene_instance, dnd_handle, _state| {
+            |ui, scene_instance, dnd_handle, state| {
+                if state.dragged {
+                    self.selected_scene_instance =
+                        SceneInstancePathId::new(deck_path, scene_instance.id);
+                }
+
                 let response = ui.add(SceneInstanceWidget {
                     selected_scene_instance: &mut self.selected_scene_instance,
                     deck_path,
