@@ -59,6 +59,8 @@ impl SceneInstance {
                 self.groups.change_button(ui);
             });
 
+        ui.add_space(ui.available_height() - 100.0);
+
         egui::Frame::NONE
             .inner_margin(Margin::from(6.0))
             .show(ui, |ui| {
@@ -68,6 +70,15 @@ impl SceneInstance {
                         .clicked()
                     {
                         UiAction::CloneSelectedSceneInstance.enqueue();
+                    }
+                });
+
+                ui.vertical_centered_justified(|ui| {
+                    if ui
+                        .add(Button::new("↕ Move Scene to other Grid").fill(Color32::DARK_BLUE))
+                        .clicked()
+                    {
+                        UiAction::MoveSelectedSceneToOtherGrid.enqueue();
                     }
                 });
 
@@ -87,5 +98,7 @@ impl SceneInstance {
                     }
                 });
             });
+
+        ui.separator();
     }
 }

@@ -1,32 +1,29 @@
 use crate::storage::asset::project::DeckPath;
+use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SceneInstancePath {
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SceneInstancePathId {
     pub deck_path: DeckPath,
-    pub scene_instance: usize,
+    pub id: Uuid,
 }
 
-impl SceneInstancePath {
-    pub fn new(deck_path: DeckPath, scene_instance: usize) -> Self {
+impl SceneInstancePathId {
+    pub fn new(deck_path: DeckPath, uuid: Uuid) -> Self {
         Self {
             deck_path,
-            scene_instance,
+            id: uuid,
         }
     }
-
-    pub const GRID: Self = Self {
-        deck_path: DeckPath::Grid,
-        scene_instance: 0,
-    };
-
-    pub const QUICK: Self = Self {
-        deck_path: DeckPath::Quick,
-        scene_instance: 0,
-    };
 }
 
-impl Default for SceneInstancePath {
-    fn default() -> Self {
-        Self::GRID
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SceneInstancePathIndex {
+    pub deck_path: DeckPath,
+    pub index: usize,
+}
+
+impl SceneInstancePathIndex {
+    pub fn new(deck_path: DeckPath, index: usize) -> Self {
+        Self { deck_path, index }
     }
 }

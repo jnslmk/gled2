@@ -2,10 +2,11 @@ use super::App;
 use crate::{
     app::PersistantState,
     pipeline::transition::{Transition, TransitionGoal},
-    storage::asset::project::scene_instance_path::SceneInstancePath,
+    storage::asset::project::DeckPath,
     ui::scene_instance::widget::SceneInstanceWidget,
 };
 use egui::{Color32, Rect, TextureHandle, Ui, Vec2, scroll_area::ScrollBarVisibility};
+use egui_dnd::dnd;
 
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>, uv: Option<Rect>) {
@@ -16,7 +17,7 @@ impl App {
             .show(ui, |ui| {
                 ui.set_max_width(ui.available_width() - 30.0);
                 ui.horizontal_wrapped(|ui| {
-                    self.widgets(ui, svg, uv, SceneInstancePath::GRID);
+                    self.widgets(ui, svg, uv, DeckPath::Grid);
                 });
             });
     }
@@ -29,7 +30,7 @@ impl App {
             .vscroll(false)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    self.widgets(ui, svg, uv, SceneInstancePath::QUICK);
+                    self.widgets(ui, svg, uv, DeckPath::Quick);
                 });
             });
     }
@@ -39,51 +40,51 @@ impl App {
         ui: &mut Ui,
         svg: Option<TextureHandle>,
         uv: Option<Rect>,
-        path: SceneInstancePath,
+        deck_path: DeckPath,
     ) {
         let Some(project) = self.project.as_mut() else {
             return;
         };
         let effects_size = PersistantState::effects_size();
-        let mut changed = None;
         let groups = project.groups.clone();
-        for (path, scene_instance) in project.scene_instances(path) {
-            let response = ui.add_sized(
-                Vec2::new(effects_size + 40.0, effects_size + 60.0),
-                SceneInstanceWidget {
+
+        let scene_instances = project.scene_instances(deck_path);
+        let response = dnd(ui, deck_path).show_sized(
+            scene_instances.iter_mut(),
+            Vec2::new(effects_size + 40.0, effects_size + 60.0),
+            |ui, scene_instance, dnd_handle, _state| {
+                let response = ui.add(SceneInstanceWidget {
                     selected_scene_instance: &mut self.selected_scene_instance,
-                    hovered_scene_instance: &mut self.hovered_scene_instance,
-                    path,
+                    deck_path,
                     scene_instance,
+                    dnd_handle,
                     svg: svg.clone(),
                     effects_size,
                     live_color: Color32::DARK_GREEN,
                     uv,
                     groups: &groups,
-                },
-            );
-            if response.changed()
-                || scene_instance
-                    .activation_input
-                    .as_ref()
-                    .map(|event| event.is_new())
-                    .unwrap_or_default()
-            {
-                changed = Some(path);
-            }
-        }
+                });
+                if response.changed()
+                    || scene_instance
+                        .activation_input
+                        .as_ref()
+                        .map(|event| event.is_new())
+                        .unwrap_or_default()
+                {
+                    scene_instance.set_transition(Transition::new(
+                        if scene_instance.active {
+                            TransitionGoal::TurnOff
+                        } else {
+                            TransitionGoal::TurnOn
+                        },
+                        self.timing.fade_duration(),
+                    ));
+                }
+            },
+        );
 
-        if let Some(changed_path) = changed {
-            if let Some(scene_instance) = project.scene_instance(changed_path) {
-                scene_instance.set_transition(Transition::new(
-                    if scene_instance.active {
-                        TransitionGoal::TurnOff
-                    } else {
-                        TransitionGoal::TurnOn
-                    },
-                    self.timing.fade_duration(),
-                ));
-            }
+        if response.is_drag_finished() {
+            response.update_vec(scene_instances);
         }
     }
 }

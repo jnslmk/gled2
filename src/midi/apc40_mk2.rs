@@ -1,12 +1,11 @@
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
 use super::state::MidiState;
 use crate::{
-    storage::asset::project::{DeckPath, scene_instance_path::SceneInstancePath},
+    storage::asset::project::{DeckPath, scene_instance_path::SceneInstancePathIndex},
     ui::action::UiAction,
 };
 use crossbeam_channel::Receiver;
 use midir::MidiOutputConnection;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub fn handle_input(_stamp: u64, message: &[u8]) {
     if message.len() != 3 {
@@ -31,14 +30,14 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
                 36..40 => data1 as usize - 16,
                 _ => unreachable!(),
             };
-            UiAction::ToggleSceneActive(SceneInstancePath::new(DeckPath::Grid, index))
+            UiAction::ToggleSceneActive(SceneInstancePathIndex::new(DeckPath::Grid, index))
         }
         (128..136, 48 | 52, _) => UiAction::SetSceneActive(
-            SceneInstancePath::new(DeckPath::Quick, status as usize - 128),
+            SceneInstancePathIndex::new(DeckPath::Quick, status as usize - 128),
             false,
         ),
         (144..152, 48 | 52, 127) => UiAction::SetSceneActive(
-            SceneInstancePath::new(DeckPath::Quick, status as usize - 144),
+            SceneInstancePathIndex::new(DeckPath::Quick, status as usize - 144),
             true,
         ),
         (144, 91, 127) => UiAction::SetBlackout(false),
@@ -54,7 +53,7 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
         }
         (176, 14, value) => UiAction::SetMainDimmer(f32::from(value) / 127.0),
         (176..184, 7, value) => UiAction::SetSceneOpacity(
-            SceneInstancePath::new(DeckPath::Quick, status as usize - 176),
+            SceneInstancePathIndex::new(DeckPath::Quick, status as usize - 176),
             f32::from(value) / 127.0,
         ),
         (144, 100 | 101, 127) => UiAction::SpeedMultiply(match data1 {
@@ -113,29 +112,29 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
         }
 
         for path in { 0..40 }
-            .map(|index| SceneInstancePath::new(DeckPath::Grid, index))
-            .chain({ 0..8 }.map(|index| SceneInstancePath::new(DeckPath::Quick, index)))
+            .map(|index| SceneInstancePathIndex::new(DeckPath::Grid, index))
+            .chain({ 0..8 }.map(|index| SceneInstancePathIndex::new(DeckPath::Quick, index)))
         {
             let active = state.active_scenes.contains(&path);
             let value = match (path.deck_path, active) {
                 (DeckPath::Grid, true) => 30,
-                (DeckPath::Grid, false) if state.available_scenes_grid > path.scene_instance => 11,
+                (DeckPath::Grid, false) if state.available_scenes_grid > path.index => 11,
                 (DeckPath::Quick, true) => 30,
                 _ => 0,
             };
 
-            let message = match (path.deck_path, path.scene_instance) {
-                (DeckPath::Grid, 0..4) => [0x90, path.scene_instance as u8 + 32, value, 127],
-                (DeckPath::Grid, 4..8) => [0x90, path.scene_instance as u8 + 20, value, 127],
-                (DeckPath::Grid, 8..12) => [0x90, path.scene_instance as u8 + 8, value, 127],
-                (DeckPath::Grid, 12..16) => [0x90, path.scene_instance as u8 + 4, value, 127],
-                (DeckPath::Grid, 16..20) => [0x90, path.scene_instance as u8 - 16, value, 127],
-                (DeckPath::Grid, 20..24) => [0x90, path.scene_instance as u8 + 16, value, 127],
-                (DeckPath::Grid, 24..28) => [0x90, path.scene_instance as u8 + 4, value, 127],
-                (DeckPath::Grid, 28..32) => [0x90, path.scene_instance as u8 - 8, value, 127],
-                (DeckPath::Grid, 32..36) => [0x90, path.scene_instance as u8 - 20, value, 127],
-                (DeckPath::Grid, 36..40) => [0x90, path.scene_instance as u8 - 32, value, 127],
-                (DeckPath::Quick, _) => [0x90 + path.scene_instance as u8, 48, value, 127],
+            let message = match (path.deck_path, path.index) {
+                (DeckPath::Grid, 0..4) => [0x90, path.index as u8 + 32, value, 127],
+                (DeckPath::Grid, 4..8) => [0x90, path.index as u8 + 20, value, 127],
+                (DeckPath::Grid, 8..12) => [0x90, path.index as u8 + 8, value, 127],
+                (DeckPath::Grid, 12..16) => [0x90, path.index as u8 + 4, value, 127],
+                (DeckPath::Grid, 16..20) => [0x90, path.index as u8 - 16, value, 127],
+                (DeckPath::Grid, 20..24) => [0x90, path.index as u8 + 16, value, 127],
+                (DeckPath::Grid, 24..28) => [0x90, path.index as u8 + 4, value, 127],
+                (DeckPath::Grid, 28..32) => [0x90, path.index as u8 - 8, value, 127],
+                (DeckPath::Grid, 32..36) => [0x90, path.index as u8 - 20, value, 127],
+                (DeckPath::Grid, 36..40) => [0x90, path.index as u8 - 32, value, 127],
+                (DeckPath::Quick, _) => [0x90 + path.index as u8, 48, value, 127],
                 _ => unreachable!(),
             };
             if let Err(err) = connection.send(&message) {

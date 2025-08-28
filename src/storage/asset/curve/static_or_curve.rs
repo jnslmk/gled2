@@ -42,7 +42,7 @@ impl<R: Range> StaticOrCurve<R> {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
 pub struct RangePercentage;
 impl Range for RangePercentage {
     const MAX: f32 = 1.0;
@@ -51,7 +51,7 @@ impl Range for RangePercentage {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
 pub struct RangeDegrees;
 impl Range for RangeDegrees {
     const MAX: f32 = 360.0;

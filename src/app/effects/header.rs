@@ -1,10 +1,7 @@
 use super::App;
 use crate::{
     storage::{
-        asset::{
-            project::{DeckPath, scene_instance_path::SceneInstancePath},
-            scene::Scene,
-        },
+        asset::{project::DeckPath, scene::Scene},
         asset_id::AssetId,
     },
     ui::ChangeButton,
@@ -12,7 +9,7 @@ use crate::{
 use egui::{Slider, Ui};
 
 impl App {
-    pub fn effects_header(&mut self, ui: &mut Ui, path: SceneInstancePath) {
+    pub fn effects_header(&mut self, ui: &mut Ui, deck_path: DeckPath) {
         let Some(project) = self.project.as_mut() else {
             return;
         };
@@ -22,12 +19,11 @@ impl App {
             let mut scene: Option<AssetId<Scene>> = None;
             scene.change_button(ui);
             if let Some(scene) = scene {
-                self.selected_scene_instance = path;
-                project.add_scene(&mut self.selected_scene_instance, scene);
+                self.selected_scene_instance = project.add_scene(deck_path, scene);
                 init_gpu = true;
             }
 
-            if path.deck_path == DeckPath::Grid {
+            if deck_path == DeckPath::Grid {
                 ui.menu_button(
                     if project.auto_mode_active {
                         "💂Automatic"

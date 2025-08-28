@@ -21,10 +21,7 @@ use crate::{
     storage::{
         asset::{
             Asset,
-            project::{
-                Project, render_deactivated_scenes::RenderDeactivatedScenes,
-                scene_instance_path::SceneInstancePath,
-            },
+            project::{DeckPath, Project, scene_instance_path::SceneInstancePathId},
         },
         asset_id::AssetId,
         loading,
@@ -53,8 +50,7 @@ pub struct App {
     pub other_main_windows: HashSet<ViewportId>,
     pub blackout: bool,
     pub blackout_hold: bool,
-    pub selected_scene_instance: SceneInstancePath,
-    pub hovered_scene_instance: SceneInstancePath,
+    pub selected_scene_instance: SceneInstancePathId,
     pub git_commit_message: String,
     pub ui_action_receiver: Receiver<UiAction>,
     pub last_title_update: u64,
@@ -112,12 +108,9 @@ impl eframe::App for App {
                             > 1.0 / PersistantState::always_render_fps()
                 } {
                     self.last_always_render_fps_frame = Instant::now();
-                    RenderDeactivatedScenes::Always
+                    true
                 } else {
-                    RenderDeactivatedScenes::Some(
-                        self.selected_scene_instance,
-                        self.hovered_scene_instance,
-                    )
+                    false
                 },
                 self.timing.fade_duration(),
             );
@@ -132,7 +125,7 @@ impl eframe::App for App {
                     .as_mut()
                     .map_or_else(Default::default, |project| {
                         project
-                            .all_scene_instances()
+                            .all_scene_instances_index()
                             .filter_map(
                                 |(path, scene)| if scene.active { Some(path) } else { None },
                             )
@@ -205,7 +198,7 @@ impl App {
                 egui::TopBottomPanel::bottom("scenes_quick")
                     .resizable(false)
                     .exact_height(PersistantState::effects_size() + 80.0)
-                    .show_inside(&mut ui, |ui| self.scenes(ui, SceneInstancePath::QUICK));
+                    .show_inside(&mut ui, |ui| self.scenes(ui, DeckPath::Quick));
                 egui::SidePanel::left("config")
                     .resizable(false)
                     .exact_width(400.0)
@@ -215,7 +208,7 @@ impl App {
                     .default_height(150.0)
                     .show_inside(&mut ui, |ui| self.preview(ui));
                 egui::CentralPanel::default()
-                    .show_inside(&mut ui, |ui| self.scenes(ui, SceneInstancePath::GRID));
+                    .show_inside(&mut ui, |ui| self.scenes(ui, DeckPath::Grid));
             } else {
                 self.no_project(&mut ui);
             }
@@ -234,7 +227,6 @@ impl App {
             blackout: true,
             blackout_hold: false,
             selected_scene_instance: Default::default(),
-            hovered_scene_instance: Default::default(),
             project: Default::default(),
             project_id: Default::default(),
             windows: Default::default(),

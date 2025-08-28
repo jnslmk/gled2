@@ -1,5 +1,5 @@
 use crate::{
-    storage::asset::project::{Project, scene_instance_path::SceneInstancePath},
+    storage::asset::project::{DeckPath, Project},
     ui::{
         action::UiAction,
         asset_tree::{AssetTree, TreeSelection},
@@ -50,17 +50,11 @@ impl ProjectsWindow {
                         if let TreeSelection::Asset(project) = self.tree.selected() {
                             ui.label(format!(
                                 "Scenes in Grid: {}",
-                                project
-                                    .data
-                                    .scene_instances(SceneInstancePath::GRID)
-                                    .count()
+                                project.data.scene_instances(DeckPath::Grid).len()
                             ));
                             ui.label(format!(
                                 "Scenes in Quick: {}",
-                                project
-                                    .data
-                                    .scene_instances(SceneInstancePath::QUICK)
-                                    .count()
+                                project.data.scene_instances(DeckPath::Quick).len()
                             ));
                             ui.vertical_centered_justified(|ui| {
                                 if ui.button("Load Project").clicked() {

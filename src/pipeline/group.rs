@@ -6,7 +6,7 @@ use std::{
     fmt::Display,
 };
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
 #[serde(transparent)]
 pub struct Group(pub String);
 
@@ -46,7 +46,7 @@ impl Display for Group {
 
 pub type GroupIndices = BTreeSet<usize>;
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct Groups(#[serde(deserialize_with = "deserialize_groups")] BTreeMap<usize, Group>);
 
 impl Groups {

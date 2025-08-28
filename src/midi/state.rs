@@ -1,4 +1,4 @@
-use crate::storage::asset::project::scene_instance_path::SceneInstancePath;
+use crate::storage::asset::project::scene_instance_path::SceneInstancePathIndex;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use egui::mutex::Mutex;
 use once_cell::sync::{Lazy, OnceCell};
@@ -12,7 +12,7 @@ static SENDERS: Lazy<Mutex<Vec<Sender<MidiState>>>> = Lazy::new(|| Mutex::new(Ve
 pub struct MidiState {
     pub blackout: bool,
     pub beat_flank: u8,
-    pub active_scenes: HashSet<SceneInstancePath>,
+    pub active_scenes: HashSet<SceneInstancePathIndex>,
     pub available_scenes_grid: usize,
     pub available_scenes_quick: usize,
 }

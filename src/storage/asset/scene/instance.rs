@@ -14,12 +14,17 @@ use crate::{
     },
 };
 use egui::TextureId;
+use egui_dnd::DragDropItem;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use uuid::Uuid;
 use wgpu::{CommandEncoder, Queue};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SceneInstance {
+    #[serde(default = "Uuid::new_v4")]
+    pub id: Uuid,
+
     #[serde(default)]
     pub active: bool,
     #[serde(default)]
@@ -55,6 +60,7 @@ pub struct SceneInstance {
 impl Clone for SceneInstance {
     fn clone(&self) -> Self {
         Self {
+            id: self.id,
             active: self.active,
             opacity: self.opacity,
             input_dimmer: self.input_dimmer,
@@ -73,10 +79,17 @@ impl Clone for SceneInstance {
     }
 }
 
+impl DragDropItem for &mut SceneInstance {
+    fn id(&self) -> egui::Id {
+        egui::Id::new(self.id)
+    }
+}
+
 impl From<AssetId<Scene>> for SceneInstance {
     fn from(scene: AssetId<Scene>) -> Self {
         Self {
             scene,
+            id: Uuid::new_v4(),
             active: Default::default(),
             opacity: StaticOrCurve::new_static(1.0),
             input_dimmer: 1.0,
@@ -229,5 +242,9 @@ impl SceneInstance {
         if let Some(groups) = self.groups.as_mut() {
             groups.remove_nonexistant_groups();
         }
+    }
+
+    pub fn set_new_id(&mut self) {
+        self.id = Uuid::new_v4();
     }
 }

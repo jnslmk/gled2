@@ -1,7 +1,9 @@
 use crate::{
     pipeline::group::Groups,
     storage::asset::{
-        Asset, project::scene_instance_path::SceneInstancePath, scene::instance::SceneInstance,
+        Asset,
+        project::{DeckPath, scene_instance_path::SceneInstancePathId},
+        scene::instance::SceneInstance,
     },
     ui::pills::show_pills,
 };
@@ -12,11 +14,11 @@ use egui::{
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct SceneInstanceWidget<'a> {
-    pub selected_scene_instance: &'a mut SceneInstancePath,
-    pub hovered_scene_instance: &'a mut SceneInstancePath,
-    pub path: SceneInstancePath,
+    pub selected_scene_instance: &'a mut SceneInstancePathId,
+    pub deck_path: DeckPath,
     pub scene_instance: &'a mut SceneInstance,
     pub groups: &'a Groups,
+    pub dnd_handle: egui_dnd::Handle<'a>,
     pub svg: Option<TextureHandle>,
     pub effects_size: f32,
     pub live_color: Color32,
@@ -26,9 +28,13 @@ pub struct SceneInstanceWidget<'a> {
 impl Widget for SceneInstanceWidget<'_> {
     fn ui(self, ui: &mut Ui) -> egui::Response {
         let mut checkbox_rect = None;
+        let path = SceneInstancePathId {
+            deck_path: self.deck_path,
+            id: self.scene_instance.id,
+        };
 
         let mut response = egui::Frame::NONE
-            .fill(if *self.selected_scene_instance == self.path {
+            .fill(if *self.selected_scene_instance == path {
                 Color32::GOLD.linear_multiply(
                     ((SystemTime::now()
                         .duration_since(UNIX_EPOCH)
@@ -45,6 +51,7 @@ impl Widget for SceneInstanceWidget<'_> {
             .inner_margin(Margin::from(10.0))
             .corner_radius(CornerRadius::from(4.0))
             .show(ui, |ui| {
+                ui.set_clip_rect(ui.max_rect());
                 egui::Frame::NONE
                     .fill(if self.scene_instance.flash {
                         Color32::WHITE
@@ -102,58 +109,63 @@ impl Widget for SceneInstanceWidget<'_> {
                                 });
                             });
 
-                            ui.horizontal(|ui| {
-                                let rect = Rect::from_min_size(ui.next_widget_position(), size);
-                                ui.allocate_rect(rect, Sense::hover());
-                                ui.painter().add(Shape::Rect(RectShape::filled(
-                                    rect,
-                                    CornerRadius::default(),
-                                    Color32::BLACK,
-                                )));
+                            self.dnd_handle.ui(ui, |ui| {
+                                ui.scope(|ui| {
+                                    let rect = Rect::from_min_size(ui.next_widget_position(), size);
+                                    ui.allocate_rect(rect, Sense::hover());
+                                    ui.painter().add(Shape::Rect(RectShape::filled(
+                                        rect,
+                                        CornerRadius::default(),
+                                        Color32::BLACK,
+                                    )));
 
-                                for texture_id in self.scene_instance.texture_ids() {
-                                    ui.painter().add(Shape::Rect(
-                                        RectShape::filled(
-                                            rect,
-                                            CornerRadius::default(),
-                                            Color32::WHITE,
-                                        )
-                                        .with_texture(
-                                            texture_id,
-                                            uv.unwrap_or_else(|| {
-                                                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0))
-                                            }),
-                                        ),
-                                    ));
-                                }
-
-                                if let Some(svg_texture_handle) = self.svg {
-                                    ui.put(rect, {
-                                        let mut image = Image::new(SizedTexture::new(
-                                            svg_texture_handle.id(),
-                                            size,
+                                    for texture_id in self.scene_instance.texture_ids() {
+                                        ui.painter().add(Shape::Rect(
+                                            RectShape::filled(
+                                                rect,
+                                                CornerRadius::default(),
+                                                Color32::WHITE,
+                                            )
+                                            .with_texture(
+                                                texture_id,
+                                                uv.unwrap_or_else(|| {
+                                                    Rect::from_min_max(
+                                                        pos2(0.0, 0.0),
+                                                        pos2(1.0, 1.0),
+                                                    )
+                                                }),
+                                            ),
                                         ));
-                                        if let Some(uv) = uv {
-                                            image = image.uv(uv);
-                                        }
-                                        image
-                                    });
-                                }
+                                    }
 
-                                let groups =
-                                    self.scene_instance.groups.as_ref().unwrap_or(self.groups);
+                                    if let Some(svg_texture_handle) = self.svg {
+                                        ui.put(rect, {
+                                            let mut image = Image::new(SizedTexture::new(
+                                                svg_texture_handle.id(),
+                                                size,
+                                            ));
+                                            if let Some(uv) = uv {
+                                                image = image.uv(uv);
+                                            }
+                                            image
+                                        });
+                                    }
 
-                                let texts = self
-                                    .scene_instance
-                                    .group_indices()
-                                    .into_iter()
-                                    .filter_map(|index| {
-                                        let group = groups.get(index)?;
-                                        Some((group.0.clone(), group.color()))
-                                    })
-                                    .collect();
-                                show_pills(ui, rect.right_top() + Vec2::new(0.0, 5.0), texts);
-                            });
+                                    let groups =
+                                        self.scene_instance.groups.as_ref().unwrap_or(self.groups);
+
+                                    let texts = self
+                                        .scene_instance
+                                        .group_indices()
+                                        .into_iter()
+                                        .filter_map(|index| {
+                                            let group = groups.get(index)?;
+                                            Some((group.0.clone(), group.color()))
+                                        })
+                                        .collect();
+                                    show_pills(ui, rect.right_top() + Vec2::new(0.0, 5.0), texts);
+                                });
+                            })
                         })
                     })
             })
@@ -161,10 +173,7 @@ impl Widget for SceneInstanceWidget<'_> {
 
         let res = ui.put(response.rect, Button::new("").fill(Color32::TRANSPARENT));
         if res.clicked() {
-            *self.selected_scene_instance = self.path;
-        }
-        if res.hovered() {
-            *self.hovered_scene_instance = self.path;
+            *self.selected_scene_instance = path;
         }
 
         if let Some(checkbox_rect) = checkbox_rect {
