@@ -1,7 +1,10 @@
 use super::{ChangeButton, asset_tree::AssetTree};
-use crate::storage::{
-    asset::{Asset, AssetTrait},
-    asset_id::AssetId,
+use crate::{
+    storage::{
+        asset::{Asset, AssetTrait},
+        asset_id::AssetId,
+    },
+    ui::OverwriteChangeButton,
 };
 use egui::{Ui, UiKind};
 use egui_ltreeview::TreeViewState;
@@ -42,4 +45,8 @@ impl<T: AssetTrait> ChangeButton for Option<AssetId<T>> {
 
         changed
     }
+}
+
+impl<T: AssetTrait> OverwriteChangeButton for Option<AssetId<T>> {
+    const NAME: &'static str = T::NAME;
 }

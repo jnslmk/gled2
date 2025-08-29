@@ -45,7 +45,9 @@ pub struct SceneInstance {
     pub dimmer_input: Option<InputEvent>,
     pub scene: AssetId<Scene>,
     #[serde(default)]
-    pub groups: Option<Groups>,
+    pub groups_overwrite: Option<Groups>,
+    #[serde(default)]
+    pub palette_overwrite: Option<Option<AssetId<Palette>>>,
 
     #[serde(skip)]
     effect_states: Vec<EffectState>,
@@ -71,7 +73,8 @@ impl Clone for SceneInstance {
             set_offset_on_flash: self.set_offset_on_flash,
             dimmer_input: self.dimmer_input,
             scene: self.scene,
-            groups: self.groups.clone(),
+            groups_overwrite: self.groups_overwrite.clone(),
+            palette_overwrite: self.palette_overwrite,
             effect_states: Default::default(),
             transition: Default::default(),
             flash: Default::default(),
@@ -102,7 +105,8 @@ impl From<AssetId<Scene>> for SceneInstance {
             effect_states: Default::default(),
             transition: Default::default(),
             flash: Default::default(),
-            groups: Default::default(),
+            groups_overwrite: Default::default(),
+            palette_overwrite: Default::default(),
         }
     }
 }
@@ -164,7 +168,11 @@ impl SceneInstance {
         }
 
         if always_render || self.active || self.flash {
-            let groups = self.groups.as_ref().unwrap_or(deck_groups);
+            let groups = self.groups_overwrite.as_ref().unwrap_or(deck_groups);
+            let palette = match self.palette_overwrite.as_ref() {
+                Some(id) => id.and_then(Asset::get),
+                None => palette,
+            };
             let main_opacity = if self.ignore_main_dimmer {
                 1.0
             } else {
@@ -176,7 +184,7 @@ impl SceneInstance {
                 scene.data.prepare(
                     &mut self.effect_states,
                     queue,
-                    palette.clone(),
+                    palette,
                     groups,
                     main_opacity,
                 );
@@ -239,7 +247,7 @@ impl SceneInstance {
     }
 
     pub fn remove_nonexistant_groups(&mut self) {
-        if let Some(groups) = self.groups.as_mut() {
+        if let Some(groups) = self.groups_overwrite.as_mut() {
             groups.remove_nonexistant_groups();
         }
     }

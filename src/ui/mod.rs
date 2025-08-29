@@ -29,3 +29,31 @@ impl ChangeButton for f32 {
         changed
     }
 }
+
+pub trait OverwriteChangeButton: Default + ChangeButton {
+    const NAME: &'static str;
+}
+
+// for overwrites
+impl<T: OverwriteChangeButton> ChangeButton for Option<T> {
+    fn change_button(&mut self, ui: &mut Ui) -> bool {
+        let mut changed = false;
+
+        let mut overwrite = self.is_some();
+        ui.checkbox(&mut overwrite, format!("Overwrite {}", T::NAME));
+        if self.is_none() && overwrite {
+            *self = Some(T::default());
+            changed = true;
+        } else if self.is_some() && !overwrite {
+            *self = None;
+            changed = true;
+        }
+        if let Some(asset_id) = self {
+            ui.vertical_centered_justified(|ui| {
+                changed |= asset_id.change_button(ui);
+            });
+        }
+
+        changed
+    }
+}

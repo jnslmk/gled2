@@ -2,10 +2,49 @@ pub mod widget;
 
 use super::{ChangeButton, action::UiAction};
 use crate::storage::asset::scene::instance::SceneInstance;
-use egui::{Button, Checkbox, Color32, Margin, Modifiers};
+use egui::{Button, Checkbox, Color32, Frame, Margin, Modifiers, TopBottomPanel};
 
 impl SceneInstance {
     pub fn config_ui(&mut self, ui: &mut egui::Ui) {
+        TopBottomPanel::bottom("Scene Instance action buttons")
+            .resizable(false)
+            .frame(Frame::NONE.inner_margin(Margin::from(6.0)))
+            .show_inside(ui, |ui| {
+                ui.vertical_centered_justified(|ui| {
+                    if ui
+                        .add(Button::new("🗐 Duplicate Scene").fill(Color32::DARK_BLUE))
+                        .clicked()
+                    {
+                        UiAction::CloneSelectedSceneInstance.enqueue();
+                    }
+                });
+
+                ui.vertical_centered_justified(|ui| {
+                    if ui
+                        .add(Button::new("↕ Move Scene to other Grid").fill(Color32::DARK_BLUE))
+                        .clicked()
+                    {
+                        UiAction::MoveSelectedSceneToOtherGrid.enqueue();
+                    }
+                });
+
+                ui.vertical_centered_justified(|ui| {
+                    if ui
+                        .add(Button::new("🗑 Remove Scene").fill(Color32::DARK_RED))
+                        .clicked()
+                        || {
+                            !ui.ctx().wants_keyboard_input()
+                                && ui.ctx().input_mut(|i| {
+                                    i.consume_key(Modifiers::default(), egui::Key::Backspace)
+                                        || i.consume_key(Modifiers::default(), egui::Key::Delete)
+                                })
+                        }
+                    {
+                        UiAction::DeleteSelectedSceneInstance.enqueue();
+                    }
+                });
+            });
+
         let width = ui.available_width() - 20.0;
         ui.horizontal(|ui| {
             egui::Frame::NONE
@@ -56,49 +95,14 @@ impl SceneInstance {
             .inner_margin(Margin::from(6.0))
             .show(ui, |ui| {
                 ui.set_min_width(ui.available_width());
-                self.groups.change_button(ui);
+                self.groups_overwrite.change_button(ui);
             });
-
-        ui.add_space(ui.available_height() - 100.0);
 
         egui::Frame::NONE
             .inner_margin(Margin::from(6.0))
             .show(ui, |ui| {
-                ui.vertical_centered_justified(|ui| {
-                    if ui
-                        .add(Button::new("🗐 Duplicate Scene").fill(Color32::DARK_BLUE))
-                        .clicked()
-                    {
-                        UiAction::CloneSelectedSceneInstance.enqueue();
-                    }
-                });
-
-                ui.vertical_centered_justified(|ui| {
-                    if ui
-                        .add(Button::new("↕ Move Scene to other Grid").fill(Color32::DARK_BLUE))
-                        .clicked()
-                    {
-                        UiAction::MoveSelectedSceneToOtherGrid.enqueue();
-                    }
-                });
-
-                ui.vertical_centered_justified(|ui| {
-                    if ui
-                        .add(Button::new("🗑 Remove Scene").fill(Color32::DARK_RED))
-                        .clicked()
-                        || {
-                            !ui.ctx().wants_keyboard_input()
-                                && ui.ctx().input_mut(|i| {
-                                    i.consume_key(Modifiers::default(), egui::Key::Backspace)
-                                        || i.consume_key(Modifiers::default(), egui::Key::Delete)
-                                })
-                        }
-                    {
-                        UiAction::DeleteSelectedSceneInstance.enqueue();
-                    }
-                });
+                ui.set_min_width(ui.available_width());
+                self.palette_overwrite.change_button(ui);
             });
-
-        ui.separator();
     }
 }

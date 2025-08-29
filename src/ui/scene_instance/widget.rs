@@ -150,8 +150,11 @@ impl Widget for SceneInstanceWidget<'_> {
                                         });
                                     }
 
-                                    let groups =
-                                        self.scene_instance.groups.as_ref().unwrap_or(self.groups);
+                                    let groups = self
+                                        .scene_instance
+                                        .groups_overwrite
+                                        .as_ref()
+                                        .unwrap_or(self.groups);
 
                                     let texts = self
                                         .scene_instance

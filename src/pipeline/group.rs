@@ -1,4 +1,7 @@
-use crate::{app::svg::Svg, ui::ChangeButton};
+use crate::{
+    app::svg::Svg,
+    ui::{ChangeButton, OverwriteChangeButton},
+};
 use egui::{Button, Color32, RichText, Stroke, Ui, UiKind};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -67,27 +70,8 @@ impl Groups {
     }
 }
 
-impl ChangeButton for Option<Groups> {
-    fn change_button(&mut self, ui: &mut Ui) -> bool {
-        let mut changed = false;
-
-        let mut overwrite = self.is_some();
-        ui.checkbox(&mut overwrite, "Overwrite groups");
-        if self.is_none() && overwrite {
-            *self = Some(Groups::default());
-            changed = true;
-        } else if self.is_some() && !overwrite {
-            *self = None;
-            changed = true;
-        }
-        if let Some(groups) = self {
-            ui.vertical_centered_justified(|ui| {
-                changed |= groups.change_button(ui);
-            });
-        }
-
-        changed
-    }
+impl OverwriteChangeButton for Groups {
+    const NAME: &'static str = "Groups";
 }
 
 impl ChangeButton for Groups {

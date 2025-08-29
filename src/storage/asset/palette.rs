@@ -1,11 +1,10 @@
-use std::sync::Arc;
-
 use super::AssetTrait;
 use egui::{
     Color32, Mesh, Rect, Shape, Vec2,
     epaint::{Vertex, WHITE_UV},
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
