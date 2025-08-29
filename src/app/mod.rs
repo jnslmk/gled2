@@ -31,10 +31,7 @@ use crate::{
 use eframe::egui_wgpu::Callback;
 use egui::{CentralPanel, Rect, UiBuilder, ViewportId, ahash::HashSet};
 use persistant_state::PersistantState;
-use std::{
-    sync::mpsc::Receiver,
-    time::{Instant, SystemTime, UNIX_EPOCH},
-};
+use std::{sync::mpsc::Receiver, time::Instant};
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
 
@@ -53,7 +50,7 @@ pub struct App {
     pub selected_scene_instance: SceneInstancePathId,
     pub git_commit_message: String,
     pub ui_action_receiver: Receiver<UiAction>,
-    pub last_title_update: u64,
+    pub last_title: String,
     pub midi_output_active: bool,
 }
 
@@ -75,27 +72,16 @@ impl eframe::App for App {
         Input::tick();
         self.handle_ui_actions();
 
-        if SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-            != self.last_title_update
-        {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
-                "gled - {} {}",
-                match self.project_id.and_then(Asset::get) {
-                    None => "no project loaded".to_owned(),
-                    Some(project) => project.name().to_owned(),
-                },
-                match self.timing.framerate() {
-                    Some(fps) => format!("({fps:.1} fps)"),
-                    None => String::new(),
-                }
-            )));
-            self.last_title_update = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
+        let title = format!(
+            "gled - {}",
+            match self.project_id.and_then(Asset::get) {
+                None => "No project".to_string(),
+                Some(project) => project.name().to_string(),
+            }
+        );
+        if title != self.last_title {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
+            self.last_title = title;
         }
 
         if let Some(project) = &mut self.project {
@@ -233,7 +219,7 @@ impl App {
             other_main_windows: Default::default(),
             git_commit_message: Default::default(),
             ui_action_receiver,
-            last_title_update: 0,
+            last_title: Default::default(),
             midi_output_active: false,
         };
 
