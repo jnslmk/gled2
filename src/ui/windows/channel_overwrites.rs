@@ -4,7 +4,7 @@ use crate::{
         asset::{output_device::OutputDevice, Asset},
         asset_id::AssetId,
     },
-    ui::{viewport_builder::default_viewport_builder, windows::{channel_overwrites, window_decorations::gled_window_frame}, ChangeButton},
+    ui::{window_common::{default_viewport_builder, gled_window_frame}, windows::channel_overwrites, ChangeButton},
 };
 use egui::{
     Color32, ComboBox, Context, Id, Layout, RichText, Vec2, ViewportId, mutex::Mutex,

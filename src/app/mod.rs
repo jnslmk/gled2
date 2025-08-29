@@ -26,7 +26,7 @@ use crate::{
         asset_id::AssetId,
         loading,
     },
-    ui::{action::UiAction, viewport_builder::default_viewport_builder, windows::Windows},
+    ui::{action::UiAction, window_common::default_viewport_builder, windows::Windows},
 };
 use eframe::egui_wgpu::Callback;
 use egui::{CentralPanel, Rect, UiBuilder, ViewportId, ahash::HashSet};

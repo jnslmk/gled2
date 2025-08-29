@@ -1,4 +1,6 @@
+use crate::ui::logo::icon;
 use crate::ui::logo::logo_image;
+use egui::ViewportBuilder;
 use egui::{Image, Rect, Vec2, ViewportCommand};
 
 pub fn gled_window_frame(
@@ -127,4 +129,11 @@ pub fn window_buttons(ui: &mut egui::Ui) {
             ui.ctx().send_viewport_cmd(ViewportCommand::Maximized(true));
         }
     }
+}
+
+pub fn default_viewport_builder() -> ViewportBuilder {
+    ViewportBuilder::default()
+        .with_app_id("de.photonenkollektiv.gled")
+        .with_icon(icon())
+        .with_decorations(false)
 }

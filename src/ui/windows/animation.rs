@@ -11,8 +11,7 @@ use crate::{
         action::UiAction,
         asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
         effect::widget::EffectWidget,
-        viewport_builder::default_viewport_builder,
-        windows::window_decorations::gled_window_frame,
+        window_common::{default_viewport_builder, gled_window_frame},
     },
     wgpu_render_state,
 };

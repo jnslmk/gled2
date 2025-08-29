@@ -3,8 +3,8 @@ use crate::{
     pipeline::extract_output::ExtractOutput,
     storage::asset::{Asset, output_device::routing::OutputRouting},
     ui::{
-        ChangeButton, viewport_builder::default_viewport_builder,
-        windows::window_decorations::gled_window_frame,
+        ChangeButton,
+        window_common::{default_viewport_builder, gled_window_frame},
     },
 };
 use egui::{

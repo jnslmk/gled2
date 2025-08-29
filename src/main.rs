@@ -16,7 +16,7 @@ use input::Input;
 use once_cell::sync::Lazy;
 use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallback};
 use std::sync::OnceLock;
-use ui::{action::UiAction, viewport_builder::default_viewport_builder};
+use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
 
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();

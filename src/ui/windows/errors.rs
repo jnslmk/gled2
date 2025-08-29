@@ -1,6 +1,4 @@
-use crate::ui::{
-    viewport_builder::default_viewport_builder, windows::window_decorations::gled_window_frame,
-};
+use crate::ui::window_common::{default_viewport_builder, gled_window_frame};
 use egui::{Color32, Frame, Id, Layout, Vec2, ViewportId};
 
 #[derive(Default)]

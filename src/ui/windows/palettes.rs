@@ -2,8 +2,7 @@ use crate::{
     storage::asset::{Asset, palette::Palette},
     ui::{
         asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
-        viewport_builder::default_viewport_builder,
-        windows::window_decorations::gled_window_frame,
+        window_common::{default_viewport_builder, gled_window_frame},
     },
 };
 use egui::{Context, Id, Ui, Vec2, ViewportId};

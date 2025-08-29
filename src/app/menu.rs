@@ -4,9 +4,8 @@ use crate::{
     pipeline::extract_output::ExtractOutput,
     storage::{STORAGE_DIR, asset::Asset},
     ui::{
-        action::UiAction,
-        logo::logo_image,
-        windows::{channel_overwrites::ChannelOverwrites, window_decorations::window_buttons},
+        action::UiAction, logo::logo_image, window_common::window_buttons,
+        windows::channel_overwrites::ChannelOverwrites,
     },
 };
 use egui::{

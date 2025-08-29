@@ -1,8 +1,6 @@
 use crate::{
     input::artnet::ARTNET_CONFIG,
-    ui::{
-        viewport_builder::default_viewport_builder, windows::window_decorations::gled_window_frame,
-    },
+    ui::window_common::{default_viewport_builder, gled_window_frame},
 };
 use egui::{Context, Id, TextEdit, Vec2, ViewportId};
 

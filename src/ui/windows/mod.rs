@@ -14,7 +14,6 @@ pub mod palettes;
 pub mod projects;
 pub mod scenes;
 pub mod shortcuts;
-pub mod window_decorations;
 
 #[derive(Default)]
 pub struct Windows {

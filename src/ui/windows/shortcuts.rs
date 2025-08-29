@@ -1,8 +1,8 @@
 use crate::{
     storage::asset::project::Project,
     ui::{
-        ChangeButton, viewport_builder::default_viewport_builder,
-        windows::window_decorations::gled_window_frame,
+        ChangeButton,
+        window_common::{default_viewport_builder, gled_window_frame},
     },
 };
 use egui::{Context, Id, Vec2, ViewportId};

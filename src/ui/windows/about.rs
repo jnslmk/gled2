@@ -1,6 +1,6 @@
 use crate::ui::{
-    logo::logo_image, viewport_builder::default_viewport_builder,
-    windows::window_decorations::gled_window_frame,
+    logo::logo_image,
+    window_common::{default_viewport_builder, gled_window_frame},
 };
 use egui::{Id, Image, Layout, RichText, Vec2, ViewportId};
 
