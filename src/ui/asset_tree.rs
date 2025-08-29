@@ -7,7 +7,7 @@ use egui_flex::{Flex, item};
 use egui_ltreeview::{Action, DragAndDrop, NodeBuilder, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
-pub const TREE_WIDTH: f32 = 250.0;
+pub const TREE_WIDTH: f32 = 300.0;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TreeEntry<T: AssetTrait> {
@@ -103,7 +103,7 @@ impl<T: AssetTrait> TreeEntry<T> {
             TreeEntry::Asset(asset) => {
                 tree_ids.push(TreeId::File(asset.id));
                 builder.node(NodeBuilder::leaf(tree_ids.len() - 1).label_ui(|ui| {
-                    ui.add(Label::new(asset.name()).selectable(false));
+                    ui.add(Label::new(asset.name()).selectable(false).truncate());
 
                     let min = Pos2::new(
                         ui.next_widget_position().x + ui.available_width() - 150.0,
@@ -194,6 +194,7 @@ impl<T: AssetTrait> AssetTree<T> {
 
     /// Returns true if the selection has changed
     pub fn show(&mut self, ui: &mut Ui, id: Id) -> bool {
+        ui.set_clip_rect(ui.max_rect());
         let mut selection_changed = false;
         let entries = self.load();
         let mut tree_ids = vec![];
