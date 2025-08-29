@@ -164,6 +164,7 @@ impl ScenesWindow {
                                 let device = wgpu_render_state.device;
                                 let queue = &wgpu_render_state.queue;
                                 scene.data.prepare(
+                                    None,
                                     &mut self.effect_states,
                                     queue,
                                     PersistantState::get().preview_palette.and_then(Asset::get),

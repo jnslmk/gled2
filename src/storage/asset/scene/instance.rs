@@ -9,6 +9,7 @@ use crate::{
     storage::{
         Asset, AssetId,
         animation::Animation,
+        asset::scene::effect::Effect,
         curve::static_or_curve::{RangePercentage, StaticOrCurve},
         palette::Palette,
     },
@@ -16,7 +17,7 @@ use crate::{
 use egui::TextureId;
 use egui_dnd::DragDropItem;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
 use wgpu::{CommandEncoder, Queue};
 
@@ -48,9 +49,11 @@ pub struct SceneInstance {
     pub groups_overwrite: Option<Groups>,
     #[serde(default)]
     pub palette_overwrite: Option<Option<AssetId<Palette>>>,
+    #[serde(default)]
+    pub effect_overwrites: HashMap<usize, Effect>,
 
     #[serde(skip)]
-    effect_states: Vec<EffectState>,
+    pub effect_states: Vec<EffectState>,
 
     #[serde(skip)]
     transition: Option<Transition>,
@@ -75,6 +78,7 @@ impl Clone for SceneInstance {
             scene: self.scene,
             groups_overwrite: self.groups_overwrite.clone(),
             palette_overwrite: self.palette_overwrite,
+            effect_overwrites: self.effect_overwrites.clone(),
             effect_states: Default::default(),
             transition: Default::default(),
             flash: Default::default(),
@@ -107,6 +111,7 @@ impl From<AssetId<Scene>> for SceneInstance {
             flash: Default::default(),
             groups_overwrite: Default::default(),
             palette_overwrite: Default::default(),
+            effect_overwrites: Default::default(),
         }
     }
 }
@@ -182,6 +187,7 @@ impl SceneInstance {
                 * self.input_dimmer;
             if let Some(scene) = Asset::get(self.scene) {
                 scene.data.prepare(
+                    Some(&self.effect_overwrites),
                     &mut self.effect_states,
                     queue,
                     palette,

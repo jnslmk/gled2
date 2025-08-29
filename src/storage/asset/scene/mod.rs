@@ -12,12 +12,12 @@ use effect::Effect;
 use effect_state::EffectState;
 use egui::{Color32, Vec2};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use wgpu::{CommandEncoder, Queue};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 pub struct Scene {
-    effects: Vec<Effect>,
+    pub effects: Vec<Effect>,
 }
 
 impl Scene {
@@ -97,6 +97,7 @@ impl Scene {
 
     pub fn prepare(
         &self,
+        effect_overwrites: Option<&HashMap<usize, Effect>>,
         effect_states: &mut [EffectState],
         queue: &Queue,
         palette: Option<Arc<Asset<Palette>>>,
@@ -105,7 +106,17 @@ impl Scene {
     ) {
         debug_assert_eq!(effect_states.len(), self.effects.len());
 
-        for (effect, state) in self.effects.iter().zip(effect_states.iter_mut()) {
+        for (effect, state) in self
+            .effects
+            .iter()
+            .enumerate()
+            .map(|(index, effect)| {
+                effect_overwrites
+                    .and_then(|effect_overwrites| effect_overwrites.get(&index))
+                    .unwrap_or(effect)
+            })
+            .zip(effect_states.iter_mut())
+        {
             effect.prepare(state, queue, palette.clone(), groups, main_opacity);
         }
     }

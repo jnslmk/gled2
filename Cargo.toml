@@ -25,6 +25,7 @@ egui_dnd = "0.13"
 egui_extras = { version = "0.32", features = ["image", "syntect"] }
 egui_ltreeview = { version = "0.5", features = ["persistence"] }
 egui_flex = "0.4"
+egui-modal.git = "https://github.com/LinoBigatti/egui-modal"
 emath = "0.32"
 epaint = "0.32"
 env_logger = "0.11"

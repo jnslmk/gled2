@@ -167,6 +167,19 @@ impl Widget for SceneInstanceWidget<'_> {
                                         .collect();
                                     ui.set_clip_rect(rect);
                                     show_pills(ui, rect.right_top() + Vec2::new(0.0, 5.0), texts);
+
+                                    if !self.scene_instance.effect_overwrites.is_empty()
+                                        || self.scene_instance.groups_overwrite.is_some()
+                                        || self.scene_instance.palette_overwrite.is_some()
+                                    {
+                                        ui.put(
+                                            Rect::from_two_pos(
+                                                rect.left_bottom() + Vec2::new(3.0, -10.0),
+                                                rect.left_bottom() + Vec2::new(20.0, -20.0),
+                                            ),
+                                            Label::new("⚙"),
+                                        );
+                                    }
                                 });
                             })
                         })
