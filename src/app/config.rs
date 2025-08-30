@@ -1,10 +1,14 @@
-use crate::ui::{ChangeButton, action::UiAction};
+use crate::{
+    app::svg::Svg,
+    ui::{ChangeButton, action::UiAction},
+};
 
 use super::{App, timing::FadeMode};
 use egui::{CentralPanel, Color32, Margin, RichText, TopBottomPanel};
 
 impl App {
     pub fn config(&mut self, ui: &mut egui::Ui) {
+        let svg = self.svg_mut().and_then(|svg| svg.image(ui.ctx()));
         let Some(project) = self.project.as_mut() else {
             return;
         };
@@ -60,7 +64,10 @@ impl App {
             .frame(egui::Frame::NONE.inner_margin(Margin::from(4.0)))
             .show_inside(ui, |ui| {
                 match project.scene_instance(self.selected_scene_instance) {
-                    Some(scene_instance) => scene_instance.config_ui(ui),
+                    Some(scene_instance) => {
+                        let uv = Svg::preview_uv();
+                        scene_instance.config_ui(ui, svg, uv)
+                    }
                     None => {
                         ui.label("There's no Effect to configure.");
                     }

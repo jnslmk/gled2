@@ -3,12 +3,11 @@ pub mod variables;
 use super::{AnimationConfig, config::float_value::FloatValue};
 use crate::ui::ChangeButton;
 use egui::{
-    Button, Color32, ComboBox, CursorIcon, Image, Layout, Sense, TextureId, Ui, UiKind, Vec2,
-    load::SizedTexture,
+    Button, Color32, ComboBox, CursorIcon, Image, Layout, Sense, TextureHandle, TextureId, Ui,
+    UiKind, Vec2, load::SizedTexture,
 };
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, EnumIter, IntoEnumIterator};
-
 use variables::{Variables, VariablesCount};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -137,6 +136,8 @@ impl Argument {
         ui: &mut Ui,
         count: VariablesCount,
         rendered: TextureId,
+        svg: Option<TextureHandle>,
+        uv: Option<egui::Rect>,
     ) -> bool {
         let mut changed = false;
         ui.label(&self.name);
@@ -149,6 +150,19 @@ impl Argument {
                             Image::new(SizedTexture::new(rendered, Vec2::splat(size)))
                                 .sense(Sense::click()),
                         );
+                        if let Some(svg_texture_handle) = svg {
+                            ui.put(res.rect, {
+                                let mut image = Image::new(SizedTexture::new(
+                                    svg_texture_handle.id(),
+                                    Vec2::splat(size),
+                                ));
+                                if let Some(uv) = uv {
+                                    image = image.uv(uv);
+                                }
+                                image
+                            });
+                        }
+
                         if let Some(pos) =
                             res.hover_pos().map(|pos| pos - res.rect.min).filter(|pos| {
                                 pos.x > 0.0 || pos.y > 0.0 || pos.x < size || pos.y < size

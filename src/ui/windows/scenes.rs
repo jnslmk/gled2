@@ -77,7 +77,7 @@ impl ScenesWindow {
                                 scene.data.effect(self.selected_effect),
                                 self.effect_states.get_mut(self.selected_effect),
                             ) {
-                                self.dirty |= effect.config_ui(state, ui, true);
+                                self.dirty |= effect.config_ui(state, ui, true, None, None);
                             }
 
                             ui.separator();
@@ -206,6 +206,8 @@ impl ScenesWindow {
                                                         )),
                                                         effect,
                                                         effect_state,
+                                                        svg: None,
+                                                        uv: None,
                                                     },
                                                 );
                                             }

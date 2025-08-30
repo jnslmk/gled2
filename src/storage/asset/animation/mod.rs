@@ -5,7 +5,7 @@ pub mod renderer;
 use super::AssetTrait;
 use argument::{Argument, variables::VariablesCount};
 use config::AnimationConfig;
-use egui::{Color32, Margin, Stroke, TextureId, Ui, UiKind};
+use egui::{Color32, Margin, Rect, Stroke, TextureId, Ui, UiKind};
 use egui_extras::syntax_highlighting::CodeTheme;
 use serde::{Deserialize, Serialize};
 
@@ -131,11 +131,13 @@ impl Animation {
         config: &mut AnimationConfig,
         ui: &mut Ui,
         rendered: TextureId,
+        svg: Option<egui::TextureHandle>,
+        uv: Option<Rect>,
     ) -> bool {
         let mut changed = false;
         let mut count = VariablesCount::default();
         for argument in self.arguments.iter() {
-            changed |= argument.config_ui(config, ui, count, rendered);
+            changed |= argument.config_ui(config, ui, count, rendered, svg.clone(), uv);
             count += argument.kind.variables().count();
         }
 

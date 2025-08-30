@@ -1,12 +1,11 @@
 pub mod widget;
 
+use super::ChangeButton;
 use crate::storage::asset::{
-    scene::{effect::Effect, effect_state::EffectState},
     Asset,
+    scene::{effect::Effect, effect_state::EffectState},
 };
 use egui::{DragValue, Slider};
-
-use super::ChangeButton;
 
 impl Effect {
     pub fn config_ui(
@@ -14,6 +13,8 @@ impl Effect {
         state: &mut EffectState,
         ui: &mut egui::Ui,
         allow_animation_change: bool,
+        svg: Option<egui::TextureHandle>,
+        uv: Option<egui::Rect>,
     ) -> bool {
         let mut changed = false;
 
@@ -90,7 +91,7 @@ impl Effect {
             let rendered = state.texture_id();
             changed |= animation
                 .data
-                .config_ui(&mut self.animation_config, ui, rendered);
+                .config_ui(&mut self.animation_config, ui, rendered, svg, uv);
         }
 
         ui.separator();

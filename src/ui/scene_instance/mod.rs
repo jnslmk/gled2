@@ -12,7 +12,12 @@ use egui::{
 use egui_modal::Modal;
 
 impl SceneInstance {
-    pub fn config_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn config_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        svg: Option<egui::TextureHandle>,
+        uv: Option<Rect>,
+    ) {
         TopBottomPanel::bottom("Scene Instance action buttons")
             .resizable(false)
             .frame(Frame::NONE.inner_margin(Margin::from(6.0)))
@@ -122,6 +127,11 @@ impl SceneInstance {
 
             ui.label("Animations / Setting Overwrites");
 
+            if ui.button("Remove all overwrites").clicked() {
+                self.effect_overwrites.clear();
+                UiAction::InitGPU.enqueue();
+            }
+
             ui.horizontal_wrapped(|ui| {
                 let mut set_overwritten_effect = None;
                 for ((index, effect, overwritten), effect_state) in scene
@@ -145,6 +155,8 @@ impl SceneInstance {
                             selectable: Some((&mut selected, 1)),
                             effect,
                             effect_state,
+                            svg: svg.clone(),
+                            uv,
                         },
                     );
                     if overwritten {
@@ -158,6 +170,7 @@ impl SceneInstance {
                     }
                     let modal = Modal::new(ui.ctx(), format!("effect settings {index}"))
                         .with_close_on_outside_click(true);
+                    let svg = svg.clone();
                     modal.show(|ui| {
                         modal.title(ui, "Overwrite Effect Settings");
                         ui.set_width(500.0);
@@ -169,11 +182,14 @@ impl SceneInstance {
                                     selectable: None,
                                     effect,
                                     effect_state,
+                                    svg: svg.clone(),
+                                    uv,
                                 },
                             );
                             ui.vertical(|ui| {
                                 let mut effect = effect.to_owned();
-                                let changed = effect.config_ui(effect_state, ui, false);
+                                let changed =
+                                    effect.config_ui(effect_state, ui, false, svg.clone(), uv);
                                 if changed {
                                     if Some(&effect) != scene.data.effects.get(index) {
                                         set_overwritten_effect = Some((index, Some(effect)));
@@ -195,6 +211,7 @@ impl SceneInstance {
                     } else {
                         self.effect_overwrites.remove(&index);
                     }
+                    UiAction::InitGPU.enqueue();
                 }
             });
         });

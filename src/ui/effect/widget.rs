@@ -3,7 +3,8 @@ use crate::{
     ui::pills::show_pills,
 };
 use egui::{
-    Button, Color32, CornerRadius, Margin, Rect, Response, Sense, Shape, Ui, Vec2, Widget, pos2,
+    Button, Color32, CornerRadius, Image, Margin, Rect, Response, Sense, Shape, TextureHandle, Ui,
+    Vec2, Widget, load::SizedTexture, pos2,
 };
 use epaint::RectShape;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -13,6 +14,8 @@ pub struct EffectWidget<'a> {
     pub show_group: bool,
     pub effect: &'a Effect,
     pub effect_state: &'a EffectState,
+    pub svg: Option<TextureHandle>,
+    pub uv: Option<Rect>,
 }
 
 impl Widget for EffectWidget<'_> {
@@ -43,6 +46,27 @@ impl Widget for EffectWidget<'_> {
 
         let response = frame
             .show(ui, |ui| {
+                let uv = self.uv;
+                let size = match uv {
+                    Some(uv) => {
+                        if uv.max.x > uv.max.y {
+                            Vec2::new(
+                                ui.available_width()
+                                    .min(ui.available_height() * uv.max.x / uv.max.y),
+                                ui.available_height()
+                                    .min(ui.available_width() * uv.max.y / uv.max.x),
+                            )
+                        } else {
+                            Vec2::new(
+                                ui.available_width()
+                                    .min(ui.available_height() * uv.max.y / uv.max.x),
+                                ui.available_height()
+                                    .min(ui.available_width() * uv.max.x / uv.max.y),
+                            )
+                        }
+                    }
+                    None => ui.available_size(),
+                };
                 let rect = ui.available_rect_before_wrap();
                 ui.allocate_rect(rect, Sense::hover());
                 ui.painter().add(Shape::Rect(RectShape::filled(
@@ -56,6 +80,16 @@ impl Widget for EffectWidget<'_> {
                         Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
                     ),
                 ));
+                if let Some(svg_texture_handle) = self.svg {
+                    ui.put(rect, {
+                        let mut image =
+                            Image::new(SizedTexture::new(svg_texture_handle.id(), size));
+                        if let Some(uv) = uv {
+                            image = image.uv(uv);
+                        }
+                        image
+                    });
+                }
 
                 if self.show_group {
                     show_pills(

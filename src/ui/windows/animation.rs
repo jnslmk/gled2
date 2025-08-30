@@ -232,7 +232,9 @@ impl AnimationWindow {
                         egui::SidePanel::right("animation preview right side")
                             .exact_width(300.0)
                             .resizable(false)
-                            .show_inside(ui, |ui| effect.config_ui(effect_state, ui, false));
+                            .show_inside(ui, |ui| {
+                                effect.config_ui(effect_state, ui, false, None, None)
+                            });
                     }
 
                     egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -264,6 +266,8 @@ impl AnimationWindow {
                                             selectable: None,
                                             effect,
                                             effect_state,
+                                            svg: None,
+                                            uv: None,
                                         },
                                     );
                                     if ui
