@@ -165,7 +165,11 @@ impl Widget for SceneInstanceWidget<'_> {
                                             Some((group.0.clone(), group.color()))
                                         })
                                         .collect();
-                                    ui.set_clip_rect(rect);
+
+                                    let mut clip_rect = ui.clip_rect();
+                                    clip_rect.min = clip_rect.min.max(rect.min);
+                                    clip_rect.max = clip_rect.max.min(rect.max);
+                                    ui.set_clip_rect(clip_rect);
                                     show_pills(ui, rect.right_top() + Vec2::new(0.0, 5.0), texts);
 
                                     if !self.scene_instance.effect_overwrites.is_empty()

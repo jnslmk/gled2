@@ -63,10 +63,16 @@ impl App {
         CentralPanel::default()
             .frame(egui::Frame::NONE.inner_margin(Margin::from(4.0)))
             .show_inside(ui, |ui| {
+                let groups = project.groups.clone();
                 match project.scene_instance(self.selected_scene_instance) {
                     Some(scene_instance) => {
                         let uv = Svg::preview_uv();
-                        scene_instance.config_ui(ui, svg, uv)
+                        scene_instance.config_ui(
+                            ui,
+                            svg,
+                            uv,
+                            scene_instance.groups_overwrite.clone().unwrap_or(groups),
+                        )
                     }
                     None => {
                         ui.label("There's no Effect to configure.");

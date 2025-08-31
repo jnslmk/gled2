@@ -6,7 +6,7 @@ use crate::{
     ui::{ChangeButton, asset_tree::AssetTree},
 };
 use egui::{
-    MenuBar, UiKind,
+    UiKind,
     containers::menu::{MenuButton, MenuConfig},
 };
 use egui_ltreeview::TreeViewState;

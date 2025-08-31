@@ -2,6 +2,7 @@ pub mod widget;
 
 use super::{ChangeButton, action::UiAction};
 use crate::{
+    pipeline::group::Groups,
     storage::asset::{Asset, scene::instance::SceneInstance},
     ui::effect::widget::EffectWidget,
 };
@@ -19,6 +20,7 @@ impl SceneInstance {
         ui: &mut egui::Ui,
         svg: Option<egui::TextureHandle>,
         uv: Option<Rect>,
+        groups: Groups,
     ) {
         TopBottomPanel::bottom("Scene Instance action buttons")
             .resizable(false)
@@ -184,6 +186,8 @@ impl SceneInstance {
                             effect_state,
                             svg: svg.clone(),
                             uv,
+                            groups: Some(&groups),
+                            groups_show_index: false,
                         },
                     );
                     if overwritten {
@@ -211,6 +215,8 @@ impl SceneInstance {
                                     effect_state,
                                     svg: svg.clone(),
                                     uv,
+                                    groups: Some(&groups),
+                                    groups_show_index: true,
                                 },
                             );
                             ui.vertical(|ui| {

@@ -268,6 +268,8 @@ impl AnimationWindow {
                                             effect_state,
                                             svg: None,
                                             uv: None,
+                                            groups: None,
+                                            groups_show_index: false,
                                         },
                                     );
                                     if ui

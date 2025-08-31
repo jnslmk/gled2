@@ -1,4 +1,5 @@
 use crate::{
+    pipeline::group::Groups,
     storage::asset::scene::{effect::Effect, effect_state::EffectState},
     ui::pills::show_pills,
 };
@@ -16,6 +17,8 @@ pub struct EffectWidget<'a> {
     pub effect_state: &'a EffectState,
     pub svg: Option<TextureHandle>,
     pub uv: Option<Rect>,
+    pub groups: Option<&'a Groups>,
+    pub groups_show_index: bool,
 }
 
 impl Widget for EffectWidget<'_> {
@@ -92,11 +95,24 @@ impl Widget for EffectWidget<'_> {
                 }
 
                 if self.show_group {
-                    show_pills(
-                        ui,
-                        rect.right_top() + Vec2::new(0.0, 5.0),
-                        vec![(self.effect.group_index.to_string(), Color32::GOLD)],
-                    );
+                    let texts = self
+                        .groups
+                        .as_ref()
+                        .and_then(|groups| groups.get(self.effect.group_index))
+                        .map(|group| {
+                            vec![(
+                                if self.groups_show_index {
+                                    format!("{}: {}", self.effect.group_index, group.0)
+                                } else {
+                                    group.0.clone()
+                                },
+                                group.color(),
+                            )]
+                        })
+                        .unwrap_or_else(|| {
+                            vec![(self.effect.group_index.to_string(), Color32::GOLD)]
+                        });
+                    show_pills(ui, rect.right_top() + Vec2::new(0.0, 5.0), texts);
                 }
             })
             .response;
