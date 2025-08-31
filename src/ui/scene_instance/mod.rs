@@ -10,7 +10,6 @@ use egui::{
     Button, Checkbox, Color32, Frame, Label, Margin, Modifiers, Rect, ScrollArea, TopBottomPanel,
     Vec2,
 };
-use egui_flex::{Flex, item};
 use egui_modal::Modal;
 use std::sync::Arc;
 
@@ -22,26 +21,38 @@ impl SceneInstance {
         uv: Option<Rect>,
         groups: Groups,
     ) {
+        let width = ui.available_width() - 20.0;
+
         TopBottomPanel::bottom("Scene Instance action buttons")
             .resizable(false)
             .frame(Frame::NONE.inner_margin(Margin::from(6.0)))
             .show_inside(ui, |ui| {
-                ui.vertical_centered_justified(|ui| {
-                    if ui
-                        .add(Button::new("🗐 Duplicate Scene").fill(Color32::DARK_BLUE))
-                        .clicked()
-                    {
-                        UiAction::CloneSelectedSceneInstance.enqueue();
-                    }
-                });
-
-                ui.vertical_centered_justified(|ui| {
-                    if ui
-                        .add(Button::new("↕ Move Scene to other Grid").fill(Color32::DARK_BLUE))
-                        .clicked()
-                    {
-                        UiAction::MoveSelectedSceneToOtherGrid.enqueue();
-                    }
+                ui.horizontal(|ui| {
+                    egui::Frame::NONE.show(ui, |ui| {
+                        ui.set_max_width(width / 2.0);
+                        ui.vertical_centered_justified(|ui| {
+                            if ui
+                                .add(Button::new("🗐 Duplicate Scene").fill(Color32::DARK_BLUE))
+                                .clicked()
+                            {
+                                UiAction::CloneSelectedSceneInstance.enqueue();
+                            }
+                        });
+                    });
+                    egui::Frame::NONE.show(ui, |ui| {
+                        ui.set_max_width(width / 2.0);
+                        ui.vertical_centered_justified(|ui| {
+                            if ui
+                                .add(
+                                    Button::new("↕ Move Scene to other Grid")
+                                        .fill(Color32::DARK_BLUE),
+                                )
+                                .clicked()
+                            {
+                                UiAction::MoveSelectedSceneToOtherGrid.enqueue();
+                            }
+                        });
+                    });
                 });
 
                 ui.vertical_centered_justified(|ui| {
@@ -61,7 +72,6 @@ impl SceneInstance {
                 });
             });
 
-        let width = ui.available_width() - 20.0;
         ui.horizontal(|ui| {
             egui::Frame::NONE
                 .inner_margin(Margin::from(3.0))
@@ -131,32 +141,40 @@ impl SceneInstance {
         };
 
         if !self.effect_overwrites.is_empty() {
-            Flex::horizontal().show(ui, |flex| {
-                flex.add_ui(item().grow(1.0), |ui| {
-                    if ui.button("Remove all overwrites (⚙)").clicked() {
-                        self.effect_overwrites.clear();
-                        UiAction::InitGPU.enqueue();
-                    }
-                });
-
-                flex.add_ui(item().grow(1.0), |ui| {
-                    if ui.button("Save overwrites to scene").clicked() {
-                        let mut scene = Arc::unwrap_or_clone(scene.clone());
-                        scene
-                            .data
-                            .effects
-                            .iter_mut()
-                            .enumerate()
-                            .for_each(|(index, effect)| {
-                                if let Some(overwrite) = self.effect_overwrites.remove(&index) {
-                                    *effect = overwrite;
-                                }
-                            });
-                        scene.save();
-                        self.effect_overwrites.clear();
-                        UiAction::InitGPU.enqueue();
-                    }
-                });
+            ui.horizontal(|ui| {
+                egui::Frame::NONE
+                    .inner_margin(Margin::from(3.0))
+                    .show(ui, |ui| {
+                        ui.set_max_width(width / 2.0);
+                        ui.vertical_centered_justified(|ui| {
+                            if ui.button("Remove all overwrites (⚙)").clicked() {
+                                self.effect_overwrites.clear();
+                                UiAction::InitGPU.enqueue();
+                            }
+                        });
+                    });
+                egui::Frame::NONE
+                    .inner_margin(Margin::from(3.0))
+                    .show(ui, |ui| {
+                        ui.set_max_width(width / 2.0);
+                        ui.vertical_centered_justified(|ui| {
+                            if ui.button("Save overwrites to scene").clicked() {
+                                let mut scene = Arc::unwrap_or_clone(scene.clone());
+                                scene.data.effects.iter_mut().enumerate().for_each(
+                                    |(index, effect)| {
+                                        if let Some(overwrite) =
+                                            self.effect_overwrites.remove(&index)
+                                        {
+                                            *effect = overwrite;
+                                        }
+                                    },
+                                );
+                                scene.save();
+                                self.effect_overwrites.clear();
+                                UiAction::InitGPU.enqueue();
+                            }
+                        });
+                    });
             });
         }
 
