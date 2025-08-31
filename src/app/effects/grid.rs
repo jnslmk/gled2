@@ -5,7 +5,9 @@ use crate::{
     storage::asset::project::{DeckPath, scene_instance_path::SceneInstancePathId},
     ui::scene_instance::widget::SceneInstanceWidget,
 };
-use egui::{Color32, Rect, TextureHandle, Ui, Vec2, scroll_area::ScrollBarVisibility};
+use egui::{
+    Color32, Rect, TextureHandle, Ui, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible,
+};
 use egui_dnd::dnd;
 
 impl App {
@@ -13,7 +15,7 @@ impl App {
         egui::ScrollArea::vertical()
             .id_salt("grid scroll")
             .auto_shrink([false, false])
-            .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
+            .scroll_bar_visibility(AlwaysVisible)
             .show(ui, |ui| {
                 ui.set_max_width(ui.available_width() - 30.0);
                 ui.horizontal_wrapped(|ui| {
@@ -26,7 +28,7 @@ impl App {
         egui::ScrollArea::horizontal()
             .id_salt("quick scroll")
             .auto_shrink([false, false])
-            .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
+            .scroll_bar_visibility(AlwaysVisible)
             .vscroll(false)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {

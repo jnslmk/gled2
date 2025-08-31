@@ -5,8 +5,7 @@ use crate::{
         window_common::{default_viewport_builder, gled_window_frame},
     },
 };
-use egui::{Button, Context, Id, Rect, Ui, Vec2, ViewportId};
-use egui_flex::{Flex, item};
+use egui::{Context, Id, Margin, Rect, Ui, Vec2, ViewportId};
 
 #[derive(Default)]
 pub struct CurvesWindow {
@@ -62,21 +61,30 @@ impl CurvesWindow {
 }
 
 fn curve_editor(ui: &mut Ui, curve: &mut Asset<Curve>, dirty: &mut bool) {
-    Flex::horizontal().show(ui, |flex| {
-        if flex
-            .add(item().grow(1.0), Button::new("Invert X-Axis ↔".to_string()))
-            .clicked()
-        {
-            curve.data.invert_x_axis();
-            *dirty = true;
-        }
-        if flex
-            .add(item().grow(1.0), Button::new("Invert Y-Axis ↕".to_string()))
-            .clicked()
-        {
-            curve.data.invert_y_axis();
-            *dirty = true;
-        }
+    let width = ui.available_width() - 20.0;
+    ui.horizontal(|ui| {
+        egui::Frame::NONE
+            .inner_margin(Margin::from(3.0))
+            .show(ui, |ui| {
+                ui.set_max_width(width / 2.0);
+                ui.vertical_centered_justified(|ui| {
+                    if ui.button("Invert X-Axis ↔").clicked() {
+                        curve.data.invert_x_axis();
+                        *dirty = true;
+                    }
+                });
+            });
+        egui::Frame::NONE
+            .inner_margin(Margin::from(3.0))
+            .show(ui, |ui| {
+                ui.set_max_width(width / 2.0);
+                ui.vertical_centered_justified(|ui| {
+                    if ui.button("Invert Y-Axis ↕").clicked() {
+                        curve.data.invert_y_axis();
+                        *dirty = true;
+                    }
+                });
+            });
     });
 
     *dirty |= curve.data.draw(

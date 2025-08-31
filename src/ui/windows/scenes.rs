@@ -18,8 +18,8 @@ use crate::{
     wgpu_render_state,
 };
 use egui::{
-    Button, Color32, Context, Id, Margin, Stroke, Vec2, ViewportId,
-    scroll_area::ScrollBarVisibility,
+    Button, Color32, Context, Id, Margin, ScrollArea, Stroke, Vec2, ViewportId,
+    scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
 use wgpu::CommandEncoderDescriptor;
 
@@ -73,53 +73,70 @@ impl ScenesWindow {
                                 return;
                             };
 
-                            if let (Some(effect), Some(state)) = (
-                                scene.data.effect(self.selected_effect),
-                                self.effect_states.get_mut(self.selected_effect),
-                            ) {
-                                self.dirty |= effect.config_ui(state, ui, true, None, None);
-                            }
-
-                            ui.separator();
-
-                            ui.vertical_centered_justified(|ui| {
-                                if ui
-                                    .add(Button::new("+ Add Effect").fill(Color32::DARK_GREEN))
-                                    .clicked()
-                                {
-                                    self.selected_effect = scene
-                                        .data
-                                        .add_effect(&mut self.effect_states, Effect::default());
-                                    self.dirty = true;
-                                }
-                            });
-                            ui.vertical_centered_justified(|ui| {
-                                if ui
-                                    .add(Button::new("🗐 Duplicate Effect").fill(Color32::DARK_BLUE))
-                                    .clicked()
-                                {
-                                    if let Some(effect) =
-                                        scene.data.effect(self.selected_effect).cloned()
-                                    {
-                                        self.selected_effect =
-                                            scene.data.add_effect(&mut self.effect_states, effect);
-                                        self.dirty = true;
+                            ScrollArea::vertical()
+                                .id_salt("scene_editor_scroll")
+                                .scroll_bar_visibility(AlwaysVisible)
+                                .show(ui, |ui| {
+                                    if let (Some(effect), Some(state)) = (
+                                        scene.data.effect(self.selected_effect),
+                                        self.effect_states.get_mut(self.selected_effect),
+                                    ) {
+                                        self.dirty |= effect.config_ui(state, ui, true, None, None);
                                     }
-                                }
-                            });
-                            ui.vertical_centered_justified(|ui| {
-                                if ui
-                                    .add(Button::new("🗑 Remove Effect").fill(Color32::DARK_RED))
-                                    .clicked()
-                                {
-                                    scene.data.remove_effect(
-                                        &mut self.effect_states,
-                                        self.selected_effect,
-                                    );
-                                    self.selected_effect = self.selected_effect.saturating_sub(1);
-                                    self.dirty = true;
-                                }
-                            });
+
+                                    ui.separator();
+
+                                    ui.vertical_centered_justified(|ui| {
+                                        if ui
+                                            .add(
+                                                Button::new("+ Add Effect")
+                                                    .fill(Color32::DARK_GREEN),
+                                            )
+                                            .clicked()
+                                        {
+                                            self.selected_effect = scene.data.add_effect(
+                                                &mut self.effect_states,
+                                                Effect::default(),
+                                            );
+                                            self.dirty = true;
+                                        }
+                                    });
+                                    ui.vertical_centered_justified(|ui| {
+                                        if ui
+                                            .add(
+                                                Button::new("🗐 Duplicate Effect")
+                                                    .fill(Color32::DARK_BLUE),
+                                            )
+                                            .clicked()
+                                        {
+                                            if let Some(effect) =
+                                                scene.data.effect(self.selected_effect).cloned()
+                                            {
+                                                self.selected_effect = scene
+                                                    .data
+                                                    .add_effect(&mut self.effect_states, effect);
+                                                self.dirty = true;
+                                            }
+                                        }
+                                    });
+                                    ui.vertical_centered_justified(|ui| {
+                                        if ui
+                                            .add(
+                                                Button::new("🗑 Remove Effect")
+                                                    .fill(Color32::DARK_RED),
+                                            )
+                                            .clicked()
+                                        {
+                                            scene.data.remove_effect(
+                                                &mut self.effect_states,
+                                                self.selected_effect,
+                                            );
+                                            self.selected_effect =
+                                                self.selected_effect.saturating_sub(1);
+                                            self.dirty = true;
+                                        }
+                                    });
+                                });
                         });
 
                     egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -181,10 +198,10 @@ impl ScenesWindow {
                                 RendererCallback::add(encoder.finish());
                             }
 
-                            egui::ScrollArea::vertical()
+                            ScrollArea::vertical()
                                 .id_salt("effects_scroll")
                                 .auto_shrink([false, false])
-                                .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
+                                .scroll_bar_visibility(AlwaysVisible)
                                 .show(ui, |ui| {
                                     ui.set_max_width(ui.available_width() - 30.0);
                                     ui.horizontal_wrapped(|ui| {

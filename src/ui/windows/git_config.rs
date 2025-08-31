@@ -18,10 +18,10 @@ impl GitConfigWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("git config window")),
             default_viewport_builder()
-                .with_inner_size(Vec2::new(500.0, 180.0))
-                .with_min_inner_size(Vec2::new(500.0, 180.0))
+                .with_inner_size(Vec2::new(500.0, 220.0))
+                .with_min_inner_size(Vec2::new(500.0, 220.0))
                 .with_resizable(false)
-                .with_max_inner_size(Vec2::new(500.0, 180.0)),
+                .with_max_inner_size(Vec2::new(500.0, 220.0)),
             |ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {

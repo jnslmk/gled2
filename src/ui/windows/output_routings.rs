@@ -9,6 +9,7 @@ use crate::{
 };
 use egui::{
     Color32, ComboBox, Context, Id, Layout, RichText, Vec2, ViewportId, WidgetText, mutex::Mutex,
+    scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
 use once_cell::sync::Lazy;
 
@@ -52,6 +53,7 @@ impl OutputRoutingsWindow {
                     }
 
                     egui::ScrollArea::vertical()
+                        .scroll_bar_visibility(AlwaysVisible)
                         .id_salt("output_scroll")
                         .show(ui, |ui| {
                             ui.with_layout(Layout::top_down_justified(egui::Align::Min), |ui| {

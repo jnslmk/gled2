@@ -8,6 +8,7 @@ use crate::{
 };
 use egui::{
     Button, Checkbox, Color32, Frame, Margin, Modifiers, Rect, ScrollArea, TopBottomPanel, Vec2,
+    scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
 use egui_modal::Modal;
 use std::sync::Arc;
@@ -177,95 +178,99 @@ impl SceneInstance {
             });
         }
 
-        ScrollArea::vertical().show(ui, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                let mut set_overwritten_effect = None;
-                for ((index, effect, overwritten), effect_state) in scene
-                    .data
-                    .effects()
-                    .iter()
-                    .enumerate()
-                    .map(|(index, effect)| {
-                        self.effect_overwrites
-                            .get(&index)
-                            .map(|effect| (index, effect, true))
-                            .unwrap_or((index, effect, false))
-                    })
-                    .zip(self.effect_states.iter_mut())
-                {
-                    let mut selected = 0;
-                    let rect = ui
-                        .add_sized(
-                            Vec2::splat(100.0),
-                            EffectWidget {
-                                show_group: true,
-                                selectable: Some((&mut selected, 1)),
-                                effect,
-                                effect_state,
-                                svg: svg.clone(),
-                                uv,
-                                groups: Some(&groups),
-                                groups_show_index: false,
-                            },
-                        )
-                        .rect;
-                    if overwritten {
-                        ui.painter().text(
-                            rect.left_bottom() + Vec2::new(12.0, -10.0),
-                            egui::Align2::LEFT_BOTTOM,
-                            "⚙",
-                            egui::TextStyle::Body.resolve(ui.style()),
-                            Color32::from_white_alpha(100),
-                        );
-                    }
-                    let modal = Modal::new(ui.ctx(), format!("effect settings {index}"))
-                        .with_close_on_outside_click(true);
-                    let svg = svg.clone();
-                    modal.show(|ui| {
-                        modal.title(ui, "Overwrite Effect Settings");
-                        ui.set_width(500.0);
-                        ui.horizontal(|ui| {
-                            ui.add_sized(
+        ScrollArea::vertical()
+            .scroll_bar_visibility(AlwaysVisible)
+            .show(ui, |ui| {
+                ui.set_min_width(ui.available_width());
+
+                ui.horizontal_wrapped(|ui| {
+                    let mut set_overwritten_effect = None;
+                    for ((index, effect, overwritten), effect_state) in scene
+                        .data
+                        .effects()
+                        .iter()
+                        .enumerate()
+                        .map(|(index, effect)| {
+                            self.effect_overwrites
+                                .get(&index)
+                                .map(|effect| (index, effect, true))
+                                .unwrap_or((index, effect, false))
+                        })
+                        .zip(self.effect_states.iter_mut())
+                    {
+                        let mut selected = 0;
+                        let rect = ui
+                            .add_sized(
                                 Vec2::splat(100.0),
                                 EffectWidget {
                                     show_group: true,
-                                    selectable: None,
+                                    selectable: Some((&mut selected, 1)),
                                     effect,
                                     effect_state,
                                     svg: svg.clone(),
                                     uv,
                                     groups: Some(&groups),
-                                    groups_show_index: true,
+                                    groups_show_index: false,
                                 },
+                            )
+                            .rect;
+                        if overwritten {
+                            ui.painter().text(
+                                rect.left_bottom() + Vec2::new(12.0, -10.0),
+                                egui::Align2::LEFT_BOTTOM,
+                                "⚙",
+                                egui::TextStyle::Body.resolve(ui.style()),
+                                Color32::from_white_alpha(100),
                             );
-                            ui.vertical(|ui| {
-                                let mut effect = effect.to_owned();
-                                let changed =
-                                    effect.config_ui(effect_state, ui, false, svg.clone(), uv);
-                                if changed {
-                                    if Some(&effect) != scene.data.effects.get(index) {
-                                        set_overwritten_effect = Some((index, Some(effect)));
-                                    } else {
-                                        set_overwritten_effect = Some((index, None));
+                        }
+                        let modal = Modal::new(ui.ctx(), format!("effect settings {index}"))
+                            .with_close_on_outside_click(true);
+                        let svg = svg.clone();
+                        modal.show(|ui| {
+                            modal.title(ui, "Overwrite Effect Settings");
+                            ui.set_width(500.0);
+                            ui.horizontal(|ui| {
+                                ui.add_sized(
+                                    Vec2::splat(100.0),
+                                    EffectWidget {
+                                        show_group: true,
+                                        selectable: None,
+                                        effect,
+                                        effect_state,
+                                        svg: svg.clone(),
+                                        uv,
+                                        groups: Some(&groups),
+                                        groups_show_index: true,
+                                    },
+                                );
+                                ui.vertical(|ui| {
+                                    let mut effect = effect.to_owned();
+                                    let changed =
+                                        effect.config_ui(effect_state, ui, false, svg.clone(), uv);
+                                    if changed {
+                                        if Some(&effect) != scene.data.effects.get(index) {
+                                            set_overwritten_effect = Some((index, Some(effect)));
+                                        } else {
+                                            set_overwritten_effect = Some((index, None));
+                                        }
                                     }
-                                }
+                                });
                             });
                         });
-                    });
-                    if selected == 1 {
-                        modal.open();
+                        if selected == 1 {
+                            modal.open();
+                        }
                     }
-                }
 
-                if let Some((index, effect)) = set_overwritten_effect {
-                    if let Some(effect) = effect {
-                        self.effect_overwrites.insert(index, effect);
-                    } else {
-                        self.effect_overwrites.remove(&index);
+                    if let Some((index, effect)) = set_overwritten_effect {
+                        if let Some(effect) = effect {
+                            self.effect_overwrites.insert(index, effect);
+                        } else {
+                            self.effect_overwrites.remove(&index);
+                        }
+                        UiAction::InitGPU.enqueue();
                     }
-                    UiAction::InitGPU.enqueue();
-                }
+                });
             });
-        });
     }
 }

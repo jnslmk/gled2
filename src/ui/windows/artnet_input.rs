@@ -21,8 +21,8 @@ impl ArtnetInputWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("artnet inputs window")),
             default_viewport_builder()
-                .with_inner_size(Vec2::new(260.0, 110.0))
-                .with_min_inner_size(Vec2::new(260.0, 110.0))
+                .with_inner_size(Vec2::new(290.0, 200.0))
+                .with_min_inner_size(Vec2::new(290.0, 200.0))
                 .with_resizable(false)
                 .with_minimize_button(false)
                 .with_maximize_button(false),

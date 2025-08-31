@@ -24,8 +24,8 @@ impl PalettesWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("palettes window")),
             default_viewport_builder()
-                .with_inner_size(Vec2::new(500.0, 500.0))
-                .with_min_inner_size(Vec2::new(500.0, 500.0)),
+                .with_inner_size(Vec2::new(640.0, 500.0))
+                .with_min_inner_size(Vec2::new(640.0, 500.0)),
             |ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {
@@ -71,10 +71,12 @@ fn palette_editor(ui: &mut Ui, palette: &mut Asset<Palette>, dirty: &mut bool) {
 
     ui.label("Gradient colors:");
     ui.scope(|ui| {
-        ui.horizontal_wrapped(|ui| {
-            palette.data.gradient.iter_mut().for_each(|color| {
-                let res = ui.color_edit_button_rgb(color.rgb_mut());
-                *dirty |= res.changed();
+        palette.data.gradient.chunks_mut(4).for_each(|chunk| {
+            ui.horizontal(|ui| {
+                chunk.iter_mut().for_each(|color| {
+                    let res = ui.color_edit_button_rgb(color.rgb_mut());
+                    *dirty |= res.changed();
+                });
             });
         });
     });

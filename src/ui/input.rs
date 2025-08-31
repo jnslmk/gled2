@@ -24,7 +24,11 @@ impl ChangeButton for Option<InputEvent> {
                     },
                     |ui| {
                         ui.label("Please press a key or provide artnet input!");
-                        if let Some(event) = InputEvent::get() {
+                        if let Some(event) = InputEvent::get().or_else(|| {
+                            ui.ctx()
+                                .input(|i| i.keys_down.iter().copied().next())
+                                .map(InputEvent::Key)
+                        }) {
                             *self = Some(event);
                             ui.close_kind(UiKind::Menu);
                             changed = true;

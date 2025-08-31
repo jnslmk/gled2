@@ -5,7 +5,10 @@ pub mod renderer;
 use super::AssetTrait;
 use argument::{Argument, variables::VariablesCount};
 use config::AnimationConfig;
-use egui::{Color32, Margin, Rect, Stroke, TextureId, Ui, UiKind};
+use egui::{
+    Color32, Margin, Rect, Stroke, TextureId, Ui, UiKind,
+    scroll_area::ScrollBarVisibility::AlwaysVisible,
+};
 use egui_extras::syntax_highlighting::CodeTheme;
 use serde::{Deserialize, Serialize};
 
@@ -53,25 +56,27 @@ impl Animation {
         ui.with_layout(
             egui::Layout::left_to_right(egui::Align::Min).with_cross_justify(true),
             |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    let response = ui.add(
-                        egui::TextEdit::multiline(&mut self.shader_code)
-                            .id_salt("Code Editor")
-                            .font(egui::TextStyle::Monospace) // for cursor height
-                            .code_editor()
-                            .desired_rows(20)
-                            .lock_focus(true)
-                            .desired_width(f32::INFINITY)
-                            .layouter(&mut layouter),
-                    );
-                    response.context_menu(|ui| {
-                        if ui.button("🖹 Copy whole source code").clicked() {
-                            ui.ctx().copy_text(self.shader_code_complete());
-                            ui.close_kind(UiKind::Menu);
-                        }
+                egui::ScrollArea::vertical()
+                    .scroll_bar_visibility(AlwaysVisible)
+                    .show(ui, |ui| {
+                        let response = ui.add(
+                            egui::TextEdit::multiline(&mut self.shader_code)
+                                .id_salt("Code Editor")
+                                .font(egui::TextStyle::Monospace) // for cursor height
+                                .code_editor()
+                                .desired_rows(20)
+                                .lock_focus(true)
+                                .desired_width(f32::INFINITY)
+                                .layouter(&mut layouter),
+                        );
+                        response.context_menu(|ui| {
+                            if ui.button("🖹 Copy whole source code").clicked() {
+                                ui.ctx().copy_text(self.shader_code_complete());
+                                ui.close_kind(UiKind::Menu);
+                            }
+                        });
+                        changed = response.changed();
                     });
-                    changed = response.changed();
-                });
             },
         );
 
@@ -107,17 +112,19 @@ impl Animation {
             }
         });
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            for (index, argument) in self.arguments.iter_mut().enumerate() {
-                count += argument.kind.variables().count();
-                egui::Frame::NONE
-                    .inner_margin(Margin::from(3.0))
-                    .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
-                    .show(ui, |ui| {
-                        changed |= argument.change_ui(ui, index, &mut remove);
-                    });
-            }
-        });
+        egui::ScrollArea::vertical()
+            .scroll_bar_visibility(AlwaysVisible)
+            .show(ui, |ui| {
+                for (index, argument) in self.arguments.iter_mut().enumerate() {
+                    count += argument.kind.variables().count();
+                    egui::Frame::NONE
+                        .inner_margin(Margin::from(3.0))
+                        .stroke(Stroke::new(1.0, Color32::DARK_GRAY))
+                        .show(ui, |ui| {
+                            changed |= argument.change_ui(ui, index, &mut remove);
+                        });
+                }
+            });
         if let Some(index) = remove {
             self.arguments.remove(index);
             changed = true;

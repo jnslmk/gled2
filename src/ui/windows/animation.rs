@@ -15,7 +15,10 @@ use crate::{
     },
     wgpu_render_state,
 };
-use egui::{Color32, Context, Id, Margin, Stroke, UiKind, Vec2, ViewportId};
+use egui::{
+    Color32, Context, Id, Margin, ScrollArea, Stroke, UiKind, Vec2, ViewportId,
+    scroll_area::ScrollBarVisibility::AlwaysVisible,
+};
 use naga::{
     front::wgsl::parse_str,
     valid::{Capabilities, ValidationFlags, Validator},
@@ -216,8 +219,8 @@ impl AnimationWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("animation preview window")),
             default_viewport_builder()
-                .with_inner_size(Vec2::new(630.0, 400.0))
-                .with_min_inner_size(Vec2::new(630.0, 400.0)),
+                .with_inner_size(Vec2::new(630.0, 440.0))
+                .with_min_inner_size(Vec2::new(630.0, 440.0)),
             |ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {
@@ -233,7 +236,12 @@ impl AnimationWindow {
                             .exact_width(300.0)
                             .resizable(false)
                             .show_inside(ui, |ui| {
-                                effect.config_ui(effect_state, ui, false, None, None)
+                                ScrollArea::vertical()
+                                    .scroll_bar_visibility(AlwaysVisible)
+                                    .max_height(ui.available_height())
+                                    .show(ui, |ui| {
+                                        effect.config_ui(effect_state, ui, false, None, None)
+                                    });
                             });
                     }
 

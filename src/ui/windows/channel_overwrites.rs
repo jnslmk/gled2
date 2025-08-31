@@ -7,7 +7,7 @@ use crate::{
     ui::{window_common::{default_viewport_builder, gled_window_frame}, windows::channel_overwrites, ChangeButton},
 };
 use egui::{
-    Color32, ComboBox, Context, Id, Layout, RichText, Vec2, ViewportId, mutex::Mutex,
+    mutex::Mutex, scroll_area::ScrollBarVisibility::AlwaysVisible, Color32, ComboBox, Context, Id, RichText, Vec2, ViewportId
 };
 use once_cell::sync::Lazy;
 
@@ -102,40 +102,39 @@ impl ChannelOverwritesWindow {
                     ui.separator();
 
                     egui::ScrollArea::vertical()
+                        .scroll_bar_visibility(AlwaysVisible)
                         .id_salt("channel_overwrites_scroll")
-                        .show(ui, |ui| {
-                            ui.with_layout(Layout::top_down_justified(egui::Align::Min), |ui| {
-                            
-                                for (channel_identifier, value) in channel_overwrites.0.iter() {
-                                    ui.horizontal(|ui| {
-                                        let device_name = Asset::get(channel_identifier.device)
-                                            .map(|d| d.name().to_owned())
-                                            .unwrap_or_else(|| {
-                                                format!(
-                                                    "Unknown Device ({})",
-                                                    channel_identifier.device
-                                                )
-                                            });
-                                        if ui.label(if let Some(universe) = channel_identifier.universe { format!(
-                                            "{device_name} - Universe {universe} - Channel {}:",
-                                            channel_identifier.channel
-                                        )} else {
-                                            format!("{device_name} - Channel {}:", channel_identifier.channel)
-                                        }).clicked() {
-                                            self.device = Some(channel_identifier.device);
-                                            self.universe = channel_identifier.universe;
-                                            self.channel = channel_identifier.channel;
-                                            self.value = *value;
-                                        };
-                                        ui.label(RichText::new(value.to_string()).color(Color32::YELLOW));
-                                        if ui.button("❌").on_hover_text("Remove this channel overwrite").clicked() {
-                                            let mut channel_overwrites = channel_overwrites.clone();
-                                            channel_overwrites.0.remove(channel_identifier);
-                                            channel_overwrites.set();
-                                        }
-                                    });
-                                }
-                            });
+                        .show(ui, |ui| {                
+                            ui.set_min_width(ui.available_width());
+                            for (channel_identifier, value) in channel_overwrites.0.iter() {
+                                ui.horizontal(|ui| {
+                                    let device_name = Asset::get(channel_identifier.device)
+                                        .map(|d| d.name().to_owned())
+                                        .unwrap_or_else(|| {
+                                            format!(
+                                                "Unknown Device ({})",
+                                                channel_identifier.device
+                                            )
+                                        });
+                                    if ui.label(if let Some(universe) = channel_identifier.universe { format!(
+                                        "{device_name} - Universe {universe} - Channel {}:",
+                                        channel_identifier.channel
+                                    )} else {
+                                        format!("{device_name} - Channel {}:", channel_identifier.channel)
+                                    }).clicked() {
+                                        self.device = Some(channel_identifier.device);
+                                        self.universe = channel_identifier.universe;
+                                        self.channel = channel_identifier.channel;
+                                        self.value = *value;
+                                    };
+                                    ui.label(RichText::new(value.to_string()).color(Color32::YELLOW));
+                                    if ui.button("❌").on_hover_text("Remove this channel overwrite").clicked() {
+                                        let mut channel_overwrites = channel_overwrites.clone();
+                                        channel_overwrites.0.remove(channel_identifier);
+                                        channel_overwrites.set();
+                                    }
+                                });
+                            }
                         });
                 });
             },

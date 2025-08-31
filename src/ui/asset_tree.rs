@@ -2,8 +2,10 @@ use crate::storage::{
     asset::{Asset, AssetTrait},
     asset_id::AssetId,
 };
-use egui::{Button, Color32, Id, Label, Margin, Pos2, Rect, ScrollArea, Stroke, Ui, UiKind, Vec2};
-use egui_flex::{Flex, item};
+use egui::{
+    Button, Color32, Id, Label, Margin, Pos2, Rect, ScrollArea, Stroke, Ui, UiKind, Vec2,
+    scroll_area::ScrollBarVisibility::AlwaysVisible,
+};
 use egui_ltreeview::{Action, DragAndDrop, NodeBuilder, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -196,6 +198,7 @@ impl<T: AssetTrait> AssetTree<T> {
     pub fn show(&mut self, ui: &mut Ui, id: Id) -> bool {
         let mut selection_changed = false;
         ScrollArea::vertical()
+            .scroll_bar_visibility(AlwaysVisible)
             .id_salt(format!("scroll: {id:?}"))
             .show(ui, |ui| {
                 let entries = self.load();
@@ -337,72 +340,104 @@ impl<T: AssetTrait> AssetTree<T> {
 
                 ui.add_space(4.0);
 
-                Flex::horizontal().show(ui, |flex| {
-                    if flex
-                        .add(
-                            item().grow(1.0),
-                            Button::new(format!("Save{}", if *dirty { "*" } else { "" })),
-                        )
-                        .on_hover_ui(|ui| {
-                            ui.label("Save to disk");
-                        })
-                        .clicked()
-                    {
-                        *dirty = false;
+                let width = ui.available_width() - 40.0;
+                ui.horizontal(|ui| {
+                    egui::Frame::NONE
+                        .inner_margin(Margin::from(3.0))
+                        .show(ui, |ui| {
+                            ui.set_max_width(width / 4.0);
+                            ui.vertical_centered_justified(|ui| {
+                                if ui
+                                    .add(Button::new(format!(
+                                        "Save{}",
+                                        if *dirty { "*" } else { "" }
+                                    )))
+                                    .on_hover_ui(|ui| {
+                                        ui.label("Save to disk");
+                                    })
+                                    .clicked()
+                                {
+                                    *dirty = false;
 
-                        if let TreeSelection::Asset(asset) = &self.selection {
-                            asset.clone().save();
-                        }
+                                    if let TreeSelection::Asset(asset) = &self.selection {
+                                        asset.clone().save();
+                                    }
 
-                        changed = true;
-                    }
-                    if flex
-                        .add(item().grow(1.0), Button::new("Save Copy"))
-                        .on_hover_ui(|ui| {
-                            ui.label("Save copy to disk");
-                        })
-                        .clicked()
-                    {
-                        *dirty = false;
+                                    changed = true;
+                                }
+                            });
+                        });
+                    egui::Frame::NONE
+                        .inner_margin(Margin::from(3.0))
+                        .show(ui, |ui| {
+                            ui.set_max_width(width / 4.0);
+                            ui.vertical_centered_justified(|ui| {
+                                if ui
+                                    .add(Button::new("Save Copy"))
+                                    .on_hover_ui(|ui| {
+                                        ui.label("Save copy to disk");
+                                    })
+                                    .clicked()
+                                {
+                                    *dirty = false;
 
-                        if let TreeSelection::Asset(asset) = &self.selection {
-                            asset.copy().save();
-                        }
+                                    if let TreeSelection::Asset(asset) = &self.selection {
+                                        asset.copy().save();
+                                    }
 
-                        changed = true;
-                    }
-                    if flex
-                        .add(
-                            item().grow(1.0),
-                            Button::new(format!("Reset{}", if *dirty { "*" } else { "" }))
-                                .fill(Color32::DARK_RED),
-                        )
-                        .on_hover_ui(|ui| {
-                            ui.label("Reset to state on disk");
-                        })
-                        .clicked()
-                    {
-                        *dirty = false;
-                        if let TreeSelection::Asset(asset) = &mut self.selection {
-                            *asset = Arc::unwrap_or_clone(Asset::get(asset.id).unwrap_or_default());
-                        }
+                                    changed = true;
+                                }
+                            });
+                        });
 
-                        changed = true;
-                    }
-                    if flex
-                        .add(
-                            item().grow(1.0),
-                            Button::new("Delete").fill(Color32::DARK_RED),
-                        )
-                        .clicked()
-                    {
-                        if let TreeSelection::Asset(asset) = &self.selection {
-                            asset.delete();
-                        }
-                        self.selection = TreeSelection::None;
+                    egui::Frame::NONE
+                        .inner_margin(Margin::from(3.0))
+                        .show(ui, |ui| {
+                            ui.set_max_width(width / 4.0);
+                            ui.vertical_centered_justified(|ui| {
+                                if ui
+                                    .add(
+                                        Button::new(format!(
+                                            "Reset{}",
+                                            if *dirty { "*" } else { "" }
+                                        ))
+                                        .fill(Color32::DARK_RED),
+                                    )
+                                    .on_hover_ui(|ui| {
+                                        ui.label("Reset to state on disk");
+                                    })
+                                    .clicked()
+                                {
+                                    *dirty = false;
+                                    if let TreeSelection::Asset(asset) = &mut self.selection {
+                                        *asset = Arc::unwrap_or_clone(
+                                            Asset::get(asset.id).unwrap_or_default(),
+                                        );
+                                    }
 
-                        changed = true
-                    }
+                                    changed = true;
+                                }
+                            });
+                        });
+
+                    egui::Frame::NONE
+                        .inner_margin(Margin::from(3.0))
+                        .show(ui, |ui| {
+                            ui.set_max_width(width / 4.0);
+                            ui.vertical_centered_justified(|ui| {
+                                if ui
+                                    .add(Button::new("Delete").fill(Color32::DARK_RED))
+                                    .clicked()
+                                {
+                                    if let TreeSelection::Asset(asset) = &self.selection {
+                                        asset.delete();
+                                    }
+                                    self.selection = TreeSelection::None;
+
+                                    changed = true
+                                }
+                            });
+                        });
                 });
             });
 
