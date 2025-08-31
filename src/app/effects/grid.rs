@@ -5,9 +5,7 @@ use crate::{
     storage::asset::project::{DeckPath, scene_instance_path::SceneInstancePathId},
     ui::scene_instance::widget::SceneInstanceWidget,
 };
-use egui::{
-    Color32, Rect, TextureHandle, Ui, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible,
-};
+use egui::{Rect, TextureHandle, Ui, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible};
 use egui_dnd::dnd;
 
 impl App {
@@ -67,9 +65,9 @@ impl App {
                     dnd_handle,
                     svg: svg.clone(),
                     effects_size,
-                    live_color: Color32::DARK_GREEN,
                     uv,
                     groups: &groups,
+                    timing: &self.timing,
                 });
                 if response.changed()
                     || scene_instance

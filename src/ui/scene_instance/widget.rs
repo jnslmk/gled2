@@ -1,4 +1,5 @@
 use crate::{
+    app::timing::Timing,
     pipeline::group::Groups,
     storage::asset::{
         Asset,
@@ -21,8 +22,8 @@ pub struct SceneInstanceWidget<'a> {
     pub dnd_handle: egui_dnd::Handle<'a>,
     pub svg: Option<TextureHandle>,
     pub effects_size: f32,
-    pub live_color: Color32,
     pub uv: Option<Rect>,
+    pub timing: &'a Timing,
 }
 
 impl Widget for SceneInstanceWidget<'_> {
@@ -52,24 +53,55 @@ impl Widget for SceneInstanceWidget<'_> {
             .corner_radius(CornerRadius::from(4.0))
             .show(ui, |ui| {
                 egui::Frame::NONE
-                    .fill(if self.scene_instance.flash {
-                        Color32::WHITE
-                    } else if self.scene_instance.active {
-                        let off = Color32::BLACK.to_srgba_unmultiplied();
-                        let on = self.live_color.to_srgba_unmultiplied();
-                        let factor = self.scene_instance.transition_factor();
-
-                        Color32::from_rgba_unmultiplied(
-                            (off[0] as f32 * (1.0 - factor) + on[0] as f32 * factor) as u8,
-                            (off[1] as f32 * (1.0 - factor) + on[1] as f32 * factor) as u8,
-                            (off[2] as f32 * (1.0 - factor) + on[2] as f32 * factor) as u8,
-                            (off[3] as f32 * (1.0 - factor) + on[3] as f32 * factor) as u8,
-                        )
-                    } else {
-                        Color32::BLACK
-                    })
                     .inner_margin(Margin::from(10.0))
                     .show(ui, |ui| {
+                        let mut bg_rect = ui.available_rect_before_wrap()
+                            + Margin {
+                                left: 10,
+                                right: 10,
+                                top: 10,
+                                bottom: 0,
+                            };
+                        if self.scene_instance.active {
+                            ui.painter().rect_filled(
+                                bg_rect,
+                                CornerRadius::ZERO,
+                                Color32::DARK_GREEN,
+                            );
+                        }
+                        ui.painter().rect_filled(
+                            bg_rect.shrink(1.0),
+                            CornerRadius::ZERO,
+                            if self.scene_instance.flash {
+                                Color32::WHITE
+                            } else {
+                                Color32::BLACK
+                            },
+                        );
+                        if !self.scene_instance.flash {
+                            let mut beat_progression = self.timing.beat_progression();
+                            beat_progression += self
+                                .scene_instance
+                                .beat_progression_offset
+                                .value(beat_progression);
+                            let dimmer = if self.scene_instance.active {
+                                self.scene_instance.transition_factor()
+                            } else {
+                                1.0
+                            } * self.scene_instance.input_dimmer
+                                * self.scene_instance.opacity.value(beat_progression);
+                            bg_rect.min.y += (bg_rect.height() * (1.0 - dimmer)).round().max(0.0);
+                            ui.painter().rect_filled(
+                                bg_rect,
+                                CornerRadius::ZERO,
+                                if self.scene_instance.active {
+                                    Color32::DARK_GREEN
+                                } else {
+                                    Color32::from_white_alpha(40)
+                                },
+                            );
+                        }
+
                         let uv = self.uv;
                         let size = match uv {
                             Some(uv) => {
@@ -93,8 +125,8 @@ impl Widget for SceneInstanceWidget<'_> {
                         };
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
-                                ui.set_max_width(size.x);
-                                ui.add(
+                                ui.add_sized(
+                                    Vec2::new(ui.available_width() - 15.0, 20.0),
                                     Label::new(
                                         Asset::get(self.scene_instance.scene)
                                             .map(|asset| asset.name().to_owned())
