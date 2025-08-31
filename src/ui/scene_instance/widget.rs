@@ -73,7 +73,7 @@ impl Widget for SceneInstanceWidget<'_> {
                             bg_rect.shrink(1.0),
                             CornerRadius::ZERO,
                             if self.scene_instance.flash {
-                                Color32::WHITE
+                                Color32::from_white_alpha(180)
                             } else {
                                 Color32::BLACK
                             },
