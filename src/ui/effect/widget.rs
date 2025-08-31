@@ -19,6 +19,8 @@ pub struct EffectWidget<'a> {
     pub uv: Option<Rect>,
     pub groups: Option<&'a Groups>,
     pub groups_show_index: bool,
+    /// used for showing the dimmer
+    pub beat_progression: Option<f32>,
 }
 
 impl Widget for EffectWidget<'_> {
@@ -49,6 +51,16 @@ impl Widget for EffectWidget<'_> {
 
         let response = frame
             .show(ui, |ui| {
+                let mut bg_rect = ui.available_rect_before_wrap() + Margin::same(5);
+                ui.painter()
+                    .rect_filled(bg_rect, CornerRadius::ZERO, Color32::BLACK);
+                if let Some(beat_progression) = self.beat_progression {
+                    let dimmer = self.effect.opacity.value(beat_progression);
+                    bg_rect.min.y += (bg_rect.height() * (1.0 - dimmer)).round().max(0.0);
+                    ui.painter()
+                        .rect_filled(bg_rect, CornerRadius::ZERO, Color32::DARK_GREEN);
+                }
+
                 let uv = self.uv;
                 let size = match uv {
                     Some(uv) => {

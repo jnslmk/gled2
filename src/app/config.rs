@@ -72,6 +72,7 @@ impl App {
                             svg,
                             uv,
                             scene_instance.groups_overwrite.clone().unwrap_or(groups),
+                            &self.timing,
                         )
                     }
                     None => {

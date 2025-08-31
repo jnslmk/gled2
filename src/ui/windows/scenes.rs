@@ -227,6 +227,7 @@ impl ScenesWindow {
                                                         uv: None,
                                                         groups: None,
                                                         groups_show_index: false,
+                                                        beat_progression: None,
                                                     },
                                                 );
                                             }

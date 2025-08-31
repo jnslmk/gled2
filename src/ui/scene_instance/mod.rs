@@ -2,6 +2,7 @@ pub mod widget;
 
 use super::{ChangeButton, action::UiAction};
 use crate::{
+    app::timing::Timing,
     pipeline::group::Groups,
     storage::asset::{Asset, scene::instance::SceneInstance},
     ui::effect::widget::EffectWidget,
@@ -20,6 +21,7 @@ impl SceneInstance {
         svg: Option<egui::TextureHandle>,
         uv: Option<Rect>,
         groups: Groups,
+        timing: &Timing,
     ) {
         let width = ui.available_width() - 20.0;
 
@@ -182,6 +184,8 @@ impl SceneInstance {
             .scroll_bar_visibility(AlwaysVisible)
             .show(ui, |ui| {
                 ui.set_min_width(ui.available_width());
+                let mut beat_progression = timing.beat_progression();
+                beat_progression += self.beat_progression_offset.value(beat_progression);
 
                 ui.horizontal_wrapped(|ui| {
                     let mut set_overwritten_effect = None;
@@ -211,6 +215,7 @@ impl SceneInstance {
                                     uv,
                                     groups: Some(&groups),
                                     groups_show_index: false,
+                                    beat_progression: Some(beat_progression),
                                 },
                             )
                             .rect;
@@ -241,6 +246,7 @@ impl SceneInstance {
                                         uv,
                                         groups: Some(&groups),
                                         groups_show_index: true,
+                                        beat_progression: Some(beat_progression),
                                     },
                                 );
                                 ui.vertical(|ui| {
