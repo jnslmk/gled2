@@ -3,6 +3,7 @@ pub mod asset;
 pub mod asset_id;
 pub mod collection;
 pub mod git;
+pub mod serde;
 
 use self::{action::StorageAction, asset::*, asset_id::AssetId};
 use crate::{app::persistant_state::PersistantState, ui::action::UiAction};

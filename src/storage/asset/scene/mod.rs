@@ -12,7 +12,7 @@ use effect::Effect;
 use effect_state::EffectState;
 use egui::{Color32, Vec2};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc};
 use wgpu::{CommandEncoder, Queue};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
@@ -97,7 +97,7 @@ impl Scene {
 
     pub fn prepare(
         &self,
-        effect_overwrites: Option<&HashMap<usize, Effect>>,
+        effect_overwrites: Option<&BTreeMap<usize, Effect>>,
         effect_states: &mut [EffectState],
         queue: &Queue,
         palette: Option<Arc<Asset<Palette>>>,

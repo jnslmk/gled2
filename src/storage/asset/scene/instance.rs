@@ -17,7 +17,7 @@ use crate::{
 use egui::TextureId;
 use egui_dnd::DragDropItem;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc};
 use uuid::Uuid;
 use wgpu::{CommandEncoder, Queue};
 
@@ -49,8 +49,11 @@ pub struct SceneInstance {
     pub groups_overwrite: Option<Groups>,
     #[serde(default)]
     pub palette_overwrite: Option<Option<AssetId<Palette>>>,
-    #[serde(default)]
-    pub effect_overwrites: HashMap<usize, Effect>,
+    #[serde(
+        default,
+        deserialize_with = "crate::storage::serde::deserialize_index_btreemap"
+    )]
+    pub effect_overwrites: BTreeMap<usize, Effect>,
 
     #[serde(skip)]
     pub effect_states: Vec<EffectState>,

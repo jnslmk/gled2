@@ -50,7 +50,10 @@ impl Display for Group {
 pub type GroupIndices = BTreeSet<usize>;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq, Hash)]
-pub struct Groups(#[serde(deserialize_with = "deserialize_groups")] BTreeMap<usize, Group>);
+pub struct Groups(
+    #[serde(deserialize_with = "crate::storage::serde::deserialize_index_btreemap")]
+    BTreeMap<usize, Group>,
+);
 
 impl Groups {
     pub fn new(groups: BTreeMap<usize, Group>) -> Self {
@@ -186,17 +189,4 @@ pub fn group_button(group: &Group, selected: bool) -> Button {
     } else {
         button
     }
-}
-
-fn deserialize_groups<'de, D>(deserializer: D) -> Result<BTreeMap<usize, Group>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let map = BTreeMap::<String, String>::deserialize(deserializer)?;
-    map.into_iter()
-        .map(|(key, value)| match key.parse::<usize>() {
-            Ok(index) => Ok((index, Group(value))),
-            Err(e) => Err(serde::de::Error::custom(e)),
-        })
-        .collect()
 }

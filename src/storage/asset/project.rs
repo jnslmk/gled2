@@ -12,7 +12,7 @@ use crate::{
     },
     pipeline::{
         extract_output::ExtractOutput,
-        group::{Group, Groups},
+        group::Groups,
         output_clear::OutputClear,
         preview::Preview,
         preview_indices::PreviewIndices,
@@ -33,7 +33,7 @@ use rand::seq::IndexedMutRandom;
 use scene_instance_path::SceneInstancePathId;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeMap, BTreeSet, HashSet},
+    collections::{BTreeSet, HashSet},
     time::{Duration, Instant},
 };
 use uuid::Uuid;
@@ -46,7 +46,6 @@ pub struct Project {
     pub auto_mode_active: bool,
     pub auto_mode_seconds: u64,
     pub auto_mode_max_scenes: usize,
-    #[serde(deserialize_with = "deserialize_groups")]
     pub groups: Groups,
     pub scenes_instances_grid: Vec<SceneInstance>,
     pub scenes_instances_quick: Vec<SceneInstance>,
@@ -398,17 +397,4 @@ impl AssetTrait for Project {
     const DIR_NAME: &'static str = "projects";
     const NAME: &'static str = "Project";
     const SHOW_NAME_IF_SELECTED: bool = true;
-}
-
-fn deserialize_groups<'de, D>(deserializer: D) -> Result<Groups, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    BTreeMap::<String, Group>::deserialize(deserializer).map(|map| {
-        Groups::new(
-            map.into_iter()
-                .filter_map(|(index, group)| index.parse().ok().map(|index| (index, group)))
-                .collect(),
-        )
-    })
 }
