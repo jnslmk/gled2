@@ -7,8 +7,7 @@ use crate::{
     ui::effect::widget::EffectWidget,
 };
 use egui::{
-    Button, Checkbox, Color32, Frame, Label, Margin, Modifiers, Rect, ScrollArea, TopBottomPanel,
-    Vec2,
+    Button, Checkbox, Color32, Frame, Margin, Modifiers, Rect, ScrollArea, TopBottomPanel, Vec2,
 };
 use egui_modal::Modal;
 use std::sync::Arc;
