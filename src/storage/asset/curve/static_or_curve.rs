@@ -5,7 +5,10 @@ use crate::{
     storage::{Asset, AssetId, AssetTrait},
     ui::{ChangeButton, asset_tree::AssetTree},
 };
-use egui::UiKind;
+use egui::{
+    MenuBar, UiKind,
+    containers::menu::{MenuButton, MenuConfig},
+};
 use egui_ltreeview::TreeViewState;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -72,72 +75,67 @@ impl<R: Range> ChangeButton for StaticOrCurve<R> {
     fn change_button(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
 
-        let rect = ui
-            .menu_button(
-                match self {
-                    Self::Static(value, ..) => format!("Static: {}", R::format(*value)),
-                    Self::Curve(curve, ..) => match Asset::get(*curve) {
-                        Some(curve) => format!("Curve: {}", curve.path.join("/")),
-                        None => "Curve: Not found".to_string(),
-                    },
-                },
-                |ui| {
-                    ui.set_min_width(300.0);
+        let rect = MenuButton::new(match self {
+            Self::Static(value, ..) => format!("Static: {}", R::format(*value)),
+            Self::Curve(curve, ..) => match Asset::get(*curve) {
+                Some(curve) => format!("Curve: {}", curve.path.join("/")),
+                None => "Curve: Not found".to_string(),
+            },
+        })
+        .config(MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside))
+        .ui(ui, |ui| {
+            ui.set_min_width(300.0);
+            ui.horizontal(|ui| {
+                let mut use_static = matches!(self, Self::Static(..));
+                if ui
+                    .radio_value(&mut use_static, true, "Static")
+                    .on_hover_text("Use a static value")
+                    .changed()
+                {
+                    *self = Self::Static(R::MAX, PhantomData);
+                    changed = true;
+                }
+
+                let mut use_curve = matches!(self, Self::Curve(..));
+                if ui
+                    .radio_value(&mut use_curve, true, "Curve")
+                    .on_hover_text("Use a curve to animate the value")
+                    .changed()
+                {
+                    *self = Self::Curve(AssetId::new(), PhantomData);
+                    changed = true;
+                }
+            });
+
+            match self {
+                Self::Static(value, ..) => {
                     ui.horizontal(|ui| {
-                        let mut use_static = matches!(self, Self::Static(..));
-                        if ui
-                            .radio_value(&mut use_static, true, "Static")
-                            .on_hover_text("Use a static value")
-                            .changed()
-                        {
-                            *self = Self::Static(R::MAX, PhantomData);
-                            changed = true;
-                        }
-
-                        let mut use_curve = matches!(self, Self::Curve(..));
-                        if ui
-                            .radio_value(&mut use_curve, true, "Curve")
-                            .on_hover_text("Use a curve to animate the value")
-                            .changed()
-                        {
-                            *self = Self::Curve(AssetId::new(), PhantomData);
-                            changed = true;
-                        }
+                        changed |= ui
+                            .add(
+                                egui::Slider::new(value, 0.0..=R::MAX)
+                                    .custom_formatter(|n, _| R::format(n as f32)),
+                            )
+                            .changed();
                     });
-
-                    match self {
-                        Self::Static(value, ..) => {
-                            ui.horizontal(|ui| {
-                                changed |= ui
-                                    .add(
-                                        egui::Slider::new(value, 0.0..=R::MAX)
-                                            .custom_formatter(|n, _| R::format(n as f32)),
-                                    )
-                                    .changed();
-                            });
-                        }
-                        Self::Curve(curve, ..) => {
-                            ui.horizontal(|ui| {
-                                if let Some(id) = AssetTree::show_asset_selection(
-                                    ui,
-                                    ui.make_persistent_id(Curve::NAME),
-                                ) {
-                                    *curve = id;
-                                    ui.data_mut(|d| {
-                                        d.remove::<TreeViewState<usize>>(
-                                            ui.make_persistent_id(Curve::NAME),
-                                        )
-                                    });
-                                    ui.close_kind(UiKind::Menu);
-                                    changed = true;
-                                }
-                            });
-                        }
+                }
+                Self::Curve(curve, ..) => {
+                    ui.set_min_height(400.0);
+                    if let Some(id) =
+                        AssetTree::show_asset_selection(ui, ui.make_persistent_id(Curve::NAME))
+                    {
+                        dbg!("Should close");
+                        *curve = id;
+                        ui.data_mut(|d| {
+                            d.remove::<TreeViewState<usize>>(ui.make_persistent_id(Curve::NAME))
+                        });
+                        ui.close_kind(UiKind::Menu);
+                        changed = true;
                     }
-                },
-            )
-            .response
-            .rect;
+                }
+            }
+        })
+        .0
+        .rect;
         if let Self::Curve(curve, ..) = self {
             if let Some(curve) = Asset::get(*curve) {
                 curve.data.show(ui, rect);

@@ -9,7 +9,9 @@ use egui::{
     Button, Checkbox, Color32, Frame, Label, Margin, Modifiers, Rect, ScrollArea, TopBottomPanel,
     Vec2,
 };
+use egui_flex::{Flex, item};
 use egui_modal::Modal;
+use std::sync::Arc;
 
 impl SceneInstance {
     pub fn config_ui(
@@ -119,19 +121,44 @@ impl SceneInstance {
 
         ui.separator();
 
+        ui.label("Animations / Click to overwrite (⚙)");
+
+        let Some(scene) = Asset::get(self.scene) else {
+            ui.colored_label(Color32::RED, "Scene not found!");
+            return;
+        };
+
+        if !self.effect_overwrites.is_empty() {
+            Flex::horizontal().show(ui, |flex| {
+                flex.add_ui(item().grow(1.0), |ui| {
+                    if ui.button("Remove all overwrites (⚙)").clicked() {
+                        self.effect_overwrites.clear();
+                        UiAction::InitGPU.enqueue();
+                    }
+                });
+
+                flex.add_ui(item().grow(1.0), |ui| {
+                    if ui.button("Save overwrites to scene").clicked() {
+                        let mut scene = Arc::unwrap_or_clone(scene.clone());
+                        scene
+                            .data
+                            .effects
+                            .iter_mut()
+                            .enumerate()
+                            .for_each(|(index, effect)| {
+                                if let Some(overwrite) = self.effect_overwrites.remove(&index) {
+                                    *effect = overwrite;
+                                }
+                            });
+                        scene.save();
+                        self.effect_overwrites.clear();
+                        UiAction::InitGPU.enqueue();
+                    }
+                });
+            });
+        }
+
         ScrollArea::vertical().show(ui, |ui| {
-            let Some(scene) = Asset::get(self.scene) else {
-                ui.colored_label(Color32::RED, "Scene not found!");
-                return;
-            };
-
-            ui.label("Animations / Setting Overwrites");
-
-            if ui.button("Remove all overwrites").clicked() {
-                self.effect_overwrites.clear();
-                UiAction::InitGPU.enqueue();
-            }
-
             ui.horizontal_wrapped(|ui| {
                 let mut set_overwritten_effect = None;
                 for ((index, effect, overwritten), effect_state) in scene

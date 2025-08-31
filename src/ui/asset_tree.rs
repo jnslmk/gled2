@@ -2,7 +2,7 @@ use crate::storage::{
     asset::{Asset, AssetTrait},
     asset_id::AssetId,
 };
-use egui::{Button, Color32, Id, Label, Margin, Pos2, Rect, Stroke, Ui, UiKind, Vec2};
+use egui::{Button, Color32, Id, Label, Margin, Pos2, Rect, ScrollArea, Stroke, Ui, UiKind, Vec2};
 use egui_flex::{Flex, item};
 use egui_ltreeview::{Action, DragAndDrop, NodeBuilder, TreeView, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
@@ -194,101 +194,109 @@ impl<T: AssetTrait> AssetTree<T> {
 
     /// Returns true if the selection has changed
     pub fn show(&mut self, ui: &mut Ui, id: Id) -> bool {
-        ui.set_clip_rect(ui.max_rect());
         let mut selection_changed = false;
-        let entries = self.load();
-        let mut tree_ids = vec![];
+        ScrollArea::vertical()
+            .id_salt(format!("scroll: {id:?}"))
+            .show(ui, |ui| {
+                let entries = self.load();
+                let mut tree_ids = vec![];
 
-        if !self.only_asset_selection {
-            ui.horizontal(|ui| {
-                let new_dir_name = vec!["New Folder".to_string()];
-                if ui
-                    .add_enabled(
-                        !self.empty_dirs.contains(&new_dir_name)
-                            && !entries.iter().any(|child| {
-                                let TreeEntry::Dir(dir, ..) = child else {
-                                    return false;
-                                };
-                                dir == &new_dir_name
-                            }),
-                        Button::new("+Folder"),
-                    )
-                    .clicked()
-                {
-                    self.empty_dirs.push(new_dir_name);
-                }
-                if ui
-                    .add_enabled(
-                        !self.empty_dirs.is_empty(),
-                        Button::new("Clear Empty Folders"),
-                    )
-                    .clicked()
-                {
-                    if matches!(self.selection, TreeSelection::Dir { .. }) {
-                        self.selection = TreeSelection::None;
-                    }
-                    self.empty_dirs.clear();
-                }
-            });
-        }
-
-        let actions = TreeView::new(id)
-            .show(ui, |builder| {
-                for entry in entries.iter() {
-                    entry.build(
-                        &mut self.empty_dirs,
-                        &mut tree_ids,
-                        builder,
-                        self.only_asset_selection,
-                    );
-                }
-            })
-            .1;
-
-        for action in actions {
-            match action {
-                Action::SetSelected(index) => {
-                    self.selection = index
-                        .first()
-                        .copied()
-                        .map(|index| tree_ids.remove(index))
-                        .and_then(|id| match id {
-                            TreeId::File(id) => Asset::get(id)
-                                .map(|asset| TreeSelection::Asset(Arc::unwrap_or_clone(asset))),
-                            TreeId::Dir(dir) => Some(TreeSelection::Dir {
-                                current: dir.clone(),
-                                new: dir,
-                            }),
-                        })
-                        .unwrap_or_default();
-                    selection_changed = true;
-                }
-                Action::Move(DragAndDrop { source, target, .. }) => {
-                    for source in source {
-                        let mut target = target;
-                        if source < target {
-                            target -= 1;
+                if !self.only_asset_selection {
+                    ui.horizontal(|ui| {
+                        let new_dir_name = vec!["New Folder".to_string()];
+                        if ui
+                            .add_enabled(
+                                !self.empty_dirs.contains(&new_dir_name)
+                                    && !entries.iter().any(|child| {
+                                        let TreeEntry::Dir(dir, ..) = child else {
+                                            return false;
+                                        };
+                                        dir == &new_dir_name
+                                    }),
+                                Button::new("+Folder"),
+                            )
+                            .clicked()
+                        {
+                            self.empty_dirs.push(new_dir_name);
                         }
+                        if ui
+                            .add_enabled(
+                                !self.empty_dirs.is_empty(),
+                                Button::new("Clear Empty Folders"),
+                            )
+                            .clicked()
+                        {
+                            if matches!(self.selection, TreeSelection::Dir { .. }) {
+                                self.selection = TreeSelection::None;
+                            }
+                            self.empty_dirs.clear();
+                        }
+                    });
+                }
 
-                        let source = tree_ids.remove(source);
-                        let target = tree_ids.remove(target);
+                let actions = TreeView::new(id)
+                    .show(ui, |builder| {
+                        for entry in entries.iter() {
+                            entry.build(
+                                &mut self.empty_dirs,
+                                &mut tree_ids,
+                                builder,
+                                self.only_asset_selection,
+                            );
+                        }
+                    })
+                    .1;
 
-                        if let (TreeId::File(source), TreeId::Dir(target)) = (source, target) {
-                            let target = target.clone();
-                            if let Some(asset) = Asset::get(source) {
-                                let mut asset = Arc::unwrap_or_clone(asset);
-                                asset.path = target
-                                    .into_iter()
-                                    .chain(std::iter::once(asset.path.last().unwrap().clone()))
-                                    .collect();
-                                asset.save();
+                for action in actions {
+                    match action {
+                        Action::SetSelected(index) => {
+                            self.selection = index
+                                .first()
+                                .copied()
+                                .map(|index| tree_ids.remove(index))
+                                .and_then(|id| match id {
+                                    TreeId::File(id) => Asset::get(id).map(|asset| {
+                                        TreeSelection::Asset(Arc::unwrap_or_clone(asset))
+                                    }),
+                                    TreeId::Dir(dir) => Some(TreeSelection::Dir {
+                                        current: dir.clone(),
+                                        new: dir,
+                                    }),
+                                })
+                                .unwrap_or_default();
+                            selection_changed = true;
+                        }
+                        Action::Move(DragAndDrop { source, target, .. }) => {
+                            for source in source {
+                                let mut target = target;
+                                if source < target {
+                                    target -= 1;
+                                }
+
+                                let source = tree_ids.remove(source);
+                                let target = tree_ids.remove(target);
+
+                                if let (TreeId::File(source), TreeId::Dir(target)) =
+                                    (source, target)
+                                {
+                                    let target = target.clone();
+                                    if let Some(asset) = Asset::get(source) {
+                                        let mut asset = Arc::unwrap_or_clone(asset);
+                                        asset.path = target
+                                            .into_iter()
+                                            .chain(std::iter::once(
+                                                asset.path.last().unwrap().clone(),
+                                            ))
+                                            .collect();
+                                        asset.save();
+                                    }
+                                }
                             }
                         }
+                        _ => {}
                     }
                 }
-                _ => {}
-            }
-        }
+            });
 
         selection_changed
     }
