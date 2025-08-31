@@ -195,26 +195,28 @@ impl SceneInstance {
                     .zip(self.effect_states.iter_mut())
                 {
                     let mut selected = 0;
-                    let res = ui.add_sized(
-                        Vec2::splat(100.0),
-                        EffectWidget {
-                            show_group: true,
-                            selectable: Some((&mut selected, 1)),
-                            effect,
-                            effect_state,
-                            svg: svg.clone(),
-                            uv,
-                            groups: Some(&groups),
-                            groups_show_index: false,
-                        },
-                    );
+                    let rect = ui
+                        .add_sized(
+                            Vec2::splat(100.0),
+                            EffectWidget {
+                                show_group: true,
+                                selectable: Some((&mut selected, 1)),
+                                effect,
+                                effect_state,
+                                svg: svg.clone(),
+                                uv,
+                                groups: Some(&groups),
+                                groups_show_index: false,
+                            },
+                        )
+                        .rect;
                     if overwritten {
-                        ui.put(
-                            Rect::from_two_pos(
-                                res.rect.left_bottom() + Vec2::new(10.0, -10.0),
-                                res.rect.left_bottom() + Vec2::new(30.0, -30.0),
-                            ),
-                            Label::new("⚙"),
+                        ui.painter().text(
+                            rect.left_bottom() + Vec2::new(12.0, -10.0),
+                            egui::Align2::LEFT_BOTTOM,
+                            "⚙",
+                            egui::TextStyle::Body.resolve(ui.style()),
+                            Color32::from_white_alpha(100),
                         );
                     }
                     let modal = Modal::new(ui.ctx(), format!("effect settings {index}"))

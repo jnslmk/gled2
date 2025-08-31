@@ -176,12 +176,12 @@ impl Widget for SceneInstanceWidget<'_> {
                                         || self.scene_instance.groups_overwrite.is_some()
                                         || self.scene_instance.palette_overwrite.is_some()
                                     {
-                                        ui.put(
-                                            Rect::from_two_pos(
-                                                rect.left_bottom() + Vec2::new(3.0, -10.0),
-                                                rect.left_bottom() + Vec2::new(20.0, -20.0),
-                                            ),
-                                            Label::new("⚙"),
+                                        ui.painter().text(
+                                            rect.left_bottom() + Vec2::new(2.0, -1.0),
+                                            egui::Align2::LEFT_BOTTOM,
+                                            "⚙",
+                                            egui::TextStyle::Body.resolve(ui.style()),
+                                            Color32::from_white_alpha(100),
                                         );
                                     }
                                 });
