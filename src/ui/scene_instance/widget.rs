@@ -12,7 +12,6 @@ use egui::{
     Align, Button, Checkbox, Color32, CornerRadius, Image, Label, Layout, Margin, Rect, Sense,
     Shape, TextureHandle, Ui, Vec2, Widget, epaint::RectShape, load::SizedTexture, pos2,
 };
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct SceneInstanceWidget<'a> {
     pub selected_scene_instance: &'a mut SceneInstancePathId,
@@ -36,16 +35,7 @@ impl Widget for SceneInstanceWidget<'_> {
 
         let mut response = egui::Frame::NONE
             .fill(if *self.selected_scene_instance == path {
-                Color32::GOLD.linear_multiply(
-                    ((SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Could not get time")
-                        .subsec_millis()
-                        / 100) as f32
-                        / 5.0
-                        - 1.0)
-                        .abs(),
-                )
+                Color32::GOLD
             } else {
                 Color32::TRANSPARENT
             })

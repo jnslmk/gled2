@@ -8,7 +8,6 @@ use egui::{
     Vec2, Widget, load::SizedTexture, pos2,
 };
 use epaint::RectShape;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct EffectWidget<'a> {
     pub selectable: Option<(&'a mut usize, usize)>,
@@ -28,16 +27,7 @@ impl Widget for EffectWidget<'_> {
         let frame = if let Some((selected_effect, index)) = &self.selectable {
             egui::Frame::NONE
                 .fill(if *selected_effect == index {
-                    Color32::GOLD.linear_multiply(
-                        ((SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .expect("Could not get time")
-                            .subsec_millis()
-                            / 100) as f32
-                            / 5.0
-                            - 1.0)
-                            .abs(),
-                    )
+                    Color32::GOLD
                 } else {
                     Color32::TRANSPARENT
                 })
