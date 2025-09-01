@@ -10,7 +10,7 @@ pub mod ui;
 
 use app::{App, persistant_state::PersistantState};
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
-use egui::ThemePreference;
+use egui::{Color32, ThemePreference};
 use egui_extras::install_image_loaders;
 use input::Input;
 use once_cell::sync::Lazy;
@@ -76,8 +76,10 @@ fn main() {
         Box::new(|cc| {
             cc.egui_ctx
                 .options_mut(|options| options.theme_preference = ThemePreference::Dark);
-            cc.egui_ctx
-                .style_mut(|style| style.always_scroll_the_only_direction = true);
+            cc.egui_ctx.style_mut(|style| {
+                style.always_scroll_the_only_direction = true;
+                style.visuals.panel_fill = Color32::from_gray(5);
+            });
             install_image_loaders(&cc.egui_ctx);
             Input::init(&cc.egui_ctx);
 
