@@ -24,8 +24,8 @@ impl CurvesWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("curves window")),
             default_viewport_builder()
-                .with_inner_size(Vec2::new(600.0, 500.0))
-                .with_min_inner_size(Vec2::new(600.0, 500.0)),
+                .with_inner_size(Vec2::new(660.0, 500.0))
+                .with_min_inner_size(Vec2::new(660.0, 500.0)),
             |ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {

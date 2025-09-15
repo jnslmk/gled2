@@ -37,7 +37,7 @@ keyring = { version = "3", features = [
     "windows-native",
     "sync-secret-service",
 ] }
-kurbo = "0.11"
+kurbo = "0.12"
 log = "0.4"
 midir = { version = "0.10", features = ["winrt"] }
 naga = "25"

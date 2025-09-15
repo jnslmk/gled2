@@ -49,8 +49,8 @@ impl OutputDevicesWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("output devices window")),
             default_viewport_builder()
-                .with_inner_size(Vec2::new(520.0, 500.0))
-                .with_min_inner_size(Vec2::new(520.0, 500.0)),
+                .with_inner_size(Vec2::new(570.0, 500.0))
+                .with_min_inner_size(Vec2::new(570.0, 500.0)),
             |ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {

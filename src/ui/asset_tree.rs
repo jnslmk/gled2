@@ -370,10 +370,13 @@ impl<T: AssetTrait> AssetTree<T> {
                     egui::Frame::NONE
                         .inner_margin(Margin::from(3.0))
                         .show(ui, |ui| {
-                            ui.set_max_width(width / 4.0);
+                            ui.set_max_width(width / 4.0 - 6.0);
                             ui.vertical_centered_justified(|ui| {
                                 if ui
-                                    .add(Button::new("Save Copy"))
+                                    .add(
+                                        Button::new("Save Copy")
+                                            .wrap_mode(egui::TextWrapMode::Extend),
+                                    )
                                     .on_hover_ui(|ui| {
                                         ui.label("Save copy to disk");
                                     })

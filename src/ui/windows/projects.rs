@@ -25,8 +25,8 @@ impl ProjectsWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("projects window")),
             default_viewport_builder()
-                .with_inner_size(Vec2::new(500.0, 500.0))
-                .with_min_inner_size(Vec2::new(500.0, 500.0)),
+                .with_inner_size(Vec2::new(550.0, 500.0))
+                .with_min_inner_size(Vec2::new(550.0, 500.0)),
             |ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {
