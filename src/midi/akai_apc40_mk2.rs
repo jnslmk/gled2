@@ -70,12 +70,12 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
         }),
         (176, 49, val) => UiAction::SetSelectedSceneOpacity(f32::from(val) / 127.0),
         _ => {
-            dbg!(status, data1, data2);
+            //dbg!(status, data1, data2);
             return;
         }
     };
 
-    dbg!(status, data1, data2, &action);
+    //dbg!(status, data1, data2, &action);
 
     action.enqueue();
 }
