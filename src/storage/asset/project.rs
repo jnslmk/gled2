@@ -191,8 +191,21 @@ impl Project {
         Preview::set_buffers();
     }
 
+    pub fn scene_instance(&self, path: SceneInstancePathId) -> Option<&SceneInstance> {
+        match path.deck_path {
+            DeckPath::Grid => self
+                .scenes_instances_grid
+                .iter()
+                .find(|scene_instance| scene_instance.id == path.id),
+            DeckPath::Quick => self
+                .scenes_instances_quick
+                .iter()
+                .find(|scene_instance| scene_instance.id == path.id),
+        }
+    }
+
     #[inline(always)]
-    pub fn scene_instance(&mut self, path: SceneInstancePathId) -> Option<&mut SceneInstance> {
+    pub fn scene_instance_mut(&mut self, path: SceneInstancePathId) -> Option<&mut SceneInstance> {
         match path.deck_path {
             DeckPath::Grid => self
                 .scenes_instances_grid

@@ -7,7 +7,10 @@ use crate::{
             Asset,
             animation::Animation,
             curve::static_or_curve::StaticOrCurve,
-            project::{DeckPath, Project, scene_instance_path::SceneInstancePathIndex},
+            project::{
+                DeckPath, Project,
+                scene_instance_path::{SceneInstancePathId, SceneInstancePathIndex},
+            },
         },
         asset_id::AssetId,
     },
@@ -25,6 +28,7 @@ static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 #[derive(Debug)]
 pub enum UiAction {
     SetProject(AssetId<Project>),
+    SelectScene(SceneInstancePathIndex),
     DeleteSelectedSceneInstance,
     CloneSelectedSceneInstance,
     MoveSelectedSceneToOtherGrid,
@@ -42,6 +46,7 @@ pub enum UiAction {
     ///
     /// This also activates the scene instance
     SetSceneOpacity(SceneInstancePathIndex, f32),
+    SetSelectedSceneOpacity(f32),
     ToggleSceneActive(SceneInstancePathIndex),
     SetSceneActive(SceneInstancePathIndex, bool),
     SetMainDimmer(f32),
@@ -64,7 +69,7 @@ impl App {
                 }
                 (Some(project), UiAction::CloneSelectedSceneInstance) => {
                     if let Some(scene) = project
-                        .scene_instance(self.selected_scene_instance)
+                        .scene_instance_mut(self.selected_scene_instance)
                         .map(|scene_instance| scene_instance.scene)
                     {
                         self.selected_scene_instance =
@@ -105,6 +110,13 @@ impl App {
                         scene_instance.opacity = StaticOrCurve::new_static(opacity);
                     }
                 }
+                (Some(project), UiAction::SetSelectedSceneOpacity(opacity)) => {
+                    if let Some(scene_instance) =
+                        project.scene_instance_mut(self.selected_scene_instance)
+                    {
+                        scene_instance.opacity = StaticOrCurve::new_static(opacity);
+                    }
+                }
                 (Some(project), UiAction::SetMainDimmer(dimmer)) => {
                     project.main_dimmer = dimmer;
                 }
@@ -116,6 +128,14 @@ impl App {
                 (Some(project), UiAction::SetSceneActive(path, active)) => {
                     if let Some(scene_instance) = project.scene_instance_by_index(path) {
                         scene_instance.active = active;
+                    }
+                }
+                (Some(project), UiAction::SelectScene(path)) => {
+                    if let Some(scene_instance) = project.scene_instance_by_index(path) {
+                        self.selected_scene_instance = SceneInstancePathId {
+                            deck_path: path.deck_path,
+                            id: scene_instance.id,
+                        };
                     }
                 }
                 (_, UiAction::Tap) => {

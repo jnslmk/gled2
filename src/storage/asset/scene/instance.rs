@@ -9,7 +9,7 @@ use crate::{
     storage::{
         Asset, AssetId,
         animation::Animation,
-        asset::scene::effect::Effect,
+        asset::scene::{color::SceneInstanceColor, effect::Effect},
         curve::static_or_curve::{RangePercentage, StaticOrCurve},
         palette::Palette,
     },
@@ -26,6 +26,8 @@ pub struct SceneInstance {
     #[serde(default = "Uuid::new_v4")]
     pub id: Uuid,
 
+    #[serde(default)]
+    pub color: SceneInstanceColor,
     #[serde(default)]
     pub active: bool,
     #[serde(default)]
@@ -69,6 +71,7 @@ impl Clone for SceneInstance {
     fn clone(&self) -> Self {
         Self {
             id: self.id,
+            color: self.color,
             active: self.active,
             opacity: self.opacity,
             input_dimmer: self.input_dimmer,
@@ -99,6 +102,7 @@ impl From<AssetId<Scene>> for SceneInstance {
     fn from(scene: AssetId<Scene>) -> Self {
         Self {
             scene,
+            color: Default::default(),
             id: Uuid::new_v4(),
             active: Default::default(),
             opacity: StaticOrCurve::new_static(1.0),

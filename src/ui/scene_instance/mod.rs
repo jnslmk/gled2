@@ -74,116 +74,121 @@ impl SceneInstance {
                 });
             });
 
-        ui.horizontal(|ui| {
-            egui::Frame::NONE
-                .inner_margin(Margin::from(3.0))
-                .show(ui, |ui| {
-                    ui.set_max_width(width / 2.0);
-                    ui.vertical(|ui| {
-                        ui.label("Activation Input");
-                        self.activation_input.change_button(ui);
-
-                        ui.label("Flash Input");
-                        self.flash_input.change_button(ui);
-
-                        if self.flash_input.is_some() {
-                            ui.label("Set Offset On Flash");
-                            ui.checkbox(&mut self.set_offset_on_flash, "");
-                        }
-
-                        ui.label("Dimmer Input");
-                        self.dimmer_input.change_button(ui);
-                    });
-                });
-            egui::Frame::NONE
-                .inner_margin(Margin::from(3.0))
-                .show(ui, |ui| {
-                    ui.set_max_width(width / 2.0);
-                    ui.vertical(|ui| {
-                        ui.label("Active");
-                        ui.add(Checkbox::new(&mut self.active, ""));
-
-                        ui.label("Opacity");
-                        ui.vertical_centered_justified(|ui| {
-                            self.opacity.change_button(ui);
-                        });
-
-                        ui.label("Ignore Main Dimmer");
-                        ui.add(Checkbox::new(&mut self.ignore_main_dimmer, ""));
-
-                        ui.label("Beat offset");
-                        ui.vertical_centered_justified(|ui| {
-                            self.beat_progression_offset.change_button(ui);
-                        });
-                    });
-                });
-        });
-
-        egui::Frame::NONE
-            .inner_margin(Margin::from(6.0))
-            .show(ui, |ui| {
-                ui.set_min_width(ui.available_width());
-                self.groups_overwrite.change_button(ui);
-            });
-
-        egui::Frame::NONE
-            .inner_margin(Margin::from(6.0))
-            .show(ui, |ui| {
-                ui.set_min_width(ui.available_width());
-                self.palette_overwrite.change_button(ui);
-            });
-
-        ui.separator();
-
-        ui.label("Animations / Click to overwrite (⚙)");
-
-        let Some(scene) = Asset::get(self.scene) else {
-            ui.colored_label(Color32::RED, "Scene not found!");
-            return;
-        };
-
-        if !self.effect_overwrites.is_empty() {
-            ui.horizontal(|ui| {
-                egui::Frame::NONE
-                    .inner_margin(Margin::from(3.0))
-                    .show(ui, |ui| {
-                        ui.set_max_width(width / 2.0);
-                        ui.vertical_centered_justified(|ui| {
-                            if ui.button("Remove all overwrites (⚙)").clicked() {
-                                self.effect_overwrites.clear();
-                                UiAction::InitGPU.enqueue();
-                            }
-                        });
-                    });
-                egui::Frame::NONE
-                    .inner_margin(Margin::from(3.0))
-                    .show(ui, |ui| {
-                        ui.set_max_width(width / 2.0);
-                        ui.vertical_centered_justified(|ui| {
-                            if ui.button("Save overwrites to scene").clicked() {
-                                let mut scene = Arc::unwrap_or_clone(scene.clone());
-                                scene.data.effects.iter_mut().enumerate().for_each(
-                                    |(index, effect)| {
-                                        if let Some(overwrite) =
-                                            self.effect_overwrites.remove(&index)
-                                        {
-                                            *effect = overwrite;
-                                        }
-                                    },
-                                );
-                                scene.save();
-                                self.effect_overwrites.clear();
-                                UiAction::InitGPU.enqueue();
-                            }
-                        });
-                    });
-            });
-        }
-
         ScrollArea::vertical()
             .scroll_bar_visibility(AlwaysVisible)
             .show(ui, |ui| {
                 ui.set_min_width(ui.available_width());
+                ui.set_min_height(ui.available_height());
+
+                ui.horizontal(|ui| {
+                    egui::Frame::NONE
+                        .inner_margin(Margin::from(3.0))
+                        .show(ui, |ui| {
+                            ui.set_max_width(width / 2.0);
+                            ui.vertical(|ui| {
+                                ui.label("Activation Input");
+                                self.activation_input.change_button(ui);
+
+                                ui.label("Flash Input");
+                                self.flash_input.change_button(ui);
+
+                                if self.flash_input.is_some() {
+                                    ui.label("Set Offset On Flash");
+                                    ui.checkbox(&mut self.set_offset_on_flash, "");
+                                }
+
+                                ui.label("Dimmer Input");
+                                self.dimmer_input.change_button(ui);
+
+                                ui.label("Scene highlight color");
+                                self.color.change_button(ui);
+                            });
+                        });
+                    egui::Frame::NONE
+                        .inner_margin(Margin::from(3.0))
+                        .show(ui, |ui| {
+                            ui.set_max_width(width / 2.0);
+                            ui.vertical(|ui| {
+                                ui.label("Active");
+                                ui.add(Checkbox::new(&mut self.active, ""));
+
+                                ui.label("Opacity");
+                                ui.vertical_centered_justified(|ui| {
+                                    self.opacity.change_button(ui);
+                                });
+
+                                ui.label("Ignore Main Dimmer");
+                                ui.add(Checkbox::new(&mut self.ignore_main_dimmer, ""));
+
+                                ui.label("Beat offset");
+                                ui.vertical_centered_justified(|ui| {
+                                    self.beat_progression_offset.change_button(ui);
+                                });
+                            });
+                        });
+                });
+
+                egui::Frame::NONE
+                    .inner_margin(Margin::from(6.0))
+                    .show(ui, |ui| {
+                        ui.set_min_width(ui.available_width());
+                        self.groups_overwrite.change_button(ui);
+                    });
+
+                egui::Frame::NONE
+                    .inner_margin(Margin::from(6.0))
+                    .show(ui, |ui| {
+                        ui.set_min_width(ui.available_width());
+                        self.palette_overwrite.change_button(ui);
+                    });
+
+                ui.separator();
+
+                ui.label("Animations / Click to overwrite (⚙)");
+
+                let Some(scene) = Asset::get(self.scene) else {
+                    ui.colored_label(Color32::RED, "Scene not found!");
+                    return;
+                };
+
+                if !self.effect_overwrites.is_empty() {
+                    ui.horizontal(|ui| {
+                        egui::Frame::NONE
+                            .inner_margin(Margin::from(3.0))
+                            .show(ui, |ui| {
+                                ui.set_max_width(width / 2.0);
+                                ui.vertical_centered_justified(|ui| {
+                                    if ui.button("Remove all overwrites (⚙)").clicked() {
+                                        self.effect_overwrites.clear();
+                                        UiAction::InitGPU.enqueue();
+                                    }
+                                });
+                            });
+                        egui::Frame::NONE
+                            .inner_margin(Margin::from(3.0))
+                            .show(ui, |ui| {
+                                ui.set_max_width(width / 2.0);
+                                ui.vertical_centered_justified(|ui| {
+                                    if ui.button("Save overwrites to scene").clicked() {
+                                        let mut scene = Arc::unwrap_or_clone(scene.clone());
+                                        scene.data.effects.iter_mut().enumerate().for_each(
+                                            |(index, effect)| {
+                                                if let Some(overwrite) =
+                                                    self.effect_overwrites.remove(&index)
+                                                {
+                                                    *effect = overwrite;
+                                                }
+                                            },
+                                        );
+                                        scene.save();
+                                        self.effect_overwrites.clear();
+                                        UiAction::InitGPU.enqueue();
+                                    }
+                                });
+                            });
+                    });
+                }
+
                 let mut beat_progression = timing.beat_progression();
                 beat_progression += self.beat_progression_offset.value(beat_progression);
 

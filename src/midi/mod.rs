@@ -1,4 +1,4 @@
-pub mod apc40_mk2;
+pub mod akai_apc40_mk2;
 pub mod input;
 pub mod output;
 pub mod state;

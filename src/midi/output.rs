@@ -1,5 +1,5 @@
 use crate::{
-    midi::{apc40_mk2, state::new_receiver},
+    midi::{akai_apc40_mk2, state::new_receiver},
     ui::action::UiAction,
 };
 use midir::MidiOutput;
@@ -60,7 +60,7 @@ pub fn discover() {
                                 continue;
                             }
                         };
-                        spawn(move || apc40_mk2::send_output(new_receiver(), connection));
+                        spawn(move || akai_apc40_mk2::send_output(new_receiver(), connection));
                         handled_devices.insert(id);
                     }
                 }

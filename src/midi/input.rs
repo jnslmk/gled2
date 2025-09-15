@@ -1,4 +1,4 @@
-use crate::{midi::apc40_mk2, ui::action::UiAction};
+use crate::{midi::akai_apc40_mk2, ui::action::UiAction};
 use midir::MidiInput;
 use std::{collections::HashMap, thread::sleep, time::Duration};
 
@@ -51,7 +51,7 @@ pub fn discover() {
                                     log::trace!(
                                         "Midi message from \"{name}\" at \"{id}\": {message:?}"
                                     );
-                                    apc40_mk2::handle_input(stamp, message);
+                                    akai_apc40_mk2::handle_input(stamp, message);
                                 },
                                 (),
                             ) {

@@ -56,7 +56,7 @@ impl Widget for SceneInstanceWidget<'_> {
                             ui.painter().rect_filled(
                                 bg_rect,
                                 CornerRadius::ZERO,
-                                Color32::DARK_GREEN,
+                                self.scene_instance.color,
                             );
                         }
                         ui.painter().rect_filled(
@@ -85,9 +85,9 @@ impl Widget for SceneInstanceWidget<'_> {
                                 bg_rect,
                                 CornerRadius::ZERO,
                                 if self.scene_instance.active {
-                                    Color32::DARK_GREEN
+                                    self.scene_instance.color.into()
                                 } else {
-                                    Color32::from_white_alpha(40)
+                                    Color32::from_white_alpha(20) * self.scene_instance.color.into()
                                 },
                             );
                         }

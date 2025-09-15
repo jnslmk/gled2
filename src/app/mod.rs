@@ -117,14 +117,52 @@ impl eframe::App for App {
                             )
                             .collect()
                     }),
-                available_scenes_grid: self
+                flashed_scenes: self
                     .project
                     .as_mut()
-                    .map_or(0, |project| project.scenes_instances_grid.len()),
-                available_scenes_quick: self
-                    .project
-                    .as_mut()
-                    .map_or(0, |project| project.scenes_instances_quick.len()),
+                    .map_or_else(Default::default, |project| {
+                        project
+                            .all_scene_instances_index()
+                            .filter_map(|(path, scene)| if scene.flash { Some(path) } else { None })
+                            .collect()
+                    }),
+                available_scenes_grid: self.project.as_mut().map_or_else(
+                    Default::default,
+                    |project| {
+                        project
+                            .scenes_instances_grid
+                            .iter()
+                            .map(|scene_instance| scene_instance.color)
+                            .collect()
+                    },
+                ),
+                available_scenes_quick: self.project.as_mut().map_or_else(
+                    Default::default,
+                    |project| {
+                        project
+                            .scenes_instances_quick
+                            .iter()
+                            .map(|scene_instance| scene_instance.color)
+                            .collect()
+                    },
+                ),
+                selected_scene_opacity: {
+                    let mut beat_progression = self.timing.beat_progression();
+
+                    self.project
+                        .as_ref()
+                        .and_then(|project| {
+                            project.scene_instance(self.selected_scene_instance).map(
+                                |scene_instance| {
+                                    beat_progression += scene_instance
+                                        .beat_progression_offset
+                                        .value(beat_progression);
+                                    scene_instance.opacity.value(beat_progression)
+                                },
+                            )
+                        })
+                        .unwrap_or(1.0)
+                },
             }
             .enqueue();
         }

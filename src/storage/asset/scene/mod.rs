@@ -1,3 +1,4 @@
+pub mod color;
 pub mod effect;
 pub mod effect_state;
 pub mod instance;
