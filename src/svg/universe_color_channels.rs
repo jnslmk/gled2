@@ -36,6 +36,7 @@ impl From<&ParsedSvg> for UniverseColorChannels {
             if parameter.start.is_none() {
                 continue;
             }
+
             for led in parameter.leds() {
                 let universe = universes
                     .entry(led.universe)

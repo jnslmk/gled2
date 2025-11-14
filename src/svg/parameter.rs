@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
+#[derive(Default)]
 pub struct Parameter {
     pub start: Option<usize>,
     pub universe: u16,
@@ -23,6 +24,10 @@ impl Parameter {
         let Some(start) = self.start else {
             return vec![];
         };
+
+        if dbg!(self.count) == 0 {
+            return vec![];
+        }
 
         let color_channels =
             serde_json::from_str(&format!("\"{}\"", self.color_channels)).unwrap_or_default();
@@ -43,18 +48,5 @@ impl Parameter {
                 }
             })
             .collect()
-    }
-}
-
-impl Default for Parameter {
-    fn default() -> Self {
-        Self {
-            count: 1,
-            groups: Default::default(),
-            start: Default::default(),
-            universe: Default::default(),
-            leds: Default::default(),
-            color_channels: Default::default(),
-        }
     }
 }
