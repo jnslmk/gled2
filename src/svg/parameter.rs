@@ -25,7 +25,7 @@ impl Parameter {
             return vec![];
         };
 
-        if dbg!(self.count) == 0 {
+        if self.count == 0 {
             return vec![];
         }
 
