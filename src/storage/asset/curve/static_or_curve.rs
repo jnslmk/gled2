@@ -123,7 +123,6 @@ impl<R: Range> ChangeButton for StaticOrCurve<R> {
                     if let Some(id) =
                         AssetTree::show_asset_selection(ui, ui.make_persistent_id(Curve::NAME))
                     {
-                        dbg!("Should close");
                         *curve = id;
                         ui.data_mut(|d| {
                             d.remove::<TreeViewState<usize>>(ui.make_persistent_id(Curve::NAME))
