@@ -54,6 +54,7 @@ impl Widget for SceneInstanceWidget<'_> {
                                 top: 10,
                                 bottom: 30,
                             };
+
                         if self.scene_instance.active {
                             ui.painter().rect_filled(
                                 bg_rect,
@@ -61,16 +62,14 @@ impl Widget for SceneInstanceWidget<'_> {
                                 self.scene_instance.color,
                             );
                         }
-                        ui.painter().rect_filled(
-                            bg_rect.shrink(1.0),
-                            CornerRadius::ZERO,
-                            if self.scene_instance.flash {
-                                Color32::from_white_alpha(180)
-                            } else {
-                                Color32::BLACK
-                            },
-                        );
-                        if !self.scene_instance.flash {
+
+                        if self.scene_instance.flash {
+                            ui.painter().rect_filled(
+                                bg_rect.shrink(1.0),
+                                CornerRadius::ZERO,
+                                Color32::from_white_alpha(180),
+                            );
+                        } else {
                             let mut beat_progression = self.timing.beat_progression();
                             beat_progression += self
                                 .scene_instance
@@ -82,14 +81,20 @@ impl Widget for SceneInstanceWidget<'_> {
                                 1.0
                             } * self.scene_instance.input_dimmer
                                 * self.scene_instance.opacity.value(beat_progression);
-                            bg_rect.min.y += (bg_rect.height() * (1.0 - dimmer)).round().max(0.0);
+                            let (top, bottom) = bg_rect
+                                .shrink(1.0)
+                                .split_top_bottom_at_fraction(1.0 - dimmer);
+
+                            ui.painter()
+                                .rect_filled(top, CornerRadius::ZERO, Color32::BLACK);
                             ui.painter().rect_filled(
-                                bg_rect,
+                                bottom,
                                 CornerRadius::ZERO,
                                 if self.scene_instance.active {
                                     self.scene_instance.color.into()
                                 } else {
-                                    Color32::from_white_alpha(20) * self.scene_instance.color.into()
+                                    Color32::from(self.scene_instance.color)
+                                        * Color32::from_gray(127)
                                 },
                             );
                         }
