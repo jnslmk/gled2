@@ -6,6 +6,7 @@ use std::{
     net::{SocketAddr, UdpSocket},
     sync::mpsc::{Receiver, Sender, channel},
     thread,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use crate::{
@@ -83,9 +84,20 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                         .collect::<Vec<_>>();
                     if let Some(routing) = hovered_output_routing {
                         if let Some(device) = routing.device.and_then(Asset::get) {
+                            let value = if SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .expect("time problem")
+                                .as_millis()
+                                % 1000
+                                < 500
+                            {
+                                0
+                            } else {
+                                255
+                            };
                             if let Some((addr, data)) = device.data.prepare_package(
                                 routing.universe,
-                                &[255; UNIVERSE_BUFFER_SIZE as usize],
+                                &[value; UNIVERSE_BUFFER_SIZE as usize],
                             ) {
                                 packages.push((addr, data));
                             }
