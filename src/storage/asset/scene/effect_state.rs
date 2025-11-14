@@ -141,7 +141,7 @@ impl EffectState {
         });
         wgpu_render_state()
             .device
-            .poll(PollType::Wait)
+            .poll(PollType::wait_indefinitely())
             .expect("Could not poll device");
         rx.recv()
             .expect("Could not receive on gpu rx")

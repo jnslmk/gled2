@@ -135,10 +135,10 @@ impl<R: Range> ChangeButton for StaticOrCurve<R> {
         })
         .0
         .rect;
-        if let Self::Curve(curve, ..) = self {
-            if let Some(curve) = Asset::get(*curve) {
-                curve.data.show(ui, rect);
-            }
+        if let Self::Curve(curve, ..) = self
+            && let Some(curve) = Asset::get(*curve)
+        {
+            curve.data.show(ui, rect);
         }
 
         changed

@@ -124,7 +124,7 @@ impl Git {
         callbacks
     }
 
-    fn branch_reference(&self) -> Option<Reference> {
+    fn branch_reference(&'_ self) -> Option<Reference<'_>> {
         self.repository
             .as_ref()
             .and_then(|repository| repository.head().ok())
@@ -434,13 +434,13 @@ impl GitCredentials {
     }
 
     pub fn set_passphrase(&mut self, passphrase: String) {
-        if let Some(entry) = SSH_KEY_PASSPHRASE_ENTRY.as_ref() {
-            if let Err(err) = entry.set_password(&passphrase) {
-                UiAction::Error(format!(
-                    "Could not set passphrase in system keychain: {err:?}"
-                ))
-                .enqueue();
-            }
+        if let Some(entry) = SSH_KEY_PASSPHRASE_ENTRY.as_ref()
+            && let Err(err) = entry.set_password(&passphrase)
+        {
+            UiAction::Error(format!(
+                "Could not set passphrase in system keychain: {err:?}"
+            ))
+            .enqueue();
         }
     }
 }

@@ -2,7 +2,7 @@
 use super::AnimationConfig;
 use crate::{
     pipeline::constants::TEXTURE_SIZE,
-    storage::{scene::effect_state::EffectState, Asset, Palette},
+    storage::{Asset, Palette, scene::effect_state::EffectState},
     wgpu_render_state,
 };
 use std::{
@@ -155,6 +155,7 @@ impl AnimationRenderer {
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: self.view(),
                 resolve_target: None,
+                depth_slice: None,
                 ops: Operations {
                     load: LoadOp::Clear(wgpu::Color {
                         r: 0.0,

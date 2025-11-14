@@ -288,15 +288,15 @@ impl Project {
                     let mut disable_count =
                         (indices.len() + 1).saturating_sub(auto_mode_max_scenes);
                     while disable_count > 0 {
-                        if let Some(index) = indices.choose_mut(&mut rand::rng()).copied() {
-                            if prev.insert(index) {
-                                disable_count -= 1;
-                                if let Some(scene) = self.scenes_instances_grid.get_mut(index) {
-                                    scene.set_transition(Transition::new(
-                                        TransitionGoal::TurnOff,
-                                        fade_duration,
-                                    ));
-                                }
+                        if let Some(index) = indices.choose_mut(&mut rand::rng()).copied()
+                            && prev.insert(index)
+                        {
+                            disable_count -= 1;
+                            if let Some(scene) = self.scenes_instances_grid.get_mut(index) {
+                                scene.set_transition(Transition::new(
+                                    TransitionGoal::TurnOff,
+                                    fade_duration,
+                                ));
                             }
                         }
                     }

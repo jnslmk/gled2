@@ -1,7 +1,8 @@
 //! Render preview circles.
 use crate::{
+    OUTPUT_BUFFER,
     pipeline::constants::{OUTPUT_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, PREVIEW_TEXTURE_SIZE},
-    wgpu_render_state, OUTPUT_BUFFER,
+    wgpu_render_state,
 };
 use egui::TextureId;
 use once_cell::unsync::OnceCell;
@@ -160,6 +161,7 @@ impl Preview {
                     color_attachments: &[Some(RenderPassColorAttachment {
                         view: &preview.view,
                         resolve_target: None,
+                        depth_slice: None,
                         ops: Operations {
                             load: LoadOp::Clear(wgpu::Color {
                                 r: 0.0,

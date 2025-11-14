@@ -82,33 +82,32 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                             device.data.prepare_package(routing.universe, data)
                         })
                         .collect::<Vec<_>>();
-                    if let Some(routing) = hovered_output_routing {
-                        if let Some(device) = routing.device.and_then(Asset::get) {
-                            let value = if SystemTime::now()
-                                .duration_since(UNIX_EPOCH)
-                                .expect("time problem")
-                                .as_millis()
-                                % 1000
-                                < 500
-                            {
-                                0
-                            } else {
-                                255
-                            };
-                            if let Some((addr, data)) = device.data.prepare_package(
-                                routing.universe,
-                                &[value; UNIVERSE_BUFFER_SIZE as usize],
-                            ) {
-                                packages.push((addr, data));
-                            }
+                    if let Some(routing) = hovered_output_routing
+                        && let Some(device) = routing.device.and_then(Asset::get)
+                    {
+                        let value = if SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .expect("time problem")
+                            .as_millis()
+                            % 1000
+                            < 500
+                        {
+                            0
+                        } else {
+                            255
+                        };
+                        if let Some((addr, data)) = device.data.prepare_package(
+                            routing.universe,
+                            &[value; UNIVERSE_BUFFER_SIZE as usize],
+                        ) {
+                            packages.push((addr, data));
                         }
                     }
                     for (device, universe, data) in channel_overwrites.other_universes() {
-                        if let Some(device) = Asset::get(device) {
-                            if let Some((addr, data)) = device.data.prepare_package(universe, &data)
-                            {
-                                packages.push((addr, data));
-                            }
+                        if let Some(device) = Asset::get(device)
+                            && let Some((addr, data)) = device.data.prepare_package(universe, &data)
+                        {
+                            packages.push((addr, data));
                         }
                     }
                     packages

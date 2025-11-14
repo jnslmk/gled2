@@ -40,28 +40,28 @@ pub struct AnimationWindow {
 
 impl AnimationWindow {
     fn validate(&mut self) {
-        if let TreeSelection::Asset(animation) = &self.tree.selected() {
-            if let Some(effect) = self.effect.as_mut() {
-                effect.animation_overwrite = Some(Arc::new(animation.clone()));
-                let mut validator = Validator::new(ValidationFlags::all(), Capabilities::all());
-                match parse_str(&effect.shader_code_complete())
-                    .map_err(|err| err.emit_to_string(&effect.shader_code_complete()))
-                    .and_then(|module| {
-                        validator
-                            .validate(&module)
-                            .map_err(|err| err.emit_to_string(&effect.shader_code_complete()))
-                    }) {
-                    Ok(_) => {
-                        if let Some(effect_state) = self.effect_state.as_mut() {
-                            effect_state.update(effect);
-                        } else {
-                            self.effect_state = Some(EffectState::new(effect));
-                        }
-                        self.error.take();
+        if let TreeSelection::Asset(animation) = &self.tree.selected()
+            && let Some(effect) = self.effect.as_mut()
+        {
+            effect.animation_overwrite = Some(Arc::new(animation.clone()));
+            let mut validator = Validator::new(ValidationFlags::all(), Capabilities::all());
+            match parse_str(&effect.shader_code_complete())
+                .map_err(|err| err.emit_to_string(&effect.shader_code_complete()))
+                .and_then(|module| {
+                    validator
+                        .validate(&module)
+                        .map_err(|err| err.emit_to_string(&effect.shader_code_complete()))
+                }) {
+                Ok(_) => {
+                    if let Some(effect_state) = self.effect_state.as_mut() {
+                        effect_state.update(effect);
+                    } else {
+                        self.effect_state = Some(EffectState::new(effect));
                     }
-                    Err(err) => {
-                        self.error = Some(err);
-                    }
+                    self.error.take();
+                }
+                Err(err) => {
+                    self.error = Some(err);
                 }
             }
         }

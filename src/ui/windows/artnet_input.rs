@@ -43,28 +43,28 @@ impl ArtnetInputWindow {
                     let universe = self
                         .universe
                         .get_or_insert_with(|| config.universe.to_string());
-                    if ui.add(TextEdit::singleline(universe)).changed() {
-                        if let Ok(universe) = universe.parse::<u16>() {
-                            config.universe = universe;
-                        }
+                    if ui.add(TextEdit::singleline(universe)).changed()
+                        && let Ok(universe) = universe.parse::<u16>()
+                    {
+                        config.universe = universe;
                     }
 
                     ui.label("Start channel");
                     let start = self.start.get_or_insert_with(|| config.start.to_string());
-                    if ui.add(TextEdit::singleline(start)).changed() {
-                        if let Ok(start) = start.parse::<u16>() {
-                            config.start = start;
-                        }
+                    if ui.add(TextEdit::singleline(start)).changed()
+                        && let Ok(start) = start.parse::<u16>()
+                    {
+                        config.start = start;
                     }
 
                     ui.label("Channels");
                     let channels = self
                         .channels
                         .get_or_insert_with(|| config.channels.to_string());
-                    if ui.add(TextEdit::singleline(channels)).changed() {
-                        if let Ok(channels) = channels.parse::<u16>() {
-                            config.channels = channels;
-                        }
+                    if ui.add(TextEdit::singleline(channels)).changed()
+                        && let Ok(channels) = channels.parse::<u16>()
+                    {
+                        config.channels = channels;
                     }
                 });
             },

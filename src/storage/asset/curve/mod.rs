@@ -115,10 +115,9 @@ impl Curve {
         if edit_mode {
             let new_point_id = ui.make_persistent_id(format!("points: {}", self.points.len()));
             let new_point_response = ui.interact(*to_screen.to(), new_point_id, Sense::click());
-            if new_point_response.double_clicked()
-                || new_point_response.clicked_by(egui::PointerButton::Secondary)
-            {
-                if let Some((pos, i, before, after)) =
+            if (new_point_response.double_clicked()
+                || new_point_response.clicked_by(egui::PointerButton::Secondary))
+                && let Some((pos, i, before, after)) =
                     new_point_response.interact_pointer_pos().and_then(|pos| {
                         self.points
                             .iter()
@@ -131,32 +130,31 @@ impl Curve {
                                 })
                             })
                     })
-                {
-                    if before.is_inner() || before.is_outer() {
-                        self.points
-                            .insert(i, CurvePoint::Inner(to_screen.inverse().transform_pos(pos)));
-                        self.points.insert(
-                            i,
-                            CurvePoint::Bezier(to_screen.inverse().transform_pos(Pos2::new(
-                                (before.screen_pos(to_screen).x + pos.x) / 2.0,
-                                (before.screen_pos(to_screen).y + pos.y) / 2.0,
-                            ))),
-                        );
-                        bezier_to_line = Some(i + 2);
-                        changed = true;
-                    } else {
-                        bezier_to_line = Some(i - 1);
-                        self.points.insert(
-                            i,
-                            CurvePoint::Bezier(to_screen.inverse().transform_pos(Pos2::new(
-                                (after.screen_pos(to_screen).x + pos.x) / 2.0,
-                                (after.screen_pos(to_screen).y + pos.y) / 2.0,
-                            ))),
-                        );
-                        self.points
-                            .insert(i, CurvePoint::Inner(to_screen.inverse().transform_pos(pos)));
-                        changed = true;
-                    }
+            {
+                if before.is_inner() || before.is_outer() {
+                    self.points
+                        .insert(i, CurvePoint::Inner(to_screen.inverse().transform_pos(pos)));
+                    self.points.insert(
+                        i,
+                        CurvePoint::Bezier(to_screen.inverse().transform_pos(Pos2::new(
+                            (before.screen_pos(to_screen).x + pos.x) / 2.0,
+                            (before.screen_pos(to_screen).y + pos.y) / 2.0,
+                        ))),
+                    );
+                    bezier_to_line = Some(i + 2);
+                    changed = true;
+                } else {
+                    bezier_to_line = Some(i - 1);
+                    self.points.insert(
+                        i,
+                        CurvePoint::Bezier(to_screen.inverse().transform_pos(Pos2::new(
+                            (after.screen_pos(to_screen).x + pos.x) / 2.0,
+                            (after.screen_pos(to_screen).y + pos.y) / 2.0,
+                        ))),
+                    );
+                    self.points
+                        .insert(i, CurvePoint::Inner(to_screen.inverse().transform_pos(pos)));
+                    changed = true;
                 }
             }
 
@@ -239,18 +237,18 @@ impl Curve {
                 bezier_to_line = Some(i - 1);
                 changed = true;
             }
-            if let Some(i) = bezier_to_line {
-                if let (Some(before), Some(after), Some(point)) = (
+            if let Some(i) = bezier_to_line
+                && let (Some(before), Some(after), Some(point)) = (
                     self.points.get(i - 1).map(|point| point.pos()),
                     self.points.get(i + 1).map(|point| point.pos()),
                     self.points.get_mut(i),
-                ) {
-                    point.set_pos(Pos2::new(
-                        (before.x + after.x) / 2.0,
-                        (before.y + after.y) / 2.0,
-                    ));
-                    changed = true;
-                }
+                )
+            {
+                point.set_pos(Pos2::new(
+                    (before.x + after.x) / 2.0,
+                    (before.y + after.y) / 2.0,
+                ));
+                changed = true;
             }
 
             painter.extend(control_point_shapes);

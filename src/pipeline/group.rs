@@ -180,7 +180,7 @@ fn group_buttons(ui: &mut Ui, selected: &mut Option<Group>) -> bool {
     changed
 }
 
-pub fn group_button(group: &Group, selected: bool) -> Button {
+pub fn group_button(group: &'_ Group, selected: bool) -> Button<'_> {
     let button =
         Button::new(RichText::new(group).color(Color32::from_black_alpha(200))).fill(group.color());
 

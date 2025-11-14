@@ -108,15 +108,13 @@ impl ScenesWindow {
                                                     .fill(Color32::DARK_BLUE),
                                             )
                                             .clicked()
-                                        {
-                                            if let Some(effect) =
+                                            && let Some(effect) =
                                                 scene.data.effect(self.selected_effect).cloned()
-                                            {
-                                                self.selected_effect = scene
-                                                    .data
-                                                    .add_effect(&mut self.effect_states, effect);
-                                                self.dirty = true;
-                                            }
+                                        {
+                                            self.selected_effect = scene
+                                                .data
+                                                .add_effect(&mut self.effect_states, effect);
+                                            self.dirty = true;
                                         }
                                     });
                                     ui.vertical_centered_justified(|ui| {

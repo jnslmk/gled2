@@ -102,14 +102,12 @@ fn find_devices() {
                 }
             };
             for port in ports {
-                if let serialport::SerialPortType::UsbPort(usb_port_info) = port.port_type {
-                    if usb_port_info.manufacturer == Some("ENTTEC".to_owned())
-                        && usb_port_info.product == Some("DMX USB PRO".to_owned())
-                    {
-                        if let Some(serial_number) = usb_port_info.serial_number {
-                            serial_numbers_port.insert(serial_number, port.port_name);
-                        }
-                    }
+                if let serialport::SerialPortType::UsbPort(usb_port_info) = port.port_type
+                    && usb_port_info.manufacturer == Some("ENTTEC".to_owned())
+                    && usb_port_info.product == Some("DMX USB PRO".to_owned())
+                    && let Some(serial_number) = usb_port_info.serial_number
+                {
+                    serial_numbers_port.insert(serial_number, port.port_name);
                 }
             }
             *SERIAL_NUMBERS_PORT.lock() = serial_numbers_port;

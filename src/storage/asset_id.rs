@@ -51,10 +51,10 @@ impl<T: AssetTrait> AssetId<T> {
         log::info!("Deleting palette from cache: {self:?}");
 
         std::thread::spawn(move || {
-            if let Some(collections) = COLLECTIONS.lock().as_mut() {
-                if let Some(collection) = collections.get_mut::<Collection<T>>() {
-                    collection.delete_asset(self);
-                }
+            if let Some(collections) = COLLECTIONS.lock().as_mut()
+                && let Some(collection) = collections.get_mut::<Collection<T>>()
+            {
+                collection.delete_asset(self);
             }
 
             StorageAction::DeleteAsset {

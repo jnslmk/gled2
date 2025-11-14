@@ -141,11 +141,11 @@ fn output_device_editor(
         ui.heading("IP-Address");
         let ip = device_strings.ip.get_or_insert_with(|| ip.to_string());
 
-        if ui.add(TextEdit::singleline(ip)).changed() {
-            if let Ok(ip) = ip.parse() {
-                output_device.data.set_ip(ip);
-                *dirty = true;
-            }
+        if ui.add(TextEdit::singleline(ip)).changed()
+            && let Ok(ip) = ip.parse()
+        {
+            output_device.data.set_ip(ip);
+            *dirty = true;
         }
     }
 

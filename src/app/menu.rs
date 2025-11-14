@@ -9,8 +9,8 @@ use crate::{
     },
 };
 use egui::{
-    Button, Color32, Id, Image, ImageButton, Key, Modifiers, Slider, Stroke, TextFormat, Ui,
-    UiKind, Vec2, ViewportId, text::LayoutJob,
+    Button, Color32, Id, Image, Key, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2,
+    ViewportId, text::LayoutJob,
 };
 use log::debug;
 use rand::Rng;
@@ -29,7 +29,7 @@ impl App {
             egui::MenuBar::new().ui(ui, |ui| {
                 let menu_button_size = Vec2::new(100.0, ui.available_height());
 
-                if ui.add(ImageButton::new(Image::new(logo_image()))).clicked() {
+                if ui.add(Button::image(Image::new(logo_image()))).clicked() {
                     self.windows.about.open();
                 };
 
@@ -161,19 +161,19 @@ impl App {
                 if open_project {
                     self.windows.projects.open();
                 }
-                if save_project {
-                    if let (Some(project), Some(mut asset)) = (
+                if save_project
+                    && let (Some(project), Some(mut asset)) = (
                         self.project.as_ref(),
                         self.project_id
                             .and_then(Asset::get)
                             .map(Arc::unwrap_or_clone),
-                    ) {
-                        asset.data = project.to_owned();
-                        asset.data.artnet_config = ARTNET_CONFIG.lock().clone();
-                        asset.data.output_routings = ExtractOutput::get().routings.lock().clone();
-                        asset.data.channel_overwrites = ChannelOverwrites::get();
-                        asset.save();
-                    }
+                    )
+                {
+                    asset.data = project.to_owned();
+                    asset.data.artnet_config = ARTNET_CONFIG.lock().clone();
+                    asset.data.output_routings = ExtractOutput::get().routings.lock().clone();
+                    asset.data.channel_overwrites = ChannelOverwrites::get();
+                    asset.save();
                 }
 
                 if open_svg_file {
@@ -202,27 +202,27 @@ impl App {
                         }
                     });
                 }
-                if save_svg_file {
-                    if let (Some(svg), Some(path)) = (
+                if save_svg_file
+                    && let (Some(svg), Some(path)) = (
                         self.svg(),
                         rfd::FileDialog::new()
                             .set_title("Save SVG file")
                             .add_filter("svg", &["svg"])
                             .save_file(),
-                    ) {
-                        match svg.save(&path) {
-                            Ok(_) => {
-                                debug!("Saved svg file \"{}\"", path.display());
-                            }
-                            Err(err) => {
-                                UiAction::Error(format!(
-                                    "Could not save svg file \"{}\": {err:?}",
-                                    path.display()
-                                ))
-                                .enqueue();
-                            }
-                        };
-                    }
+                    )
+                {
+                    match svg.save(&path) {
+                        Ok(_) => {
+                            debug!("Saved svg file \"{}\"", path.display());
+                        }
+                        Err(err) => {
+                            UiAction::Error(format!(
+                                "Could not save svg file \"{}\": {err:?}",
+                                path.display()
+                            ))
+                            .enqueue();
+                        }
+                    };
                 }
 
                 ui.menu_button("Assets", |ui| {
