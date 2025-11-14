@@ -85,17 +85,13 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                     if let Some(routing) = hovered_output_routing
                         && let Some(device) = routing.device.and_then(Asset::get)
                     {
-                        let value = if SystemTime::now()
+                        let value = (SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .expect("time problem")
-                            .as_millis()
-                            % 1000
-                            < 500
-                        {
-                            0
-                        } else {
-                            255
-                        };
+                            .as_millis() as i64
+                            % 512
+                            - 256)
+                            .unsigned_abs() as u8;
                         if let Some((addr, data)) = device.data.prepare_package(
                             routing.universe,
                             &[value; UNIVERSE_BUFFER_SIZE as usize],
