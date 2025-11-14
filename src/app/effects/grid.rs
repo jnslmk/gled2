@@ -48,10 +48,27 @@ impl App {
         let effects_size = PersistantState::effects_size();
         let groups = project.groups.clone();
 
+        let size = match uv {
+            Some(uv) => {
+                if uv.max.x > uv.max.y {
+                    Vec2::new(
+                        effects_size.min(effects_size * uv.max.x / uv.max.y),
+                        effects_size.min(effects_size * uv.max.y / uv.max.x),
+                    )
+                } else {
+                    Vec2::new(
+                        effects_size.min(effects_size * uv.max.y / uv.max.x),
+                        effects_size.min(effects_size * uv.max.x / uv.max.y),
+                    )
+                }
+            }
+            None => Vec2::splat(effects_size),
+        };
+
         let scene_instances = project.scene_instances(deck_path);
         let response = dnd(ui, deck_path).show_sized(
             scene_instances.iter_mut(),
-            Vec2::new(effects_size + 40.0, effects_size + 60.0),
+            size + Vec2::new(40.0, 60.0),
             |ui, scene_instance, dnd_handle, state| {
                 if state.dragged {
                     self.selected_scene_instance =
@@ -64,7 +81,7 @@ impl App {
                     scene_instance,
                     dnd_handle,
                     svg: svg.clone(),
-                    effects_size,
+                    size,
                     uv,
                     groups: &groups,
                     timing: &self.timing,

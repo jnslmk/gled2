@@ -20,7 +20,7 @@ pub struct SceneInstanceWidget<'a> {
     pub groups: &'a Groups,
     pub dnd_handle: egui_dnd::Handle<'a>,
     pub svg: Option<TextureHandle>,
-    pub effects_size: f32,
+    pub size: Vec2,
     pub uv: Option<Rect>,
     pub timing: &'a Timing,
 }
@@ -45,12 +45,14 @@ impl Widget for SceneInstanceWidget<'_> {
                 egui::Frame::NONE
                     .inner_margin(Margin::from(10.0))
                     .show(ui, |ui| {
-                        let mut bg_rect = ui.available_rect_before_wrap()
+                        let uv = self.uv;
+
+                        let mut bg_rect = Rect::from_min_size(ui.cursor().min, self.size)
                             + Margin {
                                 left: 10,
                                 right: 10,
                                 top: 10,
-                                bottom: 0,
+                                bottom: 30,
                             };
                         if self.scene_instance.active {
                             ui.painter().rect_filled(
@@ -92,27 +94,6 @@ impl Widget for SceneInstanceWidget<'_> {
                             );
                         }
 
-                        let uv = self.uv;
-                        let size = match uv {
-                            Some(uv) => {
-                                if uv.max.x > uv.max.y {
-                                    Vec2::new(
-                                        ui.available_width()
-                                            .min(ui.available_height() * uv.max.x / uv.max.y),
-                                        ui.available_height()
-                                            .min(ui.available_width() * uv.max.y / uv.max.x),
-                                    )
-                                } else {
-                                    Vec2::new(
-                                        ui.available_width()
-                                            .min(ui.available_height() * uv.max.y / uv.max.x),
-                                        ui.available_height()
-                                            .min(ui.available_width() * uv.max.x / uv.max.y),
-                                    )
-                                }
-                            }
-                            None => Vec2::splat(self.effects_size),
-                        };
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
                                 ui.add_sized(
@@ -132,7 +113,8 @@ impl Widget for SceneInstanceWidget<'_> {
 
                             self.dnd_handle.ui(ui, |ui| {
                                 ui.scope(|ui| {
-                                    let rect = Rect::from_min_size(ui.next_widget_position(), size);
+                                    let rect =
+                                        Rect::from_min_size(ui.next_widget_position(), self.size);
                                     ui.allocate_rect(rect, Sense::hover());
                                     ui.painter().add(Shape::Rect(RectShape::filled(
                                         rect,
@@ -163,7 +145,7 @@ impl Widget for SceneInstanceWidget<'_> {
                                         ui.put(rect, {
                                             let mut image = Image::new(SizedTexture::new(
                                                 svg_texture_handle.id(),
-                                                size,
+                                                self.size,
                                             ));
                                             if let Some(uv) = uv {
                                                 image = image.uv(uv);
