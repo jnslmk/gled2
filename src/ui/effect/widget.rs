@@ -15,7 +15,6 @@ pub struct EffectWidget<'a> {
     pub effect: &'a Effect,
     pub effect_state: &'a EffectState,
     pub svg: Option<TextureHandle>,
-    pub uv: Option<Rect>,
     pub groups: Option<&'a Groups>,
     pub groups_show_index: bool,
     /// used for showing the dimmer
@@ -51,27 +50,7 @@ impl Widget for EffectWidget<'_> {
                         .rect_filled(bg_rect, CornerRadius::ZERO, Color32::DARK_GREEN);
                 }
 
-                let uv = self.uv;
-                let size = match uv {
-                    Some(uv) => {
-                        if uv.max.x > uv.max.y {
-                            Vec2::new(
-                                ui.available_width()
-                                    .min(ui.available_height() * uv.max.x / uv.max.y),
-                                ui.available_height()
-                                    .min(ui.available_width() * uv.max.y / uv.max.x),
-                            )
-                        } else {
-                            Vec2::new(
-                                ui.available_width()
-                                    .min(ui.available_height() * uv.max.y / uv.max.x),
-                                ui.available_height()
-                                    .min(ui.available_width() * uv.max.x / uv.max.y),
-                            )
-                        }
-                    }
-                    None => ui.available_size(),
-                };
+                let size = ui.available_size();
                 let rect = ui.available_rect_before_wrap();
                 ui.allocate_rect(rect, Sense::hover());
                 ui.painter().add(Shape::Rect(RectShape::filled(
@@ -87,12 +66,7 @@ impl Widget for EffectWidget<'_> {
                 ));
                 if let Some(svg_texture_handle) = self.svg {
                     ui.put(rect, {
-                        let mut image =
-                            Image::new(SizedTexture::new(svg_texture_handle.id(), size));
-                        if let Some(uv) = uv {
-                            image = image.uv(uv);
-                        }
-                        image
+                        Image::new(SizedTexture::new(svg_texture_handle.id(), size))
                     });
                 }
 

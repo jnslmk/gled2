@@ -21,7 +21,6 @@ pub struct SceneInstanceWidget<'a> {
     pub dnd_handle: egui_dnd::Handle<'a>,
     pub svg: Option<TextureHandle>,
     pub size: Vec2,
-    pub uv: Option<Rect>,
     pub timing: &'a Timing,
 }
 
@@ -45,9 +44,7 @@ impl Widget for SceneInstanceWidget<'_> {
                 egui::Frame::NONE
                     .inner_margin(Margin::from(10.0))
                     .show(ui, |ui| {
-                        let uv = self.uv;
-
-                        let mut bg_rect = Rect::from_min_size(ui.cursor().min, self.size)
+                        let bg_rect = Rect::from_min_size(ui.cursor().min, self.size)
                             + Margin {
                                 left: 10,
                                 right: 10,
@@ -136,26 +133,17 @@ impl Widget for SceneInstanceWidget<'_> {
                                             )
                                             .with_texture(
                                                 texture_id,
-                                                uv.unwrap_or_else(|| {
-                                                    Rect::from_min_max(
-                                                        pos2(0.0, 0.0),
-                                                        pos2(1.0, 1.0),
-                                                    )
-                                                }),
+                                                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
                                             ),
                                         ));
                                     }
 
                                     if let Some(svg_texture_handle) = self.svg {
                                         ui.put(rect, {
-                                            let mut image = Image::new(SizedTexture::new(
+                                            Image::new(SizedTexture::new(
                                                 svg_texture_handle.id(),
                                                 self.size,
-                                            ));
-                                            if let Some(uv) = uv {
-                                                image = image.uv(uv);
-                                            }
-                                            image
+                                            ))
                                         });
                                     }
 

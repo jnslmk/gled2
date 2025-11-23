@@ -14,7 +14,6 @@ impl Effect {
         ui: &mut egui::Ui,
         allow_animation_change: bool,
         svg: Option<egui::TextureHandle>,
-        uv: Option<egui::Rect>,
     ) -> bool {
         let mut changed = false;
 
@@ -91,7 +90,7 @@ impl Effect {
             let rendered = state.texture_id();
             changed |= animation
                 .data
-                .config_ui(&mut self.animation_config, ui, rendered, svg, uv);
+                .config_ui(&mut self.animation_config, ui, rendered, svg);
         }
 
         ui.separator();

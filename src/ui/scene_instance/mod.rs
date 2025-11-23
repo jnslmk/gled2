@@ -8,7 +8,7 @@ use crate::{
     ui::effect::widget::EffectWidget,
 };
 use egui::{
-    Button, Checkbox, Color32, Frame, Margin, Modifiers, Rect, ScrollArea, TopBottomPanel, Vec2,
+    Button, Checkbox, Color32, Frame, Margin, Modifiers, ScrollArea, TopBottomPanel, Vec2,
     scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
 use egui_modal::Modal;
@@ -19,7 +19,6 @@ impl SceneInstance {
         &mut self,
         ui: &mut egui::Ui,
         svg: Option<egui::TextureHandle>,
-        uv: Option<Rect>,
         groups: Groups,
         timing: &Timing,
     ) {
@@ -217,7 +216,6 @@ impl SceneInstance {
                                     effect,
                                     effect_state,
                                     svg: svg.clone(),
-                                    uv,
                                     groups: Some(&groups),
                                     groups_show_index: false,
                                     beat_progression: Some(beat_progression),
@@ -248,7 +246,6 @@ impl SceneInstance {
                                         effect,
                                         effect_state,
                                         svg: svg.clone(),
-                                        uv,
                                         groups: Some(&groups),
                                         groups_show_index: true,
                                         beat_progression: Some(beat_progression),
@@ -257,7 +254,7 @@ impl SceneInstance {
                                 ui.vertical(|ui| {
                                     let mut effect = effect.to_owned();
                                     let changed =
-                                        effect.config_ui(effect_state, ui, false, svg.clone(), uv);
+                                        effect.config_ui(effect_state, ui, false, svg.clone());
                                     if changed {
                                         if Some(&effect) != scene.data.effects.get(index) {
                                             set_overwritten_effect = Some((index, Some(effect)));

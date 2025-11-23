@@ -6,8 +6,7 @@ use super::AssetTrait;
 use argument::{Argument, variables::VariablesCount};
 use config::AnimationConfig;
 use egui::{
-    Color32, Margin, Rect, Stroke, TextureId, Ui, UiKind,
-    scroll_area::ScrollBarVisibility::AlwaysVisible,
+    Color32, Margin, Stroke, TextureId, Ui, UiKind, scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
 use egui_extras::syntax_highlighting::CodeTheme;
 use serde::{Deserialize, Serialize};
@@ -139,12 +138,11 @@ impl Animation {
         ui: &mut Ui,
         rendered: TextureId,
         svg: Option<egui::TextureHandle>,
-        uv: Option<Rect>,
     ) -> bool {
         let mut changed = false;
         let mut count = VariablesCount::default();
         for argument in self.arguments.iter() {
-            changed |= argument.config_ui(config, ui, count, rendered, svg.clone(), uv);
+            changed |= argument.config_ui(config, ui, count, rendered, svg.clone());
             count += argument.kind.variables().count();
         }
 

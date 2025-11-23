@@ -137,7 +137,6 @@ impl Argument {
         count: VariablesCount,
         rendered: TextureId,
         svg: Option<TextureHandle>,
-        uv: Option<egui::Rect>,
     ) -> bool {
         let mut changed = false;
         ui.label(&self.name);
@@ -152,14 +151,10 @@ impl Argument {
                         );
                         if let Some(svg_texture_handle) = svg {
                             ui.put(res.rect, {
-                                let mut image = Image::new(SizedTexture::new(
+                                Image::new(SizedTexture::new(
                                     svg_texture_handle.id(),
                                     Vec2::splat(size),
-                                ));
-                                if let Some(uv) = uv {
-                                    image = image.uv(uv);
-                                }
-                                image
+                                ))
                             });
                         }
 

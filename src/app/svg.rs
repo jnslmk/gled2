@@ -7,7 +7,7 @@ use crate::{
     ui::action::UiAction,
 };
 use anyhow::Result;
-use egui::{Context, Rect, TextureHandle};
+use egui::{Context, TextureHandle};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, collections::BTreeSet, path::Path};
 
@@ -95,10 +95,6 @@ impl Svg {
 
     pub fn preview_positions() -> Positions {
         MEASUREMENT_POINTS.with_borrow(|mp| mp.preview_positions())
-    }
-
-    pub fn preview_uv() -> Option<Rect> {
-        MEASUREMENT_POINTS.with_borrow_mut(|mp| mp.preview_uv())
     }
 
     pub fn universes() -> BTreeSet<u16> {

@@ -1,7 +1,4 @@
-use crate::{
-    app::svg::Svg,
-    ui::{ChangeButton, action::UiAction},
-};
+use crate::ui::{ChangeButton, action::UiAction};
 
 use super::{App, timing::FadeMode};
 use egui::{CentralPanel, Color32, Margin, RichText, TopBottomPanel};
@@ -65,16 +62,12 @@ impl App {
             .show_inside(ui, |ui| {
                 let groups = project.groups.clone();
                 match project.scene_instance_mut(self.selected_scene_instance) {
-                    Some(scene_instance) => {
-                        let uv = Svg::preview_uv();
-                        scene_instance.config_ui(
-                            ui,
-                            svg,
-                            uv,
-                            scene_instance.groups_overwrite.clone().unwrap_or(groups),
-                            &self.timing,
-                        )
-                    }
+                    Some(scene_instance) => scene_instance.config_ui(
+                        ui,
+                        svg,
+                        scene_instance.groups_overwrite.clone().unwrap_or(groups),
+                        &self.timing,
+                    ),
                     None => {
                         ui.label("There's no Effect to configure.");
                     }

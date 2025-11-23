@@ -5,11 +5,11 @@ use crate::{
     storage::asset::project::{DeckPath, scene_instance_path::SceneInstancePathId},
     ui::scene_instance::widget::SceneInstanceWidget,
 };
-use egui::{Rect, TextureHandle, Ui, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible};
+use egui::{TextureHandle, Ui, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible};
 use egui_dnd::dnd;
 
 impl App {
-    pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>, uv: Option<Rect>) {
+    pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
         egui::ScrollArea::vertical()
             .id_salt("grid scroll")
             .auto_shrink([false, false])
@@ -17,12 +17,12 @@ impl App {
             .show(ui, |ui| {
                 ui.set_max_width(ui.available_width() - 30.0);
                 ui.horizontal_wrapped(|ui| {
-                    self.widgets(ui, svg, uv, DeckPath::Grid);
+                    self.widgets(ui, svg, DeckPath::Grid);
                 });
             });
     }
 
-    pub fn effects_quick(&mut self, ui: &mut Ui, svg: Option<TextureHandle>, uv: Option<Rect>) {
+    pub fn effects_quick(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
         egui::ScrollArea::horizontal()
             .id_salt("quick scroll")
             .auto_shrink([false, false])
@@ -30,41 +30,19 @@ impl App {
             .vscroll(false)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    self.widgets(ui, svg, uv, DeckPath::Quick);
+                    self.widgets(ui, svg, DeckPath::Quick);
                 });
             });
     }
 
-    fn widgets(
-        &mut self,
-        ui: &mut Ui,
-        svg: Option<TextureHandle>,
-        uv: Option<Rect>,
-        deck_path: DeckPath,
-    ) {
+    fn widgets(&mut self, ui: &mut Ui, svg: Option<TextureHandle>, deck_path: DeckPath) {
         let Some(project) = self.project.as_mut() else {
             return;
         };
         let effects_size = PersistantState::effects_size();
         let groups = project.groups.clone();
 
-        let size = match uv {
-            Some(uv) => {
-                if uv.max.x > uv.max.y {
-                    Vec2::new(
-                        effects_size.min(effects_size * uv.max.x / uv.max.y),
-                        effects_size.min(effects_size * uv.max.y / uv.max.x),
-                    )
-                } else {
-                    Vec2::new(
-                        effects_size.min(effects_size * uv.max.y / uv.max.x),
-                        effects_size.min(effects_size * uv.max.x / uv.max.y),
-                    )
-                }
-            }
-            None => Vec2::splat(effects_size),
-        };
-
+        let size = Vec2::splat(effects_size);
         let scene_instances = project.scene_instances(deck_path);
         let response = dnd(ui, deck_path).show_sized(
             scene_instances.iter_mut(),
@@ -82,7 +60,6 @@ impl App {
                     dnd_handle,
                     svg: svg.clone(),
                     size,
-                    uv,
                     groups: &groups,
                     timing: &self.timing,
                 });

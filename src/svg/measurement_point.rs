@@ -6,7 +6,6 @@ use crate::pipeline::{
     group::Group,
     texture_to_output::positions::{Lamp, Positions, Universe},
 };
-use egui::{Pos2, Rect};
 use kurbo::{ParamCurve, ParamCurveArclen};
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -22,7 +21,6 @@ pub struct MeasurementPoints {
     points: BTreeMap<Group, Vec<MeasurementPoint>>,
     /// Positions of each individual led
     preview_positions: Positions,
-    uv: Option<Option<Rect>>,
 }
 
 impl MeasurementPoints {
@@ -30,7 +28,6 @@ impl MeasurementPoints {
         Self {
             points: BTreeMap::new(),
             preview_positions: Positions::new(),
-            uv: None,
         }
     }
 
@@ -83,6 +80,7 @@ impl MeasurementPoints {
         self.preview_positions.clone()
     }
 
+    /*
     pub fn preview_uv(&mut self) -> Option<Rect> {
         *self.uv.get_or_insert_with(|| {
             self.preview_positions
@@ -121,7 +119,7 @@ impl MeasurementPoints {
                     uv
                 })
         })
-    }
+    }*/
 
     pub fn groups(&self) -> Vec<Group> {
         self.points.keys().cloned().collect()
@@ -152,6 +150,12 @@ impl From<&ParsedSvg> for MeasurementPoints {
 
         let size = svg.tree.size();
         let max = size.width().max(size.height());
+        let (x_factor, y_factor) = if size.width() > size.height() {
+            (1.0, size.width() / size.height())
+        } else {
+            (size.height() / size.width(), 1.0)
+        };
+
         let mut points = BTreeMap::new();
 
         traverse_nodes(svg.tree.root())
@@ -173,12 +177,14 @@ impl From<&ParsedSvg> for MeasurementPoints {
                                     path_data,
                                     parameter,
                                     measurement_points,
+                                    x_factor,
+                                    y_factor,
                                 );
                             }
                             _ => {
                                 let rect = &node.abs_bounding_box();
-                                let x = (rect.x() + rect.width() / 2.0) / max;
-                                let y = (rect.y() + rect.height() / 2.0) / max;
+                                let x = x_factor * (rect.x() + rect.width() / 2.0) / max;
+                                let y = y_factor * (rect.y() + rect.height() / 2.0) / max;
                                 measurement_points.push(MeasurementPoint {
                                     leds: parameter.leds.clone(),
                                     x,
@@ -196,7 +202,6 @@ impl From<&ParsedSvg> for MeasurementPoints {
         let mut measurement_points = MeasurementPoints {
             points,
             preview_positions: Positions::default(),
-            uv: None,
         };
         let universes: BTreeMap<u16, usize> = measurement_points
             .universes()
@@ -238,6 +243,8 @@ fn leds_on_path(
     path_data: Path,
     parameter: &Parameter,
     measurement_points: &mut Vec<MeasurementPoint>,
+    x_factor: f32,
+    y_factor: f32,
 ) {
     assert_eq!(leds, parameter.leds.len());
     let path_length = path_length(&path_data) as f32;
@@ -256,8 +263,8 @@ fn leds_on_path(
                         .expect("Could not find led")
                         .clone(),
                 ],
-                x: x / max,
-                y: y / max,
+                x: x_factor * x / max,
+                y: y_factor * y / max,
             });
             leds_added += 1;
 
@@ -282,8 +289,8 @@ fn leds_on_path(
                             .expect("Could not find led")
                             .clone(),
                     ],
-                    x: x / max,
-                    y: y / max,
+                    x: x_factor * x / max,
+                    y: y_factor * y / max,
                 });
                 leds_added += 1;
                 segment_position += led_distance;
@@ -323,8 +330,8 @@ fn leds_on_path(
                                 .expect("Could not find led")
                                 .clone(),
                         ],
-                        x: end.x as f32 / max,
-                        y: end.y as f32 / max,
+                        x: x_factor * end.x as f32 / max,
+                        y: y_factor * end.y as f32 / max,
                     });
                     leds_added += 1;
                 }
@@ -361,8 +368,8 @@ fn leds_on_path(
                                 .expect("Could not find led")
                                 .clone(),
                         ],
-                        x: end.x as f32 / max,
-                        y: end.y as f32 / max,
+                        x: x_factor * end.x as f32 / max,
+                        y: y_factor * end.y as f32 / max,
                     });
                     leds_added += 1;
                 }
@@ -382,8 +389,8 @@ fn leds_on_path(
                     .expect("Could not find led")
                     .clone(),
             ],
-            x: prev_x / max,
-            y: prev_y / max,
+            x: x_factor * prev_x / max,
+            y: y_factor * prev_y / max,
         });
         leds_added += 1;
     }

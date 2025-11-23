@@ -9,12 +9,13 @@ impl ParsedSvg {
             tiny_skia::Pixmap::new(PREVIEW_TEXTURE_SIZE as u32, PREVIEW_TEXTURE_SIZE as u32)
                 .context("Could not create pixmap for svg")?;
         let size = self.tree.size();
-        let max_side = size.width().max(size.height());
-        let scale = f32::from(PREVIEW_TEXTURE_SIZE) / max_side;
 
         resvg::render(
             &self.tree,
-            tiny_skia::Transform::from_scale(scale, scale),
+            tiny_skia::Transform::from_scale(
+                f32::from(PREVIEW_TEXTURE_SIZE) / size.width(),
+                f32::from(PREVIEW_TEXTURE_SIZE) / size.height(),
+            ),
             &mut pixmap.as_mut(),
         );
         let image =
