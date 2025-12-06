@@ -1,6 +1,6 @@
 use crate::{
     app::timing::Timing,
-    pipeline::group::Groups,
+    pipeline::{constants::PREVIEW_TEXTURE_SIZE, group::Groups},
     storage::asset::{
         Asset,
         project::{DeckPath, scene_instance_path::SceneInstancePathId},
@@ -9,9 +9,38 @@ use crate::{
     ui::pills::show_pills,
 };
 use egui::{
-    Align, Button, Checkbox, Color32, CornerRadius, Image, Label, Layout, Margin, Rect, Sense,
-    Shape, TextureHandle, Ui, Vec2, Widget, epaint::RectShape, load::SizedTexture, pos2,
+    Align, Button, Checkbox, Color32, ColorImage, Context, CornerRadius, Image, Label, Layout,
+    Margin, Rect, Sense, Shape, TextureHandle, TextureId, TextureOptions, Ui, Vec2, Widget,
+    epaint::RectShape, load::SizedTexture, pos2,
 };
+use once_cell::sync::OnceCell;
+use usvg::Tree;
+
+static SELECTED_SVG: &str = include_str!("selected.svg");
+static SELECTED_IMAGE: OnceCell<TextureHandle> = OnceCell::new();
+fn selected_image(ctx: &Context) -> TextureId {
+    SELECTED_IMAGE
+        .get_or_init(|| {
+            let tree = Tree::from_str(SELECTED_SVG, &Default::default()).unwrap();
+            let mut pixmap =
+                tiny_skia::Pixmap::new(PREVIEW_TEXTURE_SIZE as u32, PREVIEW_TEXTURE_SIZE as u32)
+                    .unwrap();
+            resvg::render(
+                &tree,
+                tiny_skia::Transform::from_scale(
+                    f32::from(PREVIEW_TEXTURE_SIZE) / tree.size().width(),
+                    f32::from(PREVIEW_TEXTURE_SIZE) / tree.size().height(),
+                ),
+                &mut pixmap.as_mut(),
+            );
+            let image = ColorImage::from_rgba_unmultiplied(
+                [PREVIEW_TEXTURE_SIZE as usize; 2],
+                pixmap.data(),
+            );
+            ctx.load_texture("selected_scene_image", image, TextureOptions::default())
+        })
+        .id()
+}
 
 pub struct SceneInstanceWidget<'a> {
     pub selected_scene_instance: &'a mut SceneInstancePathId,
@@ -32,12 +61,16 @@ impl Widget for SceneInstanceWidget<'_> {
             id: self.scene_instance.id,
         };
 
+        if *self.selected_scene_instance == path {
+            ui.painter().image(
+                selected_image(ui.ctx()),
+                ui.available_rect_before_wrap(),
+                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                Color32::WHITE,
+            );
+        }
+
         let mut response = egui::Frame::NONE
-            .fill(if *self.selected_scene_instance == path {
-                Color32::GOLD
-            } else {
-                Color32::TRANSPARENT
-            })
             .inner_margin(Margin::from(10.0))
             .corner_radius(CornerRadius::from(4.0))
             .show(ui, |ui| {
