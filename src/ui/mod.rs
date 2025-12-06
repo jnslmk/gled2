@@ -3,6 +3,7 @@ use egui::Ui;
 pub mod action;
 pub mod asset;
 pub mod asset_tree;
+pub mod brightness_slider;
 pub mod effect;
 pub mod input;
 pub mod logo;

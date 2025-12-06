@@ -229,7 +229,8 @@ impl App {
                     .show_inside(&mut ui, |ui| self.config(ui));
                 egui::TopBottomPanel::top("preview")
                     .resizable(true)
-                    .default_height(150.0)
+                    .default_height(200.0)
+                    .min_height(200.0)
                     .show_inside(&mut ui, |ui| self.preview(ui));
                 egui::CentralPanel::default()
                     .show_inside(&mut ui, |ui| self.scenes(ui, DeckPath::Grid));

@@ -145,17 +145,6 @@ impl App {
                         self.windows.shortcuts.open();
                         ui.close_kind(UiKind::Menu);
                     }
-
-                    if let Some(project) = self.project.as_mut() {
-                        ui.separator();
-                        ui.label("Main Dimmer");
-                        ui.spacing_mut().slider_width = 290.0;
-                        ui.add(
-                            Slider::new(&mut project.main_dimmer, 0.0..=1.0)
-                                .custom_formatter(|n, _| format!("{:.0} %", n * 100.0))
-                                .custom_parser(|s| s.parse::<f64>().ok().map(|f| f / 100.0)),
-                        );
-                    }
                 });
 
                 if open_project {
