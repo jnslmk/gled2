@@ -6,6 +6,7 @@ use crate::ui::FRAME_STROKE;
 pub struct BrightnessSlider<'a> {
     pub value: &'a mut f32,
     pub width: f32,
+    pub show_label: bool,
 }
 
 impl Widget for BrightnessSlider<'_> {
@@ -14,9 +15,13 @@ impl Widget for BrightnessSlider<'_> {
         const HANDLE_COLOR: Color32 = Color32::from_rgb(59, 255, 0);
         const BOTTOM_COLOR: Color32 = Color32::from_rgb(255, 176, 100);
 
-        let height = ui.available_height() - 20.0;
+        let mut height = ui.available_height();
+        if self.show_label {
+            height -= 20.0;
+        }
+
         ui.vertical(|ui| {
-            let corner_radius = 10;
+            let corner_radius = 5;
             let (rect, response) = ui.allocate_exact_size(
                 egui::vec2(self.width, height),
                 egui::Sense::click_and_drag(),
@@ -65,12 +70,15 @@ impl Widget for BrightnessSlider<'_> {
                 .rect_filled(handle_rect, corner_radius, HANDLE_COLOR);
             ui.painter()
                 .rect_stroke(rect, corner_radius, FRAME_STROKE, egui::StrokeKind::Inside);
-            let mut label_rect = ui.available_rect_before_wrap();
-            label_rect.set_width(self.width);
-            ui.put(
-                label_rect,
-                Label::new(format!("{:.0}%", *self.value * 100.0)),
-            );
+
+            if self.show_label {
+                let mut label_rect = ui.available_rect_before_wrap();
+                label_rect.set_width(self.width);
+                ui.put(
+                    label_rect,
+                    Label::new(format!("{:.0}%", *self.value * 100.0)),
+                );
+            }
 
             if let Some(pointer_position_2d) = response.interact_pointer_pos() {
                 let relative_y = pointer_position_2d.y - rect.top();

@@ -1,6 +1,6 @@
 use super::App;
 use crate::{pipeline::preview::Preview, ui::brightness_slider::BrightnessSlider};
-use egui::{Color32, Frame, Image, Vec2, load::SizedTexture};
+use egui::{Color32, Frame, Image, Layout, Vec2, load::SizedTexture};
 
 impl App {
     pub fn preview(&mut self, ui: &mut egui::Ui) {
@@ -27,12 +27,19 @@ impl App {
             }
 
             if let Some(project) = self.project.as_mut() {
-                Frame::NONE.inner_margin(16).show(ui, |ui| {
-                    ui.add(BrightnessSlider {
+                let mut rect = ui.available_rect_before_wrap();
+                *rect.top_mut() += 16.0;
+                *rect.left_mut() = rect.right() - 56.0;
+                *rect.bottom_mut() -= 16.0;
+
+                ui.put(
+                    rect,
+                    BrightnessSlider {
                         value: &mut project.main_dimmer,
                         width: 40.0,
-                    });
-                });
+                        show_label: true,
+                    },
+                );
             }
         });
     }

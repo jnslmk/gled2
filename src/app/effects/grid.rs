@@ -46,7 +46,7 @@ impl App {
         let scene_instances = project.scene_instances(deck_path);
         let response = dnd(ui, deck_path).show_sized(
             scene_instances.iter_mut(),
-            size + Vec2::new(40.0, 60.0),
+            size + Vec2::new(60.0, 60.0),
             |ui, scene_instance, dnd_handle, state| {
                 if state.dragged {
                     self.selected_scene_instance =

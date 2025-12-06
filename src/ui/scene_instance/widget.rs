@@ -6,7 +6,7 @@ use crate::{
         project::{DeckPath, scene_instance_path::SceneInstancePathId},
         scene::instance::SceneInstance,
     },
-    ui::{FRAME_STROKE, pills::show_pills},
+    ui::{FRAME_STROKE, brightness_slider::BrightnessSlider, pills::show_pills},
 };
 use egui::{
     Align, Button, Checkbox, Color32, ColorImage, Context, CornerRadius, Image, Label, Layout,
@@ -91,7 +91,7 @@ impl Widget for SceneInstanceWidget<'_> {
                         let bg_rect = Rect::from_min_size(ui.cursor().min, self.size)
                             + Margin {
                                 left: 10,
-                                right: 10,
+                                right: 30,
                                 top: 10,
                                 bottom: 30,
                             };
@@ -104,6 +104,18 @@ impl Widget for SceneInstanceWidget<'_> {
                             );
                         }
 
+                        let mut beat_progression = self.timing.beat_progression();
+                        beat_progression += self
+                            .scene_instance
+                            .beat_progression_offset
+                            .value(beat_progression);
+                        let mut dimmer = if self.scene_instance.active {
+                            self.scene_instance.transition_factor()
+                        } else {
+                            1.0
+                        } * self.scene_instance.input_dimmer
+                            * self.scene_instance.opacity.value(beat_progression);
+
                         if self.scene_instance.flash {
                             ui.painter().rect_filled(
                                 bg_rect.shrink(1.0),
@@ -111,39 +123,17 @@ impl Widget for SceneInstanceWidget<'_> {
                                 Color32::from_white_alpha(180),
                             );
                         } else {
-                            let mut beat_progression = self.timing.beat_progression();
-                            beat_progression += self
-                                .scene_instance
-                                .beat_progression_offset
-                                .value(beat_progression);
-                            let dimmer = if self.scene_instance.active {
-                                self.scene_instance.transition_factor()
-                            } else {
-                                1.0
-                            } * self.scene_instance.input_dimmer
-                                * self.scene_instance.opacity.value(beat_progression);
-                            let (top, bottom) = bg_rect
-                                .shrink(1.0)
-                                .split_top_bottom_at_fraction(1.0 - dimmer);
-
-                            ui.painter()
-                                .rect_filled(top, CornerRadius::ZERO, Color32::BLACK);
                             ui.painter().rect_filled(
-                                bottom,
+                                bg_rect.shrink(1.0),
                                 CornerRadius::ZERO,
-                                if self.scene_instance.active {
-                                    self.scene_instance.color.into()
-                                } else {
-                                    Color32::from(self.scene_instance.color)
-                                        * Color32::from_gray(127)
-                                },
+                                self.scene_instance.color,
                             );
                         }
 
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
                                 ui.add_sized(
-                                    Vec2::new(ui.available_width() - 15.0, 20.0),
+                                    Vec2::new(ui.available_width() - 10.0, 20.0),
                                     Label::new(
                                         Asset::get(self.scene_instance.scene)
                                             .map(|asset| asset.name().to_owned())
@@ -151,6 +141,8 @@ impl Widget for SceneInstanceWidget<'_> {
                                     )
                                     .truncate(),
                                 );
+
+                                //ui.add_space(10.0);
 
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     checkbox_rect = Some(ui.checkbox(&mut false, "").rect);
@@ -207,10 +199,6 @@ impl Widget for SceneInstanceWidget<'_> {
                                         })
                                         .collect();
 
-                                    let mut clip_rect = ui.clip_rect();
-                                    clip_rect.min = clip_rect.min.max(rect.min);
-                                    clip_rect.max = clip_rect.max.min(rect.max);
-                                    ui.set_clip_rect(clip_rect);
                                     show_pills(ui, rect.right_top() + Vec2::new(0.0, 5.0), texts);
 
                                     if !self.scene_instance.effect_overwrites.is_empty()
@@ -225,6 +213,18 @@ impl Widget for SceneInstanceWidget<'_> {
                                             Color32::from_white_alpha(100),
                                         );
                                     }
+
+                                    ui.place(
+                                        Rect::from_min_size(
+                                            rect.right_top() + Vec2::new(10.0, 0.0),
+                                            Vec2::new(10.0, rect.height()),
+                                        ),
+                                        BrightnessSlider {
+                                            width: 10.0,
+                                            value: &mut dimmer,
+                                            show_label: false,
+                                        },
+                                    );
                                 });
                             })
                         })
