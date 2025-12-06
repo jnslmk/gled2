@@ -6,11 +6,11 @@ use crate::{
         project::{DeckPath, scene_instance_path::SceneInstancePathId},
         scene::instance::SceneInstance,
     },
-    ui::pills::show_pills,
+    ui::{FRAME_STROKE, pills::show_pills},
 };
 use egui::{
     Align, Button, Checkbox, Color32, ColorImage, Context, CornerRadius, Image, Label, Layout,
-    Margin, Rect, Sense, Shape, TextureHandle, TextureId, TextureOptions, Ui, Vec2, Widget,
+    Margin, Rect, Sense, Shadow, Shape, TextureHandle, TextureId, TextureOptions, Ui, Vec2, Widget,
     epaint::RectShape, load::SizedTexture, pos2,
 };
 use once_cell::sync::OnceCell;
@@ -76,6 +76,17 @@ impl Widget for SceneInstanceWidget<'_> {
             .show(ui, |ui| {
                 egui::Frame::NONE
                     .inner_margin(Margin::from(10.0))
+                    .stroke(FRAME_STROKE)
+                    .shadow(if self.scene_instance.active {
+                        Shadow {
+                            offset: [0, 0],
+                            blur: 10,
+                            spread: 4,
+                            color: Color32::from_rgba_unmultiplied_const(255, 255, 255, 128),
+                        }
+                    } else {
+                        Shadow::NONE
+                    })
                     .show(ui, |ui| {
                         let bg_rect = Rect::from_min_size(ui.cursor().min, self.size)
                             + Margin {

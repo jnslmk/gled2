@@ -1,4 +1,4 @@
-use egui::Ui;
+use egui::{Color32, Stroke, Ui};
 
 pub mod action;
 pub mod asset;
@@ -13,6 +13,11 @@ pub mod temperature;
 pub mod update_check;
 pub mod window_common;
 pub mod windows;
+
+pub static FRAME_STROKE: Stroke = Stroke {
+    width: 0.3,
+    color: Color32::WHITE,
+};
 
 pub trait ChangeButton {
     fn change_button(&mut self, ui: &mut Ui) -> bool;

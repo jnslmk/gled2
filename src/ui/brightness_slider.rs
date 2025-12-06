@@ -1,5 +1,7 @@
-use egui::{Color32, CornerRadius, Label, Rect, Stroke, Vec2, Widget};
+use egui::{Color32, CornerRadius, Label, Rect, Vec2, Widget};
 use epaint::RectShape;
+
+use crate::ui::FRAME_STROKE;
 
 pub struct BrightnessSlider<'a> {
     pub value: &'a mut f32,
@@ -39,10 +41,8 @@ impl Widget for BrightnessSlider<'_> {
                 rect.max,
             );
 
-            ui.painter().add(
-                RectShape::filled(rect.expand(2.0), 10, Color32::from_white_alpha(100))
-                    .with_blur_width(6.0),
-            );
+            ui.painter()
+                .add(RectShape::filled(rect.expand(2.0), 10, Color32::BLACK).with_blur_width(20.0));
             ui.painter().rect_filled(rect, corner_radius, TOP_COLOR);
             ui.painter().rect_filled(
                 bottom,
@@ -63,15 +63,8 @@ impl Widget for BrightnessSlider<'_> {
             }
             ui.painter()
                 .rect_filled(handle_rect, corner_radius, HANDLE_COLOR);
-            ui.painter().rect_stroke(
-                rect,
-                corner_radius,
-                Stroke {
-                    width: 0.3,
-                    color: Color32::WHITE,
-                },
-                egui::StrokeKind::Inside,
-            );
+            ui.painter()
+                .rect_stroke(rect, corner_radius, FRAME_STROKE, egui::StrokeKind::Inside);
             let mut label_rect = ui.available_rect_before_wrap();
             label_rect.set_width(self.width);
             ui.put(
