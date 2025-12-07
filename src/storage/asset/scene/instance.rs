@@ -21,7 +21,7 @@ use std::{collections::BTreeMap, sync::Arc};
 use uuid::Uuid;
 use wgpu::{CommandEncoder, Queue};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SceneInstance {
     #[serde(default = "Uuid::new_v4")]
     pub id: Uuid,

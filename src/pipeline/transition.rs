@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-#[derive(Debug, Hash)]
+#[derive(Debug, Hash, PartialEq)]
 pub struct Transition {
     start: Instant,
     end: Instant,
@@ -47,7 +47,7 @@ impl Transition {
     }
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum TransitionGoal {
     TurnOn,
     TurnOff,

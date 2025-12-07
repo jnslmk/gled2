@@ -14,16 +14,6 @@ impl App {
             .resizable(false)
             .frame(egui::Frame::NONE.inner_margin(Margin::from(4.0)))
             .show_inside(ui, |ui| {
-                ui.scope(|ui| {
-                    ui.set_max_width(ui.available_width());
-                    ui.vertical_centered_justified(|ui| {
-                        ui.add_space(2.0);
-                        project.palette.change_button(ui);
-                    });
-                });
-
-                ui.add_space(4.0);
-
                 if project.groups.is_empty() {
                     ui.painter().rect_filled(
                         {

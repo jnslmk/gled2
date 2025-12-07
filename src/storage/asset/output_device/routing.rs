@@ -3,7 +3,7 @@ use egui::ahash::HashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct OutputRoutings {
     #[serde(deserialize_with = "deserialize_u16_map")]
     routings: HashMap<u16, OutputRouting>,

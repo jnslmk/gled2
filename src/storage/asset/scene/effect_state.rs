@@ -13,7 +13,7 @@ use egui::TextureId;
 use rand::Rng;
 use wgpu::{MapMode, PollType};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct EffectState {
     /// Progress in current beat.
     pub beat_progression: f32,
@@ -171,7 +171,7 @@ impl EffectState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct OwnedTextureId(pub TextureId);
 
 impl Drop for OwnedTextureId {

@@ -3,7 +3,7 @@ use crate::{pipeline::constants::OUTPUT_BUFFER_SIZE, wgpu_render_state};
 use std::num::NonZeroU64;
 use wgpu::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct OutputMix {
     pipeline: ComputePipeline,
     bind_group_layout: BindGroupLayout,

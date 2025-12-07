@@ -1,9 +1,39 @@
 use super::App;
-use crate::{pipeline::preview::Preview, ui::brightness_slider::BrightnessSlider};
-use egui::{Color32, Frame, Image, Layout, Vec2, load::SizedTexture};
+use crate::{
+    pipeline::preview::Preview,
+    ui::{
+        asset_tree::{TreeId, TreeSelection},
+        brightness_slider::BrightnessSlider,
+    },
+};
+use egui::{Color32, Id, Image, Ui, Vec2, load::SizedTexture};
+use egui_ltreeview::TreeViewState;
 
 impl App {
+    pub fn palette_asset_tree_id(&mut self, ui: &mut Ui) -> Id {
+        *self
+            .palette_asset_tree_id
+            .get_or_insert_with(|| ui.make_persistent_id("preview palette tree"))
+    }
+
     pub fn preview(&mut self, ui: &mut egui::Ui) {
+        let palette_asset_tree_id = self.palette_asset_tree_id(ui);
+        let palette_tree_id = self
+            .project
+            .as_ref()
+            .and_then(|project| project.palette)
+            .map(TreeId::File);
+
+        if let Some(palette_tree_id) = palette_tree_id.as_ref() {
+            let mut state = TreeViewState::load(ui, palette_asset_tree_id).unwrap_or_default();
+            if state.selected().iter().next().is_none()
+                && let Some(index) = self.palette_asset_tree.find_index(palette_tree_id)
+            {
+                state.set_selected(vec![index]);
+                state.store(ui, palette_asset_tree_id);
+            }
+        }
+
         let height = ui.available_height();
         ui.horizontal(|ui| {
             let size = Vec2::splat(height.min(ui.available_width()));
@@ -26,7 +56,31 @@ impl App {
                 }
             }
 
-            if let Some(project) = self.project.as_mut() {
+            if let Some(project) = &mut self.project {
+                ui.add_space(ui.available_width() - (300.0 + 16.0 + 40.0 + 16.0));
+                ui.scope(|ui| {
+                    ui.set_max_width(300.0);
+                    if self.palette_asset_tree.show(ui, palette_asset_tree_id) {
+                        match self.palette_asset_tree.selected() {
+                            TreeSelection::Asset(palette) => {
+                                project.palette = Some(palette.id);
+                            }
+                            _ => {
+                                let mut state = TreeViewState::load(ui, palette_asset_tree_id)
+                                    .unwrap_or_default();
+                                if let Some(index) =
+                                    palette_tree_id.as_ref().and_then(|palette_tree_id| {
+                                        self.palette_asset_tree.find_index(palette_tree_id)
+                                    })
+                                {
+                                    state.set_selected(vec![index]);
+                                    state.store(ui, palette_asset_tree_id);
+                                }
+                            }
+                        };
+                    }
+                });
+
                 let mut rect = ui.available_rect_before_wrap();
                 *rect.top_mut() += 16.0;
                 *rect.left_mut() = rect.right() - 56.0;

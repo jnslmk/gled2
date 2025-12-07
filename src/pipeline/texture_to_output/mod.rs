@@ -11,16 +11,16 @@ use log::debug;
 use positions::Positions;
 use std::num::{NonZero, NonZeroU64};
 use wgpu::{
-    util::{BufferInitDescriptor, DeviceExt},
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType,
     BufferDescriptor, BufferUsages, CommandEncoder, ComputePassDescriptor, ComputePipeline,
     ComputePipelineDescriptor, PipelineLayoutDescriptor, Queue, SamplerBindingType,
     SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, ShaderStages, Texture,
     TextureSampleType, TextureViewDescriptor, TextureViewDimension,
+    util::{BufferInitDescriptor, DeviceExt},
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct TextureToOutput {
     pipeline: ComputePipeline,
     bind_group: BindGroup,

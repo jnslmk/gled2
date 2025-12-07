@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::{fmt::Debug, fs::File, sync::Arc};
 
 pub trait AssetTrait:
-    Serialize + DeserializeOwned + Debug + Default + Send + Sync + Clone + 'static
+    Serialize + DeserializeOwned + Debug + Default + Send + Sync + Clone + 'static + PartialEq
 {
     const DIR_NAME: &'static str;
     const NAME: &'static str;

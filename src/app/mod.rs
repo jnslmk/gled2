@@ -21,15 +21,19 @@ use crate::{
     storage::{
         asset::{
             Asset,
+            palette::Palette,
             project::{DeckPath, Project, scene_instance_path::SceneInstancePathId},
         },
         asset_id::AssetId,
         loading,
     },
-    ui::{action::UiAction, window_common::default_viewport_builder, windows::Windows},
+    ui::{
+        action::UiAction, asset_tree::AssetTree, window_common::default_viewport_builder,
+        windows::Windows,
+    },
 };
 use eframe::egui_wgpu::Callback;
-use egui::{CentralPanel, Rect, UiBuilder, ViewportId, ahash::HashSet};
+use egui::{CentralPanel, Id, Rect, UiBuilder, ViewportId, ahash::HashSet};
 use persistant_state::PersistantState;
 use std::{sync::mpsc::Receiver, time::Instant};
 use storage::{show_storage_error, show_storage_loading};
@@ -52,6 +56,8 @@ pub struct App {
     pub ui_action_receiver: Receiver<UiAction>,
     pub last_title: String,
     pub midi_output_active: bool,
+    pub palette_asset_tree: AssetTree<Palette>,
+    pub palette_asset_tree_id: Option<Id>,
 }
 
 impl eframe::App for App {
@@ -260,6 +266,11 @@ impl App {
             ui_action_receiver,
             last_title: Default::default(),
             midi_output_active: false,
+            palette_asset_tree: AssetTree {
+                only_asset_selection: true,
+                ..Default::default()
+            },
+            palette_asset_tree_id: None,
         };
 
         Some(app)

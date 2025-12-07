@@ -11,7 +11,7 @@ use std::{
 };
 use wgpu::{util::DeviceExt, *};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct AnimationRenderer {
     pipeline: RenderPipeline,
     bind_group: BindGroup,

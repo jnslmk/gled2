@@ -39,7 +39,7 @@ use std::{
 use uuid::Uuid;
 use wgpu::CommandEncoderDescriptor;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Project {
     pub palette: Option<AssetId<Palette>>,

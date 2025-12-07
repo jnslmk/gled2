@@ -15,7 +15,7 @@ thread_local! {
     static MEASUREMENT_POINTS: RefCell<MeasurementPoints> = const { RefCell::new(MeasurementPoints::new()) };
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq)]
 pub struct Svg {
     svg_contents: String,
     #[serde(skip)]
