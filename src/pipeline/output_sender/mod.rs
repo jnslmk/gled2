@@ -3,13 +3,14 @@
 use anyhow::{Context, Result};
 use log::{debug, trace, warn};
 use std::{
-    net::{SocketAddr, UdpSocket},
+    net::SocketAddr,
     sync::mpsc::{Receiver, Sender, channel},
     thread,
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use crate::{
+    input::artnet::ARTNET_SOCKET,
     pipeline::{
         constants::{UNIVERSE_BUFFER_SIZE, UNIVERSES},
         extract_output::ExtractOutput,
@@ -38,15 +39,11 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
     thread::Builder::new()
         .name("gled:output:tx".to_owned())
         .spawn(move || {
-            let socket = { 6454..7000 }
-                .filter_map(|port| UdpSocket::bind(("0.0.0.0", port)).ok())
-                .next()
-                .expect("Could not find a port which we can use");
-            match socket.set_broadcast(true) {
+            match ARTNET_SOCKET.set_broadcast(true) {
                 Ok(_) => debug!("Activated sending to broadcast"),
                 Err(e) => debug!("Could not activate sending to broadcast: {e}"),
             }
-            match socket.set_nonblocking(true) {
+            match ARTNET_SOCKET.set_nonblocking(true) {
                 Ok(_) => debug!("Activated non-blocking mode"),
                 Err(e) => debug!("Could not activate non-blocking mode: {e}"),
             };
@@ -115,7 +112,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                         count += 1;
                         debug!("Sending package to {addr}");
                         trace!("Package data: {data:02x?}");
-                        match socket.send_to(&data, addr) {
+                        match ARTNET_SOCKET.send_to(&data, addr) {
                             Err(err) if count == 10 => {
                                 warn!("Could not send data on try {count}, giving up - {err:?}");
                                 break;

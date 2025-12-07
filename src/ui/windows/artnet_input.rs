@@ -1,8 +1,11 @@
+use std::net::Ipv4Addr;
+
 use crate::{
     input::artnet::ARTNET_CONFIG,
     ui::window_common::{default_viewport_builder, gled_window_frame},
 };
 use egui::{Context, Id, TextEdit, Vec2, ViewportId};
+use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
 #[derive(Default)]
 pub struct ArtnetInputWindow {
@@ -10,6 +13,7 @@ pub struct ArtnetInputWindow {
     universe: Option<String>,
     start: Option<String>,
     channels: Option<String>,
+    addresses: Vec<Ipv4Addr>,
 }
 
 impl ArtnetInputWindow {
@@ -18,11 +22,26 @@ impl ArtnetInputWindow {
             return;
         }
 
+        self.addresses = NetworkInterface::show()
+            .expect("Could not find network interfaces")
+            .into_iter()
+            .flat_map(|interface| {
+                interface
+                    .addr
+                    .into_iter()
+                    .filter_map(|addr| match addr.ip() {
+                        std::net::IpAddr::V4(ipv4) => Some(ipv4),
+                        _ => None,
+                    })
+            })
+            .collect::<Vec<_>>();
+        self.addresses.sort();
+
         ctx.show_viewport_immediate(
             ViewportId(Id::new("artnet inputs window")),
             default_viewport_builder()
-                .with_inner_size(Vec2::new(290.0, 200.0))
-                .with_min_inner_size(Vec2::new(290.0, 200.0))
+                .with_inner_size(Vec2::new(290.0, 250.0))
+                .with_min_inner_size(Vec2::new(290.0, 250.0))
                 .with_resizable(false)
                 .with_minimize_button(false)
                 .with_maximize_button(false),
@@ -38,6 +57,29 @@ impl ArtnetInputWindow {
 
                     ui.label("Active");
                     ui.checkbox(&mut config.active, "");
+
+                    ui.label("Bind address");
+                    let mut selected_index = self
+                        .addresses
+                        .iter()
+                        .position(|addr| addr == &config.bind_ip)
+                        .unwrap_or(0);
+                    egui::ComboBox::new("artnet_bind_address_combo", "")
+                        .selected_text(
+                            self.addresses
+                                .get(selected_index)
+                                .map(|addr| addr.to_string())
+                                .unwrap_or_else(|| "Unknown".to_string()),
+                        )
+                        .width(275.0)
+                        .show_ui(ui, |ui| {
+                            for (index, addr) in self.addresses.iter().enumerate() {
+                                ui.selectable_value(&mut selected_index, index, addr.to_string());
+                            }
+                        });
+                    if let Some(addr) = self.addresses.get(selected_index) {
+                        config.bind_ip = *addr;
+                    }
 
                     ui.label("Universe");
                     let universe = self
