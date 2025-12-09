@@ -138,11 +138,13 @@ impl Animation {
         ui: &mut Ui,
         rendered: TextureId,
         svg: Option<egui::TextureHandle>,
+        beat_progression: f32,
     ) -> bool {
         let mut changed = false;
         let mut count = VariablesCount::default();
         for argument in self.arguments.iter() {
-            changed |= argument.config_ui(config, ui, count, rendered, svg.clone());
+            changed |=
+                argument.config_ui(config, ui, count, rendered, svg.clone(), beat_progression);
             count += argument.kind.variables().count();
         }
 

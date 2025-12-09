@@ -81,7 +81,7 @@ impl ScenesWindow {
                                         scene.data.effect(self.selected_effect),
                                         self.effect_states.get_mut(self.selected_effect),
                                     ) {
-                                        self.dirty |= effect.config_ui(state, ui, true, None);
+                                        self.dirty |= effect.config_ui(state, ui, true, None, 1.0);
                                     }
 
                                     ui.separator();

@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use super::Curve;
 use crate::{
     storage::{Asset, AssetId, AssetTrait},
-    ui::{ChangeButton, asset_tree::AssetTree, gled_slider::GledSlider},
+    ui::{asset_tree::AssetTree, gled_slider::GledSlider},
 };
 use egui::{
     Button, Color32, UiKind,
@@ -122,8 +122,8 @@ impl<R: Range> Default for MultipliedCurve<R> {
 
 impl<R: Range> Eq for MultipliedCurve<R> {}
 
-impl<R: Range> ChangeButton for MultipliedCurve<R> {
-    fn change_button(&mut self, ui: &mut egui::Ui) -> bool {
+impl<R: Range> MultipliedCurve<R> {
+    pub fn change_button(&mut self, ui: &mut egui::Ui, beat_progression: f32) -> bool {
         let mut changed = false;
 
         let mut rect = ui.available_rect_before_wrap();
@@ -134,7 +134,7 @@ impl<R: Range> ChangeButton for MultipliedCurve<R> {
                 .put(
                     left.shrink(2.0),
                     GledSlider {
-                        real_value: self.multiplier,
+                        real_value: self.value(beat_progression),
                         value: &mut self.multiplier,
                         size: left.height(),
                         horizontal: true,

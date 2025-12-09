@@ -239,7 +239,9 @@ impl AnimationWindow {
                                 ScrollArea::vertical()
                                     .scroll_bar_visibility(AlwaysVisible)
                                     .max_height(ui.available_height())
-                                    .show(ui, |ui| effect.config_ui(effect_state, ui, false, None));
+                                    .show(ui, |ui| {
+                                        effect.config_ui(effect_state, ui, false, None, 1.0)
+                                    });
                             });
                     }
 

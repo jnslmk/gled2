@@ -1,7 +1,6 @@
 pub mod variables;
 
 use super::{AnimationConfig, config::float_value::FloatValue};
-use crate::ui::ChangeButton;
 use egui::{
     Button, Color32, ComboBox, CursorIcon, Image, Layout, Sense, TextureHandle, TextureId, Ui,
     UiKind, Vec2, load::SizedTexture,
@@ -137,6 +136,7 @@ impl Argument {
         count: VariablesCount,
         rendered: TextureId,
         svg: Option<TextureHandle>,
+        beat_progression: f32,
     ) -> bool {
         let mut changed = false;
         ui.label(&self.name);
@@ -196,7 +196,7 @@ impl Argument {
                 };
 
                 ui.vertical_centered_justified(|ui| {
-                    changed |= value.percentage().change_button(ui);
+                    changed |= value.percentage().change_button(ui, beat_progression);
                 });
             }
             ArgumentKind::Degrees => {
@@ -205,7 +205,7 @@ impl Argument {
                 };
 
                 ui.vertical_centered_justified(|ui| {
-                    changed |= value.degrees().change_button(ui);
+                    changed |= value.degrees().change_button(ui, beat_progression);
                 });
             }
             ArgumentKind::Slider { min, max } => {

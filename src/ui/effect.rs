@@ -14,6 +14,7 @@ impl Effect {
         ui: &mut egui::Ui,
         allow_animation_change: bool,
         svg: Option<egui::TextureHandle>,
+        beat_progression: f32,
     ) -> bool {
         let mut changed = false;
 
@@ -28,22 +29,27 @@ impl Effect {
 
         ui.label("Progression");
         ui.vertical_centered_justified(|ui| {
-            changed |= self.beat_progression.change_button(ui);
+            changed |= self.beat_progression.change_button(ui, beat_progression);
         });
+
+        let mut beat_progression = self.beat_progression.value(beat_progression);
+        beat_progression += self.beat_progression_offset.value(beat_progression);
 
         ui.label("Colorshift");
         ui.vertical_centered_justified(|ui| {
-            changed |= self.color_shift.change_button(ui);
+            changed |= self.color_shift.change_button(ui, beat_progression);
         });
 
         ui.label("Opacity");
         ui.vertical_centered_justified(|ui| {
-            changed |= self.opacity.change_button(ui);
+            changed |= self.opacity.change_button(ui, beat_progression);
         });
 
         ui.label("Beat offset");
         ui.vertical_centered_justified(|ui| {
-            changed |= self.beat_progression_offset.change_button(ui);
+            changed |= self
+                .beat_progression_offset
+                .change_button(ui, self.beat_progression.value(beat_progression));
         });
 
         ui.label("Speed");
@@ -88,9 +94,13 @@ impl Effect {
             .or_else(|| self.animation.and_then(Asset::get))
         {
             let rendered = state.texture_id();
-            changed |= animation
-                .data
-                .config_ui(&mut self.animation_config, ui, rendered, svg);
+            changed |= animation.data.config_ui(
+                &mut self.animation_config,
+                ui,
+                rendered,
+                svg,
+                beat_progression,
+            );
         }
 
         ui.separator();

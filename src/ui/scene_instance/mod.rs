@@ -22,6 +22,8 @@ impl SceneInstance {
         groups: Groups,
         timing: &Timing,
     ) {
+        let mut beat_progression = timing.beat_progression();
+        beat_progression += self.beat_progression_offset.value(beat_progression);
         let width = ui.available_width() - 20.0;
 
         TopBottomPanel::bottom("Scene Instance action buttons")
@@ -113,7 +115,7 @@ impl SceneInstance {
 
                                 ui.label("Opacity");
                                 ui.vertical_centered_justified(|ui| {
-                                    self.opacity.change_button(ui);
+                                    self.opacity.change_button(ui, beat_progression);
                                 });
 
                                 ui.label("Ignore Main Dimmer");
@@ -121,7 +123,8 @@ impl SceneInstance {
 
                                 ui.label("Beat offset");
                                 ui.vertical_centered_justified(|ui| {
-                                    self.beat_progression_offset.change_button(ui);
+                                    self.beat_progression_offset
+                                        .change_button(ui, timing.beat_progression());
                                 });
                             });
                         });
@@ -188,9 +191,6 @@ impl SceneInstance {
                     });
                 }
 
-                let mut beat_progression = timing.beat_progression();
-                beat_progression += self.beat_progression_offset.value(beat_progression);
-
                 ui.horizontal_wrapped(|ui| {
                     let mut set_overwritten_effect = None;
                     for ((index, effect, overwritten), effect_state) in scene
@@ -253,8 +253,13 @@ impl SceneInstance {
                                 );
                                 ui.vertical(|ui| {
                                     let mut effect = effect.to_owned();
-                                    let changed =
-                                        effect.config_ui(effect_state, ui, false, svg.clone());
+                                    let changed = effect.config_ui(
+                                        effect_state,
+                                        ui,
+                                        false,
+                                        svg.clone(),
+                                        beat_progression,
+                                    );
                                     if changed {
                                         if Some(&effect) != scene.data.effects.get(index) {
                                             set_overwritten_effect = Some((index, Some(effect)));
