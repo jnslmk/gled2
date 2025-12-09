@@ -26,7 +26,7 @@ impl Widget for GledSlider<'_> {
             }
 
             ui.horizontal(|ui| {
-                let corner_radius = 10;
+                let corner_radius = 5;
                 let (rect, mut response) = ui
                     .allocate_exact_size(egui::vec2(width, height), egui::Sense::click_and_drag());
                 let (left, right) = rect.split_left_right_at_fraction(self.real_value);

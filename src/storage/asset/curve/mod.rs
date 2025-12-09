@@ -5,7 +5,7 @@ pub mod polynomial;
 use self::point::CurvePoint;
 use super::AssetTrait;
 use egui::{Color32, Pos2, Rect, Sense, Shape, Stroke, Ui, Vec2, epaint::QuadraticBezierShape};
-use epaint::PathShape;
+use epaint::{CircleShape, PathShape};
 use polynomial::BezierCurve;
 use serde::{Deserialize, Serialize};
 
@@ -74,7 +74,13 @@ impl Curve {
         linear_points
     }
 
-    pub fn draw(&mut self, ui: &mut Ui, edit_mode: bool, rect: Rect) -> bool {
+    pub fn draw(
+        &mut self,
+        ui: &mut Ui,
+        edit_mode: bool,
+        beat_progression: Option<f32>,
+        rect: Rect,
+    ) -> bool {
         let mut changed = false;
 
         let to_screen = emath::RectTransform::from_to(
@@ -279,6 +285,27 @@ impl Curve {
             ));
         }
 
+        if let Some(beat_progression) = beat_progression {
+            let beat_progression = beat_progression % 4.0;
+            let color = Color32::from_rgb(0, 255, 230);
+            painter.add(PathShape::line(
+                vec![
+                    to_screen.transform_pos(Pos2::new(beat_progression, 0.0)),
+                    to_screen.transform_pos(Pos2::new(beat_progression, 1.0)),
+                ],
+                Stroke::new(1.0, color),
+            ));
+
+            painter.add(CircleShape::filled(
+                to_screen.transform_pos(Pos2::new(
+                    beat_progression,
+                    1.0 - self.value(beat_progression),
+                )),
+                2.0,
+                color,
+            ));
+        }
+
         changed
     }
 
@@ -327,6 +354,6 @@ impl AssetTrait for Curve {
         let rect = Rect::from_min_max(min, rect.max);
 
         let mut curve = self.clone();
-        curve.draw(ui, false, rect);
+        curve.draw(ui, false, None, rect);
     }
 }

@@ -184,7 +184,10 @@ impl<R: Range> MultipliedCurve<R> {
                 .0
                 .rect;
                 if let Some(curve) = self.curve.and_then(Asset::get) {
-                    curve.data.clone().draw(ui, false, rect);
+                    curve
+                        .data
+                        .clone()
+                        .draw(ui, false, Some(beat_progression), rect);
                 }
             });
         });

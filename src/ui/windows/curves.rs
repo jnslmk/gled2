@@ -90,6 +90,7 @@ fn curve_editor(ui: &mut Ui, curve: &mut Asset<Curve>, dirty: &mut bool) {
     *dirty |= curve.data.draw(
         ui,
         true,
+        None,
         Rect::from_min_size(ui.next_widget_position(), ui.available_size()),
     );
 }
