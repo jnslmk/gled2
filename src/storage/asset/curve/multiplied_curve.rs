@@ -6,7 +6,7 @@ use crate::{
     ui::{ChangeButton, asset_tree::AssetTree, gled_slider::GledSlider},
 };
 use egui::{
-    Button, Color32, UiKind,
+    Button, CentralPanel, Color32, Frame, UiKind,
     containers::menu::{MenuButton, MenuConfig},
 };
 use egui_ltreeview::TreeViewState;
@@ -16,6 +16,7 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 #[serde(default)]
 pub struct MultipliedCurve<R: Range> {
+    #[serde(alias = "StaticValue")]
     multiplier: f32,
     curve: Option<AssetId<Curve>>,
     #[serde(skip)]
@@ -79,7 +80,7 @@ impl Range for RangeDegrees {
 
 impl<R: Range> Default for MultipliedCurve<R> {
     fn default() -> Self {
-        Self::new_multiplier(R::MAX)
+        Self::new_multiplier(1.0)
     }
 }
 
@@ -102,11 +103,13 @@ impl<R: Range> ChangeButton for MultipliedCurve<R> {
                         size: left.height(),
                         horizontal: true,
                         show_label: false,
+                        max_value: R::MAX,
                     },
                 )
                 .changed();
+
             ui.scope(|ui| {
-                ui.set_max_size(right.shrink(2.0).size());
+                ui.set_max_width(right.shrink(2.0).width());
                 ui.vertical_centered_justified(|ui| {
                     let rect = MenuButton::new(if self.curve.is_some() {
                         ""

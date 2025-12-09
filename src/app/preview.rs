@@ -94,6 +94,7 @@ impl App {
                         size: 40.0,
                         show_label: true,
                         horizontal: false,
+                        max_value: 100.0,
                     },
                 );
             }

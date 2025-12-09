@@ -6,6 +6,7 @@ use crate::ui::FRAME_STROKE;
 pub struct GledSlider<'a> {
     pub value: &'a mut f32,
     pub real_value: f32,
+    pub max_value: f32,
     pub size: f32,
     pub show_label: bool,
     pub horizontal: bool,
@@ -60,7 +61,7 @@ impl Widget for GledSlider<'_> {
                     label_rect.set_height(height);
                     ui.put(
                         label_rect,
-                        Label::new(format!("{:.0}%", *self.value * 100.0)),
+                        Label::new(format!("{:.0}%", *self.value * self.max_value)),
                     );
                 }
 

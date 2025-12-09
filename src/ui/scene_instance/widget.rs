@@ -226,6 +226,7 @@ impl Widget for SceneInstanceWidget<'_> {
                                                 0.0
                                             },
                                             size: 10.0,
+                                            max_value: 100.0,
                                             value: &mut self.scene_instance.opacity.multiplier(),
                                             show_label: false,
                                             horizontal: false,
