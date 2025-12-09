@@ -120,8 +120,8 @@ impl Widget for BrightnessSlider<'_> {
                 }
 
                 if let Some(pointer_position_2d) = response.interact_pointer_pos() {
-                    let new_value =
-                        1.0 - (pointer_position_2d.y - rect.top() / rect.height()).clamp(0.0, 1.0);
+                    let new_value = 1.0
+                        - ((pointer_position_2d.y - rect.top()) / rect.height()).clamp(0.0, 1.0);
                     *self.value = new_value;
                 }
                 response
