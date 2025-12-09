@@ -3,7 +3,7 @@ use epaint::RectShape;
 
 use crate::ui::FRAME_STROKE;
 
-pub struct BrightnessSlider<'a> {
+pub struct GledSlider<'a> {
     pub value: &'a mut f32,
     pub real_value: f32,
     pub size: f32,
@@ -11,7 +11,7 @@ pub struct BrightnessSlider<'a> {
     pub horizontal: bool,
 }
 
-impl Widget for BrightnessSlider<'_> {
+impl Widget for GledSlider<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         const TOP_COLOR: Color32 = Color32::from_rgb(103, 103, 94);
         const HANDLE_COLOR: Color32 = Color32::from_rgb(59, 255, 0);
@@ -26,12 +26,12 @@ impl Widget for BrightnessSlider<'_> {
 
             ui.horizontal(|ui| {
                 let corner_radius = 10;
-                let (rect, response) = ui
+                let (rect, mut response) = ui
                     .allocate_exact_size(egui::vec2(width, height), egui::Sense::click_and_drag());
-                let (left, right) = rect.split_left_right_at_fraction(1.0 - self.real_value);
+                let (left, right) = rect.split_left_right_at_fraction(self.real_value);
                 let handle_rect = {
-                    let rect = rect.shrink2(Vec2::new(0.5 * corner_radius as f32, 0.0));
-                    let (left, _right) = rect.split_left_right_at_fraction(1.0 - *self.value);
+                    let rect = rect.shrink2(Vec2::new(corner_radius as f32, 0.0));
+                    let (left, _right) = rect.split_left_right_at_fraction(*self.value);
                     Rect::from_min_max(
                         left.right_top() + Vec2::new(-(corner_radius as f32), 0.0),
                         left.right_bottom() + Vec2::new(corner_radius as f32, 0.0),
@@ -67,7 +67,8 @@ impl Widget for BrightnessSlider<'_> {
                 if let Some(pointer_position_2d) = response.interact_pointer_pos() {
                     let new_value =
                         ((pointer_position_2d.x - rect.left()) / rect.width()).clamp(0.0, 1.0);
-                    *self.value = 1.0 - new_value;
+                    *self.value = new_value;
+                    response.mark_changed();
                 }
                 response
             })
@@ -81,11 +82,11 @@ impl Widget for BrightnessSlider<'_> {
 
             ui.vertical(|ui| {
                 let corner_radius = 5;
-                let (rect, response) = ui
+                let (rect, mut response) = ui
                     .allocate_exact_size(egui::vec2(width, height), egui::Sense::click_and_drag());
                 let (top, bottom) = rect.split_top_bottom_at_fraction(1.0 - self.real_value);
                 let handle_rect = {
-                    let rect = rect.shrink2(Vec2::new(0.0, 0.5 * corner_radius as f32));
+                    let rect = rect.shrink2(Vec2::new(0.0, corner_radius as f32));
                     let (top, _bottom) = rect.split_top_bottom_at_fraction(1.0 - *self.value);
                     Rect::from_min_max(
                         top.left_bottom() + Vec2::new(0.0, -(corner_radius as f32)),
@@ -123,6 +124,7 @@ impl Widget for BrightnessSlider<'_> {
                     let new_value = 1.0
                         - ((pointer_position_2d.y - rect.top()) / rect.height()).clamp(0.0, 1.0);
                     *self.value = new_value;
+                    response.mark_changed();
                 }
                 response
             })

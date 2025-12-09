@@ -5,7 +5,7 @@ use crate::{
     storage::{
         Animation, Asset, AssetId, Palette,
         animation::config::AnimationConfig,
-        curve::static_or_curve::{RangeDegrees, RangePercentage, StaticOrCurve},
+        curve::multiplied_curve::{MultipliedCurve, RangeDegrees, RangePercentage},
     },
 };
 use serde::{Deserialize, Serialize};
@@ -17,10 +17,10 @@ use super::effect_state::EffectState;
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
 pub struct Effect {
-    pub color_shift: StaticOrCurve<RangeDegrees>,
-    pub opacity: StaticOrCurve<RangePercentage>,
-    pub beat_progression: StaticOrCurve<RangePercentage>,
-    pub beat_progression_offset: StaticOrCurve<RangePercentage>,
+    pub color_shift: MultipliedCurve<RangeDegrees>,
+    pub opacity: MultipliedCurve<RangePercentage>,
+    pub beat_progression: MultipliedCurve<RangePercentage>,
+    pub beat_progression_offset: MultipliedCurve<RangePercentage>,
     /// In 2^n of bpm
     pub speed_exponent: i32,
     pub group_index: usize,
@@ -35,13 +35,13 @@ pub struct Effect {
 impl Default for Effect {
     fn default() -> Self {
         Self {
-            color_shift: StaticOrCurve::new_static(0.0),
-            opacity: StaticOrCurve::new_static(1.0),
-            beat_progression: StaticOrCurve::new_curve([
+            color_shift: MultipliedCurve::new_multiplier(0.0),
+            opacity: MultipliedCurve::new_multiplier(1.0),
+            beat_progression: MultipliedCurve::new_curve([
                 0x2E, 0x07, 0x5C, 0xCB, 0x90, 0xC4, 0x47, 0x4B, 0x8D, 0x16, 0xC6, 0x70, 0x40, 0x54,
                 0x99, 0xA6,
             ]),
-            beat_progression_offset: StaticOrCurve::new_static(0.0),
+            beat_progression_offset: MultipliedCurve::new_multiplier(0.0),
             speed_exponent: Default::default(),
             group_index: Default::default(),
             animation: Default::default(),

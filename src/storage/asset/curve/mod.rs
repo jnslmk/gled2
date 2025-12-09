@@ -1,6 +1,6 @@
+pub mod multiplied_curve;
 pub mod point;
 pub mod polynomial;
-pub mod static_or_curve;
 
 use self::point::CurvePoint;
 use super::AssetTrait;

@@ -1,11 +1,11 @@
-use crate::storage::curve::static_or_curve::{RangeDegrees, RangePercentage, StaticOrCurve};
+use crate::storage::curve::multiplied_curve::{MultipliedCurve, RangeDegrees, RangePercentage};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub enum FloatValue {
     F32(f32),
-    Percentage(StaticOrCurve<RangePercentage>),
-    Degrees(StaticOrCurve<RangeDegrees>),
+    Percentage(MultipliedCurve<RangePercentage>),
+    Degrees(MultipliedCurve<RangeDegrees>),
 }
 
 impl Eq for FloatValue {}
@@ -17,7 +17,7 @@ impl Default for FloatValue {
 }
 
 impl FloatValue {
-    pub fn percentage(&mut self) -> &mut StaticOrCurve<RangePercentage> {
+    pub fn percentage(&mut self) -> &mut MultipliedCurve<RangePercentage> {
         match self {
             Self::Percentage(value) => value,
             _ => {
@@ -31,7 +31,7 @@ impl FloatValue {
         }
     }
 
-    pub fn degrees(&mut self) -> &mut StaticOrCurve<RangeDegrees> {
+    pub fn degrees(&mut self) -> &mut MultipliedCurve<RangeDegrees> {
         match self {
             Self::Degrees(value) => value,
             _ => {

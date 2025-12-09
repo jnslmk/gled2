@@ -3,7 +3,7 @@ use crate::{
     pipeline::preview::Preview,
     ui::{
         asset_tree::{TreeId, TreeSelection},
-        brightness_slider::BrightnessSlider,
+        gled_slider::GledSlider,
     },
 };
 use egui::{Color32, Id, Image, Ui, Vec2, load::SizedTexture};
@@ -88,7 +88,7 @@ impl App {
 
                 ui.put(
                     rect,
-                    BrightnessSlider {
+                    GledSlider {
                         real_value: project.main_dimmer,
                         value: &mut project.main_dimmer,
                         size: 40.0,

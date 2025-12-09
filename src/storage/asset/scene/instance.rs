@@ -10,7 +10,7 @@ use crate::{
         Asset, AssetId,
         animation::Animation,
         asset::scene::{color::SceneInstanceColor, effect::Effect},
-        curve::static_or_curve::{RangePercentage, StaticOrCurve},
+        curve::multiplied_curve::{MultipliedCurve, RangePercentage},
         palette::Palette,
     },
 };
@@ -31,13 +31,13 @@ pub struct SceneInstance {
     #[serde(default)]
     pub active: bool,
     #[serde(default)]
-    pub opacity: StaticOrCurve<RangePercentage>,
+    pub opacity: MultipliedCurve<RangePercentage>,
     #[serde(default)]
     pub input_dimmer: f32,
     #[serde(default)]
     pub ignore_main_dimmer: bool,
     #[serde(default)]
-    pub beat_progression_offset: StaticOrCurve<RangePercentage>,
+    pub beat_progression_offset: MultipliedCurve<RangePercentage>,
     #[serde(default)]
     pub activation_input: Option<InputEvent>,
     #[serde(default)]
@@ -105,10 +105,10 @@ impl From<AssetId<Scene>> for SceneInstance {
             color: Default::default(),
             id: Uuid::new_v4(),
             active: Default::default(),
-            opacity: StaticOrCurve::new_static(1.0),
+            opacity: MultipliedCurve::new_multiplier(1.0),
             input_dimmer: 1.0,
             ignore_main_dimmer: false,
-            beat_progression_offset: StaticOrCurve::new_static(0.0),
+            beat_progression_offset: MultipliedCurve::new_multiplier(0.0),
             activation_input: Default::default(),
             flash_input: Default::default(),
             set_offset_on_flash: Default::default(),
@@ -150,7 +150,7 @@ impl SceneInstance {
         if let Some(event) = self.flash_input.as_ref() {
             if !self.flash && event.is_live() && self.set_offset_on_flash {
                 self.beat_progression_offset =
-                    StaticOrCurve::new_static(4.0 - timing.beat_progression() % 4.0);
+                    MultipliedCurve::new_multiplier(4.0 - timing.beat_progression() % 4.0);
             }
             self.flash = event.is_live();
         }

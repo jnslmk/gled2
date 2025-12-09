@@ -6,7 +6,7 @@ use crate::{
         asset::{
             Asset,
             animation::Animation,
-            curve::static_or_curve::StaticOrCurve,
+            curve::multiplied_curve::MultipliedCurve,
             project::{
                 DeckPath, Project,
                 scene_instance_path::{SceneInstancePathId, SceneInstancePathIndex},
@@ -107,14 +107,14 @@ impl App {
                 }
                 (Some(project), UiAction::SetSceneOpacity(path, opacity)) => {
                     if let Some(scene_instance) = project.scene_instance_by_index(path) {
-                        scene_instance.opacity = StaticOrCurve::new_static(opacity);
+                        scene_instance.opacity = MultipliedCurve::new_multiplier(opacity);
                     }
                 }
                 (Some(project), UiAction::SetSelectedSceneOpacity(opacity)) => {
                     if let Some(scene_instance) =
                         project.scene_instance_mut(self.selected_scene_instance)
                     {
-                        scene_instance.opacity = StaticOrCurve::new_static(opacity);
+                        scene_instance.opacity = MultipliedCurve::new_multiplier(opacity);
                     }
                 }
                 (Some(project), UiAction::SetMainDimmer(dimmer)) => {

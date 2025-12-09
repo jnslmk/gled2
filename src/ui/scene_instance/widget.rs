@@ -6,7 +6,7 @@ use crate::{
         project::{DeckPath, scene_instance_path::SceneInstancePathId},
         scene::instance::SceneInstance,
     },
-    ui::{FRAME_STROKE, brightness_slider::BrightnessSlider, pills::show_pills},
+    ui::{FRAME_STROKE, gled_slider::GledSlider, pills::show_pills},
 };
 use egui::{
     Align, Button, Checkbox, Color32, ColorImage, Context, CornerRadius, Image, Label, Layout,
@@ -219,17 +219,14 @@ impl Widget for SceneInstanceWidget<'_> {
                                             rect.right_top() + Vec2::new(10.0, 0.0),
                                             Vec2::new(10.0, rect.height()),
                                         ),
-                                        BrightnessSlider {
+                                        GledSlider {
                                             real_value: if self.scene_instance.active {
                                                 dimmer
                                             } else {
                                                 0.0
                                             },
                                             size: 10.0,
-                                            value: &mut self
-                                                .scene_instance
-                                                .opacity
-                                                .value(beat_progression),
+                                            value: &mut self.scene_instance.opacity.multiplier(),
                                             show_label: false,
                                             horizontal: false,
                                         },
