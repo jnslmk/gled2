@@ -90,9 +90,10 @@ impl<R: Range> MultipliedCurve<R> {
     pub fn value(&self, beat_progression: f32) -> f32 {
         self.curve
             .and_then(Asset::get)
-            .map(|curve| curve.data.value(beat_progression % 4.0) * R::MAX)
-            .unwrap_or(R::MAX)
+            .map(|curve| curve.data.value(beat_progression % 4.0))
+            .unwrap_or(1.0)
             * self.multiplier
+            * R::MAX
     }
 }
 
@@ -134,7 +135,12 @@ impl<R: Range> MultipliedCurve<R> {
                 .put(
                     left.shrink(2.0),
                     GledSlider {
-                        real_value: self.value(beat_progression),
+                        real_value: self
+                            .curve
+                            .and_then(Asset::get)
+                            .map(|curve| curve.data.value(beat_progression % 4.0))
+                            .unwrap_or(1.0)
+                            * self.multiplier,
                         value: &mut self.multiplier,
                         size: left.height(),
                         horizontal: true,

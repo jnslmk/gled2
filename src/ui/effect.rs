@@ -32,7 +32,7 @@ impl Effect {
             changed |= self.beat_progression.change_button(ui, beat_progression);
         });
 
-        let mut beat_progression = self.beat_progression.value(beat_progression);
+        let mut beat_progression = beat_progression;
         beat_progression += self.beat_progression_offset.value(beat_progression);
 
         ui.label("Colorshift");
@@ -49,7 +49,7 @@ impl Effect {
         ui.vertical_centered_justified(|ui| {
             changed |= self
                 .beat_progression_offset
-                .change_button(ui, self.beat_progression.value(beat_progression));
+                .change_button(ui, beat_progression);
         });
 
         ui.label("Speed");
