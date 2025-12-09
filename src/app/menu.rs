@@ -292,22 +292,6 @@ impl App {
                     {
                         persistant_state.save();
                     };
-                    ui.add_enabled_ui(!PersistantState::effects_always_render(), |ui| {
-                        ui.label("Always render all scenes with..");
-                        let mut always_render_fps = PersistantState::always_render_fps();
-                        if ui
-                            .add(
-                                Slider::new(&mut always_render_fps, 0.0..=1000.0)
-                                    .integer()
-                                    .custom_formatter(|n, _| format!("{n:.0} fps")),
-                            )
-                            .changed()
-                        {
-                            let mut persistant_state = PersistantState::get();
-                            persistant_state.always_render_fps = always_render_fps;
-                            persistant_state.save();
-                        }
-                    });
 
                     ui.separator();
 

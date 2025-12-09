@@ -94,10 +94,8 @@ impl eframe::App for App {
             project.render(
                 &self.timing,
                 self.blackout || self.blackout_hold,
-                if PersistantState::effects_always_render() || {
-                    PersistantState::always_render_fps() > 0.0
-                        && self.last_always_render_fps_frame.elapsed().as_secs_f32()
-                            > 1.0 / PersistantState::always_render_fps()
+                if PersistantState::effects_always_render() && {
+                    self.last_always_render_fps_frame.elapsed().as_secs_f32() > 1.0 / 30.0
                 } {
                     self.last_always_render_fps_frame = Instant::now();
                     true
