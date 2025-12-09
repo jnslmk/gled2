@@ -6,7 +6,7 @@ use crate::{
     ui::{ChangeButton, asset_tree::AssetTree, gled_slider::GledSlider},
 };
 use egui::{
-    Button, CentralPanel, Color32, Frame, UiKind,
+    Button, Color32, UiKind,
     containers::menu::{MenuButton, MenuConfig},
 };
 use egui_ltreeview::TreeViewState;
@@ -146,49 +146,46 @@ impl<R: Range> ChangeButton for MultipliedCurve<R> {
 
             ui.scope(|ui| {
                 ui.set_max_width(right.shrink(2.0).width());
-                ui.vertical_centered_justified(|ui| {
-                    let rect = MenuButton::new(if self.curve.is_some() {
-                        ""
-                    } else {
-                        "Select Curve"
-                    })
-                    .config(
-                        MenuConfig::new()
-                            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
-                    )
-                    .ui(ui, |ui| {
-                        ui.set_min_width(300.0);
-                        if self.curve.is_some()
-                            && ui
-                                .vertical_centered_justified(|ui| {
-                                    ui.add(Button::new("Remove Curve").fill(Color32::DARK_RED))
-                                })
-                                .inner
-                                .clicked()
-                        {
-                            self.curve = None;
-                            changed = true;
-                            ui.close_kind(UiKind::Menu);
-                        };
+                let rect = MenuButton::new(if self.curve.is_some() {
+                    "                        "
+                } else {
+                    "Select Curve"
+                })
+                .config(
+                    MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
+                )
+                .ui(ui, |ui| {
+                    ui.set_min_width(300.0);
+                    if self.curve.is_some()
+                        && ui
+                            .vertical_centered_justified(|ui| {
+                                ui.add(Button::new("Remove Curve").fill(Color32::DARK_RED))
+                            })
+                            .inner
+                            .clicked()
+                    {
+                        self.curve = None;
+                        changed = true;
+                        ui.close_kind(UiKind::Menu);
+                    };
 
-                        ui.set_min_height(400.0);
-                        if let Some(id) =
-                            AssetTree::show_asset_selection(ui, ui.make_persistent_id(Curve::NAME))
-                        {
-                            self.curve = Some(id);
-                            ui.data_mut(|d| {
-                                d.remove::<TreeViewState<usize>>(ui.make_persistent_id(Curve::NAME))
-                            });
-                            ui.close_kind(UiKind::Menu);
-                            changed = true;
-                        }
-                    })
-                    .0
-                    .rect;
-                    if let Some(curve) = self.curve.and_then(Asset::get) {
-                        curve.data.clone().draw(ui, false, rect);
+                    ui.set_min_height(400.0);
+                    if let Some(id) =
+                        AssetTree::show_asset_selection(ui, ui.make_persistent_id(Curve::NAME))
+                    {
+                        self.curve = Some(id);
+                        ui.data_mut(|d| {
+                            d.remove::<TreeViewState<usize>>(ui.make_persistent_id(Curve::NAME))
+                        });
+                        ui.close_kind(UiKind::Menu);
+                        changed = true;
                     }
-                });
+                })
+                .0
+                .rect;
+                if let Some(curve) = self.curve.and_then(Asset::get) {
+                    curve.data.clone().draw(ui, false, rect);
+                }
             });
         });
 
