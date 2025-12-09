@@ -109,7 +109,7 @@ impl Widget for SceneInstanceWidget<'_> {
                             .scene_instance
                             .beat_progression_offset
                             .value(beat_progression);
-                        let mut dimmer = if self.scene_instance.active {
+                        let dimmer = if self.scene_instance.active {
                             self.scene_instance.transition_factor()
                         } else {
                             1.0
@@ -220,9 +220,18 @@ impl Widget for SceneInstanceWidget<'_> {
                                             Vec2::new(10.0, rect.height()),
                                         ),
                                         BrightnessSlider {
-                                            width: 10.0,
-                                            value: &mut dimmer,
+                                            real_value: if self.scene_instance.active {
+                                                dimmer
+                                            } else {
+                                                0.0
+                                            },
+                                            size: 10.0,
+                                            value: &mut self
+                                                .scene_instance
+                                                .opacity
+                                                .value(beat_progression),
                                             show_label: false,
+                                            horizontal: false,
                                         },
                                     );
                                 });

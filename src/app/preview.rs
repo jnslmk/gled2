@@ -89,9 +89,11 @@ impl App {
                 ui.put(
                     rect,
                     BrightnessSlider {
+                        real_value: project.main_dimmer,
                         value: &mut project.main_dimmer,
-                        width: 40.0,
+                        size: 40.0,
                         show_label: true,
+                        horizontal: false,
                     },
                 );
             }
