@@ -15,7 +15,10 @@ use egui_extras::install_image_loaders;
 use input::Input;
 use once_cell::sync::Lazy;
 use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallback};
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
+use egui_phosphor_icons::add_fonts;
+use epaint::FontFamily;
+use epaint::text::{FontData, FontDefinitions};
 use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
 
@@ -74,6 +77,29 @@ fn main() {
         "gled",
         options,
         Box::new(|cc| {
+            let mut fonts = FontDefinitions::default();
+            add_fonts(&mut fonts);
+
+            // Register the font by name
+            fonts.font_data.insert(
+                "Oxanium_Regular".to_owned(),
+                Arc::from(FontData::from_static(include_bytes!("../assets/Oxanium-Regular.ttf"))),
+            );
+            fonts.font_data.insert(
+                "Oxanium_Semi_Bold".to_owned(),
+                Arc::from(FontData::from_static(include_bytes!("../assets/Oxanium-SemiBold.ttf"))),
+            );
+
+            fonts
+                .families
+                .get_mut(&FontFamily::Proportional)
+                .unwrap()
+                .insert(0, "Oxanium_Regular".to_owned());
+
+            fonts.families.insert(FontFamily::Name("Bold".into()), vec!["Oxanium_Semi_Bold".into()]);
+
+            cc.egui_ctx.set_fonts(fonts);
+
             cc.egui_ctx
                 .options_mut(|options| options.theme_preference = ThemePreference::Dark);
             cc.egui_ctx.style_mut(|style| {

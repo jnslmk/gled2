@@ -2,20 +2,20 @@ use crate::{
     app::timing::Timing,
     pipeline::{constants::PREVIEW_TEXTURE_SIZE, group::Groups},
     storage::asset::{
-        Asset,
-        project::{DeckPath, scene_instance_path::SceneInstancePathId},
+        project::{scene_instance_path::SceneInstancePathId, DeckPath},
         scene::instance::SceneInstance,
     },
-    ui::{FRAME_STROKE, gled_slider::GledSlider, pills::show_pills},
+    ui::gled_slider::GledSlider,
 };
-use egui::{
-    Align, Button, Checkbox, Color32, ColorImage, Context, CornerRadius, Image, Label, Layout,
-    Margin, Rect, Sense, Shadow, Shape, TextureHandle, TextureId, TextureOptions, Ui, Vec2, Widget,
-    epaint::RectShape, load::SizedTexture, pos2,
-};
+use egui::{epaint::RectShape, pos2, Align, Button, Color32, ColorImage, Context, CornerRadius, Frame, Layout, Rect, Response, RichText, Sense, Shadow, Shape, TextureHandle, TextureId, TextureOptions, Ui, Vec2, Widget};
+use egui_extras::{Size, StripBuilder};
+use egui_phosphor_icons::icons;
+use epaint::{FontFamily, Stroke};
 use once_cell::sync::OnceCell;
 use usvg::Tree;
 
+const SCENE_WIDGET_SIZE: f32 = 150.0;
+const PREVIEW_SIZE: f32 = 120.0;
 static SELECTED_SVG: &str = include_str!("selected.svg");
 static SELECTED_IMAGE: OnceCell<TextureHandle> = OnceCell::new();
 fn selected_image(ctx: &Context) -> TextureId {
@@ -54,209 +54,187 @@ pub struct SceneInstanceWidget<'a> {
 }
 
 impl Widget for SceneInstanceWidget<'_> {
-    fn ui(self, ui: &mut Ui) -> egui::Response {
-        let mut checkbox_rect = None;
-        let path = SceneInstancePathId {
-            deck_path: self.deck_path,
-            id: self.scene_instance.id,
-        };
+    fn ui(self, ui: &mut Ui) -> Response {
+        // a read lock to the scene data must be obtained
+        // No poisoning of the lock is assumed here, as panics are not handled currently
+        // and are unrecoverable anyway
+        let active = self.scene_instance.active;
+        let preview_color = self.scene_instance.color;
+        let name = self.scene_instance.id.to_string();
 
-        if *self.selected_scene_instance == path {
-            ui.painter().image(
-                selected_image(ui.ctx()),
-                ui.available_rect_before_wrap(),
-                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-                Color32::WHITE,
-            );
-        }
+        let mut beat_progression = self.timing.beat_progression();
 
-        let mut response = egui::Frame::NONE
-            .inner_margin(Margin::from(10.0))
-            .corner_radius(CornerRadius::from(4.0))
-            .show(ui, |ui| {
-                egui::Frame::NONE
-                    .inner_margin(Margin::from(10.0))
-                    .stroke(FRAME_STROKE)
-                    .shadow(if self.scene_instance.active {
-                        Shadow {
-                            offset: [0, 0],
-                            blur: 10,
-                            spread: 4,
-                            color: Color32::from_rgba_unmultiplied_const(255, 255, 255, 128),
-                        }
-                    } else {
-                        Shadow::NONE
-                    })
-                    .show(ui, |ui| {
-                        let bg_rect = Rect::from_min_size(ui.cursor().min, self.size)
-                            + Margin {
-                                left: 10,
-                                right: 30,
-                                top: 10,
-                                bottom: 30,
-                            };
-
-                        if self.scene_instance.active {
-                            ui.painter().rect_filled(
-                                bg_rect,
-                                CornerRadius::ZERO,
-                                self.scene_instance.color,
-                            );
-                        }
-
-                        let mut beat_progression = self.timing.beat_progression();
-                        beat_progression += self
-                            .scene_instance
-                            .beat_progression_offset
-                            .value(beat_progression);
-                        let dimmer = if self.scene_instance.active {
-                            self.scene_instance.transition_factor()
-                        } else {
-                            1.0
-                        } * self.scene_instance.input_dimmer
-                            * self.scene_instance.opacity.value(beat_progression);
-
-                        if self.scene_instance.flash {
-                            ui.painter().rect_filled(
-                                bg_rect.shrink(1.0),
-                                CornerRadius::ZERO,
-                                Color32::from_white_alpha(180),
-                            );
-                        } else {
-                            ui.painter().rect_filled(
-                                bg_rect.shrink(1.0),
-                                CornerRadius::ZERO,
-                                self.scene_instance.color,
-                            );
-                        }
-
-                        ui.vertical(|ui| {
-                            ui.horizontal(|ui| {
-                                ui.add_sized(
-                                    Vec2::new(ui.available_width() - 10.0, 20.0),
-                                    Label::new(
-                                        Asset::get(self.scene_instance.scene)
-                                            .map(|asset| asset.name().to_owned())
-                                            .unwrap_or_default(),
-                                    )
-                                    .truncate(),
-                                );
-
-                                //ui.add_space(10.0);
-
-                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                    checkbox_rect = Some(ui.checkbox(&mut false, "").rect);
-                                });
-                            });
-
-                            self.dnd_handle.ui(ui, |ui| {
-                                ui.scope(|ui| {
-                                    let rect =
-                                        Rect::from_min_size(ui.next_widget_position(), self.size);
-                                    ui.allocate_rect(rect, Sense::hover());
-                                    ui.painter().add(Shape::Rect(RectShape::filled(
-                                        rect,
-                                        CornerRadius::default(),
-                                        Color32::BLACK,
-                                    )));
-
-                                    for texture_id in self.scene_instance.texture_ids() {
-                                        ui.painter().add(Shape::Rect(
-                                            RectShape::filled(
-                                                rect,
-                                                CornerRadius::default(),
-                                                Color32::WHITE,
-                                            )
-                                            .with_texture(
-                                                texture_id,
-                                                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-                                            ),
-                                        ));
-                                    }
-
-                                    if let Some(svg_texture_handle) = self.svg {
-                                        ui.put(rect, {
-                                            Image::new(SizedTexture::new(
-                                                svg_texture_handle.id(),
-                                                self.size,
-                                            ))
-                                        });
-                                    }
-
-                                    let groups = self
-                                        .scene_instance
-                                        .groups_overwrite
-                                        .as_ref()
-                                        .unwrap_or(self.groups);
-
-                                    let texts = self
-                                        .scene_instance
-                                        .group_indices()
-                                        .into_iter()
-                                        .filter_map(|index| {
-                                            let group = groups.get(index)?;
-                                            Some((group.0.clone(), group.color()))
-                                        })
-                                        .collect();
-
-                                    show_pills(ui, rect.right_top() + Vec2::new(0.0, 5.0), texts);
-
-                                    if !self.scene_instance.effect_overwrites.is_empty()
-                                        || self.scene_instance.groups_overwrite.is_some()
-                                        || self.scene_instance.palette_overwrite.is_some()
-                                    {
-                                        ui.painter().text(
-                                            rect.left_bottom() + Vec2::new(2.0, -1.0),
-                                            egui::Align2::LEFT_BOTTOM,
-                                            "⚙",
-                                            egui::TextStyle::Body.resolve(ui.style()),
-                                            Color32::from_white_alpha(100),
-                                        );
-                                    }
-
-                                    ui.place(
-                                        Rect::from_min_size(
-                                            rect.right_top() + Vec2::new(10.0, 0.0),
-                                            Vec2::new(10.0, rect.height()),
-                                        ),
-                                        GledSlider {
-                                            real_value: if self.scene_instance.active {
-                                                dimmer
-                                            } else {
-                                                0.0
-                                            },
-                                            size: 10.0,
-                                            max_value: 100.0,
-                                            value: &mut self.scene_instance.opacity.multiplier(),
-                                            show_label: false,
-                                            horizontal: false,
-                                        },
-                                    );
-                                });
-                            })
-                        })
-                    })
+        egui::Frame::default()
+            .fill(Color32::from(preview_color))
+            .stroke(Stroke {
+                width: 0.3,
+                color: Color32::WHITE,
             })
-            .response;
-
-        let res = ui.put(response.rect, Button::new("").fill(Color32::TRANSPARENT));
-        if res.clicked() {
-            *self.selected_scene_instance = path;
-        }
-
-        if let Some(checkbox_rect) = checkbox_rect {
-            ui.add_enabled_ui(!self.scene_instance.has_transition(), |ui| {
-                let mut active = self.scene_instance.active;
-                if ui
-                    .put(checkbox_rect, Checkbox::new(&mut active, ""))
-                    .on_hover_text("Enable Effect")
-                    .changed()
-                {
-                    response.mark_changed();
+            .shadow(if active {
+                Shadow {
+                    offset: [0, 0],
+                    blur: 6,
+                    spread: 2,
+                    color: Color32::from_white_alpha(150),
                 }
-            });
-        }
+            } else {
+                Shadow::NONE
+            })
+            .corner_radius(2)
+            .inner_margin(14)
+            .outer_margin(10)
+            .show(ui, |ui| {
+                // ensure all available space is used
+                ui.set_width(SCENE_WIDGET_SIZE);
+                ui.set_height(SCENE_WIDGET_SIZE);
 
-        response
+                // background glare / shadow
+                let glare_rect = ui.cursor();
+                let glare_shape = if active {
+                    RectShape::filled(glare_rect.expand(10.0), 5., Color32::from_white_alpha(200))
+                        .with_blur_width(50.)
+                } else {
+                    RectShape::filled(glare_rect.expand(20.0), 5., Color32::from_black_alpha(100))
+                        .with_blur_width(10.)
+                };
+                ui.painter().add(glare_shape);
+
+                // content strip grid
+                StripBuilder::new(ui)
+                    .size(Size::exact(20.0))
+                    // little space between the name and the preview
+                    .size(Size::exact(5.0))
+                    .size(Size::remainder())
+                    .cell_layout(Layout::top_down(Align::Min))
+                    .vertical(|mut strip| {
+                        // name and Play button
+                        strip.strip(|builder| {
+                            builder
+                                .size(Size::relative(0.6))
+                                .size(Size::remainder())
+                                .horizontal(|mut strip| {
+                                    strip.cell(|ui| {
+                                        // drop shadow behind the text for better readability
+                                        let title_label = egui::Label::new(
+                                            RichText::new(name)
+                                                .family(FontFamily::Name("Bold".into()))
+                                                .size(12.0)
+                                                .color(Color32::WHITE),
+                                        )
+                                            .truncate();
+                                        // when accessing text layout information,
+                                        // painting has to be done manually instead
+                                        let (galley_pos, galley, _) =
+                                            title_label.layout_in_ui(ui);
+                                        let response_color = ui.style().visuals.text_color();
+                                        let text_rec = galley.rect.translate(galley_pos.to_vec2());
+
+                                        if active {
+                                            ui.painter().add(
+                                                RectShape::filled(
+                                                    text_rec.expand(10.0),
+                                                    5.,
+                                                    Color32::from_black_alpha(50),
+                                                )
+                                                    .with_blur_width(50.0),
+                                            );
+                                        }
+                                        ui.painter().add(epaint::TextShape::new(
+                                            galley_pos,
+                                            galley,
+                                            response_color,
+                                        ));
+                                    });
+                                    strip.cell(|ui| {
+                                        let button_response = ui.add_sized(
+                                            Vec2 {
+                                                x: ui.available_width(),
+                                                y: ui.available_height(),
+                                            },
+                                            Button::new(if active {
+                                                icons::PAUSE
+                                                    .fill()
+                                                    .color(Color32::GREEN)
+                                                    .size(16.0)
+                                            } else {
+                                                icons::PLAY
+                                                    .fill()
+                                                    .color(Color32::GREEN)
+                                                    .size(16.0)
+                                            })
+                                                .stroke(Stroke::new(0.3, Color32::WHITE))
+                                                .sense(Sense::drag())
+                                        );
+                                        // this is a workaround for https://github.com/emilk/egui/issues/7767
+                                        if button_response.drag_started() || button_response.clicked()
+                                        {
+                                            self.scene_instance.active = !self.scene_instance.active;
+                                        }
+                                    });
+                                });
+                        }); // end name/Play button strip
+
+                        strip.empty();
+                        // preview/dimmer placeholder
+                        strip.strip(|builder| {
+                            builder
+                                .size(Size::exact(PREVIEW_SIZE))
+                                .size(Size::remainder())
+                                .cell_layout(Layout::top_down(Align::Min))
+                                .horizontal(|mut strip| {
+                                    strip.cell(|ui| {
+                                        Frame::default().fill(Color32::BLACK).show(
+                                            ui,
+                                            |ui| {
+                                                ui.set_height(PREVIEW_SIZE);
+                                                ui.set_width(PREVIEW_SIZE);
+                                                for texture_id in self.scene_instance.texture_ids() {
+                                                    ui.painter().add(Shape::Rect(
+                                                        RectShape::filled(
+                                                            ui.cursor(),
+                                                            CornerRadius::default(),
+                                                            Color32::WHITE,
+                                                        )
+                                                            .with_texture(
+                                                                texture_id,
+                                                                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                                                            ),
+                                                    ));
+                                                }
+                                            },
+                                        );
+                                    });
+                                    strip.cell(|ui| {
+                                        ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+                                            egui::Frame::default().show(
+                                                ui,
+                                                |ui| {
+                                                    ui.take_available_height();
+                                                    ui.set_width(12.0);
+
+                                                    let dimmer = self.scene_instance.input_dimmer
+                                                        * self.scene_instance.opacity.value(beat_progression);
+
+                                                    ui.add(GledSlider {
+                                                        real_value: if self.scene_instance.active {
+                                                            dimmer
+                                                        } else {
+                                                            0.0
+                                                        },
+                                                        size: 12.0,
+                                                        max_value: 100.0,
+                                                        value: &mut self.scene_instance.opacity.multiplier(),
+                                                        show_label: false,
+                                                        horizontal: false,
+                                                    });
+                                                },
+                                            );
+                                        });
+                                    });
+                                });
+                        }); // end outer placeholder/dimmer preview strip
+                    }); // end outer vertical strip
+            }) // end outer Frame::show
+            .response
     }
 }
