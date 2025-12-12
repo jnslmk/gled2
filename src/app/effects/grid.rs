@@ -1,12 +1,12 @@
 use super::App;
+use crate::storage::asset::scene::grid::GridLocation;
+use crate::ui::scene_instance::widget::EmptyGridSpot;
+use crate::ui::scene_instance::widget::SceneInstanceWidget;
 use crate::{
     app::PersistantState,
-    pipeline::transition::{Transition, TransitionGoal},
-    storage::asset::project::{DeckPath, scene_instance_path::SceneInstancePathId},
-    ui::scene_instance::widget::SceneInstanceWidget,
+    storage::asset::project::DeckPath,
 };
-use egui::{TextureHandle, Ui, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible};
-use egui_dnd::dnd;
+use egui::{scroll_area::ScrollBarVisibility::AlwaysVisible, Frame, Grid, Id, TextureHandle, Ui, Vec2};
 
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
@@ -43,47 +43,58 @@ impl App {
         let groups = project.groups.clone();
 
         let size = Vec2::splat(effects_size);
-        let scene_instances = project.scene_instances(deck_path);
-        let response = dnd(ui, deck_path).show_sized(
-            scene_instances.iter_mut(),
-            size + Vec2::new(60.0, 60.0),
-            |ui, scene_instance, dnd_handle, state| {
-                if state.dragged {
-                    self.selected_scene_instance =
-                        SceneInstancePathId::new(deck_path, scene_instance.id);
-                }
 
-                let response = ui.add(SceneInstanceWidget {
-                    selected_scene_instance: &mut self.selected_scene_instance,
-                    deck_path,
-                    scene_instance,
-                    dnd_handle,
-                    svg: svg.clone(),
-                    size,
-                    groups: &groups,
-                    timing: &self.timing,
-                });
-                if response.changed()
-                    || scene_instance
-                        .activation_input
-                        .as_ref()
-                        .map(|event| event.is_new())
-                        .unwrap_or_default()
-                {
-                    scene_instance.set_transition(Transition::new(
-                        if scene_instance.active {
-                            TransitionGoal::TurnOff
-                        } else {
-                            TransitionGoal::TurnOn
-                        },
-                        self.timing.fade_duration(),
-                    ));
-                }
-            },
-        );
+        let mut grid = match deck_path {
+            DeckPath::Grid => &mut project.scenes_instances_grid,
+            DeckPath::Quick => &mut project.scenes_instances_quick,
+        };
 
-        if response.is_drag_finished() {
-            response.update_vec(scene_instances);
+        let width = 6;
+        let height = 4;
+            //ScrollArea::both().show(ui, |ui| {
+            Grid::new(deck_path).show(ui, |ui| {
+                for row in 0..height {
+                    for col in 0..width {
+                        let scene = grid.get_mut(&GridLocation { row, col });
+                        let frame = Frame::default();
+                        let (_, dropped_payload) =
+                            ui.dnd_drop_zone::<GridLocation, ()>(frame, |ui| {
+                                match scene {
+                                    Some(scene_instance) => {
+                                        let item_id = Id::new(("Draggable Scene Widget", col, row, deck_path));
+                                        let item_location = GridLocation { col, row };
+                                        let response = ui
+                                            .dnd_drag_source(item_id, item_location, |ui| {
+                                                ui.add(SceneInstanceWidget {
+                                                    selected_scene_instance: &mut self.selected_scene_instance,
+                                                    deck_path,
+                                                    scene_instance,
+                                                    svg: svg.clone(),
+                                                    size,
+                                                    groups: &groups,
+                                                    timing: &self.timing,
+                                                })
+                                            })
+                                            .response;
+                                    } // Some(scene) =>
+                                    None => {
+                                        ui.add(EmptyGridSpot {});
+                                    }
+                                };
+                            }); // dnd_drop_zone
+                        if let Some(dragged_payload) = dropped_payload {
+                            // The user dropped onto this cell
+                            let from = GridLocation{row: dragged_payload.row, col: dragged_payload.col};
+                            let to = GridLocation{row, col};
+
+                            // TODO
+                            //grid.swap(from, to);
+                        }
+                    }
+                    ui.end_row();
+                } // grid
+            });
+            //});
         }
-    }
+
 }

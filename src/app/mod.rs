@@ -135,7 +135,7 @@ impl eframe::App for App {
                     |project| {
                         project
                             .scenes_instances_grid
-                            .iter()
+                            .values()
                             .map(|scene_instance| scene_instance.color)
                             .collect()
                     },
@@ -145,7 +145,7 @@ impl eframe::App for App {
                     |project| {
                         project
                             .scenes_instances_quick
-                            .iter()
+                            .values()
                             .map(|scene_instance| scene_instance.color)
                             .collect()
                     },

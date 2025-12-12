@@ -47,7 +47,6 @@ pub struct SceneInstanceWidget<'a> {
     pub deck_path: DeckPath,
     pub scene_instance: &'a mut SceneInstance,
     pub groups: &'a Groups,
-    pub dnd_handle: egui_dnd::Handle<'a>,
     pub svg: Option<TextureHandle>,
     pub size: Vec2,
     pub timing: &'a Timing,
@@ -210,7 +209,7 @@ impl Widget for SceneInstanceWidget<'_> {
                                                 ui,
                                                 |ui| {
                                                     ui.take_available_height();
-                                                    ui.set_width(12.0);
+                                                    ui.set_width(20.0);
 
                                                     let dimmer = self.scene_instance.input_dimmer
                                                         * self.scene_instance.opacity.value(beat_progression);
@@ -221,7 +220,7 @@ impl Widget for SceneInstanceWidget<'_> {
                                                         } else {
                                                             0.0
                                                         },
-                                                        size: 12.0,
+                                                        size: 20.0,
                                                         max_value: 100.0,
                                                         value: &mut self.scene_instance.opacity.multiplier(),
                                                         show_label: false,
@@ -236,5 +235,42 @@ impl Widget for SceneInstanceWidget<'_> {
                     }); // end outer vertical strip
             }) // end outer Frame::show
             .response
+    }
+}
+
+
+pub struct EmptyGridSpot;
+
+impl Widget for EmptyGridSpot {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let mut outer_frame = egui::Frame::default()
+            .fill(Color32::from_gray(50))
+            .stroke(Stroke {
+                width: 0.3,
+                color: Color32::WHITE,
+            })
+            .corner_radius(2)
+            .inner_margin(14)
+            .outer_margin(10)
+            .begin(ui);
+        {
+            // ensure all available space is used
+            outer_frame.content_ui.set_width(SCENE_WIDGET_SIZE);
+            outer_frame.content_ui.set_height(SCENE_WIDGET_SIZE);
+
+            // show the plus in the middle
+            outer_frame.content_ui.with_layout(Layout::top_down(Align::Center), |ui| {
+                ui.add(egui::Label::new(
+                    RichText::new("+")
+                        .family(FontFamily::Monospace)
+                        .size(60.0)
+                        .color(Color32::from_gray(120)),
+                ));
+                //if frame_response.hovered() {
+
+                //}
+            });
+        }
+        outer_frame.end(ui)
     }
 }
