@@ -13,16 +13,7 @@ impl App {
         let Some(project) = self.project.as_mut() else {
             return;
         };
-        let mut init_gpu = false;
-
         ui.horizontal(|ui| {
-            let mut scene: Option<AssetId<Scene>> = None;
-            scene.change_button(ui);
-            if let Some(scene) = scene {
-                self.selected_scene_instance = project.add_scene(deck_path, scene);
-                init_gpu = true;
-            }
-
             if deck_path == DeckPath::Grid {
                 ui.menu_button(
                     if project.auto_mode_active {
@@ -48,9 +39,5 @@ impl App {
                 );
             }
         });
-
-        if init_gpu {
-            project.init_gpu();
-        }
     }
 }

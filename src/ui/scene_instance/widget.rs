@@ -1,18 +1,29 @@
+use crate::storage::asset::project::Project;
+use crate::storage::asset::scene::Scene;
+use crate::storage::asset_id::AssetId;
+use crate::ui::ChangeButton;
 use crate::{
     app::timing::Timing,
     pipeline::{constants::PREVIEW_TEXTURE_SIZE, group::Groups},
     storage::asset::{
-        project::{scene_instance_path::SceneInstancePathId, DeckPath},
+        project::{DeckPath, scene_instance_path::SceneInstancePathId},
         scene::instance::SceneInstance,
     },
     ui::gled_slider::GledSlider,
 };
-use egui::{epaint::RectShape, pos2, Align, Button, Color32, ColorImage, Context, CornerRadius, Frame, Layout, Rect, Response, RichText, Sense, Shadow, Shape, TextureHandle, TextureId, TextureOptions, Ui, Vec2, Widget};
+use egui::{
+    Align, Button, Color32, ColorImage, Context, CornerRadius, Frame, Layout, Rect, Response,
+    RichText, Sense, Shadow, Shape, TextureHandle, TextureId, TextureOptions, Ui, Vec2, Widget,
+    epaint::RectShape, pos2,
+};
+use egui::containers::menu::MenuButton;
 use egui_extras::{Size, StripBuilder};
 use egui_phosphor_icons::icons;
 use epaint::{FontFamily, Stroke};
 use once_cell::sync::OnceCell;
 use usvg::Tree;
+use crate::storage::asset::scene::grid::GridLocation;
+use crate::ui::asset_tree::AssetTree;
 
 const SCENE_WIDGET_SIZE: f32 = 150.0;
 const PREVIEW_SIZE: f32 = 120.0;
@@ -123,8 +134,7 @@ impl Widget for SceneInstanceWidget<'_> {
                                             .truncate();
                                         // when accessing text layout information,
                                         // painting has to be done manually instead
-                                        let (galley_pos, galley, _) =
-                                            title_label.layout_in_ui(ui);
+                                        let (galley_pos, galley, _) = title_label.layout_in_ui(ui);
                                         let response_color = ui.style().visuals.text_color();
                                         let text_rec = galley.rect.translate(galley_pos.to_vec2());
 
@@ -151,23 +161,19 @@ impl Widget for SceneInstanceWidget<'_> {
                                                 y: ui.available_height(),
                                             },
                                             Button::new(if active {
-                                                icons::PAUSE
-                                                    .fill()
-                                                    .color(Color32::GREEN)
-                                                    .size(16.0)
+                                                icons::PAUSE.fill().color(Color32::GREEN).size(16.0)
                                             } else {
-                                                icons::PLAY
-                                                    .fill()
-                                                    .color(Color32::GREEN)
-                                                    .size(16.0)
+                                                icons::PLAY.fill().color(Color32::GREEN).size(16.0)
                                             })
                                                 .stroke(Stroke::new(0.3, Color32::WHITE))
-                                                .sense(Sense::drag())
+                                                .sense(Sense::drag()),
                                         );
                                         // this is a workaround for https://github.com/emilk/egui/issues/7767
-                                        if button_response.drag_started() || button_response.clicked()
+                                        if button_response.drag_started()
+                                            || button_response.clicked()
                                         {
-                                            self.scene_instance.active = !self.scene_instance.active;
+                                            self.scene_instance.active =
+                                                !self.scene_instance.active;
                                         }
                                     });
                                 });
@@ -182,52 +188,55 @@ impl Widget for SceneInstanceWidget<'_> {
                                 .cell_layout(Layout::top_down(Align::Min))
                                 .horizontal(|mut strip| {
                                     strip.cell(|ui| {
-                                        Frame::default().fill(Color32::BLACK).show(
-                                            ui,
-                                            |ui| {
-                                                ui.set_height(PREVIEW_SIZE);
-                                                ui.set_width(PREVIEW_SIZE);
-                                                for texture_id in self.scene_instance.texture_ids() {
-                                                    ui.painter().add(Shape::Rect(
-                                                        RectShape::filled(
-                                                            ui.cursor(),
-                                                            CornerRadius::default(),
-                                                            Color32::WHITE,
-                                                        )
-                                                            .with_texture(
-                                                                texture_id,
-                                                                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                                        Frame::default().fill(Color32::BLACK).show(ui, |ui| {
+                                            ui.set_height(PREVIEW_SIZE);
+                                            ui.set_width(PREVIEW_SIZE);
+                                            for texture_id in self.scene_instance.texture_ids() {
+                                                ui.painter().add(Shape::Rect(
+                                                    RectShape::filled(
+                                                        ui.cursor(),
+                                                        CornerRadius::default(),
+                                                        Color32::WHITE,
+                                                    )
+                                                        .with_texture(
+                                                            texture_id,
+                                                            Rect::from_min_max(
+                                                                pos2(0.0, 0.0),
+                                                                pos2(1.0, 1.0),
                                                             ),
-                                                    ));
-                                                }
-                                            },
-                                        );
+                                                        ),
+                                                ));
+                                            }
+                                        });
                                     });
                                     strip.cell(|ui| {
                                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                                            egui::Frame::default().show(
-                                                ui,
-                                                |ui| {
-                                                    ui.take_available_height();
-                                                    ui.set_width(20.0);
+                                            egui::Frame::default().show(ui, |ui| {
+                                                ui.take_available_height();
+                                                ui.set_width(20.0);
 
-                                                    let dimmer = self.scene_instance.input_dimmer
-                                                        * self.scene_instance.opacity.value(beat_progression);
+                                                let dimmer = self.scene_instance.input_dimmer
+                                                    * self
+                                                    .scene_instance
+                                                    .opacity
+                                                    .value(beat_progression);
 
-                                                    ui.add(GledSlider {
-                                                        real_value: if self.scene_instance.active {
-                                                            dimmer
-                                                        } else {
-                                                            0.0
-                                                        },
-                                                        size: 20.0,
-                                                        max_value: 100.0,
-                                                        value: &mut self.scene_instance.opacity.multiplier(),
-                                                        show_label: false,
-                                                        horizontal: false,
-                                                    });
-                                                },
-                                            );
+                                                ui.add(GledSlider {
+                                                    real_value: if self.scene_instance.active {
+                                                        dimmer
+                                                    } else {
+                                                        0.0
+                                                    },
+                                                    size: 20.0,
+                                                    max_value: 100.0,
+                                                    value: &mut self
+                                                        .scene_instance
+                                                        .opacity
+                                                        .multiplier(),
+                                                    show_label: false,
+                                                    horizontal: false,
+                                                });
+                                            });
                                         });
                                     });
                                 });
@@ -238,12 +247,14 @@ impl Widget for SceneInstanceWidget<'_> {
     }
 }
 
+pub struct EmptyGridSpot<'a> {
+    pub(crate) project: &'a mut Project,
+    pub location: GridLocation,
+}
 
-pub struct EmptyGridSpot;
-
-impl Widget for EmptyGridSpot {
+impl Widget for EmptyGridSpot<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let mut outer_frame = egui::Frame::default()
+        Frame::default()
             .fill(Color32::from_gray(50))
             .stroke(Stroke {
                 width: 0.3,
@@ -252,22 +263,26 @@ impl Widget for EmptyGridSpot {
             .corner_radius(2)
             .inner_margin(14)
             .outer_margin(10)
-            .begin(ui);
-        {
-            // ensure all available space is used
-            outer_frame.content_ui.set_width(SCENE_WIDGET_SIZE);
-            outer_frame.content_ui.set_height(SCENE_WIDGET_SIZE);
-
-            // show the plus in the middle
-            outer_frame.content_ui.with_layout(Layout::top_down(Align::Center), |ui| {
-                ui.add(egui::Label::new(
-                    RichText::new("+")
-                        .family(FontFamily::Monospace)
-                        .size(60.0)
-                        .color(Color32::from_gray(120)),
-                ));
-            });
-        }
-        outer_frame.end(ui)
+            .show(ui, |ui|
+                {
+                    MenuButton::from_button(
+                        Button::new(
+                            RichText::new("+")
+                                .family(FontFamily::Monospace)
+                                .size(60.0)
+                                .color(Color32::from_gray(120))
+                        ).min_size(Vec2{x: SCENE_WIDGET_SIZE, y: SCENE_WIDGET_SIZE})
+                    )
+                        .ui(ui,
+                            // show the plus in the middle
+                            |ui| {
+                                let scene = AssetTree::<Scene>::show_asset_selection(ui, ui.make_persistent_id("SelectSceneForEmptyGridSpot"));
+                                if let Some(scene) = scene {
+                                    self.project.add_scene(DeckPath::Grid, scene);
+                                    self.project.init_gpu();
+                                }
+                            }
+                        )
+                }).response
     }
 }

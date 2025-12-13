@@ -6,7 +6,7 @@ use crate::{
     app::PersistantState,
     storage::asset::project::DeckPath,
 };
-use egui::{scroll_area::ScrollBarVisibility::AlwaysVisible, Color32, Frame, Grid, Id, TextureHandle, Ui, Vec2};
+use egui::{scroll_area::ScrollBarVisibility::AlwaysVisible, Frame, Grid, Id, TextureHandle, Ui, Vec2};
 
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
@@ -47,7 +47,8 @@ impl App {
         let mut grid = match deck_path {
             DeckPath::Grid => &mut project.scenes_instances_grid,
             DeckPath::Quick => &mut project.scenes_instances_quick,
-        };
+        }.clone();
+
 
         let width = 6;
         let height = 4;
@@ -55,16 +56,16 @@ impl App {
             Grid::new(deck_path).show(ui, |ui| {
                 for row in 0..height {
                     for col in 0..width {
-                        let scene = grid.get_mut(&GridLocation { row, col });
+                        let location = GridLocation { col, row };
+
+                        let scene = grid.get_mut(&location);
                         let frame = Frame::default().outer_margin(3.0);
-                        let (_, dropped_payload) =
-                            ui.dnd_drop_zone::<GridLocation, ()>(frame, |ui| {
+                        let (_, dropped_payload) = ui.dnd_drop_zone::<GridLocation, ()>(frame, |ui| {
                                 match scene {
                                     Some(scene_instance) => {
                                         let item_id = Id::new(("Draggable Scene Widget", col, row, deck_path));
-                                        let item_location = GridLocation { col, row };
                                         let response = ui
-                                            .dnd_drag_source(item_id, item_location, |ui| {
+                                            .dnd_drag_source(item_id, location, |ui| {
                                                 ui.add(SceneInstanceWidget {
                                                     selected_scene_instance: &mut self.selected_scene_instance,
                                                     deck_path,
@@ -78,7 +79,7 @@ impl App {
                                             .response;
                                     } // Some(scene) =>
                                     None => {
-                                        ui.add(EmptyGridSpot {});
+                                        ui.add(EmptyGridSpot {project, location });
                                     }
                                 };
                             }); // dnd_drop_zone
