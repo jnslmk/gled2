@@ -79,7 +79,11 @@ impl App {
                                             .response;
                                     } // Some(scene) =>
                                     None => {
-                                        ui.add(EmptyGridSpot {project, location });
+                                        ui.add(EmptyGridSpot {
+                                            selected_scene_instance: &mut self.selected_scene_instance,
+                                            project,
+                                            location
+                                        });
                                     }
                                 };
                             }); // dnd_drop_zone
