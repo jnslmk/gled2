@@ -6,7 +6,7 @@ use crate::{
     app::PersistantState,
     storage::asset::project::DeckPath,
 };
-use egui::{scroll_area::ScrollBarVisibility::AlwaysVisible, Frame, Grid, Id, TextureHandle, Ui, Vec2};
+use egui::{scroll_area::ScrollBarVisibility::AlwaysVisible, Color32, Frame, Grid, Id, TextureHandle, Ui, Vec2};
 
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
@@ -56,7 +56,7 @@ impl App {
                 for row in 0..height {
                     for col in 0..width {
                         let scene = grid.get_mut(&GridLocation { row, col });
-                        let frame = Frame::default();
+                        let frame = Frame::default().outer_margin(3.0);
                         let (_, dropped_payload) =
                             ui.dnd_drop_zone::<GridLocation, ()>(frame, |ui| {
                                 match scene {
@@ -87,8 +87,15 @@ impl App {
                             let from = GridLocation{row: dragged_payload.row, col: dragged_payload.col};
                             let to = GridLocation{row, col};
 
-                            // TODO
-                            //grid.swap(from, to);
+                            // Ownership of the scene instances must temporarily be taken to swap
+                            let to_item = grid.remove(&to);
+                            // unwrap is safe because we cannot move from an empty tile
+                            let from_item = {grid.remove(&from).unwrap()};
+                            grid.insert(to, from_item);
+                            // reinsert the to item to the from location
+                            if let Some(to_item) = to_item {
+                                grid.insert(from, to_item);
+                            }
                         }
                     }
                     ui.end_row();

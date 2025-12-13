@@ -63,7 +63,7 @@ impl Widget for SceneInstanceWidget<'_> {
 
         let mut beat_progression = self.timing.beat_progression();
 
-        egui::Frame::default()
+        Frame::default()
             .fill(Color32::from(preview_color))
             .stroke(Stroke {
                 width: 0.3,
@@ -266,9 +266,6 @@ impl Widget for EmptyGridSpot {
                         .size(60.0)
                         .color(Color32::from_gray(120)),
                 ));
-                //if frame_response.hovered() {
-
-                //}
             });
         }
         outer_frame.end(ui)
