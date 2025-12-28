@@ -14,7 +14,7 @@ const FREQ_BINS: usize = 256;
 
 static FFT_DATA: Lazy<Arc<Mutex<Vec<f32>>>> =
     Lazy::new(|| Arc::new(Mutex::new(vec![0.0; FREQ_BINS])));
-static FFT_MAX_MAGNITUDE: Lazy<AtomicF32> = Lazy::new(|| AtomicF32::new(0.0));
+static FFT_MAX_MAGNITUDE: AtomicF32 = AtomicF32::new(1e-6);
 
 pub fn get_fft_data() -> Vec<f32> {
     FFT_DATA.lock().clone()
@@ -49,7 +49,6 @@ pub fn start() {
 
     log::info!("Audio input config: {:?}", config);
 
-    let sample_rate = config.sample_rate().0 as usize;
     let channels = config.channels() as usize;
 
     // Create a buffer to accumulate samples (wrapped in Arc<Mutex> for thread safety)
@@ -68,14 +67,7 @@ pub fn start() {
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                    process_audio_samples(
-                        data,
-                        channels,
-                        &sample_buffer,
-                        &fft,
-                        &fft_data,
-                        sample_rate,
-                    );
+                    process_audio_samples(data, channels, &sample_buffer, &fft, &fft_data);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -90,14 +82,7 @@ pub fn start() {
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / 32768.0).collect();
-                    process_audio_samples(
-                        &f32_data,
-                        channels,
-                        &sample_buffer,
-                        &fft,
-                        &fft_data,
-                        sample_rate,
-                    );
+                    process_audio_samples(&f32_data, channels, &sample_buffer, &fft, &fft_data);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -113,14 +98,7 @@ pub fn start() {
                 move |data: &[u16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
                         data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
-                    process_audio_samples(
-                        &f32_data,
-                        channels,
-                        &sample_buffer,
-                        &fft,
-                        &fft_data,
-                        sample_rate,
-                    );
+                    process_audio_samples(&f32_data, channels, &sample_buffer, &fft, &fft_data);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -158,7 +136,6 @@ fn process_audio_samples(
     sample_buffer: &Arc<Mutex<Vec<f32>>>,
     fft: &Arc<dyn rustfft::Fft<f32>>,
     fft_data: &Arc<Mutex<Vec<f32>>>,
-    _sample_rate: usize,
 ) {
     let mut buffer = sample_buffer.lock();
 
@@ -194,7 +171,7 @@ fn process_audio_samples(
         // Calculate magnitude for each frequency bin
         // Only use first FREQ_BINS (Nyquist frequency limit)
         let mut linear_magnitudes = Vec::with_capacity(FREQ_BINS);
-        let mut max_magnitude = 0.0f32;
+        let mut max_magnitude = FFT_MAX_MAGNITUDE.load(Ordering::Relaxed);
 
         for sample in complex_samples.iter().take(FREQ_BINS) {
             // Calculate magnitude (norm of complex number)
@@ -206,7 +183,7 @@ fn process_audio_samples(
         // Apply logarithmic frequency scaling
         // Map linear FFT bins to logarithmic frequency bins
         let mut magnitudes = vec![0.0f32; FREQ_BINS];
-        for output_bin in 0..FREQ_BINS {
+        for (output_bin, magnitude_slot) in magnitudes.iter_mut().enumerate() {
             // Map output bin to logarithmic frequency scale
             // Use logarithmic mapping: log(freq) = log(min) + (log(max) - log(min)) * (bin / total_bins)
             let min_freq = 1.0f32;
@@ -230,44 +207,18 @@ fn process_audio_samples(
                     lower_mag
                 };
                 let scaled_mag = lower_mag * (1.0 - fraction) + upper_mag * fraction;
-                magnitudes[output_bin] = scaled_mag;
+                *magnitude_slot = scaled_mag;
                 // Update max_magnitude with the scaled value
                 max_magnitude = max_magnitude.max(scaled_mag);
             }
         }
 
-        // Update the global maximum magnitude seen across all samples
-        // Use fetch_max to atomically update the maximum
-        let mut current_max = FFT_MAX_MAGNITUDE.load(Ordering::Relaxed);
-        loop {
-            if max_magnitude <= current_max {
-                break;
-            }
-            match FFT_MAX_MAGNITUDE.compare_exchange_weak(
-                current_max,
-                max_magnitude,
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ) {
-                Ok(_) => {
-                    current_max = max_magnitude;
-                    break;
-                }
-                Err(x) => current_max = x,
-            }
-        }
-        let normalization_max = current_max.max(1e-6); // Avoid division by zero with small epsilon
-
-        // Normalize all magnitudes using the global maximum
-        // This ensures consistent scaling across all time
-        let scale = 1.0 / normalization_max;
-
+        FFT_MAX_MAGNITUDE.store(max_magnitude, Ordering::Relaxed);
+        let scale = 1.0 / max_magnitude;
         for magnitude in magnitudes.iter_mut() {
-            // Normalize to [0, 1] range using the global maximum
             *magnitude = (*magnitude * scale).clamp(0.0, 1.0);
         }
 
-        // Update shared FFT data
         *fft_data.lock() = magnitudes;
 
         // Keep only the last FFT_SIZE samples for overlap
