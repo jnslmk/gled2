@@ -74,6 +74,8 @@ polyfit-residuals = "0.6"
 polyfit-rs = "0.2"
 ndarray = "0.16"
 notify-rust = { version = "4", default-features = false, features = ["d"] }
+cpal = "0.15"
+rustfft = "6"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }

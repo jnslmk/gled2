@@ -1,5 +1,6 @@
 use super::Effect;
 use crate::{
+    audio::state::get_fft_data,
     pipeline::{
         group::Group, output_mix::OutputMix, renderer_callback::RendererCallback,
         texture_to_output::TextureToOutput,
@@ -88,10 +89,27 @@ impl EffectState {
             &mut data[28..28 + AnimationConfig::size()],
             beat_progression,
         );
+        
+        // Write FFT data (256 frequency bins = 1024 bytes)
+        let fft_data = get_fft_data();
+        let fft_offset = 28 + AnimationConfig::size();
+        for (i, &value) in fft_data.iter().take(256).enumerate() {
+            let offset = fft_offset + i * 4;
+            if offset + 4 <= data.len() {
+                data[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+            }
+        }
+        // Fill remaining slots with zeros if FFT data is shorter than expected
+        for i in fft_data.len().min(256)..256 {
+            let offset = fft_offset + i * 4;
+            if offset + 4 <= data.len() {
+                data[offset..offset + 4].copy_from_slice(&0.0f32.to_le_bytes());
+            }
+        }
     }
 
     pub const fn size() -> usize {
-        const SIZE: usize = 28 + AnimationConfig::size();
+        const SIZE: usize = 28 + AnimationConfig::size() + 256 * 4; // 64 + 1024 = 1088 bytes
         static_assertions::const_assert_eq!(SIZE % 16, 0);
         SIZE
     }

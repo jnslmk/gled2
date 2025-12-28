@@ -21,6 +21,9 @@ struct Uniforms {
     f32_3: f32,
     f32_4: f32,
     f32_5: f32,
+
+    // Audio data: 1024 bytes (256 frequency bins, stored as 64 vec4s for alignment)
+    audio_data: array<vec4<f32>, 64>,
 };
 
 @group(0) @binding(0)
@@ -67,4 +70,21 @@ fn secondary_color() -> vec3<f32> {
 /// Get color shifted gradient color by index
 fn gradient_color(index: i32) -> vec3<f32> {
     return apply_color_shift(uniforms.gradient_colors[index] % 16);
+}
+
+/// Get audio FFT frequency bin value (0.0 to 1.0)
+/// index: frequency bin index (0-255)
+fn audio_bin(index: i32) -> f32 {
+    let vec4_index = index / 4;
+    let component = index % 4;
+    let vec = uniforms.fft_data[vec4_index % 64];
+    if component == 0 {
+        return vec.x;
+    } else if component == 1 {
+        return vec.y;
+    } else if component == 2 {
+        return vec.z;
+    } else {
+        return vec.w;
+    }
 }

@@ -1,6 +1,7 @@
 #![windows_subsystem = "windows"]
 
 pub mod app;
+pub mod audio;
 pub mod input;
 pub mod midi;
 pub mod pipeline;
@@ -42,6 +43,7 @@ fn main() {
     storage::start_thread();
     ui::temperature::start_thread();
     midi::start_thread();
+    audio::start_thread();
 
     #[cfg(not(debug_assertions))]
     ui::update_check::Update::start_thread();

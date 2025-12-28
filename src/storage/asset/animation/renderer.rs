@@ -1,5 +1,4 @@
 //! Renders to a texture
-use super::AnimationConfig;
 use crate::{
     pipeline::constants::TEXTURE_SIZE,
     storage::{Asset, Palette, scene::effect_state::EffectState},
@@ -99,7 +98,7 @@ impl AnimationRenderer {
             multiview: None,
         });
 
-        let contents = [0u8; EffectState::size() + Palette::size() + AnimationConfig::size()];
+        let contents = [0u8; EffectState::size() + Palette::size()];
         let uniform = device.create_buffer_init(&util::BufferInitDescriptor {
             label: Some("animation uniform buffer"),
             contents: &contents,
