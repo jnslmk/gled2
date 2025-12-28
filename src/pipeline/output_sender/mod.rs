@@ -55,7 +55,9 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                 let packages: Vec<(SocketAddr, Vec<u8>)> = {
                     let mut output_data =
                         extract_output.poll_output_buffer(use_first_output_buffer);
-                    gpu_ready_sender.send(()).expect("GPU ready receiver lost");
+                    if gpu_ready_sender.send(()).is_err() {
+                        return;
+                    }
 
                     let mut routings = extract_output.routings.lock();
                     let hovered_output_routing = HOVERED_OUTPUT_ROUTING.lock().clone();
