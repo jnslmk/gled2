@@ -1,9 +1,11 @@
+use atomic_float::AtomicF32;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, StreamConfig};
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 // FFT size - power of 2 for efficient FFT
 const FFT_SIZE: usize = 512;
@@ -12,7 +14,7 @@ const FREQ_BINS: usize = 256;
 
 static FFT_DATA: Lazy<Arc<Mutex<Vec<f32>>>> =
     Lazy::new(|| Arc::new(Mutex::new(vec![0.0; FREQ_BINS])));
-static FFT_PEAK: Lazy<Arc<Mutex<f32>>> = Lazy::new(|| Arc::new(Mutex::new(0.0)));
+static FFT_MAX_MAGNITUDE: Lazy<AtomicF32> = Lazy::new(|| AtomicF32::new(0.0));
 
 pub fn get_fft_data() -> Vec<f32> {
     FFT_DATA.lock().clone()
@@ -191,38 +193,78 @@ fn process_audio_samples(
 
         // Calculate magnitude for each frequency bin
         // Only use first FREQ_BINS (Nyquist frequency limit)
-        let mut magnitudes = Vec::with_capacity(FREQ_BINS);
+        let mut linear_magnitudes = Vec::with_capacity(FREQ_BINS);
         let mut max_magnitude = 0.0f32;
 
         for sample in complex_samples.iter().take(FREQ_BINS) {
             // Calculate magnitude (norm of complex number)
             let magnitude = sample.norm();
             max_magnitude = max_magnitude.max(magnitude);
-            magnitudes.push(magnitude);
+            linear_magnitudes.push(magnitude);
         }
 
-        // Update peak with exponential decay for smooth auto-scaling
-        // This creates an adaptive normalization that follows the audio level
-        let peak = FFT_PEAK.clone();
-        let mut current_peak = peak.lock();
-        // Decay the peak slowly, but allow it to rise quickly
-        *current_peak = (*current_peak * 0.98 + max_magnitude * 0.02).max(max_magnitude * 0.5);
-        let peak_value = *current_peak;
-        drop(current_peak);
+        // Apply logarithmic frequency scaling
+        // Map linear FFT bins to logarithmic frequency bins
+        let mut magnitudes = vec![0.0f32; FREQ_BINS];
+        for output_bin in 0..FREQ_BINS {
+            // Map output bin to logarithmic frequency scale
+            // Use logarithmic mapping: log(freq) = log(min) + (log(max) - log(min)) * (bin / total_bins)
+            let min_freq = 1.0f32;
+            let max_freq = FREQ_BINS as f32;
+            let log_min = min_freq.ln();
+            let log_max = max_freq.ln();
+            let log_freq = log_min + (log_max - log_min) * (output_bin as f32 / FREQ_BINS as f32);
+            let linear_freq = log_freq.exp();
 
-        // Normalize magnitudes using the peak value
-        // Apply square root compression for better dynamic range visualization
-        let scale = if peak_value > 0.0 {
-            1.0 / peak_value
-        } else {
-            0.0
-        };
+            // Find the corresponding linear bin(s) and interpolate
+            let linear_bin = linear_freq - 1.0;
+            let lower_bin = linear_bin.floor() as usize;
+            let upper_bin = (linear_bin.ceil() as usize).min(FREQ_BINS - 1);
+            let fraction = linear_bin - lower_bin as f32;
+
+            if lower_bin < FREQ_BINS {
+                let lower_mag = linear_magnitudes[lower_bin];
+                let upper_mag = if upper_bin < FREQ_BINS && upper_bin != lower_bin {
+                    linear_magnitudes[upper_bin]
+                } else {
+                    lower_mag
+                };
+                let scaled_mag = lower_mag * (1.0 - fraction) + upper_mag * fraction;
+                magnitudes[output_bin] = scaled_mag;
+                // Update max_magnitude with the scaled value
+                max_magnitude = max_magnitude.max(scaled_mag);
+            }
+        }
+
+        // Update the global maximum magnitude seen across all samples
+        // Use fetch_max to atomically update the maximum
+        let mut current_max = FFT_MAX_MAGNITUDE.load(Ordering::Relaxed);
+        loop {
+            if max_magnitude <= current_max {
+                break;
+            }
+            match FFT_MAX_MAGNITUDE.compare_exchange_weak(
+                current_max,
+                max_magnitude,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => {
+                    current_max = max_magnitude;
+                    break;
+                }
+                Err(x) => current_max = x,
+            }
+        }
+        let normalization_max = current_max.max(1e-6); // Avoid division by zero with small epsilon
+
+        // Normalize all magnitudes using the global maximum
+        // This ensures consistent scaling across all time
+        let scale = 1.0 / normalization_max;
 
         for magnitude in magnitudes.iter_mut() {
-            // Apply square root compression (better for audio visualization)
-            // then normalize to [0, 1] range
-            let compressed = magnitude.sqrt();
-            *magnitude = (compressed * scale).clamp(0.0, 1.0);
+            // Normalize to [0, 1] range using the global maximum
+            *magnitude = (*magnitude * scale).clamp(0.0, 1.0);
         }
 
         // Update shared FFT data
