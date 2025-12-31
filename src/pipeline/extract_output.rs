@@ -74,7 +74,8 @@ impl ExtractOutput {
         );
     }
 
-    pub fn poll_output_buffer(&self, use_first_output_buffer: bool) -> Vec<u8> {
+    #[cfg_attr(feature = "profiling", profiling::function)]
+    pub fn poll_output_buffer(&self) -> Vec<u8> {
         let active_len =
             self.universes.lock().len().min(UNIVERSES as usize) * UNIVERSE_BUFFER_SIZE as usize;
 

@@ -70,6 +70,9 @@ fn threads(sender: Sender<ArtnetEvent>) {
     thread::Builder::new()
         .name("gled:artnet:rx".to_string())
         .spawn(move || {
+            #[cfg(feature = "profiling")]
+            profiling::register_thread!("artnet:rx");
+
             loop {
                 if !ARTNET_CONFIG.lock().active {
                     thread::sleep(Duration::from_secs(1));

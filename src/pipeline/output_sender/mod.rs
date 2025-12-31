@@ -19,7 +19,7 @@ use crate::{
     svg::universe_color_channels::UniverseColorChannels,
     ui::windows::{channel_overwrites::ChannelOverwrites, output_routings::HOVERED_OUTPUT_ROUTING},
 };
-pub type OutputSender = Sender<bool>;
+pub type OutputSender = Sender<()>;
 pub type GpuReadySender = Sender<()>;
 pub type GpuReadyReceiver = Receiver<()>;
 
@@ -39,6 +39,9 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
     thread::Builder::new()
         .name("gled:output:tx".to_owned())
         .spawn(move || {
+            #[cfg(feature = "profiling")]
+            profiling::register_thread!("output:tx");
+
             match ARTNET_SOCKET.set_broadcast(true) {
                 Ok(_) => debug!("Activated sending to broadcast"),
                 Err(e) => debug!("Could not activate sending to broadcast: {e}"),
@@ -50,11 +53,10 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
 
             let extract_output = ExtractOutput::get();
 
-            for use_first_output_buffer in output_receiver.iter() {
+            for _ in output_receiver.iter() {
                 trace!("Sending output data");
                 let packages: Vec<(SocketAddr, Vec<u8>)> = {
-                    let mut output_data =
-                        extract_output.poll_output_buffer(use_first_output_buffer);
+                    let mut output_data = extract_output.poll_output_buffer();
                     if gpu_ready_sender.send(()).is_err() {
                         return;
                     }

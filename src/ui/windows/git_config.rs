@@ -95,6 +95,9 @@ impl GitConfigWindow {
 
                             if ui.button(choose_private_key_text).clicked() {
                                 std::thread::spawn(|| {
+                                    #[cfg(feature = "profiling")]
+                                    profiling::register_thread!("git_choose_private_key");
+
                                     let mut file_dialog = rfd::FileDialog::new().set_title("Choose private key");
                                     if let Some(home) = home_dir() {
                                         file_dialog = file_dialog.set_directory(home.join(".ssh"))

@@ -1,9 +1,9 @@
 use crossbeam_channel::Sender;
-use egui::{mutex::Mutex, Color32, Pos2, Stroke};
+use egui::{Color32, Pos2, Stroke, mutex::Mutex};
 use epaint::QuadraticBezierShape;
 use ndarray::arr1;
 use once_cell::sync::Lazy;
-use polyfit_residuals::{poly::NewtonPolynomial, try_fit_poly_with_residual, PolyFit};
+use polyfit_residuals::{PolyFit, poly::NewtonPolynomial, try_fit_poly_with_residual};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     collections::HashMap,
@@ -20,6 +20,9 @@ static POLYNOMIALS: Lazy<Mutex<HashMap<BezierCurve, Option<Polynomial>>>> =
 static POLYNOMIAL_QUEUE: Lazy<Sender<BezierCurve>> = Lazy::new(|| {
     let (sender, receiver) = crossbeam_channel::unbounded::<BezierCurve>();
     spawn(move || {
+        #[cfg(feature = "profiling")]
+        profiling::register_thread!("polynomial");
+
         for bezier_curve in receiver {
             let polynomial = bezier_curve.polynomial();
             POLYNOMIALS.lock().insert(bezier_curve, Some(polynomial));

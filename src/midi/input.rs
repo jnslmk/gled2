@@ -3,6 +3,9 @@ use midir::MidiInput;
 use std::{collections::HashMap, thread::sleep, time::Duration};
 
 pub fn discover() {
+    #[cfg(feature = "profiling")]
+    profiling::register_thread!("midi:input:discover");
+
     let mut connections = HashMap::new();
     let mut input = None;
 

@@ -22,6 +22,8 @@ pub fn get_fft_data() -> Vec<f32> {
 
 pub fn start() {
     log::info!("Starting audio capture thread");
+    #[cfg(feature = "profiling")]
+    profiling::register_thread!("audio:capture");
 
     let host = cpal::default_host();
 
@@ -29,7 +31,10 @@ pub fn start() {
         Some(device) => {
             log::info!(
                 "Using audio input device: {}",
-                device.name().unwrap_or_default()
+                device
+                    .description()
+                    .map(|desc| desc.name().to_string())
+                    .unwrap_or_else(|_| "Unknown".to_string())
             );
             device
         }

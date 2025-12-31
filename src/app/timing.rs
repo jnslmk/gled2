@@ -58,6 +58,7 @@ impl Timing {
         self.remove_old_taps();
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     fn limit_fps(&mut self) {
         let fps_limit = PersistantState::fps_limit();
         let target_frame_time_nanos = 1e+9f32 / fps_limit;

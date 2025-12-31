@@ -10,6 +10,9 @@ use std::{
 };
 
 pub fn discover() {
+    #[cfg(feature = "profiling")]
+    profiling::register_thread!("midi:output:discover");
+
     let mut was_active = false;
     let mut handled_devices = HashSet::new();
     let mut output = None;

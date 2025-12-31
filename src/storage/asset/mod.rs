@@ -86,6 +86,9 @@ impl<T: AssetTrait> Asset<T> {
 
     pub fn save(self) {
         std::thread::spawn(move || {
+            #[cfg(feature = "profiling")]
+            profiling::register_thread!("asset:save");
+
             log::info!("Setting asset in cache: {:?}", self.id);
             if let Some(collections) = COLLECTIONS.lock().as_mut() {
                 collections

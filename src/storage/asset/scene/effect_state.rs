@@ -89,7 +89,7 @@ impl EffectState {
             &mut data[28..28 + AnimationConfig::size()],
             beat_progression,
         );
-        
+
         // Write FFT data (256 frequency bins = 1024 bytes)
         let fft_data = get_fft_data();
         let fft_offset = 28 + AnimationConfig::size();
@@ -168,6 +168,9 @@ impl EffectState {
         buffer.unmap();
 
         std::thread::spawn(move || {
+            #[cfg(feature = "profiling")]
+            profiling::register_thread!("copy_image_to_clipboard");
+
             data.chunks_exact_mut(4).for_each(|pixel| {
                 pixel.swap(0, 2);
                 pixel[3] = 255;

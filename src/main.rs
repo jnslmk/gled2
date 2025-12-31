@@ -37,6 +37,8 @@ const PRESENT_MODE: PresentMode = PresentMode::Immediate;
 const PRESENT_MODE: PresentMode = PresentMode::Mailbox;
 
 fn main() {
+    #[cfg(feature = "profiling")]
+    let _puffin_server = start_profile_server();
     env_logger::init();
     let ui_action_receiver = UiAction::init_queue();
     RendererCallback::init();
@@ -106,4 +108,16 @@ pub fn wgpu_render_state() -> RenderState {
         .get()
         .expect("Could not find wgpu render state")
         .clone()
+}
+
+#[cfg(feature = "profiling")]
+fn start_profile_server() -> puffin_http::Server {
+    let server_addr = format!("0.0.0.0:{}", puffin_http::DEFAULT_PORT);
+    let puffin_server =
+        puffin_http::Server::new(&server_addr).expect("Could not start puffin server");
+    puffin::set_scopes_on(true);
+    std::process::Command::new("puffin_viewer").spawn().expect(
+        "Could not run puffin_viewer, maybe install it with: \"cargo install puffin_viewer\"",
+    );
+    puffin_server
 }
