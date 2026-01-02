@@ -119,3 +119,6 @@ macos = { "signingIdentity" = "Developer ID Application: FreshX GmbH (V5GQY7AUWA
 
 [features]
 profiling = ["dep:profiling", "dep:puffin", "dep:puffin_http"]
+
+[patch.crates-io]
+rusty_link = { git = "https://github.com/elwerene/rusty_link.git", branch = "cross-compile-fix" }
