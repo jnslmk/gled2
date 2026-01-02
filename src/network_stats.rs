@@ -21,7 +21,7 @@ pub fn start_thread() {
             let incoming = INCOMING_BYTES.swap(0, Relaxed);
             let outgoing = OUTGOING_BYTES.swap(0, Relaxed);
             let stats = format!(
-                "In: {:.2} MBit/s, Out: {:.2} MBit/s",
+                "⬇ {:.2} MBit/s ⬆ {:.2} MBit/s",
                 incoming as f64 / COUNTED_BYTES_TO_MBIT,
                 outgoing as f64 / COUNTED_BYTES_TO_MBIT
             );
