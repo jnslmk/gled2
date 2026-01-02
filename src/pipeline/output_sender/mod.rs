@@ -103,6 +103,7 @@ pub fn start() -> Result<()> {
                         count += 1;
                         debug!("Sending package to {addr}");
                         trace!("Package data: {data:02x?}");
+
                         match ARTNET_SOCKET.send_to(&data, addr) {
                             Err(err) if count == 10 => {
                                 warn!("Could not send data on try {count}, giving up - {err:?}");
@@ -112,8 +113,9 @@ pub fn start() -> Result<()> {
                                 warn!("Could not send data on try {count} - {err:?}");
                                 std::thread::sleep(std::time::Duration::from_nanos(1));
                             }
-                            Ok(_) => {
+                            Ok(count) => {
                                 debug!("Sent data to {addr}");
+                                crate::network_stats::add_outgoing_bytes(count);
                                 break;
                             }
                         };

@@ -1,5 +1,6 @@
 use super::App;
 use crate::{
+    network_stats,
     storage::{
         action::StorageAction, asset::curve::polynomial::polynomials_fitting, staged_files, working,
     },
@@ -17,6 +18,12 @@ impl App {
                     ui.horizontal(|ui| {
                         if let Some(framerate) = self.timing.framerate() {
                             ui.add(Label::new(format!("{framerate:.0} fps")));
+                        }
+
+                        let network_stats = network_stats::stats();
+                        if !network_stats.is_empty() {
+                            ui.add_space(8.0);
+                            ui.add(Label::new(network_stats));
                         }
 
                         #[cfg(not(debug_assertions))]

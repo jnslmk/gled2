@@ -4,6 +4,7 @@ pub mod app;
 pub mod audio;
 pub mod input;
 pub mod midi;
+pub mod network_stats;
 pub mod pipeline;
 pub mod storage;
 pub mod svg;
@@ -46,6 +47,7 @@ fn main() {
     ui::temperature::start_thread();
     midi::start_thread();
     audio::start_thread();
+    network_stats::start_thread();
 
     #[cfg(not(debug_assertions))]
     ui::update_check::Update::start_thread();

@@ -99,6 +99,8 @@ fn threads(sender: Sender<ArtnetEvent>) {
                     };
                     trace!("received on artnet");
 
+                    crate::network_stats::add_incoming_bytes(size);
+
                     let output = match ArtCommand::from_buffer(&buf[..size]) {
                         Err(err) => {
                             warn!("Could not parse artnet package: {err:?}");
@@ -155,8 +157,14 @@ fn threads(sender: Sender<ArtnetEvent>) {
                                 continue;
                             };
 
-                            if let Err(err) = ARTNET_SOCKET.send_to(&data, src) {
-                                warn!("Could not send PollReply: {err:?}");
+                            crate::network_stats::add_outgoing_bytes(data.len());
+                            match ARTNET_SOCKET.send_to(&data, src) {
+                                Err(err) => {
+                                    warn!("Could not send PollReply: {err:?}");
+                                }
+                                Ok(count) => {
+                                    crate::network_stats::add_outgoing_bytes(count);
+                                }
                             }
 
                             continue;
