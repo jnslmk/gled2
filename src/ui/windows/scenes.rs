@@ -171,7 +171,7 @@ impl ScenesWindow {
                             {
                                 for effect_state in self.effect_states.iter_mut() {
                                     effect_state.beat_progression = timing.beat_progression();
-                                    effect_state.beats_per_minute = timing.beats_per_minute;
+                                    effect_state.beats_per_minute = timing.beats_per_minute();
                                     effect_state.framerate = timing.framerate().unwrap_or_default();
                                 }
 

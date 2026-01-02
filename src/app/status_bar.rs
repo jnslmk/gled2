@@ -26,6 +26,20 @@ impl App {
                             ui.add(Label::new(network_stats));
                         }
 
+                        let connected_ableton_peers = crate::app::timing::CONNECTED_PEERS
+                            .load(std::sync::atomic::Ordering::Relaxed);
+                        if connected_ableton_peers > 0 {
+                            ui.add_space(8.0);
+                            ui.add(Label::new(format!(
+                                "🔗 {connected_ableton_peers} Ableton Link peer{}",
+                                if connected_ableton_peers == 1 {
+                                    ""
+                                } else {
+                                    "s"
+                                }
+                            )));
+                        }
+
                         #[cfg(not(debug_assertions))]
                         if let Some(version) = crate::ui::update_check::Update::update_available() {
                             if ui.button(format!("Update available: {version}")).clicked() {

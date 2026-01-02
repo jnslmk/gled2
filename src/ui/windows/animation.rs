@@ -87,7 +87,7 @@ impl AnimationWindow {
 
         if let (Some(effect), Some(effect_state)) = (&mut self.effect, &mut self.effect_state) {
             effect_state.beat_progression = timing.beat_progression();
-            effect_state.beats_per_minute = timing.beats_per_minute;
+            effect_state.beats_per_minute = timing.beats_per_minute();
             effect_state.framerate = timing.framerate().unwrap_or_default();
             let wgpu_render_state = wgpu_render_state();
             let device = wgpu_render_state.device;

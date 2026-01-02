@@ -1,11 +1,19 @@
 use super::PersistantState;
 use egui::{Button, Color32, CornerRadius, Stroke, TextFormat, Ui, Vec2, text::LayoutJob};
 use log::debug;
-use std::time::{Duration, Instant};
+use rusty_link::{AblLink, SessionState};
+use std::{
+    sync::atomic::{AtomicU64, Ordering::Relaxed},
+    time::{Duration, Instant},
+};
+
+pub static CONNECTED_PEERS: AtomicU64 = AtomicU64::new(0);
 
 pub struct Timing {
-    pub beats_per_minute: f32,
-    last_beat_time: Instant,
+    link: AblLink,
+    beats_per_minute: f32,
+    previous_change_beats_per_minute: f32,
+    pub change_beats_per_minute: f32,
     beat_progression: f32,
     avg_fps: Option<f32>,
     avg_fps_time: Instant,
@@ -18,9 +26,14 @@ pub struct Timing {
 
 impl Default for Timing {
     fn default() -> Self {
+        let link = AblLink::new(120.0);
+        link.enable(true);
+
         Self {
-            beats_per_minute: 60.0,
-            last_beat_time: Instant::now(),
+            link,
+            beats_per_minute: 120.0,
+            previous_change_beats_per_minute: 120.0,
+            change_beats_per_minute: 120.0,
             beat_progression: 0.0,
             avg_fps: None,
             avg_fps_time: Instant::now(),
@@ -47,13 +60,18 @@ impl Timing {
         self.beat_progression
     }
 
+    pub fn beats_per_minute(&self) -> f32 {
+        self.beats_per_minute
+    }
+
     pub fn framerate(&self) -> Option<f32> {
         self.avg_fps
     }
 
     pub fn tick(&mut self) {
         self.limit_fps();
-        self.progress_beat();
+        self.set_link_values();
+        self.get_link_values();
         self.calculate_avg_fps();
         self.remove_old_taps();
     }
@@ -68,11 +86,29 @@ impl Timing {
         self.last_frame = Instant::now();
     }
 
-    fn progress_beat(&mut self) {
-        let now = Instant::now();
-        self.beat_progression += (now.duration_since(self.last_beat_time).as_nanos() as f64
-            / self.beat_duration_nanoseconds()) as f32;
-        self.last_beat_time = now;
+    fn get_link_values(&mut self) {
+        CONNECTED_PEERS.store(self.link.num_peers(), Relaxed);
+
+        let mut session_state = SessionState::default();
+        self.link.capture_app_session_state(&mut session_state);
+        let now = self.link.clock_micros();
+        self.beat_progression = 40.0 + session_state.beat_at_time(now, 4.0) as f32;
+        self.beats_per_minute = session_state.tempo() as f32;
+    }
+
+    fn set_link_values(&mut self) {
+        if self.previous_change_beats_per_minute == self.change_beats_per_minute {
+            self.previous_change_beats_per_minute = self.beats_per_minute;
+            self.change_beats_per_minute = self.beats_per_minute;
+            return;
+        }
+
+        let mut session_state = SessionState::default();
+        self.link.capture_app_session_state(&mut session_state);
+        let now = self.link.clock_micros();
+        session_state.set_tempo(self.change_beats_per_minute as f64, now);
+        self.link.commit_app_session_state(&session_state);
+        self.previous_change_beats_per_minute = self.change_beats_per_minute;
     }
 
     #[inline]
@@ -135,11 +171,11 @@ impl Timing {
     }
 
     pub fn multiply_speed(&mut self, multiplier: f32) {
-        self.beats_per_minute *= multiplier;
+        self.change_beats_per_minute *= multiplier;
     }
 
     pub fn add_speed(&mut self, delta: f32) {
-        self.beats_per_minute += delta;
+        self.change_beats_per_minute += delta;
     }
 
     pub fn tap_button(&mut self, ui: &mut Ui, menu_button_size: Vec2, tap_input: bool) {
@@ -242,6 +278,8 @@ impl Timing {
     }
 
     pub fn tap(&mut self) {
+        let link_now = self.link.clock_micros();
+
         self.tap_count += 1;
         let now = Instant::now();
         self.taps[0] = Some(now);
@@ -261,11 +299,19 @@ impl Timing {
         let avg_beat_time = (beat_time_first.as_nanos())
             / (self.taps.iter().filter(|tap| tap.is_some()).count() as u128 - 1);
 
-        self.beats_per_minute = (60e+9f64 / f64::from(avg_beat_time as u32)) as f32;
+        let new_beats_per_minute = (60e+9f64 / f64::from(avg_beat_time as u32)) as f32;
 
         // adjust beat progression timing to last tap
         let offset = self.beat_progression % 4.0;
         let goal_offset = (self.tap_count - 1) as f32 % 4.0;
-        self.beat_progression += goal_offset - offset;
+        let mut session_state = SessionState::default();
+        self.link.capture_app_session_state(&mut session_state);
+        session_state.set_tempo(new_beats_per_minute as f64, link_now);
+        session_state.request_beat_at_time(
+            (self.beat_progression + goal_offset - offset) as f64,
+            link_now,
+            4.0,
+        );
+        self.link.commit_app_session_state(&session_state);
     }
 }

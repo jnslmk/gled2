@@ -404,7 +404,7 @@ impl App {
                             ui.spacing_mut().slider_width = slider_width;
                         }
                         ui.add(
-                            Slider::new(&mut self.timing.beats_per_minute, 1.0..=240.0)
+                            Slider::new(&mut self.timing.change_beats_per_minute, 20.0..=999.0)
                                 .custom_formatter(|n, _| format!("{n:.1} bpm")),
                         );
                     });
