@@ -7,10 +7,13 @@ use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
+
+pub const MAX_BIN_FREQ: f32 = 32768.;
+
 // FFT size - power of 2 for efficient FFT
 const FFT_SIZE: usize = 512;
 // Number of frequency bins to expose to shader (typically half of FFT_SIZE due to Nyquist)
-const FREQ_BINS: usize = 256;
+pub const FREQ_BINS: usize = 256;
 
 static FFT_DATA: Lazy<Arc<Mutex<Vec<f32>>>> =
     Lazy::new(|| Arc::new(Mutex::new(vec![0.0; FREQ_BINS])));
@@ -86,7 +89,7 @@ pub fn start() {
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                    let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / 32768.0).collect();
+                    let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_BIN_FREQ).collect();
                     process_audio_samples(&f32_data, channels, &sample_buffer, &fft, &fft_data);
                 },
                 |err| {

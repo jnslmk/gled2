@@ -1,3 +1,6 @@
+use crate::audio::state::{FREQ_BINS, MAX_BIN_FREQ};
+use std::f32::consts::TAU;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AdsrPhase {
     Idle,
@@ -17,10 +20,10 @@ pub struct AdsrParams {
 
 impl Default for AdsrParams {
     fn default() -> Self {
-        AdsrParams{
-            attack_duration: 0.1,  // 100ms
-            decay_duration: 0.2,   // 200ms
-            sustain_level: 0.5,    // 50% amplitude
+        AdsrParams {
+            attack_duration: 0.1, // 100ms
+            decay_duration: 0.2,  // 200ms
+            sustain_level: 0.5,   // 50% amplitude
             release_duration: 1., // 500ms
         }
     }
@@ -102,9 +105,8 @@ impl Adsr {
             AdsrPhase::Attack => {
                 // Rate = 1.0 / duration
                 let rate = 1.0 / self.params.attack_duration.max(0.001);
-                self.current_level += (rate * dt);
+                self.current_level += rate * dt;
                 self.current_level = self.current_level.min(1.0);
-
             }
             AdsrPhase::Decay => {
                 // Rate = distance to sustain / duration
@@ -136,5 +138,45 @@ impl Adsr {
     /// Optional: Update parameters in real-time
     pub fn set_params(&mut self, params: AdsrParams) {
         self.params = params;
+    }
+}
+
+pub struct LowPass {
+    center_bin: usize,
+    bin_radius: usize,
+    delta_time: f32,
+    slow_ema: f32,
+    fast_ema: f32,
+}
+
+impl LowPass {
+    pub fn new(f_center: f32, f_radius: f32, sample_rate: f32) -> Self {
+        let f_per_bin = MAX_BIN_FREQ / FREQ_BINS as f32;
+        let center_bin = ((f_center / f_per_bin).round() as usize).min(FREQ_BINS - 1);
+        let use_bins = (f_radius / f_per_bin).round() as usize;
+        LowPass {
+            center_bin,
+            bin_radius: use_bins,
+            delta_time: 10. / sample_rate,
+            slow_ema: 0.,
+            fast_ema: 0.,
+        }
+    }
+
+    // minimalistic filter over frequency bins
+    pub fn tick(&mut self, bins: &Vec<f32>) -> f32 {
+        let amplitude = bins[(self.center_bin - self.bin_radius).clamp(0, FREQ_BINS - 1)
+            ..self.center_bin + self.bin_radius.clamp(0, FREQ_BINS - 1)]
+            .iter()
+            .sum::<f32>()
+            * 100.
+            / (2. * self.bin_radius as f32 + 1.);
+
+        // calculate an exponential moving average to prevent aliasing
+        let mut alpha = 1.0 - (-self.delta_time / TAU).exp();  // Sample-rate-aware alpha
+        self.slow_ema = alpha * amplitude + (1.0 - alpha) * self.slow_ema;
+        alpha *= 10.;
+        self.fast_ema = alpha * amplitude + (1.0 - alpha) * self.fast_ema;
+        self.fast_ema - self.slow_ema
     }
 }
