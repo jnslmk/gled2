@@ -1,4 +1,6 @@
 pub mod state;
+pub mod adsr_editor;
+pub mod adsr;
 
 use std::thread::spawn;
 

@@ -1,3 +1,4 @@
+use crate::audio::adsr_editor::ADSREditor;
 use crate::{app::timing::Timing, storage::asset::project::Project};
 use egui::Context;
 
@@ -30,6 +31,7 @@ pub struct Windows {
     pub projects: projects::ProjectsWindow,
     pub scenes: scenes::ScenesWindow,
     pub shortcuts: shortcuts::ShortcutsWindow,
+    pub adsr_editor: ADSREditor,
 }
 
 impl Windows {
@@ -48,5 +50,6 @@ impl Windows {
         self.projects.update(ctx);
         self.scenes.update(ctx, timing);
         self.shortcuts.update(ctx, project);
+        self.adsr_editor.update(ctx)
     }
 }
