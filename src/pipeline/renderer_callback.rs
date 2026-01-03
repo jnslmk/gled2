@@ -9,12 +9,14 @@ static RECEIVER: OnceCell<Receiver<CommandBuffer>> = OnceCell::new();
 pub struct RendererCallback;
 
 impl RendererCallback {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn init() {
         let (tx, rx) = crossbeam_channel::bounded(16);
         SENDER.set(tx).expect("Could not set SENDER");
         RECEIVER.set(rx).expect("Could not set RECEIVER");
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn add(buffer: CommandBuffer) {
         SENDER
             .get()
@@ -33,6 +35,7 @@ impl CallbackTrait for RendererCallback {
     ) {
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     fn prepare(
         &self,
         _device: &wgpu::Device,

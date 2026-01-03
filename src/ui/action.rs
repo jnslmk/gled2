@@ -55,6 +55,7 @@ pub enum UiAction {
 }
 
 impl App {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn handle_ui_actions(&mut self) {
         loop {
             let Some(action) = self.ui_action_receiver.try_recv().ok() else {

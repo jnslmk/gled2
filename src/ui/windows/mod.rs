@@ -33,6 +33,7 @@ pub struct Windows {
 }
 
 impl Windows {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self, ctx: &Context, timing: &Timing, project: Option<&mut Project>) {
         self.about.update(ctx);
         self.animations.update(ctx, timing);

@@ -7,6 +7,7 @@ pub struct ErrorsWindow {
 }
 
 impl ErrorsWindow {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self, ctx: &egui::Context) {
         if self.entries.is_empty() {
             return;

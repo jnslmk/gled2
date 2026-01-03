@@ -55,6 +55,7 @@ pub struct App {
 }
 
 impl eframe::App for App {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if loading().is_none() && self.startup {
             self.startup = false;
@@ -192,6 +193,7 @@ impl eframe::App for App {
 }
 
 impl App {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn draw_main_window(&mut self, ctx: &egui::Context, viewport_id: Option<ViewportId>) {
         let panel_frame = egui::Frame::new()
             .fill(ctx.style().visuals.window_fill())

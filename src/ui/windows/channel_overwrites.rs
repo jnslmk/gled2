@@ -32,6 +32,7 @@ impl Default for ChannelOverwritesWindow {
 }
 
 impl ChannelOverwritesWindow {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self, ctx: &Context) {
         if !self.open {
             return;

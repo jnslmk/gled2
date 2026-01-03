@@ -68,6 +68,7 @@ impl Timing {
         self.avg_fps
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn tick(&mut self) {
         self.limit_fps();
         self.set_link_values();
@@ -86,6 +87,7 @@ impl Timing {
         self.last_frame = Instant::now();
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     fn get_link_values(&mut self) {
         CONNECTED_PEERS.store(self.link.num_peers(), Relaxed);
 
@@ -96,6 +98,7 @@ impl Timing {
         self.beats_per_minute = session_state.tempo() as f32;
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     fn set_link_values(&mut self) {
         if self.previous_change_beats_per_minute == self.change_beats_per_minute {
             self.previous_change_beats_per_minute = self.beats_per_minute;

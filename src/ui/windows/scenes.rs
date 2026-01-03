@@ -33,6 +33,7 @@ pub struct ScenesWindow {
 }
 
 impl ScenesWindow {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self, ctx: &Context, timing: &Timing) {
         if !self.open {
             return;
