@@ -31,12 +31,6 @@ pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
     })
 });
 
-#[cfg(target_os = "macos")]
-const PRESENT_MODE: PresentMode = PresentMode::Immediate;
-
-#[cfg(not(target_os = "macos"))]
-const PRESENT_MODE: PresentMode = PresentMode::Mailbox;
-
 fn main() {
     #[cfg(feature = "profiling")]
     let _puffin_server = start_profile_server();
@@ -53,7 +47,8 @@ fn main() {
     ui::update_check::Update::start_thread();
 
     let mut wgpu_options = WgpuConfiguration::default();
-    wgpu_options.present_mode = PRESENT_MODE;
+    wgpu_options.desired_maximum_frame_latency = Some(1); // We want low latency
+    wgpu_options.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
             power_preference: if PersistantState::prefer_discrete_gpu() {
