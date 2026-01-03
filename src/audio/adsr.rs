@@ -17,6 +17,8 @@ pub struct AdsrParams {
     pub decay_duration: f32,   // in seconds
     pub sustain_level: f32,    // 0.0 to 1.0
     pub release_duration: f32, // in seconds
+    /// Threshold to consider the continuous input "ON"
+    pub gate_threshold: f32,
 }
 
 impl Default for AdsrParams {
@@ -26,17 +28,16 @@ impl Default for AdsrParams {
             decay_duration: 0.2,  // 200ms
             sustain_level: 0.5,   // 50% amplitude
             release_duration: 1., // 500ms
+            gate_threshold: 0.5,
         }
     }
 }
 
 pub struct Adsr {
-    params: AdsrParams,
+    pub params: AdsrParams,
     sample_rate: f32,
     phase: AdsrPhase,
     current_level: f32,
-    /// Threshold to consider the continuous input "ON"
-    gate_threshold: f32,
 }
 
 impl Adsr {
@@ -46,7 +47,6 @@ impl Adsr {
             sample_rate,
             phase: AdsrPhase::Idle,
             current_level: 0.0,
-            gate_threshold: 0.5, // Standard logic threshold
         }
     }
 
@@ -57,7 +57,7 @@ impl Adsr {
     ///             > 0.5 triggers Attack/Sustain.
     ///             <= 0.5 triggers Release.
     pub fn tick(&mut self, input: f32) -> f32 {
-        let is_gate_open = input > self.gate_threshold;
+        let is_gate_open = input > self.params.gate_threshold;
 
         // 1. Handle State Transitions
         match self.phase {
@@ -148,7 +148,7 @@ pub struct LowPass {
     delta_time: f32,
     slow_ema: f32,
     fast_ema: f32,
-    trigger_happyness: f32,
+    pub trigger_happiness: f32,
 }
 
 impl LowPass {
@@ -162,12 +162,12 @@ impl LowPass {
             delta_time: 10. / sample_rate,
             slow_ema: 0.,
             fast_ema: 0.,
-            trigger_happyness: 10.,
+            trigger_happiness: 10.,
         }
     }
-    
+
     pub fn set_trigger_happyness(&mut self, happyness: f32) {
-        self.trigger_happyness = happyness.expf(10.);
+        self.trigger_happiness = happyness.expf(10.);
     }
 
     // minimalistic filter over frequency bins
@@ -182,7 +182,7 @@ impl LowPass {
         // calculate an exponential moving average to prevent aliasing
         let mut alpha = 1.0 - (-self.delta_time / TAU).exp();  // Sample-rate-aware alpha
         self.slow_ema = alpha * amplitude + (1.0 - alpha) * self.slow_ema;
-        alpha *= self.trigger_happyness;
+        alpha *= self.trigger_happiness;
         self.fast_ema = alpha * amplitude + (1.0 - alpha) * self.fast_ema;
         self.fast_ema - self.slow_ema
     }

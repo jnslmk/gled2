@@ -2,7 +2,8 @@ use crate::audio::adsr::{Adsr, AdsrParams, LowPass};
 use crate::audio::state::get_fft_data;
 use crate::ui::window_common::{default_viewport_builder, gled_window_frame};
 use egui::{Color32, Context, Frame, Id, Ui, ViewportId};
-use emath::{pos2, vec2, Pos2, Rect, Vec2};
+use egui_knob::{Knob, KnobStyle, LabelPosition};
+use emath::{Pos2, Rect, Vec2, pos2, vec2};
 use epaint::{PathStroke, Stroke, StrokeKind};
 
 pub struct ADSREditor {
@@ -41,21 +42,66 @@ impl ADSREditor {
                 gled_window_frame(ctx, "ADSR Editor", |ui| {
                     egui::CentralPanel::default().show_inside(ui, |ui| {
                         self.draw_curve(ui);
-                        self.draw_meter(ui);
+                        ui.horizontal(|ui| {
+                            self.draw_meter(ui);
+                            Frame::new().inner_margin(5.).show(ui, |ui| {
+                                self.draw_controls(ui);
+                            });
+                        });
                     });
                 });
             },
         );
     }
-    fn draw_meter(&mut self, ui: &mut Ui) {
-        Frame::new().inner_margin(5.).show(ui, |ui| {
-            let (_, mut rect) = ui.allocate_space(Vec2::new(40.0, 200.0));
-            let amp = (self.low_pass.tick(&get_fft_data()) * 10. + 1.).log2().clamp(0.0, 1.0);
-            ui.painter().rect_stroke(rect, 0., Stroke::new(2., Color32::WHITE), StrokeKind::Outside);
+    fn draw_controls(&mut self, ui: &mut Ui) {
+        ui.vertical_centered(|ui| {
+            // Sensitivity knob
+           ui.add(knob_default(Knob::new(
+                &mut self.low_pass.trigger_happiness,
+                1.0,
+                100.0,
+                KnobStyle::Wiper,
+            ))
+                .with_size(50.0)
+                .with_label("Sensitivity", LabelPosition::Bottom)
+           );
 
-            rect.min.y += 200.0 * (1.0 - amp);
-            ui.painter().rect_filled(rect, 0., Color32::LIGHT_GREEN);
+            // Threshold knob
+            ui.add(knob_default(Knob::new(
+                &mut self.adsr_params.gate_threshold,
+                0.0,
+                1.0,
+                KnobStyle::Wiper,
+            ))
+                .with_size(30.0)
+                .with_label("Threshold", LabelPosition::Bottom)
+            );
+
         });
+        ui.separator();
+    }
+
+    fn draw_meter(&mut self, ui: &mut Ui) {
+        let meter_height = 200.0;
+        let (_, rect) = ui.allocate_space(Vec2::new(40.0, meter_height));
+        let amp = (self.low_pass.tick(&get_fft_data()) * 10. + 1.)
+            .log2()
+            .clamp(0.0, 1.0);
+        ui.painter().rect_stroke(
+            rect,
+            0.,
+            Stroke::new(2., Color32::WHITE),
+            StrokeKind::Outside,
+        );
+
+        let mut value_rect = rect.clone();
+        value_rect.min.y += meter_height * (1.0 - amp);
+        ui.painter().rect_filled(value_rect, 0., Color32::LIGHT_GREEN);
+
+        let threshold_line_y = rect.min.y + meter_height * (1.0 - self.adsr_params.gate_threshold);
+        ui.painter().line(
+            vec![pos2(rect.min.x, threshold_line_y), pos2(rect.max.x, threshold_line_y)],
+            Stroke::new(2., Color32::BLUE),);
     }
     fn draw_curve(&self, ui: &mut Ui) {
         let n = 300;
@@ -89,4 +135,10 @@ impl ADSREditor {
                 child_ui.painter().add(shape);
             });
     }
+}
+
+fn knob_default(knob: Knob) -> Knob{
+    knob.with_font_size(12.0)
+        .with_colors(egui::Color32::GRAY, Color32::WHITE, Color32::WHITE)
+        .with_stroke_width(3.0)
 }

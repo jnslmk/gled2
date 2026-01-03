@@ -1331,6 +1331,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_knob"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "315a754be9706cc4696632b6b1c45955819f85309ed08018535c98e5331cccd5"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "egui_ltreeview"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1967,6 +1976,7 @@ dependencies = [
  "egui_dnd",
  "egui_extras",
  "egui_flex",
+ "egui_knob",
  "egui_ltreeview",
  "emath",
  "env_logger",
