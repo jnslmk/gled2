@@ -41,7 +41,6 @@ impl ADSREditor {
                 gled_window_frame(ctx, "ADSR Editor", |ui| {
                     egui::CentralPanel::default().show_inside(ui, |ui| {
                         self.draw_curve(ui);
-                        ui.debug_paint_cursor();
                         self.draw_meter(ui);
                     });
                 });
@@ -49,12 +48,14 @@ impl ADSREditor {
         );
     }
     fn draw_meter(&mut self, ui: &mut Ui) {
-        let (_, mut rect) = ui.allocate_space(Vec2::new(40.0, 200.0));
-        let amp = (self.low_pass.tick(&get_fft_data()) + 1.).log2() * 10.;
-        ui.painter().rect_stroke(rect, 0., Stroke::new(2., Color32::WHITE), StrokeKind::Outside);
+        Frame::new().inner_margin(5.).show(ui, |ui| {
+            let (_, mut rect) = ui.allocate_space(Vec2::new(40.0, 200.0));
+            let amp = (self.low_pass.tick(&get_fft_data()) * 10. + 1.).log2().clamp(0.0, 1.0);
+            ui.painter().rect_stroke(rect, 0., Stroke::new(2., Color32::WHITE), StrokeKind::Outside);
 
-        rect.min.y += 200.0 * (1.0 - amp);
-        ui.painter().rect_filled(rect, 0., Color32::LIGHT_GREEN);
+            rect.min.y += 200.0 * (1.0 - amp);
+            ui.painter().rect_filled(rect, 0., Color32::LIGHT_GREEN);
+        });
     }
     fn draw_curve(&self, ui: &mut Ui) {
         let n = 300;

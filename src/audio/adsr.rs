@@ -1,5 +1,6 @@
 use crate::audio::state::{FREQ_BINS, MAX_BIN_FREQ};
 use std::f32::consts::TAU;
+use rustfft::num_complex::ComplexFloat;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AdsrPhase {
@@ -147,6 +148,7 @@ pub struct LowPass {
     delta_time: f32,
     slow_ema: f32,
     fast_ema: f32,
+    trigger_happyness: f32,
 }
 
 impl LowPass {
@@ -160,7 +162,12 @@ impl LowPass {
             delta_time: 10. / sample_rate,
             slow_ema: 0.,
             fast_ema: 0.,
+            trigger_happyness: 10.,
         }
+    }
+    
+    pub fn set_trigger_happyness(&mut self, happyness: f32) {
+        self.trigger_happyness = happyness.expf(10.);
     }
 
     // minimalistic filter over frequency bins
@@ -175,7 +182,7 @@ impl LowPass {
         // calculate an exponential moving average to prevent aliasing
         let mut alpha = 1.0 - (-self.delta_time / TAU).exp();  // Sample-rate-aware alpha
         self.slow_ema = alpha * amplitude + (1.0 - alpha) * self.slow_ema;
-        alpha *= 10.;
+        alpha *= self.trigger_happyness;
         self.fast_ema = alpha * amplitude + (1.0 - alpha) * self.fast_ema;
         self.fast_ema - self.slow_ema
     }
