@@ -29,6 +29,7 @@ egui_extras = { version = "0.33", features = ["image", "syntect"] }
 egui_flex = "0.5"
 egui_ltreeview = { version = "0.6", features = ["persistence"] }
 egui-modal.git = "https://github.com/elwerene/egui-modal"
+egui-phosphor = "0.11"
 emath = "0.33"
 env_logger = "0.11"
 epaint = "0.33"

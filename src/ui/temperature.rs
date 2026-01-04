@@ -27,7 +27,11 @@ pub fn start_thread() {
 
 pub fn temperature() -> RichText {
     let temperature = TEMPERATURE.load(std::sync::atomic::Ordering::Relaxed);
-    let mut text = RichText::new(format!("{temperature}°C"));
+    let mut text = RichText::new(format!(
+        "{} {temperature}°C",
+        egui_phosphor::regular::THERMOMETER
+    ))
+    .size(14.0);
     if temperature >= 90 {
         text = text.color(Color32::RED);
     } else if temperature >= 80 {

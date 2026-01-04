@@ -75,6 +75,10 @@ fn main() {
         "gled",
         options,
         Box::new(|cc| {
+            let mut fonts = egui::FontDefinitions::default();
+            egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
+            cc.egui_ctx.set_fonts(fonts);
+
             cc.egui_ctx
                 .options_mut(|options| options.theme_preference = ThemePreference::Dark);
             cc.egui_ctx.style_mut(|style| {
