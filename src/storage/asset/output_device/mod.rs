@@ -1,6 +1,8 @@
 pub mod enttec_usb_pro;
 pub mod routing;
 
+use crate::pipeline::output_sender::Recipient;
+
 use super::AssetTrait;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, ToSocketAddrs};
@@ -53,11 +55,7 @@ impl OutputDevice {
         }
     }
 
-    pub fn prepare_package(
-        &self,
-        universe: Option<u16>,
-        data: &[u8],
-    ) -> Option<(std::net::SocketAddr, Vec<u8>)> {
+    pub fn get_recipient(&self, universe: Option<u16>) -> Option<Recipient> {
         match self {
             OutputDevice::Artnet { ip, universes, .. } => {
                 let universe = universe?;
@@ -65,31 +63,15 @@ impl OutputDevice {
                     log::warn!("Universe which is not configured: {universe}");
                     return None;
                 }
-
-                log::debug!("Preparing artnet command for universe {universe}");
-                let output = artnet_protocol::Output {
-                    data: artnet_protocol::PaddedData::from(data.to_vec()),
-                    port_address: artnet_protocol::PortAddress::try_from(universe).ok()?,
-                    ..Default::default()
-                };
-
                 (*ip, 6454)
                     .to_socket_addrs()
                     .ok()
                     .and_then(|mut addrs| addrs.next())
-                    .and_then(|addr| {
-                        artnet_protocol::ArtCommand::Output(output)
-                            .write_to_buffer()
-                            .ok()
-                            .map(|data| (addr, data))
-                    })
+                    .map(|addr| Recipient::Artnet { addr, universe })
             }
-            OutputDevice::EnttecDmxUsbPro { serial_number } => {
-                let mut send_data = [0u8; 512];
-                send_data[..data.len()].copy_from_slice(data);
-                enttec_usb_pro::send(serial_number.to_owned(), send_data);
-                None
-            }
+            OutputDevice::EnttecDmxUsbPro { serial_number } => Some(Recipient::EnttecDmxUsbPro {
+                serial_number: serial_number.clone(),
+            }),
         }
     }
 }

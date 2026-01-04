@@ -13,7 +13,7 @@ pub mod timing;
 use crate::{
     input::Input,
     midi::state::MidiState,
-    pipeline::{output_sender, renderer_callback::RendererCallback},
+    pipeline::renderer_callback::RendererCallback,
     storage::{
         asset::{
             Asset,
@@ -235,8 +235,6 @@ impl App {
         });
     }
     pub fn new(ui_action_receiver: Receiver<UiAction>) -> Option<Self> {
-        output_sender::start().expect("Could not start output sender");
-
         let app = Self {
             startup: true,
             timing: Default::default(),

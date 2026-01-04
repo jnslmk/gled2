@@ -1,13 +1,15 @@
 pub mod artnet;
 pub mod event;
 
+use crate::pipeline::output_sender::OutputPackage;
+use crossbeam_channel::{Receiver, Sender};
 use egui::{Context, mutex::Mutex};
 use event::{GamepadEvent, InputEvent};
 use gilrs::{Axis, Button, Event, Gilrs};
 use log::debug;
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, OnceLock, mpsc::Receiver},
+    sync::{Arc, OnceLock},
 };
 
 static INPUT: OnceLock<Arc<Mutex<Input>>> = OnceLock::new();
@@ -24,9 +26,9 @@ pub struct Input {
 }
 
 impl Input {
-    pub fn init(ctx: &Context) {
+    pub fn init(ctx: &Context, output_package_sender: Sender<OutputPackage>) {
         let gilrs = Gilrs::new().expect("Could not initialize gilrs");
-        let artnet_receiver = artnet::start_thread();
+        let artnet_receiver = artnet::start_thread(output_package_sender);
         let ctx = ctx.clone();
 
         INPUT

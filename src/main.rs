@@ -21,6 +21,8 @@ use std::sync::OnceLock;
 use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
 
+use crate::pipeline::output_sender;
+
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
 pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
     wgpu_render_state().device.create_buffer(&BufferDescriptor {
@@ -42,6 +44,7 @@ fn main() {
     midi::start_thread();
     audio::start_thread();
     network_stats::start_thread();
+    let output_package_sender = output_sender::start().expect("Could not start output sender");
 
     #[cfg(not(debug_assertions))]
     ui::update_check::Update::start_thread();
@@ -86,7 +89,7 @@ fn main() {
                 style.visuals.panel_fill = Color32::from_gray(5);
             });
             install_image_loaders(&cc.egui_ctx);
-            Input::init(&cc.egui_ctx);
+            Input::init(&cc.egui_ctx, output_package_sender);
 
             WGPU_RENDER_STATE
                 .set(
