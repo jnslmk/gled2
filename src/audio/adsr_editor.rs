@@ -54,7 +54,7 @@ impl ADSREditor {
     }
     fn draw_controls(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            let amp = (self.low_pass.tick(&get_fft_data()) * 10. + 1.)
+            let amp = (self.low_pass.tick(&get_fft_data()) )
                 .log2()
                 .clamp(0.0, 1.0);
             self.draw_meter(ui, amp);

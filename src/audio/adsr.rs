@@ -191,6 +191,6 @@ impl LowPass {
         self.slow_ema = alpha * amplitude + (1.0 - alpha) * self.slow_ema;
         alpha *= self.trigger_happiness;
         self.fast_ema = alpha * amplitude + (1.0 - alpha) * self.fast_ema;
-        self.fast_ema - self.slow_ema
+        self.fast_ema / self.slow_ema
     }
 }
