@@ -155,7 +155,9 @@ fn merge_and_send_thread(receiver: Receiver<OutputPackage>) {
             OutputPackage::Gled { recipient, data } => {
                 match gled_cache.entry(recipient.clone()) {
                     Entry::Occupied(mut entry) => {
-                        if entry.get().2 == data {
+                        if entry.get().2 == [0u8; UNIVERSE_BUFFER_SIZE as usize]
+                            && data == [0u8; UNIVERSE_BUFFER_SIZE as usize]
+                        {
                             entry.get_mut().0 = Instant::now();
                         } else {
                             entry.insert((now, now, data));
