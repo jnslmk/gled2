@@ -43,7 +43,6 @@ impl ADSREditor {
                     egui::CentralPanel::default().show_inside(ui, |ui| {
                         self.draw_curve(ui);
                         ui.horizontal(|ui| {
-                            self.draw_meter(ui);
                             Frame::new().inner_margin(5.).show(ui, |ui| {
                                 self.draw_controls(ui);
                             });
@@ -54,31 +53,82 @@ impl ADSREditor {
         );
     }
     fn draw_controls(&mut self, ui: &mut Ui) {
-        ui.vertical_centered(|ui| {
-            // Sensitivity knob
-           ui.add(knob_default(Knob::new(
-                &mut self.low_pass.trigger_happiness,
-                1.0,
-                100.0,
-                KnobStyle::Wiper,
-            ))
-                .with_size(50.0)
-                .with_label("Sensitivity", LabelPosition::Bottom)
-           );
+        ui.horizontal(|ui| {
+            self.draw_meter(ui);
 
-            // Threshold knob
-            ui.add(knob_default(Knob::new(
-                &mut self.adsr_params.gate_threshold,
-                0.0,
-                1.0,
-                KnobStyle::Wiper,
-            ))
-                .with_size(30.0)
-                .with_label("Threshold", LabelPosition::Bottom)
-            );
+            Frame::new().inner_margin(5.).show(ui, |ui| {
+                ui.vertical(|ui| {
+                    // Sensitivity knob
+                    ui.add(
+                        knob_default(Knob::new(
+                            &mut self.low_pass.trigger_happiness,
+                            1.0,
+                            100.0,
+                            KnobStyle::Wiper,
+                        ))
+                        .with_size(50.0)
+                        .with_label("Sensitivity", LabelPosition::Bottom),
+                    );
 
+                    // Threshold knob
+                    ui.add(
+                        knob_default(Knob::new(
+                            &mut self.adsr_params.gate_threshold,
+                            0.0,
+                            1.0,
+                            KnobStyle::Wiper,
+                        ))
+                        .with_size(30.0)
+                        .with_label("Threshold", LabelPosition::Bottom),
+                    );
+                });
+            });
+            ui.separator();
+            // ADSR knobs
+            Frame::new().inner_margin(5.).show(ui, |ui| {
+                ui.add(
+                    knob_default(Knob::new(
+                        &mut self.adsr_params.attack_duration,
+                        0.0,
+                        2.0,
+                        KnobStyle::Wiper,
+                    ))
+                    .with_size(50.0)
+                    .with_label("Attack", LabelPosition::Bottom),
+                );
+
+                ui.add(
+                    knob_default(Knob::new(
+                        &mut self.adsr_params.decay_duration,
+                        0.0,
+                        10.0,
+                        KnobStyle::Wiper,
+                    ))
+                    .with_size(50.0)
+                    .with_label("Decay", LabelPosition::Bottom),
+                );
+                ui.add(
+                    knob_default(Knob::new(
+                        &mut self.adsr_params.sustain_level,
+                        0.0,
+                        1.0,
+                        KnobStyle::Wiper,
+                    ))
+                    .with_size(50.0)
+                    .with_label("Sustain", LabelPosition::Bottom),
+                );
+                ui.add(
+                    knob_default(Knob::new(
+                        &mut self.adsr_params.release_duration,
+                        0.0,
+                        10.0,
+                        KnobStyle::Wiper,
+                    ))
+                    .with_size(50.0)
+                    .with_label("Release", LabelPosition::Bottom),
+                );
+            });
         });
-        ui.separator();
     }
 
     fn draw_meter(&mut self, ui: &mut Ui) {
@@ -96,12 +146,17 @@ impl ADSREditor {
 
         let mut value_rect = rect.clone();
         value_rect.min.y += meter_height * (1.0 - amp);
-        ui.painter().rect_filled(value_rect, 0., Color32::LIGHT_GREEN);
+        ui.painter()
+            .rect_filled(value_rect, 0., Color32::LIGHT_GREEN);
 
         let threshold_line_y = rect.min.y + meter_height * (1.0 - self.adsr_params.gate_threshold);
         ui.painter().line(
-            vec![pos2(rect.min.x, threshold_line_y), pos2(rect.max.x, threshold_line_y)],
-            Stroke::new(2., Color32::BLUE),);
+            vec![
+                pos2(rect.min.x, threshold_line_y),
+                pos2(rect.max.x, threshold_line_y),
+            ],
+            Stroke::new(2., Color32::BLUE),
+        );
     }
     fn draw_curve(&self, ui: &mut Ui) {
         let n = 300;
@@ -122,10 +177,10 @@ impl ADSREditor {
 
                 let points: Vec<Pos2> = (0..=n)
                     .map(|i| {
-                        let t = i as f64 / (n as f64);
-                        let input = if 0.2 < t && t < 0.4 { 1.0 } else { 0.0 };
+                        let t = i as f32 / (n as f32);
+                        let input = if 0.2 < t && t < (0.4 + self.adsr_params.decay_duration * 0.4 + self.adsr_params.attack_duration * 0.4 ) { 1.0 } else { 0.0 };
                         let y = -0.8 * adsr.tick(input) + 1.;
-                        to_screen * pos2(t as f32, y as f32)
+                        to_screen * pos2(t as f32, y)
                     })
                     .collect();
 
@@ -137,7 +192,7 @@ impl ADSREditor {
     }
 }
 
-fn knob_default(knob: Knob) -> Knob{
+fn knob_default(knob: Knob) -> Knob {
     knob.with_font_size(12.0)
         .with_colors(egui::Color32::GRAY, Color32::WHITE, Color32::WHITE)
         .with_stroke_width(3.0)
