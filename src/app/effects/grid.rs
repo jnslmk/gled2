@@ -85,12 +85,10 @@ impl App {
 
                             // Ownership of the scene instances must temporarily be taken to swap
                             let to_item = grid.remove(&to);
-                            // unwrap is safe because we cannot move from an empty tile
-                            let from_item = {
-                                let a = grid.remove(&from);
-                                a.unwrap()
-                            };
-                            grid.insert(to, from_item);
+                            let from_item = { grid.remove(&from) };
+                            if let Some(from_item) = from_item {
+                                grid.insert(to, from_item);
+                            }
                             // reinsert the to item to the from location
                             if let Some(to_item) = to_item {
                                 grid.insert(from, to_item);
