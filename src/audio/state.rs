@@ -18,8 +18,18 @@ static FFT_DATA: Lazy<Arc<Mutex<Vec<f32>>>> =
     Lazy::new(|| Arc::new(Mutex::new(vec![0.0; FREQ_BINS])));
 static FFT_MAX_MAGNITUDE: AtomicF32 = AtomicF32::new(1e-6);
 
-pub fn get_fft_data() -> Vec<f32> {
+pub fn fft_data() -> Vec<f32> {
     FFT_DATA.lock().clone()
+}
+
+pub fn fft_data_u8() -> [u8; FREQ_BINS * 4] {
+    let fft_data = FFT_DATA.lock();
+    let mut fft_data_u8 = [0u8; FREQ_BINS * 4];
+    for (i, &value) in fft_data.iter().enumerate() {
+        let bytes = value.to_le_bytes();
+        fft_data_u8[i * 4..(i + 1) * 4].copy_from_slice(&bytes);
+    }
+    fft_data_u8
 }
 
 pub fn start() {
