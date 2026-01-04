@@ -37,10 +37,30 @@ use std::{
     time::{Duration, Instant},
 };
 use std::collections::HashMap;
+use serde::de::DeserializeOwned;
 use uuid::Uuid;
 use wgpu::CommandEncoderDescriptor;
+use crate::app::effects::grid::{HEIGHT, WIDTH};
 use crate::storage::asset::scene::grid::GridLocation;
 
+pub fn deserialize_scene_instances<'de, D>(
+    deserializer: D,
+) -> Result<HashMap<GridLocation, SceneInstance>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Variants{
+        V1(Vec<SceneInstance>),
+        Current(Vec<HashMap<GridLocation, SceneInstance>>),
+    }
+
+    match Variants::deserialize(deserializer)?{
+        Variants::V1(instances) => Ok(instances.into_iter().enumerate().map(|(idx, instance)| (GridLocation{row: idx / HEIGHT, col: idx % WIDTH}, instance)).collect()),
+        Variants::Current(instances) => Ok(instances.into_iter().flatten().collect()),
+    }
+}
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Project {
@@ -49,7 +69,9 @@ pub struct Project {
     pub auto_mode_seconds: u64,
     pub auto_mode_max_scenes: usize,
     pub groups: Groups,
+    #[serde(deserialize_with = "deserialize_scene_instances")]
     pub scenes_instances_grid: HashMap<GridLocation, SceneInstance>,
+    #[serde(deserialize_with = "deserialize_scene_instances")]
     pub scenes_instances_quick: HashMap<GridLocation, SceneInstance>,
 
     #[serde(skip)]

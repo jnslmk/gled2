@@ -8,6 +8,9 @@ use crate::{
 };
 use egui::{scroll_area::ScrollBarVisibility::AlwaysVisible, Frame, Grid, Id, TextureHandle, Ui, Vec2};
 
+pub const WIDTH: usize = 6;
+pub const HEIGHT: usize = 4;
+
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
         egui::ScrollArea::vertical()
@@ -18,19 +21,6 @@ impl App {
                 ui.set_max_width(ui.available_width() - 30.0);
                 ui.horizontal_wrapped(|ui| {
                     self.widgets(ui, svg, DeckPath::Grid);
-                });
-            });
-    }
-
-    pub fn effects_quick(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
-        egui::ScrollArea::horizontal()
-            .id_salt("quick scroll")
-            .auto_shrink([false, false])
-            .scroll_bar_visibility(AlwaysVisible)
-            .vscroll(false)
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    self.widgets(ui, svg, DeckPath::Quick);
                 });
             });
     }
@@ -47,23 +37,22 @@ impl App {
         let mut grid = match deck_path {
             DeckPath::Grid => &mut project.scenes_instances_grid,
             DeckPath::Quick => &mut project.scenes_instances_quick,
-        }.clone();
+        };
 
 
-        let width = 6;
-        let height = 4;
+
             //ScrollArea::both().show(ui, |ui| {
             Grid::new(deck_path).show(ui, |ui| {
-                for row in 0..height {
-                    for col in 0..width {
+                for row in 0..HEIGHT {
+                    for col in 0..WIDTH {
                         let location = GridLocation { col, row };
 
-                        let scene = grid.get_mut(&location);
                         let frame = Frame::default().outer_margin(3.0);
                         let (_, dropped_payload) = ui.dnd_drop_zone::<GridLocation, ()>(frame, |ui| {
+                            let scene = grid.get_mut(&location);
                                 match scene {
                                     Some(scene_instance) => {
-                                        let item_id = Id::new(("Draggable Scene Widget", col, row, deck_path));
+                                        let item_id = Id::new(("Draggable Scene Widget", scene_instance.id));
                                         let response = ui
                                             .dnd_drag_source(item_id, location, |ui| {
                                                 ui.add(SceneInstanceWidget {
@@ -79,10 +68,12 @@ impl App {
                                             .response;
                                     } // Some(scene) =>
                                     None => {
+                                        let init_gpu = false;
                                         ui.add(EmptyGridSpot {
                                             selected_scene_instance: &mut self.selected_scene_instance,
-                                            project,
-                                            location
+                                            grid: &mut grid,
+                                            location,
+                                            init_gpu: &init_gpu,
                                         });
                                     }
                                 };
@@ -95,7 +86,10 @@ impl App {
                             // Ownership of the scene instances must temporarily be taken to swap
                             let to_item = grid.remove(&to);
                             // unwrap is safe because we cannot move from an empty tile
-                            let from_item = {grid.remove(&from).unwrap()};
+                            let from_item = {
+                                let a = grid.remove(&from);
+                                a.unwrap()
+                            };
                             grid.insert(to, from_item);
                             // reinsert the to item to the from location
                             if let Some(to_item) = to_item {

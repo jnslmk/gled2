@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::storage::asset::project::Project;
 use crate::storage::asset::scene::Scene;
 use crate::storage::asset::scene::grid::GridLocation;
@@ -21,6 +22,8 @@ use egui_phosphor_icons::icons;
 use epaint::{FontFamily, Stroke};
 use once_cell::sync::OnceCell;
 use usvg::Tree;
+use uuid::Uuid;
+use crate::storage::asset::project::DeckPath::Grid;
 
 const SCENE_WIDGET_SIZE: f32 = 150.0;
 const PREVIEW_SIZE: f32 = 120.0;
@@ -257,13 +260,13 @@ impl Widget for SceneInstanceWidget<'_> {
 
 pub struct EmptyGridSpot<'a> {
     pub selected_scene_instance: &'a mut SceneInstancePathId,
-    pub project: &'a mut Project,
+    pub grid: &'a mut HashMap<GridLocation, SceneInstance>,
     pub location: GridLocation,
+    pub init_gpu: &'a bool
 }
 
 impl Widget for EmptyGridSpot<'_> {
     fn ui(mut self, ui: &mut Ui) -> Response {
-        let mut init_gpu = false;
         let response = Frame::default()
             .fill(Color32::from_gray(50))
             .stroke(Stroke {
@@ -294,8 +297,9 @@ impl Widget for EmptyGridSpot<'_> {
                             ui.make_persistent_id(&self.location),
                         );
                         if let Some(scene) = scene {
-                            *self.selected_scene_instance = self.project.add_scene(DeckPath::Grid, scene);
-                            init_gpu = true;
+                            self.grid.insert(self.location, SceneInstance::from(scene));
+                            *self.selected_scene_instance = SceneInstancePathId{ deck_path: Grid, id: scene.id};
+                            self.init_gpu = &true;
                             ui.data_mut(|d
                             | {
                                 d.remove::<TreeViewState<usize>>(ui.make_persistent_id(&self.location))
@@ -304,9 +308,6 @@ impl Widget for EmptyGridSpot<'_> {
                     },
                 )
             });
-        if init_gpu {
-            self.project.init_gpu()
-        }
         response.response
     }
 }

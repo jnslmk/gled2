@@ -10,9 +10,6 @@ impl App {
         let svg = self.svg_mut().and_then(|svg| svg.image(ui.ctx()));
 
         self.effects_header(ui, deck_path);
-        match deck_path {
-            DeckPath::Grid => self.effects_grid(ui, svg),
-            DeckPath::Quick => self.effects_quick(ui, svg),
-        }
+        self.effects_grid(ui, svg)
     }
 }

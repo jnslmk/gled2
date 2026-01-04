@@ -36,6 +36,7 @@ use eframe::egui_wgpu::Callback;
 use egui::{CentralPanel, Id, Rect, UiBuilder, ViewportId, ahash::HashSet};
 use persistant_state::PersistantState;
 use std::{sync::mpsc::Receiver, time::Instant};
+use uuid::Uuid;
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
 
@@ -223,10 +224,6 @@ impl App {
             }
 
             if self.project.is_some() {
-                egui::TopBottomPanel::bottom("scenes_quick")
-                    .resizable(false)
-                    .exact_height(PersistantState::effects_size() + 80.0)
-                    .show_inside(&mut ui, |ui| self.scenes(ui, DeckPath::Quick));
                 egui::SidePanel::left("config")
                     .resizable(false)
                     .exact_width(400.0)
