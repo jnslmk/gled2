@@ -7,7 +7,6 @@ use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
-
 pub const MAX_BIN_FREQ: f32 = 32768.;
 
 // FFT size - power of 2 for efficient FFT
@@ -60,7 +59,7 @@ pub fn start() {
     let channels = config.channels() as usize;
 
     // Create a buffer to accumulate samples (wrapped in Arc<Mutex> for thread safety)
-    let sample_buffer = Arc::new(Mutex::new(Vec::with_capacity(FFT_SIZE * channels)));
+    let mut sample_buffer = Vec::with_capacity(FFT_SIZE * channels);
 
     // Create FFT planner
     let mut planner = FftPlanner::new();
@@ -70,12 +69,11 @@ pub fn start() {
 
     let stream = match config.sample_format() {
         SampleFormat::F32 => {
-            let sample_buffer = sample_buffer.clone();
             let fft = fft.clone();
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                    process_audio_samples(data, channels, &sample_buffer, &fft, &fft_data);
+                    process_audio_samples(data, channels, &mut sample_buffer, &fft, &fft_data);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -84,13 +82,13 @@ pub fn start() {
             )
         }
         SampleFormat::I16 => {
-            let sample_buffer = sample_buffer.clone();
             let fft = fft.clone();
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                    let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_BIN_FREQ).collect();
-                    process_audio_samples(&f32_data, channels, &sample_buffer, &fft, &fft_data);
+                    let f32_data: Vec<f32> =
+                        data.iter().map(|&s| s as f32 / MAX_BIN_FREQ).collect();
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_data);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -99,14 +97,13 @@ pub fn start() {
             )
         }
         SampleFormat::U16 => {
-            let sample_buffer = sample_buffer.clone();
             let fft = fft.clone();
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[u16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
                         data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
-                    process_audio_samples(&f32_data, channels, &sample_buffer, &fft, &fft_data);
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_data);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -141,12 +138,10 @@ pub fn start() {
 fn process_audio_samples(
     data: &[f32],
     channels: usize,
-    sample_buffer: &Arc<Mutex<Vec<f32>>>,
+    sample_buffer: &mut Vec<f32>,
     fft: &Arc<dyn rustfft::Fft<f32>>,
     fft_data: &Arc<Mutex<Vec<f32>>>,
 ) {
-    let mut buffer = sample_buffer.lock();
-
     // Convert interleaved samples to mono by averaging channels
     for chunk in data.chunks(channels) {
         let mono_sample = if channels > 1 {
@@ -154,13 +149,13 @@ fn process_audio_samples(
         } else {
             chunk[0]
         };
-        buffer.push(mono_sample);
+        sample_buffer.push(mono_sample);
     }
 
     // When we have enough samples, perform FFT
-    if buffer.len() >= FFT_SIZE {
+    if sample_buffer.len() >= FFT_SIZE {
         // Take the last FFT_SIZE samples
-        let samples: Vec<f32> = buffer[buffer.len() - FFT_SIZE..].to_vec();
+        let samples: Vec<f32> = sample_buffer[sample_buffer.len() - FFT_SIZE..].to_vec();
 
         // Convert to complex numbers (imaginary part is 0 for real input)
         let mut complex_samples: Vec<Complex<f32>> =
@@ -230,9 +225,9 @@ fn process_audio_samples(
         *fft_data.lock() = magnitudes;
 
         // Keep only the last FFT_SIZE samples for overlap
-        let buffer_len = buffer.len();
+        let buffer_len = sample_buffer.len();
         if buffer_len > FFT_SIZE {
-            buffer.drain(0..buffer_len - FFT_SIZE);
+            sample_buffer.drain(0..buffer_len - FFT_SIZE);
         }
     }
 }
