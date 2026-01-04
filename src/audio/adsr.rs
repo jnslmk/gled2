@@ -11,6 +11,12 @@ pub enum AdsrPhase {
     Release,
 }
 
+impl Default for AdsrPhase {
+    fn default() -> Self {
+        AdsrPhase::Idle
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AdsrParams {
     pub attack_duration: f32,  // in seconds
@@ -33,6 +39,7 @@ impl Default for AdsrParams {
     }
 }
 
+#[derive(Default)]
 pub struct Adsr {
     pub params: AdsrParams,
     sample_rate: f32,
@@ -41,7 +48,7 @@ pub struct Adsr {
 }
 
 impl Adsr {
-    pub fn new(sample_rate: f32, params: AdsrParams) -> Self {
+    pub fn new( params: AdsrParams, sample_rate: f32,) -> Self {
         Self {
             params,
             sample_rate,

@@ -7,7 +7,7 @@ use emath::{Pos2, Rect, Vec2, pos2, vec2};
 use epaint::{PathStroke, Stroke, StrokeKind};
 
 pub struct ADSREditor {
-    adsr_params: AdsrParams,
+    adsr: Adsr,
     low_pass: LowPass,
     open: bool,
 }
@@ -15,7 +15,7 @@ pub struct ADSREditor {
 impl Default for ADSREditor {
     fn default() -> Self {
         Self {
-            adsr_params: AdsrParams::default(),
+            adsr: Adsr::new(AdsrParams::default(),100.),
             low_pass: LowPass::new(400., 200., 100.),
             open: true,
         }
@@ -54,7 +54,10 @@ impl ADSREditor {
     }
     fn draw_controls(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            self.draw_meter(ui);
+            let amp = (self.low_pass.tick(&get_fft_data()) * 10. + 1.)
+                .log2()
+                .clamp(0.0, 1.0);
+            self.draw_meter(ui, amp);
 
             Frame::new().inner_margin(5.).show(ui, |ui| {
                 ui.vertical(|ui| {
@@ -73,7 +76,7 @@ impl ADSREditor {
                     // Threshold knob
                     ui.add(
                         knob_default(Knob::new(
-                            &mut self.adsr_params.gate_threshold,
+                            &mut self.adsr.params.gate_threshold,
                             0.0,
                             1.0,
                             KnobStyle::Wiper,
@@ -88,7 +91,7 @@ impl ADSREditor {
             Frame::new().inner_margin(5.).show(ui, |ui| {
                 ui.add(
                     knob_default(Knob::new(
-                        &mut self.adsr_params.attack_duration,
+                        &mut self.adsr.params.attack_duration,
                         0.0,
                         2.0,
                         KnobStyle::Wiper,
@@ -99,7 +102,7 @@ impl ADSREditor {
 
                 ui.add(
                     knob_default(Knob::new(
-                        &mut self.adsr_params.decay_duration,
+                        &mut self.adsr.params.decay_duration,
                         0.0,
                         10.0,
                         KnobStyle::Wiper,
@@ -109,7 +112,7 @@ impl ADSREditor {
                 );
                 ui.add(
                     knob_default(Knob::new(
-                        &mut self.adsr_params.sustain_level,
+                        &mut self.adsr.params.sustain_level,
                         0.0,
                         1.0,
                         KnobStyle::Wiper,
@@ -119,7 +122,7 @@ impl ADSREditor {
                 );
                 ui.add(
                     knob_default(Knob::new(
-                        &mut self.adsr_params.release_duration,
+                        &mut self.adsr.params.release_duration,
                         0.0,
                         10.0,
                         KnobStyle::Wiper,
@@ -128,15 +131,15 @@ impl ADSREditor {
                     .with_label("Release", LabelPosition::Bottom),
                 );
             });
+            ui.separator();
+            let control_amp = self.adsr.tick(amp);
+            self.draw_meter(ui, control_amp);
         });
     }
 
-    fn draw_meter(&mut self, ui: &mut Ui) {
+    fn draw_meter(&mut self, ui: &mut Ui, amp: f32) {
         let meter_height = 200.0;
         let (_, rect) = ui.allocate_space(Vec2::new(40.0, meter_height));
-        let amp = (self.low_pass.tick(&get_fft_data()) * 10. + 1.)
-            .log2()
-            .clamp(0.0, 1.0);
         ui.painter().rect_stroke(
             rect,
             0.,
@@ -149,7 +152,7 @@ impl ADSREditor {
         ui.painter()
             .rect_filled(value_rect, 0., Color32::LIGHT_GREEN);
 
-        let threshold_line_y = rect.min.y + meter_height * (1.0 - self.adsr_params.gate_threshold);
+        let threshold_line_y = rect.min.y + meter_height * (1.0 - self.adsr.params.gate_threshold);
         ui.painter().line(
             vec![
                 pos2(rect.min.x, threshold_line_y),
@@ -173,12 +176,12 @@ impl ADSREditor {
                     rect,
                 );
 
-                let mut adsr = Adsr::new(100., self.adsr_params.clone());
+                let mut adsr = Adsr::new(self.adsr.params.clone(), 100.,);
 
                 let points: Vec<Pos2> = (0..=n)
                     .map(|i| {
                         let t = i as f32 / (n as f32);
-                        let input = if 0.2 < t && t < (0.4 + self.adsr_params.decay_duration * 0.4 + self.adsr_params.attack_duration * 0.4 ) { 1.0 } else { 0.0 };
+                        let input = if 0.2 < t && t < (0.4 + self.adsr.params.decay_duration * 0.4 + self.adsr.params.attack_duration * 0.4 ) { 1.0 } else { 0.0 };
                         let y = -0.8 * adsr.tick(input) + 1.;
                         to_screen * pos2(t as f32, y)
                     })
