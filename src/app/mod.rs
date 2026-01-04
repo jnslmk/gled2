@@ -20,9 +20,9 @@ use crate::{
     },
     storage::{
         asset::{
-            Asset,
             palette::Palette,
-            project::{DeckPath, Project, scene_instance_path::SceneInstancePathId},
+            project::{scene_instance_path::SceneInstancePathId, DeckPath, Project},
+            Asset,
         },
         asset_id::AssetId,
         loading,
@@ -33,10 +33,9 @@ use crate::{
     },
 };
 use eframe::egui_wgpu::Callback;
-use egui::{CentralPanel, Id, Rect, UiBuilder, ViewportId, ahash::HashSet};
+use egui::{ahash::HashSet, CentralPanel, Id, Rect, UiBuilder, ViewportId};
 use persistant_state::PersistantState;
 use std::{sync::mpsc::Receiver, time::Instant};
-use uuid::Uuid;
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
 

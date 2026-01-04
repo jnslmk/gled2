@@ -53,7 +53,7 @@ impl App {
                                 match scene {
                                     Some(scene_instance) => {
                                         let item_id = Id::new(("Draggable Scene Widget", scene_instance.id));
-                                        let response = ui
+                                        ui
                                             .dnd_drag_source(item_id, location, |ui| {
                                                 ui.add(SceneInstanceWidget {
                                                     selected_scene_instance: &mut self.selected_scene_instance,

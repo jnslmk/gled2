@@ -1,9 +1,11 @@
 pub mod scene_instance_path;
 
 use super::{
-    AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
-    scene::instance::SceneInstance,
+    animation::Animation, output_device::routing::OutputRoutings, scene::instance::SceneInstance,
+    AssetTrait,
 };
+use crate::app::effects::grid::{HEIGHT, WIDTH};
+use crate::storage::asset::scene::grid::GridLocation;
 use crate::{
     app::{svg::Svg, timing::Timing},
     input::{
@@ -16,13 +18,13 @@ use crate::{
         output_clear::OutputClear,
         preview::Preview,
         preview_indices::PreviewIndices,
-        renderer_callback::RendererCallback,
-        transition::{Transition, TransitionGoal},
+        renderer_callback::RendererCallback
+        ,
     },
     storage::{
         asset::{
-            Asset, palette::Palette, project::scene_instance_path::SceneInstancePathIndex,
-            scene::Scene,
+            palette::Palette, project::scene_instance_path::SceneInstancePathIndex, scene::Scene,
+            Asset,
         },
         asset_id::AssetId,
     },
@@ -31,17 +33,14 @@ use crate::{
 };
 use rand::seq::IndexedMutRandom;
 use scene_instance_path::SceneInstancePathId;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::{
-    collections::{BTreeSet, HashSet},
+    collections::BTreeSet,
     time::{Duration, Instant},
 };
-use std::collections::HashMap;
-use serde::de::DeserializeOwned;
-use uuid::Uuid;
 use wgpu::CommandEncoderDescriptor;
-use crate::app::effects::grid::{HEIGHT, WIDTH};
-use crate::storage::asset::scene::grid::GridLocation;
 
 pub fn deserialize_scene_instances<'de, D>(
     deserializer: D,

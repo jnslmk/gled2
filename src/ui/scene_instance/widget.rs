@@ -1,29 +1,25 @@
-use std::collections::HashMap;
-use crate::storage::asset::project::Project;
-use crate::storage::asset::scene::Scene;
+use crate::storage::asset::project::DeckPath::Grid;
 use crate::storage::asset::scene::grid::GridLocation;
-use crate::storage::asset_id::AssetId;
-use crate::ui::ChangeButton;
+use crate::storage::asset::scene::Scene;
 use crate::ui::asset_tree::AssetTree;
 use crate::{
     app::timing::Timing,
     pipeline::{constants::PREVIEW_TEXTURE_SIZE, group::Groups},
     storage::asset::{
-        project::{DeckPath, scene_instance_path::SceneInstancePathId},
+        project::{scene_instance_path::SceneInstancePathId, DeckPath},
         scene::instance::SceneInstance,
     },
     ui::gled_slider::GledSlider,
 };
 use egui::containers::menu::MenuButton;
-use egui::{Align, Button, Color32, ColorImage, Context, CornerRadius, Frame, Layout, Rect, Response, RichText, Sense, Shadow, Shape, TextureHandle, TextureId, TextureOptions, Ui, Vec2, Widget, epaint::RectShape, pos2, response, UiKind};
+use egui::{epaint::RectShape, pos2, Align, Button, Color32, ColorImage, Context, CornerRadius, Frame, Layout, Rect, Response, RichText, Sense, Shadow, Shape, TextureHandle, TextureId, TextureOptions, Ui, Vec2, Widget};
 use egui_extras::{Size, StripBuilder};
 use egui_ltreeview::TreeViewState;
 use egui_phosphor_icons::icons;
 use epaint::{FontFamily, Stroke};
 use once_cell::sync::OnceCell;
+use std::collections::HashMap;
 use usvg::Tree;
-use uuid::Uuid;
-use crate::storage::asset::project::DeckPath::Grid;
 
 const SCENE_WIDGET_SIZE: f32 = 150.0;
 const PREVIEW_SIZE: f32 = 120.0;
