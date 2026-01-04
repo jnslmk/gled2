@@ -47,7 +47,7 @@ fn main() {
     ui::update_check::Update::start_thread();
 
     let mut wgpu_options = WgpuConfiguration::default();
-    wgpu_options.desired_maximum_frame_latency = Some(1); // We want low latency
+    wgpu_options.desired_maximum_frame_latency = Some(2);
     wgpu_options.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
