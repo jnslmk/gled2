@@ -202,8 +202,6 @@ impl eframe::App for App {
         self.windows
             .update(ctx, &self.timing, self.project.as_mut());
 
-        let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
-        ctx.debug_painter().add(callback);
         ctx.request_repaint();
     }
 }
@@ -216,6 +214,10 @@ impl App {
             .stroke(ctx.style().visuals.widgets.noninteractive.fg_stroke);
 
         CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
+            if viewport_id.is_none() {
+                let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
+                ui.painter().add(callback);
+            }
             let mut ui = ui.new_child(UiBuilder::new().max_rect(ui.max_rect().shrink(4.0)));
 
             self.menu(&mut ui, viewport_id);

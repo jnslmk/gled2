@@ -64,7 +64,6 @@ fn main() {
     ui::update_check::Update::start_thread();
 
     let mut wgpu_options = WgpuConfiguration::default();
-    wgpu_options.desired_maximum_frame_latency = Some(2);
     wgpu_options.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
@@ -89,8 +88,6 @@ fn main() {
             .with_inner_size([1300.0, 1024.0])
             .with_drag_and_drop(true)
             .with_min_inner_size([300.0, 200.0]),
-        renderer: eframe::Renderer::Wgpu,
-        vsync: false,
         wgpu_options,
         ..Default::default()
     };
