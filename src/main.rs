@@ -89,6 +89,7 @@ fn main() {
             .with_drag_and_drop(true)
             .with_min_inner_size([300.0, 200.0]),
         wgpu_options,
+        dithering: false,
         ..Default::default()
     };
     eframe::run_native(
