@@ -2023,6 +2023,7 @@ dependencies = [
  "usvg",
  "uuid",
  "wgpu",
+ "wgpu-profiler",
  "whoami",
  "winresource",
 ]
@@ -6200,6 +6201,18 @@ dependencies = [
  "wgpu-types",
  "windows 0.58.0",
  "windows-core 0.58.0",
+]
+
+[[package]]
+name = "wgpu-profiler"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9f7c28673961ecb946c862b66b6ea1f9b70fca9106d31db6fbb812b7b794abf"
+dependencies = [
+ "parking_lot",
+ "puffin",
+ "thiserror 2.0.17",
+ "wgpu",
 ]
 
 [[package]]

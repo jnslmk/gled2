@@ -57,6 +57,22 @@ pub struct App {
 impl eframe::App for App {
     #[cfg_attr(feature = "profiling", profiling::function)]
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        #[cfg(feature = "profiling")]
+        {
+            crate::WGPU_PROFILER
+                .lock()
+                .end_frame()
+                .expect("Could not end WGPU profiler frame");
+            let latest_profiler_results = crate::WGPU_PROFILER
+                .lock()
+                .process_finished_frame(crate::wgpu_render_state().queue.get_timestamp_period());
+            wgpu_profiler::puffin::output_frame_to_puffin(
+                &mut crate::PUFFIN_GPU_PROFILER.lock(),
+                latest_profiler_results.as_deref().unwrap_or_default(),
+            );
+            crate::PUFFIN_GPU_PROFILER.lock().new_frame();
+        }
+
         if loading().is_none() && self.startup {
             self.startup = false;
             if let Some(project) = PersistantState::get().last_project_id {
