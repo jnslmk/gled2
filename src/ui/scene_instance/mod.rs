@@ -1,4 +1,5 @@
 pub mod widget;
+pub mod dnd;
 
 use super::{ChangeButton, action::UiAction};
 use crate::{

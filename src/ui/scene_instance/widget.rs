@@ -4,7 +4,7 @@ use crate::storage::asset::scene::Scene;
 use crate::ui::asset_tree::AssetTree;
 use crate::{
     app::timing::Timing,
-    pipeline::{constants::PREVIEW_TEXTURE_SIZE, group::Groups},
+    pipeline::group::Groups,
     storage::asset::{
         project::{scene_instance_path::SceneInstancePathId, DeckPath},
         scene::instance::SceneInstance,
@@ -12,42 +12,15 @@ use crate::{
     ui::gled_slider::GledSlider,
 };
 use egui::containers::menu::MenuButton;
-use egui::{epaint::RectShape, pos2, Align, Button, Color32, ColorImage, Context, CornerRadius, Frame, Layout, Rect, Response, RichText, Sense, Shadow, Shape, TextureHandle, TextureId, TextureOptions, Ui, Vec2, Widget};
+use egui::{epaint::RectShape, pos2, Align, Button, Color32, CornerRadius, Frame, Layout, Rect, Response, RichText, Sense, Shadow, Shape, TextureHandle, Ui, Vec2, Widget};
 use egui_extras::{Size, StripBuilder};
 use egui_ltreeview::TreeViewState;
 use egui_phosphor_icons::icons;
 use epaint::{FontFamily, Stroke};
-use once_cell::sync::OnceCell;
 use std::collections::HashMap;
-use usvg::Tree;
 
-const SCENE_WIDGET_SIZE: f32 = 150.0;
+pub(crate) const SCENE_WIDGET_SIZE: f32 = 150.0;
 const PREVIEW_SIZE: f32 = 120.0;
-static SELECTED_SVG: &str = include_str!("selected.svg");
-static SELECTED_IMAGE: OnceCell<TextureHandle> = OnceCell::new();
-fn selected_image(ctx: &Context) -> TextureId {
-    SELECTED_IMAGE
-        .get_or_init(|| {
-            let tree = Tree::from_str(SELECTED_SVG, &Default::default()).unwrap();
-            let mut pixmap =
-                tiny_skia::Pixmap::new(PREVIEW_TEXTURE_SIZE as u32, PREVIEW_TEXTURE_SIZE as u32)
-                    .unwrap();
-            resvg::render(
-                &tree,
-                tiny_skia::Transform::from_scale(
-                    f32::from(PREVIEW_TEXTURE_SIZE) / tree.size().width(),
-                    f32::from(PREVIEW_TEXTURE_SIZE) / tree.size().height(),
-                ),
-                &mut pixmap.as_mut(),
-            );
-            let image = ColorImage::from_rgba_unmultiplied(
-                [PREVIEW_TEXTURE_SIZE as usize; 2],
-                pixmap.data(),
-            );
-            ctx.load_texture("selected_scene_image", image, TextureOptions::default())
-        })
-        .id()
-}
 
 pub struct SceneInstanceWidget<'a> {
     pub selected_scene_instance: &'a mut SceneInstancePathId,
@@ -61,25 +34,11 @@ pub struct SceneInstanceWidget<'a> {
 
 impl Widget for SceneInstanceWidget<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let path = SceneInstancePathId {
-            deck_path: self.deck_path,
-            id: self.scene_instance.id,
-        };
-
-        if *self.selected_scene_instance == path {
-            ui.painter().image(
-                selected_image(ui.ctx()),
-                ui.available_rect_before_wrap(),
-                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-                Color32::WHITE,
-            );
-        }
-
         let active = self.scene_instance.active;
         let preview_color = self.scene_instance.color;
         let name = self.scene_instance.id.to_string();
 
-        let mut beat_progression = self.timing.beat_progression();
+        let beat_progression = self.timing.beat_progression();
 
         Frame::default()
             .fill(Color32::from(preview_color))
@@ -99,7 +58,6 @@ impl Widget for SceneInstanceWidget<'_> {
             })
             .corner_radius(2)
             .inner_margin(14)
-            .outer_margin(10)
             .show(ui, |ui| {
                 // ensure all available space is used
                 ui.set_width(SCENE_WIDGET_SIZE);
@@ -270,39 +228,37 @@ impl Widget for EmptyGridSpot<'_> {
                 color: Color32::WHITE,
             })
             .corner_radius(2)
-            .inner_margin(14)
-            .outer_margin(10)
             .show(ui, |ui| {
-                MenuButton::from_button(
-                    Button::new(
-                        RichText::new("+")
-                            .family(FontFamily::Monospace)
-                            .size(60.0)
-                            .color(Color32::from_gray(120)),
+                ui.with_layout(Layout::top_down(Align::Center), |ui| {
+                    MenuButton::from_button(
+                        Button::new(
+                            icons::PLUS.regular()
+                                .size(60.0)
+                                .color(Color32::from_gray(120)),
+                        )
+                            .min_size(Vec2 {
+                                x: SCENE_WIDGET_SIZE + 28.,
+                                y: SCENE_WIDGET_SIZE + 28.,
+                            }),
                     )
-                    .min_size(Vec2 {
-                        x: SCENE_WIDGET_SIZE,
-                        y: SCENE_WIDGET_SIZE,
-                    }),
-                )
-                .ui(
-                    ui,
-                    |ui| {
-                        let scene = AssetTree::<Scene>::show_asset_selection(
+                        .ui(
                             ui,
-                            ui.make_persistent_id(&self.location),
-                        );
-                        if let Some(scene) = scene {
-                            self.grid.insert(self.location, SceneInstance::from(scene));
-                            *self.selected_scene_instance = SceneInstancePathId{ deck_path: Grid, id: scene.id};
-                            self.init_gpu = &true;
-                            ui.data_mut(|d
-                            | {
-                                d.remove::<TreeViewState<usize>>(ui.make_persistent_id(&self.location))
-                            });
-                        }
-                    },
-                )
+                            |ui| {
+                                let scene = AssetTree::<Scene>::show_asset_selection(
+                                    ui,
+                                    ui.make_persistent_id(&self.location),
+                                );
+                                if let Some(scene) = scene {
+                                    self.grid.insert(self.location, SceneInstance::from(scene));
+                                    *self.selected_scene_instance = SceneInstancePathId { deck_path: Grid, id: scene.id };
+                                    self.init_gpu = &true;
+                                    ui.data_mut(|d| {
+                                        d.remove::<TreeViewState<usize>>(ui.make_persistent_id(&self.location))
+                                    });
+                                }
+                            },
+                        )
+                });
             });
         response.response
     }
