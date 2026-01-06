@@ -1,49 +1,18 @@
 use super::App;
-use crate::pipeline::constants::PREVIEW_TEXTURE_SIZE;
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::ui::scene_instance::dnd::{dnd_drag_source, dnd_drop_zone};
-use crate::ui::scene_instance::widget::{EmptyGridSpot, SCENE_WIDGET_SIZE};
 use crate::ui::scene_instance::widget::SceneInstanceWidget;
+use crate::ui::scene_instance::widget::{EmptyGridSpot, SCENE_WIDGET_SIZE};
 use crate::{app::PersistantState, storage::asset::project::DeckPath};
 use egui::{
-    Color32, Context, Frame, Grid, Id, Sense, TextureHandle, Ui, UiBuilder, Vec2,
-    scroll_area::ScrollBarVisibility::AlwaysVisible,
+    scroll_area::ScrollBarVisibility::AlwaysVisible, Color32, Frame, Id, TextureHandle, Ui, UiBuilder,
+    Vec2,
 };
-use emath::{Rect, pos2, vec2};
-use epaint::textures::TextureOptions;
-use epaint::{ColorImage, Stroke, StrokeKind, TextureId};
-use once_cell::sync::OnceCell;
-use usvg::Tree;
+use emath::{vec2, Rect};
+use epaint::{Stroke, StrokeKind};
 
 pub const WIDTH: usize = 6;
 pub const HEIGHT: usize = 4;
-
-static SELECTED_SVG: &str = include_str!("selected.svg");
-
-static SELECTED_IMAGE: OnceCell<TextureHandle> = OnceCell::new();
-fn selected_image(ctx: &Context) -> TextureId {
-    SELECTED_IMAGE
-        .get_or_init(|| {
-            let tree = Tree::from_str(SELECTED_SVG, &Default::default()).unwrap();
-            let mut pixmap =
-                tiny_skia::Pixmap::new(PREVIEW_TEXTURE_SIZE as u32, PREVIEW_TEXTURE_SIZE as u32)
-                    .unwrap();
-            resvg::render(
-                &tree,
-                tiny_skia::Transform::from_scale(
-                    f32::from(PREVIEW_TEXTURE_SIZE) / tree.size().width(),
-                    f32::from(PREVIEW_TEXTURE_SIZE) / tree.size().height(),
-                ),
-                &mut pixmap.as_mut(),
-            );
-            let image = ColorImage::from_rgba_unmultiplied(
-                [PREVIEW_TEXTURE_SIZE as usize; 2],
-                pixmap.data(),
-            );
-            ctx.load_texture("selected_scene_image", image, TextureOptions::default())
-        })
-        .id()
-}
 
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
@@ -102,23 +71,25 @@ impl App {
                                                 if self.selected_scene_instance.id
                                                     == scene_instance.id
                                                 {
-                                                    ui.painter().image(
-                                                        selected_image(ui.ctx()),
-                                                        dnd_response.rect,
-                                                        Rect::from_min_max(
-                                                            pos2(0.0, 0.0),
-                                                            pos2(1.0, 1.0),
-                                                        ),
-                                                        Color32::WHITE,
-                                                    );
-                                                }
-                                                if dnd_response.hovered() {
                                                     ui.painter().rect_stroke(
                                                         dnd_response.rect,
                                                         5.0,
                                                         Stroke::new(2., Color32::WHITE),
                                                         StrokeKind::Outside,
                                                     );
+                                                }
+                                                else {
+                                                    if dnd_response.hovered() {
+                                                        ui.painter().rect_stroke(
+                                                            dnd_response.rect,
+                                                            5.0,
+                                                            Stroke::new(2., Color32::from_gray(160)),
+                                                            StrokeKind::Outside,
+                                                        );
+                                                    }
+                                                }
+                                                if dnd_response.clicked(){
+                                                    self.selected_scene_instance.id = scene_instance.id;
                                                 }
                                             } // Some(scene) =>
                                             None => {

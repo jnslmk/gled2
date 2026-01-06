@@ -1,6 +1,6 @@
+use egui::{CursorIcon, DragAndDrop, Frame, Id, InnerResponse, LayerId, Order, Sense, Ui, UiBuilder};
 use std::any::Any;
 use std::sync::Arc;
-use egui::{CursorIcon, DragAndDrop, Frame, Id, InnerResponse, LayerId, Order, Sense, Ui, UiBuilder};
 
 #[doc(alias = "drag and drop")]
 pub fn dnd_drag_source<Payload, R>(
@@ -15,7 +15,7 @@ where
     let is_being_dragged = ui.ctx().is_being_dragged(id);
 
     if is_being_dragged {
-        egui::DragAndDrop::set_payload(ui.ctx(), payload);
+        DragAndDrop::set_payload(ui.ctx(), payload);
 
         // Paint the body to a new layer:
         let layer_id = LayerId::new(Order::Tooltip, id);
@@ -41,7 +41,7 @@ where
 
         // Check for drags:
         let dnd_response = ui
-            .interact(response.rect, id, Sense::drag())
+            .interact(response.rect, id, Sense::click_and_drag())
             .on_hover_cursor(CursorIcon::Grab);
 
         InnerResponse::new(inner, dnd_response | response)
@@ -76,17 +76,8 @@ where
     } else {
         ui.visuals().widgets.inactive
     };
+    let stroke = style.bg_stroke;
 
-    let mut fill = style.bg_fill;
-    let mut stroke = style.bg_stroke;
-
-    if is_anything_being_dragged && !can_accept_what_is_being_dragged {
-        // When dragging something else, show that it can't be dropped here:
-        fill = ui.visuals().disable(fill);
-        stroke.color = ui.visuals().disable(stroke.color);
-    }
-
-    // frame.frame.fill = fill;
     frame.frame.stroke = stroke;
 
     frame.paint(ui);

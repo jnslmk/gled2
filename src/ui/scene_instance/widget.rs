@@ -222,7 +222,6 @@ pub struct EmptyGridSpot<'a> {
 impl Widget for EmptyGridSpot<'_> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         let response = Frame::default()
-            .fill(Color32::from_gray(50))
             .stroke(Stroke {
                 width: 0.3,
                 color: Color32::WHITE,
@@ -236,6 +235,7 @@ impl Widget for EmptyGridSpot<'_> {
                                 .size(60.0)
                                 .color(Color32::from_gray(120)),
                         )
+                            .fill(Color32::TRANSPARENT)
                             .min_size(Vec2 {
                                 x: SCENE_WIDGET_SIZE + 28.,
                                 y: SCENE_WIDGET_SIZE + 28.,
