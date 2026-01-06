@@ -12,8 +12,10 @@ use crate::{
     ui::gled_slider::GledSlider,
 };
 use egui::containers::menu::MenuButton;
-use egui::{epaint::RectShape, pos2, Align, Button, Color32, CornerRadius, Frame, Layout, Rect, Response, RichText, Sense, Shadow, Shape, TextureHandle, Ui, Vec2, Widget};
-use egui_extras::{Size, StripBuilder};
+use egui::{
+    epaint::RectShape, pos2, Align, Button, Color32, CornerRadius, Frame, Layout, Rect, Response,
+    RichText, Sense, Shadow, Shape, TextureHandle, Ui, UiBuilder, Vec2, Widget,
+};
 use egui_ltreeview::TreeViewState;
 use egui_phosphor_icons::icons;
 use epaint::{FontFamily, Stroke};
@@ -74,139 +76,146 @@ impl Widget for SceneInstanceWidget<'_> {
                 };
                 ui.painter().add(glare_shape);
 
-                // content strip grid
-                StripBuilder::new(ui)
-                    .size(Size::exact(20.0))
-                    // little space between the name and the preview
-                    .size(Size::exact(5.0))
-                    .size(Size::remainder())
-                    .cell_layout(Layout::top_down(Align::Min))
-                    .vertical(|mut strip| {
-                        // name and Play button
-                        strip.strip(|builder| {
-                            builder
-                                .size(Size::relative(0.6))
-                                .size(Size::remainder())
-                                .horizontal(|mut strip| {
-                                    strip.cell(|ui| {
-                                        // drop shadow behind the text for better readability
-                                        let title_label = egui::Label::new(
-                                            RichText::new(name)
-                                                .family(FontFamily::Name("Bold".into()))
-                                                .size(12.0)
-                                                .color(Color32::WHITE),
-                                        )
-                                        .truncate();
-                                        // when accessing text layout information,
-                                        // painting has to be done manually instead
-                                        let (galley_pos, galley, _) = title_label.layout_in_ui(ui);
-                                        let response_color = ui.style().visuals.text_color();
-                                        let text_rec = galley.rect.translate(galley_pos.to_vec2());
+                let start_pos = ui.cursor().min;
+                let available_width = ui.available_width();
 
-                                        if active {
-                                            ui.painter().add(
-                                                RectShape::filled(
-                                                    text_rec.expand(10.0),
-                                                    5.,
-                                                    Color32::from_black_alpha(50),
-                                                )
-                                                .with_blur_width(50.0),
-                                            );
-                                        }
-                                        ui.painter().add(epaint::TextShape::new(
-                                            galley_pos,
-                                            galley,
-                                            response_color,
-                                        ));
-                                    });
-                                    strip.cell(|ui| {
-                                        let button_response = ui.add_sized(
-                                            Vec2 {
-                                                x: ui.available_width(),
-                                                y: ui.available_height(),
-                                            },
-                                            Button::new(if active {
-                                                icons::PAUSE.fill().color(Color32::GREEN).size(16.0)
-                                            } else {
-                                                icons::PLAY.fill().color(Color32::GREEN).size(16.0)
-                                            })
-                                            .stroke(Stroke::new(0.3, Color32::WHITE))
-                                            .sense(Sense::drag()),
-                                        );
-                                        // this is a workaround for https://github.com/emilk/egui/issues/7767
-                                        if button_response.drag_started()
-                                            || button_response.clicked()
-                                        {
-                                            self.scene_instance.active =
-                                                !self.scene_instance.active;
-                                        }
-                                    });
-                                });
-                        }); // end name/Play button strip
+                // --- Header Strip (Name + Play Button) ---
+                // Height: 20.0
+                let header_height = 20.0;
+                let header_rect =
+                    Rect::from_min_size(start_pos, Vec2::new(available_width, header_height));
 
-                        strip.empty();
-                        // preview/dimmer placeholder
-                        strip.strip(|builder| {
-                            builder
-                                .size(Size::exact(PREVIEW_SIZE))
-                                .size(Size::remainder())
-                                .cell_layout(Layout::top_down(Align::Min))
-                                .horizontal(|mut strip| {
-                                    strip.cell(|ui| {
-                                        Frame::default().fill(Color32::BLACK).show(ui, |ui| {
-                                            ui.set_height(PREVIEW_SIZE);
-                                            ui.set_width(PREVIEW_SIZE);
-                                            for texture_id in self.scene_instance.texture_ids() {
-                                                ui.painter().add(Shape::Rect(
-                                                    RectShape::filled(
-                                                        ui.cursor(),
-                                                        CornerRadius::default(),
-                                                        Color32::WHITE,
-                                                    )
-                                                    .with_texture(
-                                                        texture_id,
-                                                        Rect::from_min_max(
-                                                            pos2(0.0, 0.0),
-                                                            pos2(1.0, 1.0),
-                                                        ),
-                                                    ),
-                                                ));
-                                            }
-                                        });
-                                    });
-                                    strip.cell(|ui| {
-                                        ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                                            egui::Frame::default().show(ui, |ui| {
-                                                ui.take_available_height();
-                                                ui.set_width(20.0);
+                ui.scope_builder(UiBuilder::new().max_rect(header_rect), |ui| {
+                    let name_width = header_rect.width() * 0.6;
+                    let button_width = header_rect.width() - name_width;
 
-                                                let dimmer = self.scene_instance.input_dimmer
-                                                    * self
-                                                        .scene_instance
-                                                        .opacity
-                                                        .value(beat_progression);
+                    // Name Cell
+                    let name_rect =
+                        Rect::from_min_size(header_rect.min, Vec2::new(name_width, header_height));
 
-                                                ui.add(GledSlider {
-                                                    real_value: if self.scene_instance.active {
-                                                        dimmer
-                                                    } else {
-                                                        0.0
-                                                    },
-                                                    size: 20.0,
-                                                    max_value: 100.0,
-                                                    value: &mut self
-                                                        .scene_instance
-                                                        .opacity
-                                                        .multiplier(),
-                                                    show_label: false,
-                                                    horizontal: false,
-                                                });
-                                            });
-                                        });
-                                    });
-                                });
-                        }); // end outer placeholder/dimmer preview strip
-                    }); // end outer vertical strip
+                    ui.scope_builder(UiBuilder::new().max_rect(name_rect), |ui| {
+                        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                            // drop shadow behind the text for better readability
+                            let title_label = egui::Label::new(
+                                RichText::new(name)
+                                    .family(FontFamily::Name("Bold".into()))
+                                    .size(12.0)
+                                    .color(Color32::WHITE),
+                            )
+                                .truncate();
+
+                            // when accessing text layout information,
+                            // painting has to be done manually instead
+                            let (galley_pos, galley, _) = title_label.layout_in_ui(ui);
+                            let response_color = ui.style().visuals.text_color();
+                            let text_rec = galley.rect.translate(galley_pos.to_vec2());
+
+                            if active {
+                                ui.painter().add(
+                                    RectShape::filled(
+                                        text_rec.expand(10.0),
+                                        5.,
+                                        Color32::from_black_alpha(50),
+                                    )
+                                        .with_blur_width(50.0),
+                                );
+                            }
+                            ui.painter().add(epaint::TextShape::new(
+                                galley_pos,
+                                galley,
+                                response_color,
+                            ));
+                        });
+                    });
+
+                    // Play Button Cell
+                    let button_rect = Rect::from_min_size(
+                        header_rect.min + Vec2::new(name_width, 0.0),
+                        Vec2::new(button_width, header_height),
+                    );
+
+                    ui.scope_builder(UiBuilder::new().max_rect(button_rect), |ui| {
+                        let button_response = ui.add_sized(
+                            ui.available_size(),
+                            Button::new(if active {
+                                icons::PAUSE.fill().color(Color32::GREEN).size(16.0)
+                            } else {
+                                icons::PLAY.fill().color(Color32::GREEN).size(16.0)
+                            })
+                                .stroke(Stroke::new(0.3, Color32::WHITE))
+                                .sense(Sense::drag()),
+                        );
+                        // this is a workaround for https://github.com/emilk/egui/issues/7767
+                        if button_response.drag_started() || button_response.clicked() {
+                            self.scene_instance.active = !self.scene_instance.active;
+                        }
+                    });
+                });
+
+                // --- Preview Strip (Preview + Dimmer) ---
+                // Gap: 5.0
+                let gap = 5.0;
+                let body_y = start_pos.y + header_height + gap;
+
+                // Preview Box
+                let preview_rect = Rect::from_min_size(
+                    pos2(start_pos.x, body_y),
+                    Vec2::new(PREVIEW_SIZE, PREVIEW_SIZE),
+                );
+
+                ui.scope_builder(UiBuilder::new().max_rect(preview_rect), |ui| {
+                    Frame::default().fill(Color32::BLACK).show(ui, |ui| {
+                        ui.set_height(PREVIEW_SIZE);
+                        ui.set_width(PREVIEW_SIZE);
+                        for texture_id in self.scene_instance.texture_ids() {
+                            ui.painter().add(Shape::Rect(
+                                RectShape::filled(
+                                    ui.cursor(),
+                                    CornerRadius::default(),
+                                    Color32::WHITE,
+                                )
+                                    .with_texture(
+                                        texture_id,
+                                        Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                                    ),
+                            ));
+                        }
+                    });
+                });
+
+                // Dimmer Slider
+                let dimmer_x = start_pos.x + PREVIEW_SIZE;
+                // Use remainder of width
+                let dimmer_width = available_width - PREVIEW_SIZE;
+                let dimmer_rect = Rect::from_min_size(
+                    pos2(dimmer_x, body_y),
+                    Vec2::new(dimmer_width, PREVIEW_SIZE),
+                );
+
+                ui.scope_builder(UiBuilder::new().max_rect(dimmer_rect), |ui| {
+                    ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+                        egui::Frame::default().show(ui, |ui| {
+                            ui.take_available_height();
+                            ui.set_width(20.0);
+
+                            let dimmer = self.scene_instance.input_dimmer
+                                * self.scene_instance.opacity.value(beat_progression);
+
+                            ui.add(GledSlider {
+                                real_value: if self.scene_instance.active {
+                                    dimmer
+                                } else {
+                                    0.0
+                                },
+                                size: 20.0,
+                                max_value: 100.0,
+                                value: &mut self.scene_instance.opacity.multiplier(),
+                                show_label: false,
+                                horizontal: false,
+                            });
+                        });
+                    });
+                });
             }) // end outer Frame::show
             .response
     }
@@ -216,7 +225,7 @@ pub struct EmptyGridSpot<'a> {
     pub selected_scene_instance: &'a mut SceneInstancePathId,
     pub grid: &'a mut HashMap<GridLocation, SceneInstance>,
     pub location: GridLocation,
-    pub init_gpu: &'a bool
+    pub init_gpu: &'a bool,
 }
 
 impl Widget for EmptyGridSpot<'_> {
@@ -231,7 +240,8 @@ impl Widget for EmptyGridSpot<'_> {
                 ui.with_layout(Layout::top_down(Align::Center), |ui| {
                     MenuButton::from_button(
                         Button::new(
-                            icons::PLUS.regular()
+                            icons::PLUS
+                                .regular()
                                 .size(60.0)
                                 .color(Color32::from_gray(120)),
                         )

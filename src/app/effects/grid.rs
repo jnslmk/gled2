@@ -118,6 +118,7 @@ impl App {
                                 let to_item = grid.remove(&to);
                                 let from_item = { grid.remove(&from) };
                                 if let Some(from_item) = from_item {
+                                    self.selected_scene_instance.id = from_item.id;
                                     grid.insert(to, from_item);
                                 }
                                 // reinsert the to item to the from location
