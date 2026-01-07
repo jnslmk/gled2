@@ -126,6 +126,3 @@ profiling = [
     "dep:puffin_http",
     "dep:wgpu-profiler",
 ]
-
-[patch.crates-io]
-rusty_link = { git = "https://github.com/elwerene/rusty_link.git", branch = "cross-compile-fix" }
