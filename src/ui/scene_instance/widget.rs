@@ -14,7 +14,7 @@ use crate::{
 use egui::containers::menu::MenuButton;
 use egui::{
     epaint::RectShape, pos2, Align, Button, Color32, CornerRadius, Frame, Layout, Rect, Response,
-    RichText, Sense, Shadow, Shape, TextureHandle, Ui, UiBuilder, Vec2, Widget,
+    RichText, Shadow, Shape, TextureHandle, Ui, UiBuilder, Vec2, Widget,
 };
 use egui_ltreeview::TreeViewState;
 use egui_phosphor_icons::icons;
@@ -85,7 +85,7 @@ impl Widget for SceneInstanceWidget<'_> {
                 let header_rect =
                     Rect::from_min_size(start_pos, Vec2::new(available_width, header_height));
 
-                ui.scope_builder(UiBuilder::new().max_rect(header_rect), |ui| {
+                let text_response = ui.scope_builder(UiBuilder::new().max_rect(header_rect), |ui| {
                     let name_width = header_rect.width() * 0.6;
                     let button_width = header_rect.width() - name_width;
 
@@ -93,7 +93,7 @@ impl Widget for SceneInstanceWidget<'_> {
                     let name_rect =
                         Rect::from_min_size(header_rect.min, Vec2::new(name_width, header_height));
 
-                    ui.scope_builder(UiBuilder::new().max_rect(name_rect), |ui| {
+                    let text_resp = ui.scope_builder(UiBuilder::new().max_rect(name_rect), |ui| {
                         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                             // drop shadow behind the text for better readability
                             let title_label = egui::Label::new(
@@ -106,7 +106,7 @@ impl Widget for SceneInstanceWidget<'_> {
 
                             // when accessing text layout information,
                             // painting has to be done manually instead
-                            let (galley_pos, galley, _) = title_label.layout_in_ui(ui);
+                            let (galley_pos, galley, text_resp) = title_label.layout_in_ui(ui);
                             let response_color = ui.style().visuals.text_color();
                             let text_rec = galley.rect.translate(galley_pos.to_vec2());
 
@@ -125,7 +125,8 @@ impl Widget for SceneInstanceWidget<'_> {
                                 galley,
                                 response_color,
                             ));
-                        });
+                            text_resp
+                        })
                     });
 
                     // Play Button Cell
@@ -143,14 +144,14 @@ impl Widget for SceneInstanceWidget<'_> {
                                 icons::PLAY.fill().color(Color32::GREEN).size(16.0)
                             })
                                 .stroke(Stroke::new(0.3, Color32::WHITE))
-                                .sense(Sense::drag()),
                         );
                         // this is a workaround for https://github.com/emilk/egui/issues/7767
                         if button_response.drag_started() || button_response.clicked() {
                             self.scene_instance.active = !self.scene_instance.active;
                         }
                     });
-                });
+                    text_resp.inner
+                }).inner;
 
                 // --- Preview Strip (Preview + Dimmer) ---
                 // Gap: 5.0
@@ -216,8 +217,9 @@ impl Widget for SceneInstanceWidget<'_> {
                         });
                     });
                 });
+                text_response.inner
             }) // end outer Frame::show
-            .response
+            .inner
     }
 }
 

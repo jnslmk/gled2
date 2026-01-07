@@ -53,7 +53,7 @@ impl App {
                                                     "Draggable Scene Widget",
                                                     scene_instance.id,
                                                 ));
-                                                let dnd_response =
+                                                let widget_response =
                                                     dnd_drag_source(ui, item_id, location, |ui| {
                                                         ui.add(SceneInstanceWidget {
                                                             selected_scene_instance: &mut self
@@ -65,30 +65,30 @@ impl App {
                                                             groups: &groups,
                                                             timing: &self.timing,
                                                         })
-                                                    })
-                                                    .response;
+                                                    });
+
 
                                                 if self.selected_scene_instance.id
                                                     == scene_instance.id
                                                 {
                                                     ui.painter().rect_stroke(
-                                                        dnd_response.rect,
+                                                        widget_response.rect,
                                                         5.0,
                                                         Stroke::new(2., Color32::WHITE),
                                                         StrokeKind::Outside,
                                                     );
                                                 }
                                                 else {
-                                                    if dnd_response.hovered() {
+                                                    if widget_response.hovered() {
                                                         ui.painter().rect_stroke(
-                                                            dnd_response.rect,
+                                                            widget_response.rect,
                                                             5.0,
                                                             Stroke::new(2., Color32::from_gray(160)),
                                                             StrokeKind::Outside,
                                                         );
                                                     }
                                                 }
-                                                if dnd_response.clicked(){
+                                                if widget_response.clicked(){
                                                     self.selected_scene_instance.id = scene_instance.id;
                                                 }
                                             } // Some(scene) =>

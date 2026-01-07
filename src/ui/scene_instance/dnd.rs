@@ -1,14 +1,14 @@
-use egui::{CursorIcon, DragAndDrop, Frame, Id, InnerResponse, LayerId, Order, Sense, Ui, UiBuilder};
+use egui::{CursorIcon, DragAndDrop, Frame, Id, InnerResponse, LayerId, Order, Response, Sense, Ui, UiBuilder};
 use std::any::Any;
 use std::sync::Arc;
 
 #[doc(alias = "drag and drop")]
-pub fn dnd_drag_source<Payload, R>(
+pub fn dnd_drag_source<Payload>(
     ui: &mut Ui,
     id: Id,
     payload: Payload,
-    add_contents: impl FnOnce(&mut Ui) -> R,
-) -> InnerResponse<R>
+    add_contents: impl FnOnce(&mut Ui) -> Response,
+) -> Response
 where
     Payload: Any + Send + Sync,
 {
@@ -19,7 +19,7 @@ where
 
         // Paint the body to a new layer:
         let layer_id = LayerId::new(Order::Tooltip, id);
-        let InnerResponse { inner, response } =
+        let InnerResponse { inner: _inner, response } =
             ui.scope_builder(UiBuilder::new().layer_id(layer_id), add_contents);
 
         // Now we move the visuals of the body to where the mouse is.
@@ -35,16 +35,16 @@ where
                 .transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
         }
 
-        InnerResponse::new(inner, response)
+        response
     } else {
         let InnerResponse { inner, response } = ui.scope(add_contents);
 
         // Check for drags:
-        let dnd_response = ui
-            .interact(response.rect, id, Sense::click_and_drag())
+        ui
+            .interact(inner.rect, id, Sense::drag())
             .on_hover_cursor(CursorIcon::Grab);
 
-        InnerResponse::new(inner, dnd_response | response)
+        response
     }
 }
 
