@@ -71,7 +71,7 @@ pub struct Project {
     pub auto_mode_max_scenes: usize,
     pub groups: Groups,
     #[serde(deserialize_with = "deserialize_scene_instances")]
-    scenes_instances_grid: HashMap<GridLocation, SceneInstance>,
+    pub scenes_instances_grid: HashMap<GridLocation, SceneInstance>,
     /* TODO  add serde backwards compatiblity to integrate old quick scenes into the grid?
     #[serde(deserialize_with = "deserialize_scene_instances")]
     pub scenes_instances_quick: HashMap<GridLocation, SceneInstance>,

@@ -4,9 +4,7 @@ use crate::ui::asset_tree::AssetTree;
 use crate::{
     app::timing::Timing,
     pipeline::group::Groups,
-    storage::asset::{
-        scene::instance::SceneInstance,
-    },
+    storage::asset::scene::instance::SceneInstance,
     ui::gled_slider::GledSlider,
 };
 use egui::containers::menu::MenuButton;
@@ -17,7 +15,9 @@ use egui::{
 use egui_ltreeview::TreeViewState;
 use egui_phosphor_icons::icons;
 use epaint::{FontFamily, Stroke};
-use std::collections::HashMap;
+
+use crate::storage::asset::project::scene_instance_path::grid_scene_instance_index;
+use crate::ui::action::UiAction;
 
 pub(crate) const SCENE_WIDGET_SIZE: f32 = 150.0;
 const PREVIEW_SIZE: f32 = 120.0;
@@ -219,13 +219,11 @@ impl Widget for SceneInstanceWidget<'_> {
     }
 }
 
-pub struct EmptyGridSpot<'a> {
-    pub grid: &'a mut HashMap<GridLocation, SceneInstance>,
+pub struct EmptyGridSpot {
     pub location: GridLocation,
-    pub init_gpu: &'a bool,
 }
 
-impl Widget for EmptyGridSpot<'_> {
+impl Widget for EmptyGridSpot {
     fn ui(mut self, ui: &mut Ui) -> Response {
         let response = Frame::default()
             .stroke(Stroke {
@@ -256,9 +254,10 @@ impl Widget for EmptyGridSpot<'_> {
                                     ui.make_persistent_id(&self.location),
                                 );
                                 if let Some(scene) = scene {
-                                    self.grid.insert(self.location, SceneInstance::from(scene));
-                                    *self.selected_scene_instance = SceneInstancePathId { id: scene.id };
-                                    self.init_gpu = &true;
+                                    UiAction::AddScene(self.location, scene).enqueue();
+                                    UiAction::SelectScene(grid_scene_instance_index(self.location)).enqueue();
+                                    UiAction::InitGPU.enqueue();
+
                                     ui.data_mut(|d| {
                                         d.remove::<TreeViewState<usize>>(ui.make_persistent_id(&self.location))
                                     });

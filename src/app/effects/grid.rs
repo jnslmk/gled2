@@ -51,8 +51,6 @@ impl App {
                                                 let widget_response =
                                                     dnd_drag_source(ui, item_id, location, |ui| {
                                                         ui.add(SceneInstanceWidget {
-                                                            selected_scene_instance: &mut self
-                                                                .selected_scene_instance,
                                                             scene_instance,
                                                             svg: svg.clone(),
                                                             size: Vec2::splat(effects_size),
@@ -86,13 +84,8 @@ impl App {
                                                 }
                                             } // Some(scene) =>
                                             None => {
-                                                let init_gpu = false;
                                                 ui.add(EmptyGridSpot {
-                                                    selected_scene_instance: &mut self
-                                                        .selected_scene_instance,
-                                                    grid: &mut grid,
                                                     location,
-                                                    init_gpu: &init_gpu,
                                                 });
                                             }
                                         };

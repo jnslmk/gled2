@@ -20,11 +20,14 @@ use std::sync::{
     mpsc::{Receiver, Sender},
 };
 use crate::storage::asset::project::scene_instance_path::{SceneInstanceUnion};
+use crate::storage::asset::scene::grid::GridLocation;
+use crate::storage::asset::scene::Scene;
 
 static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 
 #[derive(Debug)]
 pub enum UiAction {
+    AddScene(GridLocation, AssetId<Scene>),
     SetProject(AssetId<Project>),
     SelectScene(SceneInstanceUnion),
     DeleteSelectedSceneInstance,
@@ -60,6 +63,9 @@ impl App {
             log::trace!("Handling ui action: {action:?}");
 
             match (&mut self.project, action) {
+                (Some(project), UiAction::AddScene(pos, scene)) => {
+                    project.add_scene(&pos, scene);
+                }
                 (Some(project), UiAction::DeleteSelectedSceneInstance) => {
                     project.remove_scene_instance(self.selected_scene_instance);
                     UiAction::InitGPU.enqueue();
