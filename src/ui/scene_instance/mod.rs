@@ -43,20 +43,6 @@ impl SceneInstance {
                             }
                         });
                     });
-                    egui::Frame::NONE.show(ui, |ui| {
-                        ui.set_max_width(width / 2.0);
-                        ui.vertical_centered_justified(|ui| {
-                            if ui
-                                .add(
-                                    Button::new("↕ Move Scene to other Grid")
-                                        .fill(Color32::DARK_BLUE),
-                                )
-                                .clicked()
-                            {
-                                UiAction::MoveSelectedSceneToOtherGrid.enqueue();
-                            }
-                        });
-                    });
                 });
 
                 ui.vertical_centered_justified(|ui| {

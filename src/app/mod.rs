@@ -21,7 +21,7 @@ use crate::{
     storage::{
         asset::{
             palette::Palette,
-            project::{scene_instance_path::SceneInstancePathId, DeckPath, Project},
+            project::{scene_instance_path::SceneInstancePathId, Project},
             Asset,
         },
         asset_id::AssetId,
@@ -118,7 +118,7 @@ impl eframe::App for App {
                             .scenes_instances_grid
                             .iter_mut()
                             .filter_map(
-                                |(path, scene)| if scene.active { Some(path) } else { None },
+                                |(location, scene)| if scene.active { Some(location.clone()) } else { None },
                             )
                             .collect()
                     }),
@@ -129,7 +129,7 @@ impl eframe::App for App {
                         project
                             .scenes_instances_grid
                             .iter_mut()
-                            .filter_map(|(path, scene)| if scene.flash { Some(path) } else { None })
+                            .filter_map(|(location, scene)| if scene.flash { Some(location.clone()) } else { None })
                             .collect()
                     }),
                 available_scenes_grid: self.project.as_mut().map_or_else(
@@ -137,18 +137,8 @@ impl eframe::App for App {
                     |project| {
                         project
                             .scenes_instances_grid
-                            .values()
-                            .map(|scene_instance| scene_instance.color)
-                            .collect()
-                    },
-                ),
-                available_scenes_quick: self.project.as_mut().map_or_else(
-                    Default::default,
-                    |project| {
-                        project
-                            .scenes_instances_quick
-                            .values()
-                            .map(|scene_instance| scene_instance.color)
+                            .iter()
+                            .map(|(location, scene_instance)| (location.clone(), scene_instance.color))
                             .collect()
                     },
                 ),
@@ -156,9 +146,9 @@ impl eframe::App for App {
                     let mut beat_progression = self.timing.beat_progression();
 
                     self.project
-                        .as_ref()
+                        .as_mut()
                         .and_then(|project| {
-                            project.scene_instance(self.selected_scene_instance).map(
+                            project.scene_instance_by_index(self.selected_scene_instance).map(
                                 |scene_instance| {
                                     beat_progression += scene_instance
                                         .beat_progression_offset
@@ -235,7 +225,7 @@ impl App {
                     .min_height(200.0)
                     .show_inside(&mut ui, |ui| self.preview(ui));
                 egui::CentralPanel::default()
-                    .show_inside(&mut ui, |ui| self.scenes(ui, DeckPath::Grid));
+                    .show_inside(&mut ui, |ui| self.scenes(ui));
             } else {
                 self.no_project(&mut ui);
             }

@@ -1,10 +1,9 @@
-use crate::storage::asset::{
-    project::scene_instance_path::SceneInstancePathIndex, scene::color::SceneInstanceColor,
-};
-use crossbeam_channel::{Receiver, Sender, unbounded};
+use crate::storage::asset::scene::color::SceneInstanceColor;
+use crate::storage::asset::scene::grid::GridLocation;
+use crossbeam_channel::{unbounded, Receiver, Sender};
 use egui::mutex::Mutex;
 use once_cell::sync::{Lazy, OnceCell};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 static SENDER: OnceCell<Sender<MidiState>> = OnceCell::new();
 static PREVIOUS_STATE: OnceCell<Mutex<MidiState>> = OnceCell::new();
@@ -14,10 +13,9 @@ static SENDERS: Lazy<Mutex<Vec<Sender<MidiState>>>> = Lazy::new(|| Mutex::new(Ve
 pub struct MidiState {
     pub blackout: bool,
     pub beat_flank: u8,
-    pub active_scenes: HashSet<SceneInstancePathIndex>,
-    pub flashed_scenes: HashSet<SceneInstancePathIndex>,
-    pub available_scenes_grid: Vec<SceneInstanceColor>,
-    pub available_scenes_quick: Vec<SceneInstanceColor>,
+    pub active_scenes: HashSet<GridLocation>,
+    pub flashed_scenes: HashSet<GridLocation>,
+    pub available_scenes_grid: HashMap<GridLocation, SceneInstanceColor>,
     pub selected_scene_opacity: f32,
 }
 impl Eq for MidiState {}

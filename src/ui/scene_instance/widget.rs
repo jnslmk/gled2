@@ -1,4 +1,3 @@
-use crate::storage::asset::project::DeckPath::Grid;
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::storage::asset::scene::Scene;
 use crate::ui::asset_tree::AssetTree;
@@ -6,7 +5,7 @@ use crate::{
     app::timing::Timing,
     pipeline::group::Groups,
     storage::asset::{
-        project::{scene_instance_path::SceneInstancePathId, DeckPath},
+        project::{scene_instance_path::SceneInstancePathId},
         scene::instance::SceneInstance,
     },
     ui::gled_slider::GledSlider,
@@ -26,7 +25,6 @@ const PREVIEW_SIZE: f32 = 120.0;
 
 pub struct SceneInstanceWidget<'a> {
     pub selected_scene_instance: &'a mut SceneInstancePathId,
-    pub deck_path: DeckPath,
     pub scene_instance: &'a mut SceneInstance,
     pub groups: &'a Groups,
     pub svg: Option<TextureHandle>,
@@ -262,7 +260,7 @@ impl Widget for EmptyGridSpot<'_> {
                                 );
                                 if let Some(scene) = scene {
                                     self.grid.insert(self.location, SceneInstance::from(scene));
-                                    *self.selected_scene_instance = SceneInstancePathId { deck_path: Grid, id: scene.id };
+                                    *self.selected_scene_instance = SceneInstancePathId { id: scene.id };
                                     self.init_gpu = &true;
                                     ui.data_mut(|d| {
                                         d.remove::<TreeViewState<usize>>(ui.make_persistent_id(&self.location))

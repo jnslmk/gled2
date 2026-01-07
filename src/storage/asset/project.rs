@@ -1,10 +1,11 @@
 pub mod scene_instance_path;
 
 use super::{
-    AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
-    scene::instance::SceneInstance,
+    animation::Animation, output_device::routing::OutputRoutings, scene::instance::SceneInstance,
+    AssetTrait,
 };
-use crate::app::effects::grid::{HEIGHT, WIDTH};
+use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
+use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::{
     app::{svg::Svg, timing::Timing},
@@ -17,10 +18,7 @@ use crate::{
         preview_indices::PreviewIndices, renderer_callback::RendererCallback,
     },
     storage::{
-        asset::{
-            Asset, palette::Palette,
-            scene::Scene,
-        },
+        asset::{palette::Palette, scene::Scene, Asset},
         asset_id::AssetId,
     },
     ui::windows::channel_overwrites::ChannelOverwrites,
@@ -57,8 +55,8 @@ where
             .map(|(idx, instance)| {
                 (
                     GridLocation {
-                        row: idx / HEIGHT,
-                        col: idx % WIDTH,
+                        row: idx / GRID_HEIGHT,
+                        col: idx % GRID_WIDTH,
                     },
                     instance,
                 )
@@ -139,35 +137,64 @@ impl Project {
             })
     }
 
+    pub fn scene_instance_by_index_or_quick(
+        &mut self,
+        index_or_grid: SceneInstanceUnion,
+    ) -> Option<&mut SceneInstance> {
+        match index_or_grid {
+            SceneInstanceUnion::Grid(location) => {self.scenes_instances_grid.get_mut(&location)}
+            SceneInstanceUnion::Quick(quick_scene_instance_index) => {
+                self.scenes_instances_grid.get_mut(
+                    &GridLocation { row: GRID_HEIGHT-1, col: quick_scene_instance_index.index })
+            }
+        }
+    }
+
+    pub fn scenes_instances_quick(&self) -> impl Iterator<Item = (&GridLocation, &SceneInstance)> {
+        self.scenes_instances_grid.iter()
+            .filter(|(location, _)| {location.row == GRID_HEIGHT-1})
+    }
+
     pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
-        self.scenes_instances_grid.values_mut().for_each(|scene_instance| {
-            scene_instance.reload_shader_code(animation);
-        });
+        self.scenes_instances_grid
+            .values_mut()
+            .for_each(|scene_instance| {
+                scene_instance.reload_shader_code(animation);
+            });
     }
 
     pub fn send_positions(&mut self) {
-        self.scenes_instances_grid.values_mut().for_each(|scene_instance| {
-            scene_instance.send_positions();
-        });
+        self.scenes_instances_grid
+            .values_mut()
+            .for_each(|scene_instance| {
+                scene_instance.send_positions();
+            });
     }
 
     pub fn init_gpu(&mut self) {
-        self.scenes_instances_grid.values_mut().for_each(|scene_instance| {
-            scene_instance.init_states();
-        });
+        self.scenes_instances_grid
+            .values_mut()
+            .for_each(|scene_instance| {
+                scene_instance.init_states();
+            });
         self.set_buffers();
     }
 
     pub fn set_buffers(&mut self) {
-        self.scenes_instances_grid.values_mut().for_each(|scene_instance| {
-            scene_instance.set_output_mix_buffers();
-        });
+        self.scenes_instances_grid
+            .values_mut()
+            .for_each(|scene_instance| {
+                scene_instance.set_output_mix_buffers();
+            });
         Preview::set_buffers();
     }
 
-    pub fn scene_instance(&self, path: SceneInstancePathId) -> Option<&SceneInstance> {
+    pub fn scene_instance_by_index(
+        &mut self,
+        path: SceneInstancePathId,
+    ) -> Option<&mut SceneInstance> {
         self.scenes_instances_grid
-            .values()
+            .values_mut()
             .find(|scene_instance| scene_instance.id == path.id)
     }
 
@@ -324,12 +351,11 @@ impl Project {
     }
 
     // TODO add a location parameter to add_scene_instance
-    pub fn add_scene_instance(
-        &mut self,
-        scene_instance: SceneInstance,
-    ) -> SceneInstancePathId {
+    pub fn add_scene_instance(&mut self, scene_instance: SceneInstance) -> SceneInstancePathId {
         let scene_instances = &mut self.scenes_instances_grid;
-        let path = SceneInstancePathId { id: scene_instance.id, };
+        let path = SceneInstancePathId {
+            id: scene_instance.id,
+        };
         scene_instances.insert(GridLocation { row: 0, col: 0 }, scene_instance);
         path
     }

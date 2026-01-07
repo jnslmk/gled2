@@ -1,46 +1,50 @@
 use super::state::MidiState;
 use crate::{
-    storage::asset::{
-        project::{DeckPath, scene_instance_path::SceneInstancePathIndex},
-        scene::color::SceneInstanceColor,
-    },
+    storage::asset::scene::color::SceneInstanceColor,
     ui::action::UiAction,
 };
 use crossbeam_channel::Receiver;
 use midir::MidiOutputConnection;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use crate::storage::asset::project::scene_instance_path::{grid_scene_instance_index, quick_scene_instance_index, QuickSceneInstanceIndex, SceneInstanceUnion};
+use crate::storage::asset::scene::grid::GridLocation;
 
+
+fn location_from_peripheral_id(index: usize) -> GridLocation {
+    let col = index % GRID_HEIGHT;
+    let row = index / GRID_WIDTH;
+    GridLocation{col, row}
+}
 pub fn handle_input(_stamp: u64, message: &[u8]) {
     if message.len() != 3 {
         return;
     }
 
     let status = message[0];
-    let data1 = message[1];
-    let data2 = message[2];
+    let peripheral_id = message[1];
+    let value = message[2];
 
-    let action = match (status, data1, data2) {
+    let action = match (status, peripheral_id, value) {
+        // scene toggle for non quick scenes
         (144, 0..40, 127) => {
-            let index = match data1 {
-                0..8 => data1 as usize + 32,
-                8..16 => data1 as usize + 16,
-                16..24 => data1 as usize,
-                24..32 => data1 as usize - 16,
-                32..40 => data1 as usize - 32,
+            let index = match peripheral_id {
+                0..8 => peripheral_id as usize + 32,
+                8..16 => peripheral_id as usize + 16,
+                16..24 => peripheral_id as usize,
+                24..32 => peripheral_id as usize - 16,
+                32..40 => peripheral_id as usize - 32,
                 _ => unreachable!(),
             };
-            UiAction::ToggleSceneActive(SceneInstancePathIndex::new(DeckPath::Grid, index))
+            UiAction::ToggleSceneActive(SceneInstanceUnion::Grid(location_from_peripheral_id(index)))
         }
-        (144..152, 48, 127) => UiAction::ToggleSceneActive(SceneInstancePathIndex::new(
-            DeckPath::Quick,
-            status as usize - 144,
-        )),
+        // scene toggle for quick scenes
+        (144..152, 48, 127) => UiAction::ToggleSceneActive(quick_scene_instance_index(status as usize - 144)),
         (144..152, 52, 127) => UiAction::SetSceneActive(
-            SceneInstancePathIndex::new(DeckPath::Quick, status as usize - 144),
+            quick_scene_instance_index(status as usize - 144),
             true,
         ),
         (128..136, 52, 0) => UiAction::SetSceneActive(
-            SceneInstancePathIndex::new(DeckPath::Quick, status as usize - 128),
+            quick_scene_instance_index(status as usize - 128),
             false,
         ),
         (144, 91, 127) => UiAction::SetBlackout(false),
@@ -56,18 +60,18 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
         }
         (176, 14, value) => UiAction::SetMainDimmer(f32::from(value) / 127.0),
         (176..184, 7, value) => UiAction::SetSceneOpacity(
-            SceneInstancePathIndex::new(DeckPath::Quick, status as usize - 176),
+            quick_scene_instance_index(status as usize - 176),
             f32::from(value) / 127.0,
         ),
-        (144, 100 | 101, 127) => UiAction::SpeedMultiply(match data1 {
+        (144, 100 | 101, 127) => UiAction::SpeedMultiply(match peripheral_id {
             100 => 0.5,
             101 => 2.0,
             _ => unreachable!(),
         }),
-        (176, 48, 0..120) => UiAction::SelectScene(SceneInstancePathIndex {
-            deck_path: DeckPath::Grid,
-            location: data2 as usize / 3,
-        }),
+        (176, 48, 0..120) => {
+            let value = value as usize / 3;
+            UiAction::SelectScene(grid_scene_instance_index(location_from_peripheral_id(value / 3)))
+        },
         (176, 49, val) => UiAction::SetSelectedSceneOpacity(f32::from(val) / 127.0),
         _ => {
             //dbg!(status, data1, data2);
@@ -135,20 +139,20 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
                 log::error!("Error sending flank value: {err:?}");
             }
         }
-
-        for path in { 0..40 }
-            .map(|index| SceneInstancePathIndex::new(DeckPath::Grid, index))
-            .chain({ 0..8 }.map(|index| SceneInstancePathIndex::new(DeckPath::Quick, index)))
+        // iterate over all grid locations
+        for location in { 0..48 }
+            .map(|index| location_from_peripheral_id( index))
         {
             let value = {
-                let flashed = state.flashed_scenes.contains(&path);
-                let active = state.active_scenes.contains(&path);
+                let flashed = state.flashed_scenes.contains(&location);
+                let active = state.active_scenes.contains(&location);
 
-                match path.deck_path {
-                    DeckPath::Quick if active => 30,
-                    DeckPath::Quick => 0,
-                    DeckPath::Grid => {
-                        let color = state.available_scenes_grid.get(path.location).copied();
+                const QUICK_ROW_INDEX: usize = GRID_HEIGHT - 1;
+                match location.row {
+                    QUICK_ROW_INDEX if active => 30,
+                    QUICK_ROW_INDEX => 0,
+                    _ => {
+                        let color = state.available_scenes_grid.get(&location).copied();
                         match (color, active, flashed) {
                             (_, _, true) => SceneInstanceColor::White.light(),
                             (Some(color), true, false) => color.light(),
@@ -159,13 +163,14 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
                 }
             };
 
-            let message = match (path.deck_path, path.location) {
-                (DeckPath::Grid, 0..8) => [0x90, path.location as u8 + 32, value, 127],
-                (DeckPath::Grid, 8..16) => [0x90, path.location as u8 + 16, value, 127],
-                (DeckPath::Grid, 16..24) => [0x90, path.location as u8, value, 127],
-                (DeckPath::Grid, 24..32) => [0x90, path.location as u8 - 16, value, 127],
-                (DeckPath::Grid, 32..40) => [0x90, path.location as u8 - 32, value, 127],
-                (DeckPath::Quick, _) => [0x90 + path.location as u8, 48, value, 127],
+            let message = match location.row {
+                (0..8) => [0x90, (location.col + location.row *8) as u8 + 32, value, 127],
+                (8..16) => [0x90, (location.col + location.row *8) as u8 + 16, value, 127],
+                (16..24) => [0x90, (location.col + location.row *8) as u8, value, 127],
+                (24..32) => [0x90, (location.col + location.row *8)as u8 - 16, value, 127],
+                (32..40) => [0x90, (location.col + location.row *8) as u8 - 32, value, 127],
+                // TODO what is the right offset of quick scenes?
+                _ => [0x90 + (location.col + location.row *8) as u8, 48, value, 127],
                 _ => unreachable!(),
             };
             if let Err(err) = connection.send(&message) {
@@ -211,3 +216,6 @@ impl AkaiApc40Mk2MidiColor for SceneInstanceColor {
         }
     }
 }
+
+pub const GRID_WIDTH: usize = 6;
+pub const GRID_HEIGHT: usize = 4;

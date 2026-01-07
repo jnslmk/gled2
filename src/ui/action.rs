@@ -7,10 +7,7 @@ use crate::{
             Asset,
             animation::Animation,
             curve::multiplied_curve::MultipliedCurve,
-            project::{
-                DeckPath, Project,
-                scene_instance_path::{SceneInstancePathId, SceneInstancePathIndex},
-            },
+            project::{Project, scene_instance_path::SceneInstancePathId},
         },
         asset_id::AssetId,
     },
@@ -22,13 +19,14 @@ use std::sync::{
     Arc,
     mpsc::{Receiver, Sender},
 };
+use crate::storage::asset::project::scene_instance_path::{SceneInstanceUnion};
 
 static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 
 #[derive(Debug)]
 pub enum UiAction {
     SetProject(AssetId<Project>),
-    SelectScene(SceneInstancePathId),
+    SelectScene(SceneInstanceUnion),
     DeleteSelectedSceneInstance,
     CloneSelectedSceneInstance,
     InitGPU,
@@ -44,10 +42,10 @@ pub enum UiAction {
     /// Set opacity for a scene instance
     ///
     /// This also activates the scene instance
-    SetSceneOpacity(SceneInstancePathId, f32),
+    SetSceneOpacity(SceneInstanceUnion, f32),
     SetSelectedSceneOpacity(f32),
-    ToggleSceneActive(SceneInstancePathId),
-    SetSceneActive(SceneInstancePathId, bool),
+    ToggleSceneActive(SceneInstanceUnion),
+    SetSceneActive(SceneInstanceUnion, bool),
     SetMainDimmer(f32),
     MidiOutputActive(bool),
     Error(String),
@@ -71,8 +69,7 @@ impl App {
                         .scene_instance_mut(self.selected_scene_instance)
                         .map(|scene_instance| scene_instance.scene)
                     {
-                        self.selected_scene_instance =
-                            project.add_scene(scene);
+                        self.selected_scene_instance = project.add_scene(scene);
                         UiAction::InitGPU.enqueue();
                     }
                 }
@@ -91,7 +88,7 @@ impl App {
                     project.remove_nonexistant_groups();
                 }
                 (Some(project), UiAction::SetSceneOpacity(path, opacity)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index(path) {
+                    if let Some(scene_instance) = project.scene_instance_by_index_or_quick(path) {
                         scene_instance.opacity = MultipliedCurve::new_multiplier(opacity);
                     }
                 }
@@ -105,18 +102,18 @@ impl App {
                 (Some(project), UiAction::SetMainDimmer(dimmer)) => {
                     project.main_dimmer = dimmer;
                 }
-                (Some(project), UiAction::ToggleSceneActive(path)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index(path) {
+                (Some(project), UiAction::ToggleSceneActive(location)) => {
+                    if let Some(scene_instance) = project.scene_instance_by_index_or_quick(location) {
                         scene_instance.active = !scene_instance.active;
                     }
                 }
-                (Some(project), UiAction::SetSceneActive(path, active)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index(path) {
+                (Some(project), UiAction::SetSceneActive(location, active)) => {
+                    if let Some(scene_instance) = project.scene_instance_by_index_or_quick(location) {
                         scene_instance.active = active;
                     }
                 }
-                (Some(project), UiAction::SelectScene(path)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index(path) {
+                (Some(project), UiAction::SelectScene(location)) => {
+                    if let Some(scene_instance) = project.scene_instance_by_index_or_quick(location) {
                         self.selected_scene_instance = SceneInstancePathId {
                             id: scene_instance.id,
                         };

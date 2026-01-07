@@ -3,16 +3,14 @@ use crate::storage::asset::scene::grid::GridLocation;
 use crate::ui::scene_instance::dnd::{dnd_drag_source, dnd_drop_zone};
 use crate::ui::scene_instance::widget::SceneInstanceWidget;
 use crate::ui::scene_instance::widget::{EmptyGridSpot, SCENE_WIDGET_SIZE};
-use crate::{app::PersistantState, storage::asset::project::DeckPath};
+use crate::app::PersistantState;
 use egui::{
     scroll_area::ScrollBarVisibility::AlwaysVisible, Color32, Frame, Id, TextureHandle, Ui, UiBuilder,
     Vec2,
 };
 use emath::{vec2, Rect};
 use epaint::{Stroke, StrokeKind};
-
-pub const WIDTH: usize = 6;
-pub const HEIGHT: usize = 4;
+use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
@@ -25,18 +23,14 @@ impl App {
                     return;
                 };
                 let to_global = ui.ctx().layer_transform_to_global(ui.layer_id()).unwrap_or_default();
-                let deck_path = DeckPath::Grid;
                 let effects_size = PersistantState::effects_size();
                 let groups = project.groups.clone();
 
-                let mut grid = match deck_path {
-                    DeckPath::Grid => &mut project.scenes_instances_grid,
-                    DeckPath::Quick => &mut project.scenes_instances_quick,
-                };
+                let mut grid = &mut project.scenes_instances_grid;
                 let start_pos = ui.cursor().min + vec2(20., 20.);
 
-                    for row in 0..HEIGHT {
-                        for col in 0..WIDTH {
+                    for row in 0..GRID_HEIGHT {
+                        for col in 0..GRID_WIDTH {
                             let location = GridLocation { col, row };
 
                             let tile_length = SCENE_WIDGET_SIZE + 28.;
@@ -59,7 +53,6 @@ impl App {
                                                         ui.add(SceneInstanceWidget {
                                                             selected_scene_instance: &mut self
                                                                 .selected_scene_instance,
-                                                            deck_path,
                                                             scene_instance,
                                                             svg: svg.clone(),
                                                             size: Vec2::splat(effects_size),
