@@ -7,7 +7,7 @@ use crate::{
             Asset,
             animation::Animation,
             curve::multiplied_curve::MultipliedCurve,
-            project::{Project, scene_instance_path::SceneInstancePathId},
+            project::Project,
         },
         asset_id::AssetId,
     },
@@ -61,15 +61,15 @@ impl App {
 
             match (&mut self.project, action) {
                 (Some(project), UiAction::DeleteSelectedSceneInstance) => {
-                    project.remove_scene_instance(&mut self.selected_scene_instance);
+                    project.remove_scene_instance(self.selected_scene_instance);
                     UiAction::InitGPU.enqueue();
                 }
                 (Some(project), UiAction::CloneSelectedSceneInstance) => {
                     if let Some(scene) = project
-                        .scene_instance_mut(self.selected_scene_instance)
+                        .get_scenes_instance(&self.selected_scene_instance)
                         .map(|scene_instance| scene_instance.scene)
                     {
-                        self.selected_scene_instance = project.add_scene(scene);
+                        project.add_scene(&self.selected_scene_instance, scene);
                         UiAction::InitGPU.enqueue();
                     }
                 }
@@ -88,13 +88,13 @@ impl App {
                     project.remove_nonexistant_groups();
                 }
                 (Some(project), UiAction::SetSceneOpacity(path, opacity)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index_or_quick(path) {
+                    if let Some(scene_instance) = project.scene_instance_by_location_or_quick_index(path) {
                         scene_instance.opacity = MultipliedCurve::new_multiplier(opacity);
                     }
                 }
                 (Some(project), UiAction::SetSelectedSceneOpacity(opacity)) => {
-                    if let Some(scene_instance) =
-                        project.scene_instance_mut(self.selected_scene_instance)
+                    if let Some(mut scene_instance) =
+                        project.get_scenes_instance(&self.selected_scene_instance)
                     {
                         scene_instance.opacity = MultipliedCurve::new_multiplier(opacity);
                     }
@@ -103,20 +103,18 @@ impl App {
                     project.main_dimmer = dimmer;
                 }
                 (Some(project), UiAction::ToggleSceneActive(location)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index_or_quick(location) {
+                    if let Some(scene_instance) = project.scene_instance_by_location_or_quick_index(location) {
                         scene_instance.active = !scene_instance.active;
                     }
                 }
                 (Some(project), UiAction::SetSceneActive(location, active)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index_or_quick(location) {
+                    if let Some(scene_instance) = project.scene_instance_by_location_or_quick_index(location) {
                         scene_instance.active = active;
                     }
                 }
                 (Some(project), UiAction::SelectScene(location)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index_or_quick(location) {
-                        self.selected_scene_instance = SceneInstancePathId {
-                            id: scene_instance.id,
-                        };
+                    if let Some(pos) = project.location_by_location_or_quick_index(location) {
+                        self.selected_scene_instance = pos;
                     }
                 }
                 (_, UiAction::Tap) => {
@@ -140,9 +138,9 @@ impl App {
                         self.project_id = Some(project.id);
                         let mut project = Arc::unwrap_or_clone(project).data;
                         self.selected_scene_instance = project
-                            .all_scene_instances_id()
+                            .all_scene_instance_locations()
                             .next()
-                            .map(|(path, _)| path)
+                            .map(|l| l.clone())
                             .unwrap_or_default();
                         *ExtractOutput::get().routings.lock() = project.output_routings.clone();
                         *ARTNET_CONFIG.lock() = project.artnet_config.clone();

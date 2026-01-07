@@ -21,7 +21,7 @@ use crate::{
     storage::{
         asset::{
             palette::Palette,
-            project::{scene_instance_path::SceneInstancePathId, Project},
+            project::Project,
             Asset,
         },
         asset_id::AssetId,
@@ -38,6 +38,7 @@ use persistant_state::PersistantState;
 use std::{sync::mpsc::Receiver, time::Instant};
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
+use crate::storage::asset::scene::grid::GridLocation;
 
 pub struct App {
     pub startup: bool,
@@ -51,7 +52,7 @@ pub struct App {
     pub other_main_windows: HashSet<ViewportId>,
     pub blackout: bool,
     pub blackout_hold: bool,
-    pub selected_scene_instance: SceneInstancePathId,
+    pub selected_scene_instance: GridLocation,
     pub git_commit_message: String,
     pub ui_action_receiver: Receiver<UiAction>,
     pub last_title: String,
@@ -148,7 +149,7 @@ impl eframe::App for App {
                     self.project
                         .as_mut()
                         .and_then(|project| {
-                            project.scene_instance_by_index(self.selected_scene_instance).map(
+                            project.get_scenes_instance(&self.selected_scene_instance).map(
                                 |scene_instance| {
                                     beat_progression += scene_instance
                                         .beat_progression_offset

@@ -49,7 +49,7 @@ impl ProjectsWindow {
                         if let TreeSelection::Asset(project) = self.tree.selected() {
                             ui.label(format!(
                                 "Scenes in Grid: {}",
-                                project.data.scenes_instances_grid.len()
+                                project.data.scenes_instances_grid_len()
                             ));
                             ui.vertical_centered_justified(|ui| {
                                 if ui.button("Load Project").clicked() {

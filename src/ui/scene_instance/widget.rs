@@ -5,7 +5,6 @@ use crate::{
     app::timing::Timing,
     pipeline::group::Groups,
     storage::asset::{
-        project::{scene_instance_path::SceneInstancePathId},
         scene::instance::SceneInstance,
     },
     ui::gled_slider::GledSlider,
@@ -24,7 +23,6 @@ pub(crate) const SCENE_WIDGET_SIZE: f32 = 150.0;
 const PREVIEW_SIZE: f32 = 120.0;
 
 pub struct SceneInstanceWidget<'a> {
-    pub selected_scene_instance: &'a mut SceneInstancePathId,
     pub scene_instance: &'a mut SceneInstance,
     pub groups: &'a Groups,
     pub svg: Option<TextureHandle>,
@@ -222,7 +220,6 @@ impl Widget for SceneInstanceWidget<'_> {
 }
 
 pub struct EmptyGridSpot<'a> {
-    pub selected_scene_instance: &'a mut SceneInstancePathId,
     pub grid: &'a mut HashMap<GridLocation, SceneInstance>,
     pub location: GridLocation,
     pub init_gpu: &'a bool,

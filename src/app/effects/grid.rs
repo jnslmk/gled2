@@ -62,8 +62,7 @@ impl App {
                                                     });
 
 
-                                                if self.selected_scene_instance.id
-                                                    == scene_instance.id
+                                                if self.selected_scene_instance == location
                                                 {
                                                     ui.painter().rect_stroke(
                                                         widget_response.rect,
@@ -83,7 +82,7 @@ impl App {
                                                     }
                                                 }
                                                 if widget_response.clicked(){
-                                                    self.selected_scene_instance.id = scene_instance.id;
+                                                    self.selected_scene_instance = location;
                                                 }
                                             } // Some(scene) =>
                                             None => {
@@ -112,7 +111,6 @@ impl App {
                                 let to_item = grid.remove(&to);
                                 let from_item = { grid.remove(&from) };
                                 if let Some(from_item) = from_item {
-                                    self.selected_scene_instance.id = from_item.id;
                                     grid.insert(to, from_item);
                                 }
                                 // reinsert the to item to the from location

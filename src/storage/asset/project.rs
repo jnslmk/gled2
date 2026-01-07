@@ -24,9 +24,6 @@ use crate::{
     ui::windows::channel_overwrites::ChannelOverwrites,
     wgpu_render_state,
 };
-use rand::seq::IndexedMutRandom;
-use scene_instance_path::SceneInstancePathId;
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::{
@@ -74,7 +71,7 @@ pub struct Project {
     pub auto_mode_max_scenes: usize,
     pub groups: Groups,
     #[serde(deserialize_with = "deserialize_scene_instances")]
-    pub scenes_instances_grid: HashMap<GridLocation, SceneInstance>,
+    scenes_instances_grid: HashMap<GridLocation, SceneInstance>,
     /* TODO  add serde backwards compatiblity to integrate old quick scenes into the grid?
     #[serde(deserialize_with = "deserialize_scene_instances")]
     pub scenes_instances_quick: HashMap<GridLocation, SceneInstance>,
@@ -122,32 +119,30 @@ impl Default for Project {
 }
 
 impl Project {
-    pub fn all_scene_instances_id(
-        &mut self,
-    ) -> impl Iterator<Item = (SceneInstancePathId, &mut SceneInstance)> {
-        self.scenes_instances_grid
-            .values_mut()
-            .map(|scene_instance| {
-                (
-                    SceneInstancePathId {
-                        id: scene_instance.id,
-                    },
-                    scene_instance,
-                )
-            })
+    pub fn get_scenes_instance(&mut self, pos: &GridLocation) -> Option<&mut SceneInstance> {
+        self.scenes_instances_grid.get_mut(pos)
+    }
+    pub fn scenes_instances_grid_len(&self) -> usize {
+        self.scenes_instances_grid.len()
     }
 
-    pub fn scene_instance_by_index_or_quick(
+    pub fn scene_instance_by_location_or_quick_index(
         &mut self,
         index_or_grid: SceneInstanceUnion,
     ) -> Option<&mut SceneInstance> {
+        let pos = &self.location_by_location_or_quick_index(index_or_grid)?;
+        self.get_scenes_instance(pos)
+    }
+    pub fn location_by_location_or_quick_index(&mut self, index_or_grid: SceneInstanceUnion) -> Option<GridLocation> {
         match index_or_grid {
-            SceneInstanceUnion::Grid(location) => {self.scenes_instances_grid.get_mut(&location)}
-            SceneInstanceUnion::Quick(quick_scene_instance_index) => {
-                self.scenes_instances_grid.get_mut(
-                    &GridLocation { row: GRID_HEIGHT-1, col: quick_scene_instance_index.index })
-            }
+            SceneInstanceUnion::Grid(location) => Some(location),
+            SceneInstanceUnion::Quick(quick_scene_instance_index) =>
+                    Some(GridLocation { row: GRID_HEIGHT-1, col: quick_scene_instance_index.index})
         }
+    }
+
+    pub fn all_scene_instance_locations(&self) -> impl Iterator<Item = &GridLocation> {
+        self.scenes_instances_grid.keys()
     }
 
     pub fn scenes_instances_quick(&self) -> impl Iterator<Item = (&GridLocation, &SceneInstance)> {
@@ -189,40 +184,13 @@ impl Project {
         Preview::set_buffers();
     }
 
-    pub fn scene_instance_by_index(
-        &mut self,
-        path: SceneInstancePathId,
-    ) -> Option<&mut SceneInstance> {
-        self.scenes_instances_grid
-            .values_mut()
-            .find(|scene_instance| scene_instance.id == path.id)
-    }
-
-    #[inline(always)]
-    pub fn scene_instance_mut(&mut self, path: SceneInstancePathId) -> Option<&mut SceneInstance> {
-        self.scenes_instances_grid
-            .values_mut()
-            .find(|scene_instance| scene_instance.id == path.id)
-    }
-
     /// Remove scene instance at path and update path to the next scene instance
     pub fn remove_scene_instance(
         &mut self,
-        path: &mut SceneInstancePathId,
+        pos: GridLocation,
     ) -> Option<SceneInstance> {
-        // TODO use GridLocation for SceneInstancePathId
-        // for now only this function will be effectively disabled
-        //let scene_instances = match path.deck_path {
-        //    DeckPath::Grid => &mut self.scenes_instances_grid,
-        //    DeckPath::Quick => &mut self.scenes_instances_quick,
-        //};
-        //let pos = scene_instances.iter().position(|s| s.id == path.id)?;
-        //let scene_instance = scene_instances.remove(pos);
-        //path.id = scene_instances
-        //    .get(pos.saturating_sub(1))
-        //    .map_or_else(Uuid::nil, |s| s.id);
-        //Some(scene_instance)
-        None
+        let scene_instance =  self.scenes_instances_grid.remove(&pos);
+        scene_instance
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -236,7 +204,7 @@ impl Project {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
-
+        // TODO @bratorange
         //if self.auto_mode_active {
         //    if self
         //        .auto_mode_last_change
@@ -344,20 +312,15 @@ impl Project {
         self.double_input_events.iter().any(|event| event.is_new())
     }
 
-    pub fn add_scene(&mut self, scene: AssetId<Scene>) -> SceneInstancePathId {
+    pub fn add_scene(&mut self, pos: &GridLocation, scene: AssetId<Scene>) {
         let mut scene_instance: SceneInstance = scene.into();
         scene_instance.init_states();
-        self.add_scene_instance(scene_instance)
+        self.add_scene_instance(pos, scene_instance);
     }
 
-    // TODO add a location parameter to add_scene_instance
-    pub fn add_scene_instance(&mut self, scene_instance: SceneInstance) -> SceneInstancePathId {
+    pub fn add_scene_instance(&mut self, pos: &GridLocation, scene_instance: SceneInstance) {
         let scene_instances = &mut self.scenes_instances_grid;
-        let path = SceneInstancePathId {
-            id: scene_instance.id,
-        };
-        scene_instances.insert(GridLocation { row: 0, col: 0 }, scene_instance);
-        path
+        scene_instances.insert(*pos, scene_instance);
     }
 
     pub fn remove_nonexistant_groups(&mut self) {
