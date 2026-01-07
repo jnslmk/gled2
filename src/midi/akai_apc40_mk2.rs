@@ -66,7 +66,7 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
         }),
         (176, 48, 0..120) => UiAction::SelectScene(SceneInstancePathIndex {
             deck_path: DeckPath::Grid,
-            index: data2 as usize / 3,
+            location: data2 as usize / 3,
         }),
         (176, 49, val) => UiAction::SetSelectedSceneOpacity(f32::from(val) / 127.0),
         _ => {
@@ -148,7 +148,7 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
                     DeckPath::Quick if active => 30,
                     DeckPath::Quick => 0,
                     DeckPath::Grid => {
-                        let color = state.available_scenes_grid.get(path.index).copied();
+                        let color = state.available_scenes_grid.get(path.location).copied();
                         match (color, active, flashed) {
                             (_, _, true) => SceneInstanceColor::White.light(),
                             (Some(color), true, false) => color.light(),
@@ -159,13 +159,13 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
                 }
             };
 
-            let message = match (path.deck_path, path.index) {
-                (DeckPath::Grid, 0..8) => [0x90, path.index as u8 + 32, value, 127],
-                (DeckPath::Grid, 8..16) => [0x90, path.index as u8 + 16, value, 127],
-                (DeckPath::Grid, 16..24) => [0x90, path.index as u8, value, 127],
-                (DeckPath::Grid, 24..32) => [0x90, path.index as u8 - 16, value, 127],
-                (DeckPath::Grid, 32..40) => [0x90, path.index as u8 - 32, value, 127],
-                (DeckPath::Quick, _) => [0x90 + path.index as u8, 48, value, 127],
+            let message = match (path.deck_path, path.location) {
+                (DeckPath::Grid, 0..8) => [0x90, path.location as u8 + 32, value, 127],
+                (DeckPath::Grid, 8..16) => [0x90, path.location as u8 + 16, value, 127],
+                (DeckPath::Grid, 16..24) => [0x90, path.location as u8, value, 127],
+                (DeckPath::Grid, 24..32) => [0x90, path.location as u8 - 16, value, 127],
+                (DeckPath::Grid, 32..40) => [0x90, path.location as u8 - 32, value, 127],
+                (DeckPath::Quick, _) => [0x90 + path.location as u8, 48, value, 127],
                 _ => unreachable!(),
             };
             if let Err(err) = connection.send(&message) {

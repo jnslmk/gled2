@@ -115,7 +115,8 @@ impl eframe::App for App {
                     .as_mut()
                     .map_or_else(Default::default, |project| {
                         project
-                            .all_scene_instances_index()
+                            .scenes_instances_grid
+                            .iter_mut()
                             .filter_map(
                                 |(path, scene)| if scene.active { Some(path) } else { None },
                             )
@@ -126,7 +127,8 @@ impl eframe::App for App {
                     .as_mut()
                     .map_or_else(Default::default, |project| {
                         project
-                            .all_scene_instances_index()
+                            .scenes_instances_grid
+                            .iter_mut()
                             .filter_map(|(path, scene)| if scene.flash { Some(path) } else { None })
                             .collect()
                     }),

@@ -28,10 +28,9 @@ static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 #[derive(Debug)]
 pub enum UiAction {
     SetProject(AssetId<Project>),
-    SelectScene(SceneInstancePathIndex),
+    SelectScene(SceneInstancePathId),
     DeleteSelectedSceneInstance,
     CloneSelectedSceneInstance,
-    MoveSelectedSceneToOtherGrid,
     InitGPU,
     SendPositions,
     ReloadShaderCode(AssetId<Animation>),
@@ -45,10 +44,10 @@ pub enum UiAction {
     /// Set opacity for a scene instance
     ///
     /// This also activates the scene instance
-    SetSceneOpacity(SceneInstancePathIndex, f32),
+    SetSceneOpacity(SceneInstancePathId, f32),
     SetSelectedSceneOpacity(f32),
-    ToggleSceneActive(SceneInstancePathIndex),
-    SetSceneActive(SceneInstancePathIndex, bool),
+    ToggleSceneActive(SceneInstancePathId),
+    SetSceneActive(SceneInstancePathId, bool),
     SetMainDimmer(f32),
     MidiOutputActive(bool),
     Error(String),
@@ -73,21 +72,7 @@ impl App {
                         .map(|scene_instance| scene_instance.scene)
                     {
                         self.selected_scene_instance =
-                            project.add_scene(self.selected_scene_instance.deck_path, scene);
-                        UiAction::InitGPU.enqueue();
-                    }
-                }
-                (Some(project), UiAction::MoveSelectedSceneToOtherGrid) => {
-                    if let Some(scene) =
-                        project.remove_scene_instance(&mut self.selected_scene_instance)
-                    {
-                        self.selected_scene_instance = project.add_scene_instance(
-                            match self.selected_scene_instance.deck_path {
-                                DeckPath::Grid => DeckPath::Quick,
-                                DeckPath::Quick => DeckPath::Grid,
-                            },
-                            scene.to_owned(),
-                        );
+                            project.add_scene(scene);
                         UiAction::InitGPU.enqueue();
                     }
                 }
@@ -133,7 +118,6 @@ impl App {
                 (Some(project), UiAction::SelectScene(path)) => {
                     if let Some(scene_instance) = project.scene_instance_by_index(path) {
                         self.selected_scene_instance = SceneInstancePathId {
-                            deck_path: path.deck_path,
                             id: scene_instance.id,
                         };
                     }
