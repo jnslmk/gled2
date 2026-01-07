@@ -37,7 +37,8 @@ where
 
         response
     } else {
-        let InnerResponse { inner, response } = ui.scope(add_contents);
+        let InnerResponse { inner, response } =
+            ui.scope_builder(UiBuilder::new().sense(Sense::click()), add_contents);
 
         // Check for drags:
         ui

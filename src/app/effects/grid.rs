@@ -44,7 +44,8 @@ impl App {
                             (Rect::from_min_size(
                                 start_pos + vec2(col as f32 * (tile_length + 20.), row as f32 * (tile_length + 20.)),
                                 vec2(tile_length, tile_length )));
-                            let (_, dropped_payload) = ui.scope_builder(UiBuilder::new().max_rect(rect),|ui| {
+                            let (_, dropped_payload) = ui
+                                .scope_builder(UiBuilder::new().max_rect(rect),|ui| {
                                     dnd_drop_zone::<GridLocation, ()>(ui, Frame::default().corner_radius(2.), |ui| {
                                         let scene = grid.get_mut(&location);
                                         match scene {
