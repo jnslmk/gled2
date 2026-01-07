@@ -26,7 +26,7 @@ impl App {
                 let effects_size = PersistantState::effects_size();
                 let groups = project.groups.clone();
 
-                let mut grid = &mut project.scenes_instances_grid;
+                let grid = &mut project.scenes_instances_grid;
                 let start_pos = ui.cursor().min + vec2(20., 20.);
 
                     for row in 0..GRID_HEIGHT {

@@ -6,7 +6,7 @@ use crate::{
 use crossbeam_channel::Receiver;
 use midir::MidiOutputConnection;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use crate::storage::asset::project::scene_instance_path::{grid_scene_instance_index, quick_scene_instance_index, QuickSceneInstanceIndex, SceneInstanceUnion};
+use crate::storage::asset::project::scene_instance_path::{grid_scene_instance_index, quick_scene_instance_index, SceneInstanceUnion};
 use crate::storage::asset::scene::grid::GridLocation;
 
 
@@ -171,7 +171,7 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
                 (32..40) => [0x90, (location.col + location.row *8) as u8 - 32, value, 127],
                 // TODO what is the right offset of quick scenes?
                 _ => [0x90 + (location.col + location.row *8) as u8, 48, value, 127],
-                _ => unreachable!(),
+                // _ => unreachable!(),
             };
             if let Err(err) = connection.send(&message) {
                 log::error!("Error sending scene value: {err:?}");

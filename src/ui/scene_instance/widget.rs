@@ -224,7 +224,7 @@ pub struct EmptyGridSpot {
 }
 
 impl Widget for EmptyGridSpot {
-    fn ui(mut self, ui: &mut Ui) -> Response {
+    fn ui(self, ui: &mut Ui) -> Response {
         let response = Frame::default()
             .stroke(Stroke {
                 width: 0.3,

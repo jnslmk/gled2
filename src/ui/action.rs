@@ -99,7 +99,7 @@ impl App {
                     }
                 }
                 (Some(project), UiAction::SetSelectedSceneOpacity(opacity)) => {
-                    if let Some(mut scene_instance) =
+                    if let Some(scene_instance) =
                         project.get_scenes_instance(&self.selected_scene_instance)
                     {
                         scene_instance.opacity = MultipliedCurve::new_multiplier(opacity);
@@ -142,7 +142,7 @@ impl App {
                         persistant_state.save();
 
                         self.project_id = Some(project.id);
-                        let mut project = Arc::unwrap_or_clone(project).data;
+                        let project = Arc::unwrap_or_clone(project).data;
                         self.selected_scene_instance = project
                             .all_scene_instance_locations()
                             .next()
