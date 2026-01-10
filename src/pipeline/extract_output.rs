@@ -1,30 +1,24 @@
 //! Copy a output buffer to the cpu and return.
 
-use super::output_sender::OutputSender;
 use crate::{
     OUTPUT_BUFFER,
-    pipeline::constants::{OUTPUT_BUFFER_SIZE, UNIVERSE_BUFFER_SIZE, UNIVERSES},
+    pipeline::constants::{UNIVERSE_BUFFER_SIZE, UNIVERSES},
     storage::asset::output_device::routing::OutputRoutings,
     svg::measurement_point::Universes,
     wgpu_render_state,
 };
+use crossbeam_channel::{Receiver, Sender, bounded};
 use egui::mutex::Mutex;
 use std::{
     collections::BTreeSet,
-    sync::{
-        Arc, OnceLock,
-        atomic::{AtomicBool, Ordering::Relaxed},
-        mpsc::channel,
-    },
+    sync::{Arc, OnceLock},
 };
-use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, MapMode, PollType};
+use wgpu::{BufferDescriptor, BufferUsages, CommandEncoder, MapMode};
 
-static USE_FIRST_OUTPUT_BUFFER: AtomicBool = AtomicBool::new(true);
-
-#[derive(Clone)]
+//#[derive(Clone)]
 pub struct ExtractOutput {
-    output_cpu_0: Arc<Buffer>,
-    output_cpu_1: Arc<Buffer>,
+    output_sender: Sender<Vec<u8>>,
+    output_receiver: Mutex<Option<Receiver<Vec<u8>>>>,
     pub universes: Arc<Mutex<Universes>>,
     pub routings: Arc<Mutex<OutputRoutings>>,
 }
@@ -33,78 +27,43 @@ impl ExtractOutput {
     pub fn get() -> &'static Self {
         static EXTRACT_OUTPUT: OnceLock<ExtractOutput> = OnceLock::new();
         EXTRACT_OUTPUT.get_or_init(|| {
-            let buffer_desc = BufferDescriptor {
-                size: OUTPUT_BUFFER_SIZE,
-                usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
-                label: Some("TextureToOutput output buffer cpu"),
-                mapped_at_creation: false,
-            };
-            let device = wgpu_render_state().device;
-            let output_cpu_0 = device.create_buffer(&buffer_desc);
-            let output_cpu_1 = device.create_buffer(&buffer_desc);
+            let (output_sender, output_receiver) = bounded(1);
 
             Self {
-                output_cpu_0: Arc::new(output_cpu_0),
-                output_cpu_1: Arc::new(output_cpu_1),
+                output_sender,
+                output_receiver: Mutex::new(Some(output_receiver)),
                 universes: Arc::new(Mutex::new(BTreeSet::new())),
                 routings: Arc::new(Mutex::new(OutputRoutings::default())),
             }
         })
     }
 
-    pub fn trigger_output_sender(output_sender: &OutputSender) {
-        output_sender
-            .send(USE_FIRST_OUTPUT_BUFFER.load(Relaxed))
-            .expect("Output sender receiver lost");
+    pub fn take_output_receiver(&self) -> Option<Receiver<Vec<u8>>> {
+        self.output_receiver.lock().take()
     }
 
     pub fn run(&self, encoder: &mut CommandEncoder) {
-        let use_first_output_buffer = !USE_FIRST_OUTPUT_BUFFER.fetch_xor(true, Relaxed);
+        let active_len = (self.universes.lock().len() as u64).min(UNIVERSES) * UNIVERSE_BUFFER_SIZE;
+        if active_len > 0 {
+            let buffer_desc = BufferDescriptor {
+                size: active_len,
+                usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+                label: Some("TextureToOutput output buffer cpu"),
+                mapped_at_creation: false,
+            };
+            let device = wgpu_render_state().device;
+            let output_cpu = device.create_buffer(&buffer_desc);
+            encoder.copy_buffer_to_buffer(&OUTPUT_BUFFER, 0, &output_cpu, 0, active_len);
 
-        encoder.copy_buffer_to_buffer(
-            &OUTPUT_BUFFER,
-            0,
-            if use_first_output_buffer {
-                &self.output_cpu_0
-            } else {
-                &self.output_cpu_1
-            },
-            0,
-            OUTPUT_BUFFER_SIZE,
-        );
-    }
-
-    pub fn poll_output_buffer(&self, use_first_output_buffer: bool) -> Vec<u8> {
-        let active_len =
-            self.universes.lock().len().min(UNIVERSES as usize) * UNIVERSE_BUFFER_SIZE as usize;
-
-        if active_len == 0 {
-            return vec![];
+            let output_sender = self.output_sender.clone();
+            let capturable = output_cpu.clone();
+            encoder.map_buffer_on_submit(&output_cpu, MapMode::Read, ..active_len, move |_v| {
+                let output_data = capturable.get_mapped_range(..active_len).to_vec();
+                output_sender
+                    .send(output_data)
+                    .expect("Output sender receiver lost");
+                capturable.unmap();
+            });
         }
-
-        let buffer = if use_first_output_buffer {
-            &self.output_cpu_0
-        } else {
-            &self.output_cpu_1
-        };
-        let buffer_slice = buffer.slice(..active_len as u64);
-        let (tx, rx) = channel();
-        buffer_slice.map_async(MapMode::Read, move |v| {
-            tx.send(v).expect("Could not send on oneshot sender")
-        });
-
-        wgpu_render_state()
-            .device
-            .poll(PollType::wait_indefinitely())
-            .expect("Could not poll device");
-
-        rx.recv()
-            .expect("Could not receive on gpu rx")
-            .expect("Error receiving answer to output_data map on gpu");
-
-        let output_data = buffer_slice.get_mapped_range().to_vec();
-        buffer.unmap();
-
-        output_data
     }
 }

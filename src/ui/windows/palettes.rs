@@ -15,6 +15,7 @@ pub struct PalettesWindow {
 }
 
 impl PalettesWindow {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self, ctx: &Context) {
         if !self.open {
             self.dirty = false;

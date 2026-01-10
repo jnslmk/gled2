@@ -4,6 +4,7 @@ use super::{App, timing::FadeMode};
 use egui::{CentralPanel, Color32, Margin, RichText, TopBottomPanel};
 
 impl App {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn config(&mut self, ui: &mut egui::Ui) {
         let svg = self.svg_mut().and_then(|svg| svg.image(ui.ctx()));
         let Some(project) = self.project.as_mut() else {

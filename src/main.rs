@@ -1,8 +1,10 @@
 #![windows_subsystem = "windows"]
 
 pub mod app;
+pub mod audio;
 pub mod input;
 pub mod midi;
+pub mod network_stats;
 pub mod pipeline;
 pub mod storage;
 pub mod svg;
@@ -32,25 +34,24 @@ pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
     })
 });
 
-#[cfg(target_os = "macos")]
-const PRESENT_MODE: PresentMode = PresentMode::Immediate;
-
-#[cfg(not(target_os = "macos"))]
-const PRESENT_MODE: PresentMode = PresentMode::Mailbox;
-
 fn main() {
+    #[cfg(feature = "profiling")]
+    let _puffin_server = start_profile_server();
     env_logger::init();
     let ui_action_receiver = UiAction::init_queue();
     RendererCallback::init();
     storage::start_thread();
     ui::temperature::start_thread();
     midi::start_thread();
+    audio::start_thread();
+    network_stats::start_thread();
 
     #[cfg(not(debug_assertions))]
     ui::update_check::Update::start_thread();
 
     let mut wgpu_options = WgpuConfiguration::default();
-    wgpu_options.present_mode = PRESENT_MODE;
+    wgpu_options.desired_maximum_frame_latency = Some(1); // We want low latency
+    wgpu_options.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
             power_preference: if PersistantState::prefer_discrete_gpu() {
@@ -130,4 +131,16 @@ pub fn wgpu_render_state() -> RenderState {
         .get()
         .expect("Could not find wgpu render state")
         .clone()
+}
+
+#[cfg(feature = "profiling")]
+fn start_profile_server() -> puffin_http::Server {
+    let server_addr = format!("0.0.0.0:{}", puffin_http::DEFAULT_PORT);
+    let puffin_server =
+        puffin_http::Server::new(&server_addr).expect("Could not start puffin server");
+    puffin::set_scopes_on(true);
+    std::process::Command::new("puffin_viewer").spawn().expect(
+        "Could not run puffin_viewer, maybe install it with: \"cargo install puffin_viewer\"",
+    );
+    puffin_server
 }

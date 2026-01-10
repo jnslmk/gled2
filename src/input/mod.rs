@@ -49,6 +49,7 @@ impl Input {
             .clone()
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn tick() {
         let input = Self::get();
         let mut input = input.lock();

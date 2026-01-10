@@ -21,6 +21,9 @@ pub fn start() {
 
     debug!("Spawning enttec dmx usb pro thread");
     thread::spawn(move || {
+        #[cfg(feature = "profiling")]
+        profiling::register_thread!("enttec_dmx_usb_pro");
+
         let mut devices = HashMap::<String, Box<dyn SerialPort>>::new();
         loop {
             let now = Instant::now();
@@ -91,6 +94,9 @@ pub fn start() {
 fn find_devices() {
     debug!("Spawning enttec dmx usb pro discovery thread");
     thread::spawn(|| {
+        #[cfg(feature = "profiling")]
+        profiling::register_thread!("enttec_dmx_usb_pro:discovery");
+
         loop {
             let mut serial_numbers_port = HashMap::new();
             let ports = match serialport::available_ports() {

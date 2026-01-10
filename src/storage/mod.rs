@@ -106,6 +106,9 @@ pub fn branches() -> Option<Branches> {
 pub fn start_thread() {
     let actions = action::init();
     std::thread::spawn(move || {
+        #[cfg(feature = "profiling")]
+        profiling::register_thread!("storage");
+
         let mut retry_wait = std::time::Duration::from_secs(0);
         loop {
             sleep(retry_wait);

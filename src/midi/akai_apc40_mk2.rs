@@ -85,6 +85,9 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
 }
 
 pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutputConnection) {
+    #[cfg(feature = "profiling")]
+    profiling::register_thread!("midi:akai_apc40_mk2:send_output");
+
     // Reset all lights
     log::trace!("Resetting all lights..");
 

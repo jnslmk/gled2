@@ -4,7 +4,6 @@ use anyhow::{Context, Result};
 use log::{debug, trace, warn};
 use std::{
     net::SocketAddr,
-    sync::mpsc::{Receiver, Sender, channel},
     thread,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -19,26 +18,19 @@ use crate::{
     svg::universe_color_channels::UniverseColorChannels,
     ui::windows::{channel_overwrites::ChannelOverwrites, output_routings::HOVERED_OUTPUT_ROUTING},
 };
-pub type OutputSender = Sender<bool>;
-pub type GpuReadySender = Sender<()>;
-pub type GpuReadyReceiver = Receiver<()>;
 
 /// Start output thread.
-///
-/// Returns:
-/// * a sender to activate the output thread
-/// * a receiver to wait for the GPU to be ready again
-pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
+pub fn start() -> Result<()> {
     enttec_usb_pro::start();
 
     debug!("Spawning output thread");
-    let (output_sender, output_receiver) = channel();
-    let (gpu_ready_sender, gpu_ready_receiver) = channel::<()>();
-    gpu_ready_sender.send(()).ok();
 
     thread::Builder::new()
         .name("gled:output:tx".to_owned())
         .spawn(move || {
+            #[cfg(feature = "profiling")]
+            profiling::register_thread!("output:tx");
+
             match ARTNET_SOCKET.set_broadcast(true) {
                 Ok(_) => debug!("Activated sending to broadcast"),
                 Err(e) => debug!("Could not activate sending to broadcast: {e}"),
@@ -49,14 +41,13 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
             };
 
             let extract_output = ExtractOutput::get();
+            let output_receiver = extract_output
+                .take_output_receiver()
+                .expect("Could not take output receiver");
 
-            for use_first_output_buffer in output_receiver.iter() {
+            for mut output_data in output_receiver.iter() {
                 trace!("Sending output data");
                 let packages: Vec<(SocketAddr, Vec<u8>)> = {
-                    let mut output_data =
-                        extract_output.poll_output_buffer(use_first_output_buffer);
-                    gpu_ready_sender.send(()).expect("GPU ready receiver lost");
-
                     let mut routings = extract_output.routings.lock();
                     let hovered_output_routing = HOVERED_OUTPUT_ROUTING.lock().clone();
                     let mut channel_overwrites = ChannelOverwrites::get();
@@ -112,6 +103,7 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                         count += 1;
                         debug!("Sending package to {addr}");
                         trace!("Package data: {data:02x?}");
+
                         match ARTNET_SOCKET.send_to(&data, addr) {
                             Err(err) if count == 10 => {
                                 warn!("Could not send data on try {count}, giving up - {err:?}");
@@ -121,8 +113,9 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
                                 warn!("Could not send data on try {count} - {err:?}");
                                 std::thread::sleep(std::time::Duration::from_nanos(1));
                             }
-                            Ok(_) => {
+                            Ok(count) => {
                                 debug!("Sent data to {addr}");
+                                crate::network_stats::add_outgoing_bytes(count);
                                 break;
                             }
                         };
@@ -132,5 +125,5 @@ pub fn start() -> Result<(OutputSender, GpuReadyReceiver)> {
         })
         .context("Could not spawn artnet thread")?;
 
-    Ok((output_sender, gpu_ready_receiver))
+    Ok(())
 }

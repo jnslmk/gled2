@@ -17,6 +17,7 @@ pub struct ProjectsWindow {
 }
 
 impl ProjectsWindow {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self, ctx: &egui::Context) {
         if !self.open {
             return;
@@ -67,6 +68,9 @@ impl ProjectsWindow {
                                 {
                                     let svg = project.data.svg.as_ref().cloned();
                                     std::thread::spawn(move || {
+                                        #[cfg(feature = "profiling")]
+                                        profiling::register_thread!("save_svg_file");
+
                                         if let (Some(svg), Some(path)) = (
                                             svg,
                                             rfd::FileDialog::new()

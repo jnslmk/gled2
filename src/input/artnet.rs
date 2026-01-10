@@ -70,6 +70,9 @@ fn threads(sender: Sender<ArtnetEvent>) {
     thread::Builder::new()
         .name("gled:artnet:rx".to_string())
         .spawn(move || {
+            #[cfg(feature = "profiling")]
+            profiling::register_thread!("artnet:rx");
+
             loop {
                 if !ARTNET_CONFIG.lock().active {
                     thread::sleep(Duration::from_secs(1));
@@ -95,6 +98,8 @@ fn threads(sender: Sender<ArtnetEvent>) {
                         continue;
                     };
                     trace!("received on artnet");
+
+                    crate::network_stats::add_incoming_bytes(size);
 
                     let output = match ArtCommand::from_buffer(&buf[..size]) {
                         Err(err) => {
@@ -152,8 +157,14 @@ fn threads(sender: Sender<ArtnetEvent>) {
                                 continue;
                             };
 
-                            if let Err(err) = ARTNET_SOCKET.send_to(&data, src) {
-                                warn!("Could not send PollReply: {err:?}");
+                            crate::network_stats::add_outgoing_bytes(data.len());
+                            match ARTNET_SOCKET.send_to(&data, src) {
+                                Err(err) => {
+                                    warn!("Could not send PollReply: {err:?}");
+                                }
+                                Ok(count) => {
+                                    crate::network_stats::add_outgoing_bytes(count);
+                                }
                             }
 
                             continue;

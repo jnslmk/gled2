@@ -41,6 +41,7 @@ struct DeviceStrings {
 }
 
 impl OutputDevicesWindow {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self, ctx: &egui::Context) {
         if !self.open {
             return;

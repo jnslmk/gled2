@@ -13,11 +13,7 @@ pub mod timing;
 use crate::{
     input::Input,
     midi::state::MidiState,
-    pipeline::{
-        extract_output::ExtractOutput,
-        output_sender::{self, GpuReadyReceiver, OutputSender},
-        renderer_callback::RendererCallback,
-    },
+    pipeline::{output_sender, renderer_callback::RendererCallback},
     storage::{
         asset::{
             palette::Palette,
@@ -43,8 +39,6 @@ use crate::storage::asset::scene::grid::GridLocation;
 pub struct App {
     pub startup: bool,
     pub windows: Windows,
-    pub output_sender: OutputSender,
-    pub gpu_ready_receiver: GpuReadyReceiver,
     pub timing: Timing,
     pub last_always_render_fps_frame: Instant,
     pub project: Option<Project>,
@@ -62,12 +56,8 @@ pub struct App {
 }
 
 impl eframe::App for App {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ExtractOutput::trigger_output_sender(&self.output_sender);
-        self.gpu_ready_receiver
-            .recv()
-            .expect("GPU ready sender lost");
-
         if loading().is_none() && self.startup {
             self.startup = false;
             if let Some(project) = PersistantState::get().last_project_id {
@@ -196,6 +186,7 @@ impl eframe::App for App {
 }
 
 impl App {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn draw_main_window(&mut self, ctx: &egui::Context, viewport_id: Option<ViewportId>) {
         let panel_frame = egui::Frame::new()
             .fill(ctx.style().visuals.window_fill())
@@ -233,13 +224,10 @@ impl App {
         });
     }
     pub fn new(ui_action_receiver: Receiver<UiAction>) -> Option<Self> {
-        let (output_sender, gpu_ready_receiver) =
-            output_sender::start().expect("Could not start output sender");
+        output_sender::start().expect("Could not start output sender");
 
         let app = Self {
             startup: true,
-            output_sender,
-            gpu_ready_receiver,
             timing: Default::default(),
             last_always_render_fps_frame: Instant::now(),
             blackout: true,

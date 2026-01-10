@@ -15,6 +15,7 @@ pub struct ShortcutsWindow {
 }
 
 impl ShortcutsWindow {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self, ctx: &Context, project: Option<&mut Project>) {
         if !self.open {
             return;

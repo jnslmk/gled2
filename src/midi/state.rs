@@ -38,6 +38,9 @@ impl MidiState {
 }
 
 pub fn start() {
+    #[cfg(feature = "profiling")]
+    profiling::register_thread!("midi:state");
+
     let (sender, receiver) = unbounded();
     SENDER.set(sender).expect("Could not set sender");
 

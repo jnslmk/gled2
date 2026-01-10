@@ -16,6 +16,7 @@ impl App {
             .get_or_insert_with(|| ui.make_persistent_id("preview palette tree"))
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn preview(&mut self, ui: &mut egui::Ui) {
         let palette_asset_tree_id = self.palette_asset_tree_id(ui);
         let palette_tree_id = self
