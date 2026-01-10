@@ -76,7 +76,7 @@ impl SceneInstanceWidget<'_> {
                 );
                 let resp = scoped_frame(
                     ui,
-                    UiBuilder::new().max_rect(title_rect).sense(Sense::drag()),
+                    UiBuilder::new().max_rect(title_rect).sense(Sense::click_and_drag()),
                     Frame::new().inner_margin(INNER_MARGIN),
                     |ui| {
                         ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {

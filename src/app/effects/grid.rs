@@ -1,16 +1,16 @@
 use super::App;
+use crate::app::PersistantState;
+use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::ui::scene_instance::dnd::{dnd_drag_source, dnd_drop_zone};
 use crate::ui::scene_instance::widget::SceneInstanceWidget;
 use crate::ui::scene_instance::widget::{EmptyGridSpot, SCENE_WIDGET_SIZE};
-use crate::app::PersistantState;
 use egui::{
     scroll_area::ScrollBarVisibility::AlwaysVisible, Color32, Frame, Id, TextureHandle, Ui, UiBuilder,
     Vec2,
 };
 use emath::{vec2, Rect};
 use epaint::{Stroke, StrokeKind};
-use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
@@ -22,22 +22,23 @@ impl App {
                 let Some(project) = self.project.as_mut() else {
                     return;
                 };
+                ui.set_width(GRID_WIDTH as f32 * (SCENE_WIDGET_SIZE + 20.) +20.);
+                ui.set_height(GRID_HEIGHT as f32 * (SCENE_WIDGET_SIZE + 20.) + 20.);
+
                 let to_global = ui.ctx().layer_transform_to_global(ui.layer_id()).unwrap_or_default();
                 let effects_size = PersistantState::effects_size();
                 let groups = project.groups.clone();
 
                 let grid = &mut project.scenes_instances_grid;
-                let start_pos = ui.cursor().min + vec2(20., 20.);
-
-                    for row in 0..GRID_HEIGHT {
+                let start_pos = ui.cursor().min;
+                for row in 0..GRID_HEIGHT {
                         for col in 0..GRID_WIDTH {
                             let location = GridLocation { col, row };
 
-                            let tile_length = SCENE_WIDGET_SIZE + 28.;
                             let rect = to_global.mul_rect
                             (Rect::from_min_size(
-                                start_pos + vec2(col as f32 * (tile_length + 20.), row as f32 * (tile_length + 20.)),
-                                vec2(tile_length, tile_length )));
+                                start_pos + vec2(20., 20.) + vec2(col as f32 * (SCENE_WIDGET_SIZE + 20.), row as f32 * (SCENE_WIDGET_SIZE + 20.)),
+                                vec2(SCENE_WIDGET_SIZE, SCENE_WIDGET_SIZE)));
                             let (_, dropped_payload) = ui
                                 .scope_builder(UiBuilder::new().max_rect(rect),|ui| {
                                     dnd_drop_zone::<GridLocation, ()>(ui, Frame::default().corner_radius(2.), |ui| {
