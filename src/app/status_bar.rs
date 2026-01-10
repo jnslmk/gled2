@@ -7,7 +7,7 @@ use crate::{
     },
     ui::temperature::temperature,
 };
-use egui::{Button, FontSelection, Label, Layout, Margin, RichText, Spinner, TextBuffer, TextEdit, Ui, ViewportId};
+use egui::{Button, FontSelection, Label, Layout, Margin, RichText, Spinner, TextEdit, Ui, ViewportId};
 use egui_flex::{Flex, item};
 use egui_phosphor_icons::icons;
 use emath::Align;
