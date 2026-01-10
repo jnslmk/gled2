@@ -155,7 +155,7 @@ impl<R: Range> MultipliedCurve<R> {
                 let rect = MenuButton::new(if self.curve.is_some() {
                     "                        "
                 } else {
-                    "Select Curve"
+                    "Dynamic"
                 })
                 .config(
                     MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),

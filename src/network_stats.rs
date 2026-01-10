@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 const UPDATE_SECONDS: u64 = 3;
 const COUNTED_BYTES_TO_MBIT: f64 = (UPDATE_SECONDS * 1024 * 1024 / 8) as f64;
 
-static STATS: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new(String::new()));
+static STATS: Lazy<Mutex<Option<(f64, f64)>>> = Lazy::new(|| Mutex::new(None));
 static INCOMING_BYTES: AtomicUsize = AtomicUsize::new(0);
 static OUTGOING_BYTES: AtomicUsize = AtomicUsize::new(0);
 
@@ -20,12 +20,7 @@ pub fn start_thread() {
 
             let incoming = INCOMING_BYTES.swap(0, Relaxed);
             let outgoing = OUTGOING_BYTES.swap(0, Relaxed);
-            let stats = format!(
-                "⬇ {:.2} MBit/s ⬆ {:.2} MBit/s",
-                incoming as f64 / COUNTED_BYTES_TO_MBIT,
-                outgoing as f64 / COUNTED_BYTES_TO_MBIT
-            );
-            *STATS.lock() = stats;
+            *STATS.lock() = Some((incoming as f64 / COUNTED_BYTES_TO_MBIT, outgoing as f64 / COUNTED_BYTES_TO_MBIT));
         }
     });
 }
@@ -38,6 +33,6 @@ pub fn add_outgoing_bytes(bytes: usize) {
     OUTGOING_BYTES.fetch_add(bytes, Relaxed);
 }
 
-pub fn stats() -> String {
+pub fn stats() -> Option<(f64, f64)> {
     STATS.lock().clone()
 }

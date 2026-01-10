@@ -1,13 +1,17 @@
 use super::App;
 use crate::{
+    app::timing::LINK_ACTIVE_COLOR,
     network_stats,
     storage::{
         action::StorageAction, asset::curve::polynomial::polynomials_fitting, staged_files, working,
     },
     ui::temperature::temperature,
 };
-use egui::{Button, Label, Layout, Margin, Spinner, TextEdit, Ui, ViewportId};
+use egui::{Button, FontSelection, Label, Layout, Margin, RichText, Spinner, TextBuffer, TextEdit, Ui, ViewportId};
 use egui_flex::{Flex, item};
+use egui_phosphor_icons::icons;
+use emath::Align;
+use epaint::text::{LayoutJob, TextFormat};
 
 impl App {
     pub fn status_bar(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
@@ -16,28 +20,49 @@ impl App {
                 .inner_margin(Margin::from(1.0))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
+                        ui.add(Label::new(temperature(ui)).selectable(false));
+
                         if let Some(framerate) = self.timing.framerate() {
-                            ui.add(Label::new(format!("{framerate:.0} fps")));
+                            ui.add_space(8.0);
+                            let mut layout_job = LayoutJob::default();
+                            icons::GAUGE.regular().append_to(&mut layout_job, ui.style(), egui::FontSelection::Default, egui::Align::Center);
+                            layout_job.append(format!(" {framerate:.0} fps", ).as_str(), 0.0, TextFormat::default());
+                            ui.add(
+                                Label::new(layout_job).selectable(false),
+                            );
                         }
 
                         let network_stats = network_stats::stats();
-                        if !network_stats.is_empty() {
+                        if let Some((incoming, outgoing)) = network_stats {
                             ui.add_space(8.0);
-                            ui.add(Label::new(network_stats));
+                            let mut layout_job = LayoutJob::default();
+                            icons::NETWORK.regular().append_to(&mut layout_job, ui.style(), FontSelection::Default, Align::Center);
+                            layout_job.append("  ", 0.0, TextFormat::default());
+                            icons::CARET_DOWN.regular().append_to(&mut layout_job, ui.style(), FontSelection::Default, Align::Center);
+                            layout_job.append(format!(" {:.2} MBit/s  ", incoming).as_str(), 0.0, TextFormat::default());
+                            icons::CARET_UP.regular().append_to(&mut layout_job, ui.style(), FontSelection::Default, Align::Center);
+                            layout_job.append(format!(" {:.2} MBit/s", outgoing).as_str(), 0.0, TextFormat::default());
+                            ui.add(Label::new(layout_job).selectable(false));
                         }
 
                         let connected_ableton_peers = crate::app::timing::CONNECTED_PEERS
                             .load(std::sync::atomic::Ordering::Relaxed);
                         if connected_ableton_peers > 0 {
                             ui.add_space(8.0);
-                            ui.add(Label::new(format!(
-                                "🔗 {connected_ableton_peers} Ableton Link peer{}",
-                                if connected_ableton_peers == 1 {
-                                    ""
-                                } else {
-                                    "s"
-                                }
-                            )));
+                            let mut layout_job = LayoutJob::default();
+                            icons::METRONOME.regular().color(LINK_ACTIVE_COLOR)
+                                .append_to(&mut layout_job, ui.style(), egui::FontSelection::Default, egui::Align::Center);
+                            RichText::new(format!(
+                                        " {connected_ableton_peers} Ableton Link peer{} ",
+                                        if connected_ableton_peers == 1 {
+                                            ""
+                                        } else {
+                                            "s"
+                                        }
+                                    ))
+                                .color(LINK_ACTIVE_COLOR).append_to(&mut layout_job, ui.style(), egui::FontSelection::Default, egui::Align::Center);
+
+                            ui.add(Label::new(layout_job).selectable(false));
                         }
 
                         #[cfg(not(debug_assertions))]
@@ -50,18 +75,20 @@ impl App {
                         }
 
                         ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                            ui.add(Label::new(temperature()));
                             ui.add_space(4.0);
                             self.git_button(ui);
                             ui.add_space(4.0);
                             match polynomials_fitting() {
                                 0 => (),
                                 n => {
-                                    ui.label(if n == 1 {
-                                        "Fitting one polynomial".to_owned()
-                                    } else {
-                                        format!("Fitting {n} polynomials")
-                                    });
+                                    ui.add(
+                                        Label::new(if n == 1 {
+                                            "Fitting one polynomial".to_owned()
+                                        } else {
+                                            format!("Fitting {n} polynomials")
+                                        })
+                                        .selectable(false),
+                                    );
                                     ui.add(Spinner::new());
                                     ui.add_space(4.0);
                                 }
@@ -73,8 +100,15 @@ impl App {
     }
 
     fn git_button(&mut self, ui: &mut Ui) {
+        let mut layout_job = LayoutJob::default();
+        icons::GIT_BRANCH.regular().append_to(&mut layout_job, ui.style(), egui::FontSelection::Default, egui::Align::Center);
+        layout_job.append(format!(
+            " git{}",
+            if staged_files() > 0 { "*" } else { "" }
+        ).as_str(), 0.0, TextFormat::default());
+
         ui.menu_button(
-            format!("{}", if staged_files() > 0 { "*" } else { "" }),
+            layout_job,
             |ui| {
                 self.git_menu(ui);
             },

@@ -1,7 +1,7 @@
 [package]
 name = "gled"
 description = "gled is an application for creating animations and effects on artnet or dmx installations"
-version = "2.21.1"
+version = "2.22.3"
 edition = "2024"
 repository = "https://gitlab.com/photonenkollektiv/gled2"
 homepage = "https://photonenkollektiv.gitlab.io/gled2"
@@ -85,6 +85,7 @@ profiling = { version = "1", features = [
 ], optional = true }
 puffin = { version = "0.19", optional = true }
 puffin_http = { version = "0.16", optional = true }
+wgpu-profiler = { version = "0.25", optional = true, features = ["puffin"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }
@@ -119,7 +120,9 @@ icons = ["logo/logo.png", "logo/logo.icns"]
 macos = { "signingIdentity" = "Developer ID Application: FreshX GmbH (V5GQY7AUWA)" }
 
 [features]
-profiling = ["dep:profiling", "dep:puffin", "dep:puffin_http"]
-
-[patch.crates-io]
-rusty_link = { git = "https://github.com/elwerene/rusty_link.git", branch = "cross-compile-fix" }
+profiling = [
+    "dep:profiling",
+    "dep:puffin",
+    "dep:puffin_http",
+    "dep:wgpu-profiler",
+]

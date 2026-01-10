@@ -20,9 +20,11 @@ use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallbac
 use std::sync::{Arc, OnceLock};
 use egui_phosphor_icons::add_fonts;
 use epaint::FontFamily;
-use epaint::text::{FontData, FontDefinitions};
+use epaint::text::{FontData, FontDefinitions, FontTweak};
 use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
+
+use crate::pipeline::output_sender;
 
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
 pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
@@ -34,9 +36,23 @@ pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
     })
 });
 
+#[cfg(feature = "profiling")]
+static WGPU_PROFILER: Lazy<egui::mutex::Mutex<wgpu_profiler::GpuProfiler>> = Lazy::new(|| {
+    egui::mutex::Mutex::new(
+        wgpu_profiler::GpuProfiler::new(
+            &wgpu_render_state().device,
+            wgpu_profiler::GpuProfilerSettings::default(),
+        )
+        .expect("Could not create WGPU profiler"),
+    )
+});
+#[cfg(feature = "profiling")]
+pub static PUFFIN_GPU_PROFILER: Lazy<egui::mutex::Mutex<puffin::GlobalProfiler>> =
+    Lazy::new(|| egui::mutex::Mutex::new(puffin::GlobalProfiler::default()));
+
 fn main() {
     #[cfg(feature = "profiling")]
-    let _puffin_server = start_profile_server();
+    let _puffin_servers = start_profile_servers();
     env_logger::init();
     let ui_action_receiver = UiAction::init_queue();
     RendererCallback::init();
@@ -45,12 +61,12 @@ fn main() {
     midi::start_thread();
     audio::start_thread();
     network_stats::start_thread();
+    let output_package_sender = output_sender::start().expect("Could not start output sender");
 
     #[cfg(not(debug_assertions))]
     ui::update_check::Update::start_thread();
 
     let mut wgpu_options = WgpuConfiguration::default();
-    wgpu_options.desired_maximum_frame_latency = Some(1); // We want low latency
     wgpu_options.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
@@ -59,9 +75,15 @@ fn main() {
             } else {
                 PowerPreference::LowPower
             },
+            #[cfg(feature = "profiling")]
+            device_descriptor: std::sync::Arc::new(|adapter| wgpu::DeviceDescriptor {
+                required_features: adapter.features()
+                    & wgpu_profiler::GpuProfiler::ALL_WGPU_TIMER_FEATURES,
+                ..Default::default()
+            }),
             ..create_new
         }),
-        existing => existing,
+        _ => unreachable!(),
     };
 
     let options = eframe::NativeOptions {
@@ -69,9 +91,8 @@ fn main() {
             .with_inner_size([1300.0, 1024.0])
             .with_drag_and_drop(true)
             .with_min_inner_size([300.0, 200.0]),
-        renderer: eframe::Renderer::Wgpu,
-        vsync: false,
         wgpu_options,
+        dithering: false,
         ..Default::default()
     };
     eframe::run_native(
@@ -81,14 +102,19 @@ fn main() {
             let mut fonts = FontDefinitions::default();
             add_fonts(&mut fonts);
 
+            let oxanium_tweak = FontTweak{
+                scale: 1.0,
+                y_offset_factor: 0.15,
+                y_offset: 0.0,
+            };
             // Register the font by name
             fonts.font_data.insert(
                 "Oxanium_Regular".to_owned(),
-                Arc::from(FontData::from_static(include_bytes!("../assets/Oxanium-Regular.ttf"))),
+                Arc::from(FontData::from_static(include_bytes!("../assets/Oxanium-Regular.ttf")).tweak(oxanium_tweak)),
             );
             fonts.font_data.insert(
                 "Oxanium_Semi_Bold".to_owned(),
-                Arc::from(FontData::from_static(include_bytes!("../assets/Oxanium-SemiBold.ttf"))),
+                Arc::from(FontData::from_static(include_bytes!("../assets/Oxanium-SemiBold.ttf")).tweak(oxanium_tweak)),
             );
 
             fonts
@@ -108,7 +134,7 @@ fn main() {
                 style.visuals.panel_fill = Color32::from_gray(5);
             });
             install_image_loaders(&cc.egui_ctx);
-            Input::init(&cc.egui_ctx);
+            Input::init(&cc.egui_ctx, output_package_sender);
 
             WGPU_RENDER_STATE
                 .set(
@@ -134,13 +160,39 @@ pub fn wgpu_render_state() -> RenderState {
 }
 
 #[cfg(feature = "profiling")]
-fn start_profile_server() -> puffin_http::Server {
-    let server_addr = format!("0.0.0.0:{}", puffin_http::DEFAULT_PORT);
-    let puffin_server =
-        puffin_http::Server::new(&server_addr).expect("Could not start puffin server");
+struct PuffinViewerChildGuard(std::process::Child);
+#[cfg(feature = "profiling")]
+impl Drop for PuffinViewerChildGuard {
+    fn drop(&mut self) {
+        match self.0.kill() {
+            Err(e) => println!("Could not kill puffin viewer process: {}", e),
+            Ok(_) => println!("Successfully killed puffin viewer process"),
+        }
+    }
+}
+
+#[cfg(feature = "profiling")]
+fn start_profile_servers() -> (
+    puffin_http::Server,
+    puffin_http::Server,
+    PuffinViewerChildGuard,
+    PuffinViewerChildGuard,
+) {
     puffin::set_scopes_on(true);
-    std::process::Command::new("puffin_viewer").spawn().expect(
-        "Could not run puffin_viewer, maybe install it with: \"cargo install puffin_viewer\"",
-    );
-    puffin_server
+    let cpu_server = puffin_http::Server::new(&format!("0.0.0.0:{}", puffin_http::DEFAULT_PORT))
+        .expect("Could not start puffin server for cpu");
+    let gpu_server = puffin_http::Server::new_custom(
+        &format!("0.0.0.0:{}", puffin_http::DEFAULT_PORT + 1),
+        |sink| PUFFIN_GPU_PROFILER.lock().add_sink(sink),
+        |id| _ = PUFFIN_GPU_PROFILER.lock().remove_sink(id),
+    )
+    .expect("Could not start puffin server for gpu");
+    let cpu_profiler =
+        PuffinViewerChildGuard(std::process::Command::new("puffin_viewer").spawn().expect(
+            "Could not run puffin_viewer, maybe install it with: \"cargo install puffin_viewer\"",
+        ));
+    let gpu_profiler = PuffinViewerChildGuard(std::process::Command::new("puffin_viewer").arg("--url").arg(format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT + 1)).spawn().expect(
+            "Could not run puffin_viewer, maybe install it with: \"cargo install puffin_viewer\"",
+        ));
+    (cpu_server, gpu_server, cpu_profiler, gpu_profiler)
 }

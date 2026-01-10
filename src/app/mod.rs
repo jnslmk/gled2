@@ -13,7 +13,7 @@ pub mod timing;
 use crate::{
     input::Input,
     midi::state::MidiState,
-    pipeline::{output_sender, renderer_callback::RendererCallback},
+    pipeline::renderer_callback::RendererCallback,
     storage::{
         asset::{
             palette::Palette,
@@ -58,6 +58,22 @@ pub struct App {
 impl eframe::App for App {
     #[cfg_attr(feature = "profiling", profiling::function)]
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        #[cfg(feature = "profiling")]
+        {
+            crate::WGPU_PROFILER
+                .lock()
+                .end_frame()
+                .expect("Could not end WGPU profiler frame");
+            let latest_profiler_results = crate::WGPU_PROFILER
+                .lock()
+                .process_finished_frame(crate::wgpu_render_state().queue.get_timestamp_period());
+            wgpu_profiler::puffin::output_frame_to_puffin(
+                &mut crate::PUFFIN_GPU_PROFILER.lock(),
+                latest_profiler_results.as_deref().unwrap_or_default(),
+            );
+            crate::PUFFIN_GPU_PROFILER.lock().new_frame();
+        }
+
         if loading().is_none() && self.startup {
             self.startup = false;
             if let Some(project) = PersistantState::get().last_project_id {
@@ -179,8 +195,6 @@ impl eframe::App for App {
         self.windows
             .update(ctx, &self.timing, self.project.as_mut());
 
-        let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
-        ctx.debug_painter().add(callback);
         ctx.request_repaint();
     }
 }
@@ -193,6 +207,10 @@ impl App {
             .stroke(ctx.style().visuals.widgets.noninteractive.fg_stroke);
 
         CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
+            if viewport_id.is_none() {
+                let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
+                ui.painter().add(callback);
+            }
             let mut ui = ui.new_child(UiBuilder::new().max_rect(ui.max_rect().shrink(4.0)));
 
             self.menu(&mut ui, viewport_id);
@@ -224,8 +242,6 @@ impl App {
         });
     }
     pub fn new(ui_action_receiver: Receiver<UiAction>) -> Option<Self> {
-        output_sender::start().expect("Could not start output sender");
-
         let app = Self {
             startup: true,
             timing: Default::default(),
