@@ -25,12 +25,14 @@ use crate::{
     wgpu_render_state,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::{
     collections::BTreeSet,
     time::{Duration, Instant},
 };
+use rand::seq::IndexedMutRandom;
 use wgpu::CommandEncoderDescriptor;
+use crate::pipeline::transition::{Transition, TransitionGoal};
 
 pub fn deserialize_scene_instances<'de, D>(
     deserializer: D,
@@ -204,56 +206,55 @@ impl Project {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
-        // TODO @bratorange
-        //if self.auto_mode_active {
-        //    if self
-        //        .auto_mode_last_change
-        //        .get_or_insert_with(Instant::now)
-        //        .elapsed()
-        //        .as_secs()
-        //        > self.auto_mode_seconds
-        //    {
-        //        let auto_mode_max_scenes = self.auto_mode_max_scenes;
-        //        let mut prev = HashSet::new();
-        //        {
-        //            let mut indices = self
-        //                .scenes_instances_grid
-        //                .iter()
-        //                .filter(|(_index, scene)| scene.active)
-        //                .map(|(location, _scene)| location)
-        //                .collect::<Vec<_>>();
-        //
-        //            let mut disable_count =
-        //                (indices.len() + 1).saturating_sub(auto_mode_max_scenes);
-        //            while disable_count > 0 {
-        //                if let Some(location) = indices.choose_mut(&mut rand::rng()).copied()
-        //                    && prev.insert(location)
-        //                {
-        //                    disable_count -= 1;
-        //                    if let Some(scene) = self.scenes_instances_grid.get_mut(location) {
-        //                        scene.set_transition(Transition::new(
-        //                            TransitionGoal::TurnOff,
-        //                            fade_duration,
-        //                        ));
-        //                    }
-        //                }
-        //            }
-        //        }
-        //
-        //        let mut scenes = self
-        //            .scenes_instances_grid
-        //            .iter_mut()
-        //            .filter(|(location, _scene)| !prev.contains(location))
-        //            .collect::<Vec<_>>();
-        //        if let Some((_index, scene)) = scenes.choose_mut(&mut rand::rng()) {
-        //            scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
-        //        }
-        //
-        //        self.auto_mode_last_change.take();
-        //    }
-        //} else {
+        if self.auto_mode_active {
+            if self
+                .auto_mode_last_change
+                .get_or_insert_with(Instant::now)
+                .elapsed()
+                .as_secs()
+                > self.auto_mode_seconds
+            {
+                let auto_mode_max_scenes = self.auto_mode_max_scenes;
+                let mut prev = HashSet::new();
+                {
+                    let mut indices = self
+                        .scenes_instances_grid
+                        .iter()
+                        .filter(|(_index, scene)| scene.active)
+                        .map(|(location, _scene)| location.clone())
+                        .collect::<Vec<_>>();
+
+                    let mut disable_count =
+                        (indices.len() + 1).saturating_sub(auto_mode_max_scenes);
+                    while disable_count > 0 {
+                        if let Some(location) = indices.choose_mut(&mut rand::rng()).copied()
+                            && prev.insert(location)
+                        {
+                            disable_count -= 1;
+                            if let Some(scene) = self.scenes_instances_grid.get_mut(&location) {
+                                scene.set_transition(Transition::new(
+                                    TransitionGoal::TurnOff,
+                                    fade_duration,
+                                ));
+                            }
+                        }
+                    }
+                }
+
+                let mut scenes = self
+                    .scenes_instances_grid
+                    .iter_mut()
+                    .filter(|(location, _scene)| !prev.contains(location))
+                    .collect::<Vec<_>>();
+                if let Some((_index, scene)) = scenes.choose_mut(&mut rand::rng()) {
+                    scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
+                }
+
+                self.auto_mode_last_change.take();
+            }
+        } else {
         self.auto_mode_last_change.take();
-        //}
+        }
 
         let palette = self.palette.and_then(Asset::get);
         let deck_groups = self.groups.clone();
