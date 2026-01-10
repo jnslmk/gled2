@@ -1,6 +1,6 @@
 use crate::storage::asset::project::scene_instance_path::grid_scene_instance_index;
-use crate::storage::asset::scene::Scene;
 use crate::storage::asset::scene::grid::GridLocation;
+use crate::storage::asset::scene::Scene;
 use crate::ui::action::UiAction;
 use crate::ui::asset_tree::AssetTree;
 use crate::{
@@ -8,12 +8,11 @@ use crate::{
     ui::gled_slider::GledSlider,
 };
 use egui::containers::menu::MenuButton;
-use egui::{Align, Button, Color32, CornerRadius, Frame, InnerResponse, Label, Layout, Rect, Response, RichText, Sense, Separator, Shape, TextureHandle, Ui, UiBuilder, Vec2, Widget, epaint::RectShape, pos2, LayerId};
+use egui::{epaint::RectShape, pos2, Align, Button, Color32, CornerRadius, Frame, InnerResponse, Label, Layout, Rect, Response, RichText, Sense, Shape, TextureHandle, Ui, UiBuilder, Vec2, Widget};
 use egui_ltreeview::TreeViewState;
 use egui_phosphor_icons::icons;
 use emath::vec2;
 use epaint::{FontFamily, Stroke, StrokeKind};
-use kurbo::Cap::Butt;
 
 pub(crate) const SCENE_WIDGET_SIZE: f32 = 150.0;
 pub struct SceneInstanceWidget<'a> {
@@ -25,7 +24,7 @@ pub struct SceneInstanceWidget<'a> {
 }
 
 const CORNER_RADIUS: u8 = 2;
-const INNER_MARGIN: f32 = 8.0;
+const INNER_MARGIN: f32 = 6.0;
 
 impl Widget for SceneInstanceWidget<'_> {
     fn ui(mut self, ui: &mut Ui) -> Response {
@@ -33,11 +32,15 @@ impl Widget for SceneInstanceWidget<'_> {
         let rect = Rect::from_min_size(ui.cursor().min, vec2(SCENE_WIDGET_SIZE, SCENE_WIDGET_SIZE));
         ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
             self.draw_background(ui, &rect);
-            let text_response = self.header_bar(name, ui);
+            let (text_response, button_rect) = self.header_bar(name, ui);
             Frame::new().inner_margin(INNER_MARGIN).show(ui, |ui| {
                 self.preview(ui);
                 self.dimmer(ui);
             });
+            if !self.scene_instance.active {
+                ui.painter().rect_filled(rect.expand(1.), 0., Color32::from_black_alpha(200));
+            }
+            self.draw_enable_button(ui, button_rect);
             text_response
         }) // end outer Frame::show
         .inner
@@ -45,7 +48,7 @@ impl Widget for SceneInstanceWidget<'_> {
 }
 
 impl SceneInstanceWidget<'_> {
-    fn header_bar(&mut self, name: String, ui: &mut Ui) -> Response {
+    fn header_bar(&mut self, name: String, ui: &mut Ui) -> (Response, Rect) {
         let start_pos = ui.cursor().min;
         let available_width = SCENE_WIDGET_SIZE;
 
@@ -76,35 +79,37 @@ impl SceneInstanceWidget<'_> {
                     UiBuilder::new().max_rect(title_rect).sense(Sense::drag()),
                     Frame::new().inner_margin(INNER_MARGIN),
                     |ui| {
-                        // drop shadow behind the text for better readability
-                        let title_label = egui::Label::new(
-                            RichText::new(name)
-                                .family(FontFamily::Name("Bold".into()))
-                                .size(12.0)
-                                .color(Color32::WHITE),
-                        )
-                        .truncate();
-
-                        // when accessing text layout information,
-                        // painting has to be done manually instead
-                        let (galley_pos, galley, text_resp) = title_label.layout_in_ui(ui);
-                        let response_color = ui.style().visuals.text_color();
-                        let text_rec = galley.rect.translate(galley_pos.to_vec2());
-
-                        ui.painter().add(
-                            RectShape::filled(
-                                text_rec,
-                                5.,
-                                Color32::from_black_alpha(60),
+                        ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
+                            // drop shadow behind the text for better readability
+                            let title_label = Label::new(
+                                RichText::new(name)
+                                    .family(FontFamily::Name("Bold".into()))
+                                    .size(12.0)
+                                    .color(Color32::WHITE),
                             )
-                            .with_blur_width(20.0),
-                        );
-                        ui.painter().add(epaint::TextShape::new(
-                            galley_pos,
-                            galley,
-                            response_color,
-                        ));
-                        text_resp
+                                .truncate();
+
+                            // when accessing text layout information,
+                            // painting has to be done manually instead
+                            let (galley_pos, galley, text_resp) = title_label.layout_in_ui(ui);
+                            let response_color = ui.style().visuals.text_color();
+                            let text_rec = galley.rect.translate(galley_pos.to_vec2());
+
+                            ui.painter().add(
+                                RectShape::filled(
+                                    text_rec,
+                                    5.,
+                                    Color32::from_black_alpha(60),
+                                )
+                                    .with_blur_width(20.0),
+                            );
+                            ui.painter().add(epaint::TextShape::new(
+                                galley_pos,
+                                galley,
+                                response_color,
+                            ));
+                            text_resp
+                        }).response;
                     },
                 );
 
@@ -112,33 +117,44 @@ impl SceneInstanceWidget<'_> {
                 let button_rect = Rect::from_min_size(
                     title_rect.right_top(),
                     Vec2::new(button_width, header_height),
-                );
-                let button_response = ui.put(
-                    button_rect,
-                    Button::new(if self.scene_instance.active {
-                        icons::PAUSE.fill().color(Color32::GREEN).size(16.0)
-                    } else {
-                        icons::PLAY.fill().color(Color32::GREEN).size(16.0)
-                    })
-                    .corner_radius(CornerRadius {
-                        nw: 0,
-                        ne: CORNER_RADIUS,
-                        sw: 0,
-                        se: 0,
-                    }),
-                );
-                if button_response.clicked() {
-                    self.scene_instance.active = !self.scene_instance.active;
-                }
+                ).shrink(2.);
+                self.draw_enable_button(ui, button_rect);
                 ui.painter().line(
-                    vec![title_rect.left_bottom(), button_rect.right_bottom()],
+                    vec![header_rect.left_bottom(), header_rect.right_bottom()],
                     Stroke::new(0.3, Color32::WHITE),
                 );
-
-                resp.response
+                (resp.response, button_rect)
             },
         )
         .inner
+    }
+
+    fn draw_enable_button(&mut self, ui: &mut Ui, button_rect: Rect) {
+        let button_response = ui.put(
+            button_rect,
+            Button::new(if self.scene_instance.active {
+                icons::PAUSE.fill().color(Color32::GREEN).size(18.0)
+            } else {
+                icons::PLAY.fill().color(Color32::GREEN.blend(Color32::from_black_alpha(100))).size(18.0)
+            })
+                .corner_radius(CornerRadius {
+                    nw: 0,
+                    ne: CORNER_RADIUS,
+                    sw: 0,
+                    se: 0,
+                })
+                .fill(
+                    if self.scene_instance.active {
+                        Color32::from_black_alpha(50)
+                    }
+                    else {
+                        Color32::from(self.scene_instance.color).blend(Color32::from_black_alpha(160))
+                    }
+                )
+        );
+        if button_response.clicked() {
+            self.scene_instance.active = !self.scene_instance.active;
+        }
     }
 
     fn preview(&self, ui: &mut Ui) {
@@ -154,6 +170,9 @@ impl SceneInstanceWidget<'_> {
                             Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
                         ),
                 ));
+            }
+            if !self.scene_instance.active{
+                ui.painter().rect_filled(preview_rect.expand(1.), 0., Color32::from_black_alpha(100));
             }
         });
     }
@@ -200,15 +219,11 @@ impl SceneInstanceWidget<'_> {
             StrokeKind::Outside,
         );
         // background glare / shadow
-        let glare_shape = if self.scene_instance.active {
-            RectShape::filled(rect.expand(10.0), 5., Color32::from_white_alpha(200))
-                .with_blur_width(50.)
-        } else {
+        let glare_shape =
             RectShape::filled(rect.expand(2.), CORNER_RADIUS, Color32::from_white_alpha(80))
-                .with_blur_width(10.)
-        };
+                .with_blur_width(10.);
         let mut painter = ui.ctx().layer_painter(ui.layer_id());
-        painter.set_clip_rect(rect.clone());
+        painter.set_clip_rect(rect.intersect(ui.clip_rect()));
         painter.add(glare_shape);
     }
 }
@@ -235,20 +250,23 @@ pub struct EmptyGridSpot {
 
 impl Widget for EmptyGridSpot {
     fn ui(self, ui: &mut Ui) -> Response {
-        let response = Frame::default()
+        let rect = Rect::from_min_size(ui.cursor().min, vec2(SCENE_WIDGET_SIZE, SCENE_WIDGET_SIZE));
+        const EMPTY_COLOR: Color32 = Color32::from_gray(80);
+        let response = scoped_frame(ui,
+            UiBuilder::new().max_rect(rect),
+            Frame::default()
             .stroke(Stroke {
                 width: 0.3,
-                color: Color32::WHITE,
+                color: EMPTY_COLOR,
             })
-            .corner_radius(2)
-            .show(ui, |ui| {
+            .corner_radius(2),|ui| {
                 ui.with_layout(Layout::top_down(Align::Center), |ui| {
                     MenuButton::from_button(
                         Button::new(
                             icons::PLUS
                                 .regular()
                                 .size(60.0)
-                                .color(Color32::from_gray(120)),
+                                .color(EMPTY_COLOR),
                         )
                         .fill(Color32::TRANSPARENT)
                         .min_size(Vec2 {

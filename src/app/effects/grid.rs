@@ -65,7 +65,7 @@ impl App {
                                                     ui.painter().rect_stroke(
                                                         widget_response.rect,
                                                         5.0,
-                                                        Stroke::new(2., Color32::WHITE),
+                                                        Stroke::new(2., Color32::from_gray(200)),
                                                         StrokeKind::Outside,
                                                     );
                                                 }
@@ -74,7 +74,7 @@ impl App {
                                                         ui.painter().rect_stroke(
                                                             widget_response.rect,
                                                             5.0,
-                                                            Stroke::new(2., Color32::from_gray(160)),
+                                                            Stroke::new(1., Color32::from_gray(160)),
                                                             StrokeKind::Outside,
                                                         );
                                                     }
