@@ -1,11 +1,11 @@
-use std::clone::Clone;
 use atomic_float::AtomicF32;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, StreamConfig};
+use egui::mutex::Mutex;
+use once_cell::sync::Lazy;
 use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use triple_buffer::Input;
 
 pub const MAX_BIN_FREQ: f32 = 32768.;
 
@@ -14,20 +14,25 @@ const FFT_SIZE: usize = 512;
 // Number of frequency bins to expose to shader (typically half of FFT_SIZE due to Nyquist)
 pub const FREQ_BINS: usize = 256;
 
-pub type FftSample = [f32; FREQ_BINS];
-
+static FFT_DATA: Lazy<Arc<Mutex<Vec<f32>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(vec![0.0; FREQ_BINS])));
 static FFT_MAX_MAGNITUDE: AtomicF32 = AtomicF32::new(1e-6);
 
-pub fn fft_data_u8(fft_sample: FftSample) -> [u8; FREQ_BINS * 4] {
+pub fn fft_data() -> Vec<f32> {
+    FFT_DATA.lock().clone()
+}
+
+pub fn fft_data_u8() -> [u8; FREQ_BINS * 4] {
+    let fft_data = FFT_DATA.lock();
     let mut fft_data_u8 = [0u8; FREQ_BINS * 4];
-    for (i, &value) in fft_sample.iter().enumerate() {
+    for (i, &value) in fft_data.iter().enumerate() {
         let bytes = value.to_le_bytes();
         fft_data_u8[i * 4..(i + 1) * 4].copy_from_slice(&bytes);
     }
     fft_data_u8
 }
 
-pub fn start(mut buffer_input: Input<[f32; 256]>) {
+pub fn start() {
     log::info!("Starting audio capture thread");
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio:capture");
@@ -70,13 +75,15 @@ pub fn start(mut buffer_input: Input<[f32; 256]>) {
     let mut planner = FftPlanner::new();
     let fft = Arc::new(planner.plan_fft_forward(FFT_SIZE));
 
+    let fft_data = FFT_DATA.clone();
+
     let stream = match config.sample_format() {
         SampleFormat::F32 => {
             let fft = fft.clone();
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                    process_audio_samples(data, channels, &mut sample_buffer, &fft, &mut buffer_input);
+                    process_audio_samples(data, channels, &mut sample_buffer, &fft, &fft_data);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -91,7 +98,7 @@ pub fn start(mut buffer_input: Input<[f32; 256]>) {
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
                         data.iter().map(|&s| s as f32 / MAX_BIN_FREQ).collect();
-                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &mut buffer_input);
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_data);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -106,7 +113,7 @@ pub fn start(mut buffer_input: Input<[f32; 256]>) {
                 move |data: &[u16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
                         data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
-                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &mut buffer_input);
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_data);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -143,7 +150,7 @@ fn process_audio_samples(
     channels: usize,
     sample_buffer: &mut Vec<f32>,
     fft: &Arc<dyn rustfft::Fft<f32>>,
-    fft_input: &mut Input<[f32; 256]>,
+    fft_data: &Arc<Mutex<Vec<f32>>>,
 ) {
     // Convert interleaved samples to mono by averaging channels
     for chunk in data.chunks(channels) {
@@ -188,7 +195,7 @@ fn process_audio_samples(
 
         // Apply logarithmic frequency scaling
         // Map linear FFT bins to logarithmic frequency bins
-        let mut magnitudes = [0.0f32; FREQ_BINS];
+        let mut magnitudes = vec![0.0f32; FREQ_BINS];
         for (output_bin, magnitude_slot) in magnitudes.iter_mut().enumerate() {
             // Map output bin to logarithmic frequency scale
             // Use logarithmic mapping: log(freq) = log(min) + (log(max) - log(min)) * (bin / total_bins)
@@ -225,7 +232,7 @@ fn process_audio_samples(
             *magnitude = (*magnitude * scale).clamp(0.0, 1.0);
         }
 
-        fft_input.write( magnitudes);
+        *fft_data.lock() = magnitudes;
 
         // Keep only the last FFT_SIZE samples for overlap
         let buffer_len = sample_buffer.len();

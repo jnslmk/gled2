@@ -1,6 +1,6 @@
 use std::num::NonZeroU64;
 use std::sync::{Arc, RwLock};
-use crate::audio::state::{fft_data_u8, FftSample};
+use crate::audio::state::fft_data_u8;
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
@@ -150,7 +150,7 @@ impl ADSREditor {
             return;
         }
 
-        let spectrum = self.reactive_signal.read().unwrap().current_spectrum;
+        let spectrum = self.reactive_signal.read().unwrap().current_spectrum.clone();
         let input_level = self.reactive_signal.read().unwrap().impulse;
         let output_level = self.reactive_signal.read().unwrap().current_level;
 
@@ -193,7 +193,7 @@ impl ADSREditor {
         );
     }
 
-    fn draw_spectrum_texture(&self, fft_sample: FftSample) {
+    fn draw_spectrum_texture(&self, fft_sample: Vec<f32>) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
         if let Some(mut view) = wgpu_render_state.queue.write_buffer_with(
@@ -201,7 +201,7 @@ impl ADSREditor {
             0,
             NonZeroU64::new(1024).expect("Contents length is zero"),
         ) {
-            view.copy_from_slice(&fft_data_u8(fft_sample));
+            view.copy_from_slice(&fft_data_u8());
         }
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations for scene editor"),
@@ -236,7 +236,7 @@ impl ADSREditor {
 
     fn draw_controls(&mut self, ui: &mut Ui, input_level: f32, output_level: f32) {
         ui.horizontal(|ui| {
-            let input_level = input_level.log2().clamp(0.0, 1.0);
+            let input_level = input_level;
             self.draw_meter(ui, input_level);
 
             Frame::new().inner_margin(5.).show(ui, |ui| {

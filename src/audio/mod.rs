@@ -3,14 +3,13 @@ mod reactive_signal;
 pub mod state;
 
 use crate::audio::reactive_signal::ReactiveSignal;
-use crate::audio::state::{FftSample, FREQ_BINS};
+use crate::audio::state::fft_data;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, Weak};
 use std::thread;
 use std::thread::spawn;
 use std::time::Duration;
-use triple_buffer::{triple_buffer, Output};
 use uuid::Uuid;
 
 static REACTIVE_SIGNALS: Lazy<Arc<RwLock<HashMap<Uuid, Weak<RwLock<ReactiveSignal>>>>>> =
@@ -24,9 +23,8 @@ static ADSR_SAMPLE_INTERVAL_MS: u64 = 10;
 
 
 pub fn start_fft_thread() {
-    let (buffer_input, buffer_output) = triple_buffer(&[0.; FREQ_BINS]);
-    spawn(move || state::start(buffer_input));
-    spawn(move || start_reactive_sound_thread(buffer_output));
+    spawn(state::start);
+    spawn(start_reactive_sound_thread);
 }
 
 pub fn register_reactive_signal(signal: ReactiveSignal) -> Arc<RwLock<ReactiveSignal>> {
@@ -39,9 +37,9 @@ pub fn register_reactive_signal(signal: ReactiveSignal) -> Arc<RwLock<ReactiveSi
     dead_mans_switch
 }
 
-pub fn start_reactive_sound_thread(mut audio_receiver: Output<FftSample>) {
+pub fn start_reactive_sound_thread() {
     loop {
-        let spectrum = audio_receiver.read();
+        let spectrum = fft_data();
 
         REACTIVE_SIGNALS.read().unwrap().values().for_each(|signal| {
             if let Some(signal) = signal.upgrade() {

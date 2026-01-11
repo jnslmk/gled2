@@ -1,6 +1,6 @@
-use crate::audio::state::{FREQ_BINS, FftSample, MAX_BIN_FREQ};
-use rustfft::num_complex::ComplexFloat;
+use crate::audio::state::{FREQ_BINS, MAX_BIN_FREQ};
 use std::f32::consts::TAU;
+use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
 
 #[derive(Debug, Clone)]
 pub struct AdsrParams {
@@ -44,7 +44,7 @@ impl AdsrParams {
 impl Default for AdsrParams {
     fn default() -> Self {
         AdsrParams::new(440.,
-                        10.,
+                        100.,
                         0.1,
                         0.2,
                         0.5,
@@ -73,7 +73,7 @@ impl Default for AdsrPhase {
 pub struct ReactiveSignal {
     pub phase: AdsrPhase,
     pub params: AdsrParams,
-    pub current_spectrum: FftSample,
+    pub current_spectrum: Vec<f32>,
     pub impulse: f32,
     pub delta_time: f32,
     pub slow_ema: f32,
@@ -83,14 +83,14 @@ pub struct ReactiveSignal {
 
 impl Default for ReactiveSignal {
     fn default() -> Self {
-        ReactiveSignal::new(Default::default(), 44100.)
+        ReactiveSignal::new(AdsrParams::default(), ADSR_SAMPLE_INTERVAL_MS as f32 / 1000.)
     }
 }
 
 impl ReactiveSignal {
     pub fn new(params: AdsrParams, delta_time: f32) -> Self {
         Self {
-            current_spectrum: [0f32; FREQ_BINS],
+            current_spectrum: vec![0f32; FREQ_BINS],
             delta_time,
             slow_ema: 0.,
             fast_ema: 0.,
@@ -101,8 +101,8 @@ impl ReactiveSignal {
         }
     }
 
-    pub fn tick(&mut self, input: &FftSample) {
-        self.impulse = self.tick_lowpass(input);
+    pub fn tick(&mut self, input: &Vec<f32>) {
+        self.impulse = self.tick_lowpass(input).log2().clamp(0.0, 1.0);
         self.tick_adsr(self.impulse);
     }
 
@@ -191,13 +191,13 @@ impl ReactiveSignal {
     }
 
     #[inline(always)]
-    pub fn tick_lowpass(&mut self, bins: &FftSample) -> f32 {
+    pub fn tick_lowpass(&mut self, bins: &Vec<f32>) -> f32 {
         let amplitude = bins[(self.params.center_bin - self.params.bin_radius).clamp(0, FREQ_BINS - 1)
             ..self.params.center_bin + self.params.bin_radius.clamp(0, FREQ_BINS - 1)]
             .iter()
             .sum::<f32>()
             * 100.
-            / (2. * self.params.bin_radius as f32 + 1.);
+            / (2. * self.params.bin_radius as f32 + 1.) + 1.;
 
         // calculate an exponential moving average to prevent aliasing
         let mut alpha = 1.0 - (-self.delta_time / TAU).exp(); // Sample-rate-aware alpha
