@@ -1,6 +1,6 @@
 use super::Effect;
 use crate::{
-    audio::state::{fft_data, fft_data_u8},
+    audio::state::{fft_data_u8},
     pipeline::{
         group::Group, output_mix::OutputMix, renderer_callback::RendererCallback,
         texture_to_output::TextureToOutput,
@@ -91,7 +91,9 @@ impl EffectState {
         );
 
         // Write FFT data (256 frequency bins = 1024 bytes)
-        let fft_data = fft_data_u8();
+        // TODO receive updates again
+        // let fft_data = fft_data_u8();
+        let fft_data = [0u8; 256 * 4];
         let fft_offset = 28 + AnimationConfig::size();
         data[fft_offset..fft_offset + fft_data.len()].copy_from_slice(&fft_data);
     }

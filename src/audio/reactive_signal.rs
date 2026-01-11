@@ -1,26 +1,57 @@
-use crate::audio::state::{FftSample, FREQ_BINS, MAX_BIN_FREQ};
+use crate::audio::state::{FREQ_BINS, FftSample, MAX_BIN_FREQ};
 use rustfft::num_complex::ComplexFloat;
 use std::f32::consts::TAU;
 
 #[derive(Debug, Clone)]
 pub struct AdsrParams {
+    center_bin: usize,
+    bin_radius: usize,
     pub attack_duration: f32,  // in seconds
     pub decay_duration: f32,   // in seconds
     pub sustain_level: f32,    // 0.0 to 1.0
     pub release_duration: f32, // in seconds
     /// Threshold to consider the continuous input "ON"
+    pub trigger_happiness: f32,
     pub gate_threshold: f32,
+}
+impl AdsrParams {
+    pub fn new(
+        f_center: f32,
+        f_radius: f32,
+        attack_duration: f32,
+        decay_duration: f32,
+        sustain_level: f32,
+        release_duration: f32,
+        trigger_happiness: f32,
+        gate_threshold: f32,
+    ) -> Self {
+        let f_per_bin = MAX_BIN_FREQ / FREQ_BINS as f32;
+        let center_bin = ((f_center / f_per_bin).round() as usize).min(FREQ_BINS - 1);
+        let bin_radius = (f_radius / f_per_bin).round() as usize;
+        Self {
+            center_bin,
+            bin_radius,
+            attack_duration,
+            decay_duration,
+            sustain_level,
+            release_duration,
+            trigger_happiness,
+            gate_threshold,
+        }
+    }
 }
 
 impl Default for AdsrParams {
     fn default() -> Self {
-        AdsrParams {
-            attack_duration: 0.1, // 100ms
-            decay_duration: 0.2,  // 200ms
-            sustain_level: 0.5,   // 50% amplitude
-            release_duration: 1., // 500ms
-            gate_threshold: 0.5,
-        }
+        AdsrParams::new(440.,
+                        10.,
+                        0.1,
+                        0.2,
+                        0.5,
+                        1.,
+                        10.,
+                        0.5
+        )
     }
 }
 
@@ -39,34 +70,30 @@ impl Default for AdsrPhase {
     }
 }
 
-
-pub struct ReactiveSignal{
-    phase: AdsrPhase,
+pub struct ReactiveSignal {
+    pub phase: AdsrPhase,
+    pub params: AdsrParams,
+    pub current_spectrum: FftSample,
     pub impulse: f32,
-    center_bin: usize,
-    bin_radius: usize,
     pub delta_time: f32,
     pub slow_ema: f32,
     pub fast_ema: f32,
-    pub trigger_happiness: f32,
-    pub params: AdsrParams,
     pub current_level: f32,
 }
 
+impl Default for ReactiveSignal {
+    fn default() -> Self {
+        ReactiveSignal::new(Default::default(), 44100.)
+    }
+}
 
-impl ReactiveSignal{
-
-    pub fn new(params: AdsrParams, f_center: f32, f_radius: f32, sample_rate: f32) -> Self {
-        let f_per_bin = MAX_BIN_FREQ / FREQ_BINS as f32;
-        let center_bin = ((f_center / f_per_bin).round() as usize).min(FREQ_BINS - 1);
-        let use_bins = (f_radius / f_per_bin).round() as usize;
+impl ReactiveSignal {
+    pub fn new(params: AdsrParams, delta_time: f32) -> Self {
         Self {
-            center_bin,
-            bin_radius: use_bins,
-            delta_time: 10. / sample_rate,
+            current_spectrum: [0f32; FREQ_BINS],
+            delta_time,
             slow_ema: 0.,
             fast_ema: 0.,
-            trigger_happiness: 10.,
             phase: AdsrPhase::Idle,
             params,
             current_level: 0.0,
@@ -74,13 +101,9 @@ impl ReactiveSignal{
         }
     }
 
-    pub fn tick(&mut self, input: &FftSample){
-        self.tick_lowpass(input);
+    pub fn tick(&mut self, input: &FftSample) {
+        self.impulse = self.tick_lowpass(input);
         self.tick_adsr(self.impulse);
-    }
-
-    pub fn set_sensitivity(&mut self, sensitivity: f32) {
-        self.trigger_happiness = sensitivity.expf(10.);
     }
 
     /// Calculate the envelope amplitude at the current timepoint.
@@ -168,19 +191,19 @@ impl ReactiveSignal{
     }
 
     #[inline(always)]
-    pub fn tick_lowpass(&mut self, bins: &FftSample) {
-        let amplitude = bins[(self.center_bin - self.bin_radius).clamp(0, FREQ_BINS - 1)
-            ..self.center_bin + self.bin_radius.clamp(0, FREQ_BINS - 1)]
+    pub fn tick_lowpass(&mut self, bins: &FftSample) -> f32 {
+        let amplitude = bins[(self.params.center_bin - self.params.bin_radius).clamp(0, FREQ_BINS - 1)
+            ..self.params.center_bin + self.params.bin_radius.clamp(0, FREQ_BINS - 1)]
             .iter()
             .sum::<f32>()
             * 100.
-            / (2. * self.bin_radius as f32 + 1.);
+            / (2. * self.params.bin_radius as f32 + 1.);
 
         // calculate an exponential moving average to prevent aliasing
-        let mut alpha = 1.0 - (-self.delta_time / TAU).exp();  // Sample-rate-aware alpha
+        let mut alpha = 1.0 - (-self.delta_time / TAU).exp(); // Sample-rate-aware alpha
         self.slow_ema = alpha * amplitude + (1.0 - alpha) * self.slow_ema;
-        alpha *= self.trigger_happiness;
+        alpha *= self.params.trigger_happiness;
         self.fast_ema = alpha * amplitude + (1.0 - alpha) * self.fast_ema;
-        self.impulse = self.fast_ema / self.slow_ema;
+        self.fast_ema / self.slow_ema
     }
 }

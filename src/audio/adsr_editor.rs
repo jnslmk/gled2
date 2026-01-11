@@ -1,6 +1,6 @@
 use std::num::NonZeroU64;
-
-use crate::audio::state::{fft_data, fft_data_u8};
+use std::sync::{Arc, RwLock};
+use crate::audio::state::{fft_data_u8, FftSample};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
@@ -13,10 +13,12 @@ use emath::{pos2, vec2, Pos2, Rect, Vec2};
 use epaint::{PathStroke, Stroke, StrokeKind};
 use wgpu::util::DeviceExt;
 use wgpu::*;
+use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
+use crate::audio::register_reactive_signal;
 
 pub struct ADSREditor {
-    adsr: Adsr,
-    low_pass: LowPass,
+    reactive_signal: Arc<RwLock<ReactiveSignal>>,
+    working_copy_params: AdsrParams,
     open: bool,
     spectrum_pipeline: RenderPipeline,
     spectrum_bind_group: BindGroup,
@@ -124,9 +126,14 @@ impl Default for ADSREditor {
                 wgpu::FilterMode::Nearest,
             ));
 
+        let reactive_signal = register_reactive_signal(ReactiveSignal::default());
+        // we keep an editing copy of adsr params, which is updated in the reactive signal
+        // for when we acquire the lock next time
+        let params = reactive_signal.read().unwrap().params.clone();
+
         Self {
-            adsr: Adsr::new(AdsrParams::default(), 100.),
-            low_pass: LowPass::new(400., 200., 100.),
+            reactive_signal,
+            working_copy_params: params,
             open: true,
             spectrum_pipeline,
             spectrum_bind_group,
@@ -143,7 +150,15 @@ impl ADSREditor {
             return;
         }
 
-        self.draw_spectrum_texture();
+        let spectrum = self.reactive_signal.read().unwrap().current_spectrum;
+        let input_level = self.reactive_signal.read().unwrap().impulse;
+        let output_level = self.reactive_signal.read().unwrap().current_level;
+
+
+        self.draw_spectrum_texture(spectrum);
+
+        // update: reactive audio thread -> ui copy of adsr params
+        self.working_copy_params = self.reactive_signal.read().unwrap().params.clone();
 
         ctx.show_viewport_immediate(
             ViewportId(Id::new("ADSR Editor")),
@@ -156,8 +171,7 @@ impl ADSREditor {
                         self.open = false;
                     }
                 });
-
-                gled_window_frame(ctx, "ADSR Editor", |ui| {
+                    gled_window_frame(ctx, "ADSR Editor", |ui| {
                     egui::CentralPanel::default().show_inside(ui, |ui| {
                         self.draw_curve(ui);
                         let size = ui.available_size().min(Vec2::splat(300.0));
@@ -167,16 +181,19 @@ impl ADSREditor {
 
                         ui.horizontal(|ui| {
                             Frame::new().inner_margin(5.).show(ui, |ui| {
-                                self.draw_controls(ui);
+                                self.draw_controls(ui, input_level, output_level);
                             });
                         });
                     });
                 });
+
+                // update: ui copy of adsr params -> reactive audio thread
+                self.reactive_signal.write().unwrap().params = self.working_copy_params.clone();
             },
         );
     }
 
-    fn draw_spectrum_texture(&self) {
+    fn draw_spectrum_texture(&self, fft_sample: FftSample) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
         if let Some(mut view) = wgpu_render_state.queue.write_buffer_with(
@@ -184,7 +201,7 @@ impl ADSREditor {
             0,
             NonZeroU64::new(1024).expect("Contents length is zero"),
         ) {
-            view.copy_from_slice(&fft_data_u8());
+            view.copy_from_slice(&fft_data_u8(fft_sample));
         }
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations for scene editor"),
@@ -217,17 +234,17 @@ impl ADSREditor {
         RendererCallback::add(encoder.finish());
     }
 
-    fn draw_controls(&mut self, ui: &mut Ui) {
+    fn draw_controls(&mut self, ui: &mut Ui, input_level: f32, output_level: f32) {
         ui.horizontal(|ui| {
-            .log2().clamp(0.0, 1.0)
-            self.draw_meter(ui, amp);
+            let input_level = input_level.log2().clamp(0.0, 1.0);
+            self.draw_meter(ui, input_level);
 
             Frame::new().inner_margin(5.).show(ui, |ui| {
                 ui.vertical(|ui| {
                     // Sensitivity knob
                     ui.add(
                         knob_default(Knob::new(
-                            &mut self.low_pass.trigger_happiness,
+                            &mut self.working_copy_params.trigger_happiness,
                             1.0,
                             100.0,
                             KnobStyle::Wiper,
@@ -239,7 +256,7 @@ impl ADSREditor {
                     // Threshold knob
                     ui.add(
                         knob_default(Knob::new(
-                            &mut self.adsr.params.gate_threshold,
+                            &mut self.working_copy_params.gate_threshold,
                             0.0,
                             1.0,
                             KnobStyle::Wiper,
@@ -254,7 +271,7 @@ impl ADSREditor {
             Frame::new().inner_margin(5.).show(ui, |ui| {
                 ui.add(
                     knob_default(Knob::new(
-                        &mut self.adsr.params.attack_duration,
+                        &mut self.working_copy_params.attack_duration,
                         0.0,
                         2.0,
                         KnobStyle::Wiper,
@@ -265,7 +282,7 @@ impl ADSREditor {
 
                 ui.add(
                     knob_default(Knob::new(
-                        &mut self.adsr.params.decay_duration,
+                        &mut self.working_copy_params.decay_duration,
                         0.0,
                         10.0,
                         KnobStyle::Wiper,
@@ -275,7 +292,7 @@ impl ADSREditor {
                 );
                 ui.add(
                     knob_default(Knob::new(
-                        &mut self.adsr.params.sustain_level,
+                        &mut self.working_copy_params.sustain_level,
                         0.0,
                         1.0,
                         KnobStyle::Wiper,
@@ -285,7 +302,7 @@ impl ADSREditor {
                 );
                 ui.add(
                     knob_default(Knob::new(
-                        &mut self.adsr.params.release_duration,
+                        &mut self.working_copy_params.release_duration,
                         0.0,
                         10.0,
                         KnobStyle::Wiper,
@@ -295,7 +312,7 @@ impl ADSREditor {
                 );
             });
             ui.separator();
-            self.draw_meter(ui, control_amp);
+            self.draw_meter(ui, output_level);
         });
     }
 
@@ -314,7 +331,7 @@ impl ADSREditor {
         ui.painter()
             .rect_filled(value_rect, 0., Color32::LIGHT_GREEN);
 
-        let threshold_line_y = rect.min.y + meter_height * (1.0 - self.adsr.params.gate_threshold);
+        let threshold_line_y = rect.min.y + meter_height * (1.0 - self.working_copy_params.gate_threshold);
         ui.painter().line(
             vec![
                 pos2(rect.min.x, threshold_line_y),
@@ -338,21 +355,21 @@ impl ADSREditor {
                     rect,
                 );
 
-                let mut adsr = Adsr::new(self.adsr.params.clone(), 100.);
+                let mut adsr = ReactiveSignal::new(self.working_copy_params.clone(), 100.);
 
                 let points: Vec<Pos2> = (0..=n)
                     .map(|i| {
                         let t = i as f32 / (n as f32);
                         let input = if 0.2 < t
                             && t < (0.4
-                                + self.adsr.params.decay_duration * 0.4
-                                + self.adsr.params.attack_duration * 0.4)
+                                + self.working_copy_params.decay_duration * 0.4
+                                + self.working_copy_params.attack_duration * 0.4)
                         {
                             1.0
                         } else {
                             0.0
                         };
-                        let y = -0.8 * adsr.tick(input) + 1.;
+                        let y = -0.8 * adsr.tick_adsr(input) + 1.;
                         to_screen * pos2(t as f32, y)
                     })
                     .collect();

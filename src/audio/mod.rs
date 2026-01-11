@@ -29,7 +29,7 @@ pub fn start_fft_thread() {
     spawn(move || start_reactive_sound_thread(buffer_output));
 }
 
-pub fn add_reactive_signal(signal: ReactiveSignal) -> Arc<RwLock<ReactiveSignal>> {
+pub fn register_reactive_signal(signal: ReactiveSignal) -> Arc<RwLock<ReactiveSignal>> {
     let uuid = Uuid::new_v4();
     let dead_mans_switch = Arc::new(RwLock::new(signal));
     REACTIVE_SIGNALS.write().unwrap().insert(
