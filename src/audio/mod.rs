@@ -1,4 +1,3 @@
-pub mod adsr;
 pub mod adsr_editor;
 mod reactive_signal;
 pub mod state;

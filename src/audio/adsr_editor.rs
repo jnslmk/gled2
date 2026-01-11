@@ -1,6 +1,5 @@
-use std::num::{NonZero, NonZeroU64};
+use std::num::NonZeroU64;
 
-use crate::audio::adsr::{Adsr, AdsrParams, LowPass};
 use crate::audio::state::{fft_data, fft_data_u8};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
@@ -10,7 +9,7 @@ use crate::wgpu_render_state;
 use egui::load::SizedTexture;
 use egui::{Color32, Context, Frame, Id, Image, Ui, ViewportId};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
-use emath::{Pos2, Rect, Vec2, pos2, vec2};
+use emath::{pos2, vec2, Pos2, Rect, Vec2};
 use epaint::{PathStroke, Stroke, StrokeKind};
 use wgpu::util::DeviceExt;
 use wgpu::*;
@@ -220,7 +219,7 @@ impl ADSREditor {
 
     fn draw_controls(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            let amp = (self.low_pass.tick(&fft_data())).log2().clamp(0.0, 1.0);
+            .log2().clamp(0.0, 1.0)
             self.draw_meter(ui, amp);
 
             Frame::new().inner_margin(5.).show(ui, |ui| {
@@ -296,7 +295,6 @@ impl ADSREditor {
                 );
             });
             ui.separator();
-            let control_amp = self.adsr.tick(amp);
             self.draw_meter(ui, control_amp);
         });
     }
