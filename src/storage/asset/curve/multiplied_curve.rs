@@ -94,6 +94,7 @@ impl<R: Range> MultipliedCurve<R> {
             .unwrap_or(1.0)
             * self.multiplier
             * R::MAX
+            + crate::audio::adsr_editor::ADSR_VALUE.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 

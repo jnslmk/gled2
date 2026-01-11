@@ -1,5 +1,7 @@
 use std::num::NonZeroU64;
 use std::sync::{Arc, RwLock};
+use std::sync::atomic::Ordering;
+use atomic_float::AtomicF32;
 use crate::audio::state::fft_data_u8;
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
@@ -11,10 +13,13 @@ use egui::{Color32, Context, Frame, Id, Image, Ui, ViewportId};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
 use emath::{pos2, vec2, Pos2, Rect, Vec2};
 use epaint::{PathStroke, Stroke, StrokeKind};
+use once_cell::sync::Lazy;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
 use crate::audio::register_reactive_signal;
+
+pub(crate) static ADSR_VALUE: Lazy<AtomicF32> = Lazy::new(|| AtomicF32::new(0.0));
 
 pub struct ADSREditor {
     reactive_signal: Arc<RwLock<ReactiveSignal>>,
@@ -192,6 +197,7 @@ impl ADSREditor {
 
                 // update: ui copy of adsr params -> reactive audio thread
                 self.reactive_signal.write().unwrap().params = self.working_copy_params.clone();
+                ADSR_VALUE.store(output_level, Ordering::Relaxed);
             },
         );
     }
