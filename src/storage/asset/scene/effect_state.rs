@@ -1,6 +1,5 @@
 use super::Effect;
 use crate::{
-    audio::state::{fft_data_u8},
     pipeline::{
         group::Group, output_mix::OutputMix, renderer_callback::RendererCallback,
         texture_to_output::TextureToOutput,

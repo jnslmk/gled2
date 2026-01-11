@@ -202,11 +202,11 @@ impl ReactiveSignal {
             ..self.params.center_bin + self.params.bin_radius.clamp(0, FREQ_BINS - 1)]
             .iter()
             .sum::<f32>()
-            * 100.
             / (2. * self.params.bin_radius as f32 + 1.) + 1.;
 
         // calculate an exponential moving average to prevent aliasing
         let mut alpha = 1.0 - (-self.delta_time / TAU).exp(); // Sample-rate-aware alpha
+        alpha *= 10.;
         self.slow_ema = alpha * amplitude + (1.0 - alpha) * self.slow_ema;
         alpha *= self.params.trigger_happiness;
         self.fast_ema = alpha * amplitude + (1.0 - alpha) * self.fast_ema;

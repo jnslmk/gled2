@@ -1,11 +1,9 @@
-use atomic_float::AtomicF32;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, StreamConfig};
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 
 pub const MAX_BIN_FREQ: f32 = 32768.;
 
@@ -16,7 +14,6 @@ pub const FREQ_BINS: usize = 256;
 
 static FFT_DATA: Lazy<Arc<Mutex<Vec<f32>>>> =
     Lazy::new(|| Arc::new(Mutex::new(vec![0.0; FREQ_BINS])));
-static FFT_MAX_MAGNITUDE: AtomicF32 = AtomicF32::new(1e-6);
 
 pub fn fft_data() -> Vec<f32> {
     FFT_DATA.lock().clone()
@@ -184,12 +181,10 @@ fn process_audio_samples(
         // Calculate magnitude for each frequency bin
         // Only use first FREQ_BINS (Nyquist frequency limit)
         let mut linear_magnitudes = Vec::with_capacity(FREQ_BINS);
-        let mut max_magnitude = FFT_MAX_MAGNITUDE.load(Ordering::Relaxed);
 
         for sample in complex_samples.iter().take(FREQ_BINS) {
             // Calculate magnitude (norm of complex number)
             let magnitude = sample.norm();
-            max_magnitude = max_magnitude.max(magnitude);
             linear_magnitudes.push(magnitude);
         }
 
@@ -222,14 +217,7 @@ fn process_audio_samples(
                 let scaled_mag = lower_mag * (1.0 - fraction) + upper_mag * fraction;
                 *magnitude_slot = scaled_mag;
                 // Update max_magnitude with the scaled value
-                max_magnitude = max_magnitude.max(scaled_mag);
             }
-        }
-
-        FFT_MAX_MAGNITUDE.store(max_magnitude, Ordering::Relaxed);
-        let scale = 1.0 / max_magnitude;
-        for magnitude in magnitudes.iter_mut() {
-            *magnitude = (*magnitude * scale).clamp(0.0, 1.0);
         }
 
         *fft_data.lock() = magnitudes;

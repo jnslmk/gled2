@@ -9,7 +9,7 @@ use crate::storage::asset::scene::effect_state::OwnedTextureId;
 use crate::ui::window_common::{default_viewport_builder, gled_window_frame};
 use crate::wgpu_render_state;
 use egui::load::SizedTexture;
-use egui::{Color32, Context, Frame, Id, Image, Ui, ViewportId};
+use egui::{Color32, Context, Frame, Grid, Id, Image, Ui, ViewportId};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
 use emath::{pos2, vec2, Pos2, Rect, Vec2};
 use epaint::{PathStroke, Stroke, StrokeKind};
@@ -140,8 +140,8 @@ impl Default for ADSREditor {
 
         Self {
             reactive_signal,
-            f_center: 0.,
-            f_radius: 0.,
+            f_center: 2000.,
+            f_radius: 1000.,
             working_copy_params: params,
             open: true,
             spectrum_pipeline,
@@ -182,16 +182,10 @@ impl ADSREditor {
                     gled_window_frame(ctx, "ADSR Editor", |ui| {
                     egui::CentralPanel::default().show_inside(ui, |ui| {
                         self.draw_curve(ui);
-                        let size = ui.available_size().min(Vec2::splat(300.0));
-                        let spectrum =
-                            Image::new(SizedTexture::new(self.spectrum_texture_id.0, size));
-                        ui.add(spectrum);
 
-                        ui.horizontal(|ui| {
                             Frame::new().inner_margin(5.).show(ui, |ui| {
                                 self.draw_controls(ui, input_level, output_level);
                             });
-                        });
                     });
                 });
 
@@ -245,10 +239,15 @@ impl ADSREditor {
 
     fn draw_controls(&mut self, ui: &mut Ui, input_level: f32, output_level: f32) {
         ui.horizontal(|ui| {
-            let input_level = input_level;
+            let size = vec2(300., 300.);
+            let spectrum =
+                Image::new(SizedTexture::new(self.spectrum_texture_id.0, size));
+            ui.add(spectrum);
+
             self.draw_meter(ui, input_level);
             Frame::new().inner_margin(5.).show(ui, |ui| {
 
+                Grid::new("filter_ui").show(ui, |ui| {
                 ui.add(
                     knob_default(Knob::new(
                         &mut self.f_center,
@@ -270,10 +269,9 @@ impl ADSREditor {
                         .with_size(50.0)
                         .with_label("Range", LabelPosition::Bottom),
                 );
-
+                ui.end_row();
                 self.working_copy_params.set_filtertune(self.f_center, self.f_radius);
 
-                ui.vertical(|ui| {
                     // Sensitivity knob
                     ui.add(
                         knob_default(Knob::new(
