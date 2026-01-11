@@ -40,7 +40,7 @@ fn main() {
     storage::start_thread();
     ui::temperature::start_thread();
     midi::start_thread();
-    audio::start_thread();
+    audio::start_fft_thread();
     network_stats::start_thread();
 
     #[cfg(not(debug_assertions))]
