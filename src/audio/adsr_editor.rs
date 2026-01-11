@@ -19,6 +19,8 @@ use crate::audio::register_reactive_signal;
 pub struct ADSREditor {
     reactive_signal: Arc<RwLock<ReactiveSignal>>,
     working_copy_params: AdsrParams,
+    f_center: f32,
+    f_radius: f32,
     open: bool,
     spectrum_pipeline: RenderPipeline,
     spectrum_bind_group: BindGroup,
@@ -133,6 +135,8 @@ impl Default for ADSREditor {
 
         Self {
             reactive_signal,
+            f_center: 0.,
+            f_radius: 0.,
             working_copy_params: params,
             open: true,
             spectrum_pipeline,
@@ -150,12 +154,11 @@ impl ADSREditor {
             return;
         }
 
-        let spectrum = self.reactive_signal.read().unwrap().current_spectrum.clone();
         let input_level = self.reactive_signal.read().unwrap().impulse;
         let output_level = self.reactive_signal.read().unwrap().current_level;
 
 
-        self.draw_spectrum_texture(spectrum);
+        self.draw_spectrum_texture();
 
         // update: reactive audio thread -> ui copy of adsr params
         self.working_copy_params = self.reactive_signal.read().unwrap().params.clone();
@@ -193,7 +196,7 @@ impl ADSREditor {
         );
     }
 
-    fn draw_spectrum_texture(&self, fft_sample: Vec<f32>) {
+    fn draw_spectrum_texture(&self) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
         if let Some(mut view) = wgpu_render_state.queue.write_buffer_with(
@@ -238,8 +241,32 @@ impl ADSREditor {
         ui.horizontal(|ui| {
             let input_level = input_level;
             self.draw_meter(ui, input_level);
-
             Frame::new().inner_margin(5.).show(ui, |ui| {
+
+                ui.add(
+                    knob_default(Knob::new(
+                        &mut self.f_center,
+                        0.,
+                        16_000.,
+                        KnobStyle::Wiper,
+                    ))
+                        .with_size(50.0)
+                        .with_label("Frequency", LabelPosition::Bottom),
+                );
+
+                ui.add(
+                    knob_default(Knob::new(
+                        &mut self.f_radius,
+                        0.,
+                        16_000.,
+                        KnobStyle::Wiper,
+                    ))
+                        .with_size(50.0)
+                        .with_label("Range", LabelPosition::Bottom),
+                );
+
+                self.working_copy_params.set_filtertune(self.f_center, self.f_radius);
+
                 ui.vertical(|ui| {
                     // Sensitivity knob
                     ui.add(
@@ -314,6 +341,8 @@ impl ADSREditor {
             ui.separator();
             self.draw_meter(ui, output_level);
         });
+
+
     }
 
     fn draw_meter(&mut self, ui: &mut Ui, amp: f32) {

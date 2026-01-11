@@ -25,19 +25,25 @@ impl AdsrParams {
         trigger_happiness: f32,
         gate_threshold: f32,
     ) -> Self {
-        let f_per_bin = MAX_BIN_FREQ / FREQ_BINS as f32;
-        let center_bin = ((f_center / f_per_bin).round() as usize).min(FREQ_BINS - 1);
-        let bin_radius = (f_radius / f_per_bin).round() as usize;
-        Self {
-            center_bin,
-            bin_radius,
+        let mut ret = Self {
+            center_bin: 0,
+            bin_radius: 0,
             attack_duration,
             decay_duration,
             sustain_level,
             release_duration,
             trigger_happiness,
             gate_threshold,
-        }
+        };
+        ret.set_filtertune(f_center, f_radius);
+        ret
+    }
+    pub fn set_filtertune(&mut self, f_center: f32, f_radius: f32) {
+        let f_per_bin = MAX_BIN_FREQ / FREQ_BINS as f32;
+        let center_bin = ((f_center / f_per_bin).round() as usize).min(FREQ_BINS - 1);
+        let bin_radius = (f_radius / f_per_bin).round() as usize;
+        self.center_bin = center_bin;
+        self.bin_radius = bin_radius;
     }
 }
 
@@ -192,7 +198,7 @@ impl ReactiveSignal {
 
     #[inline(always)]
     pub fn tick_lowpass(&mut self, bins: &Vec<f32>) -> f32 {
-        let amplitude = bins[(self.params.center_bin - self.params.bin_radius).clamp(0, FREQ_BINS - 1)
+        let amplitude = bins[(self.params.center_bin.saturating_sub(self.params.bin_radius)).clamp(0, FREQ_BINS - 1)
             ..self.params.center_bin + self.params.bin_radius.clamp(0, FREQ_BINS - 1)]
             .iter()
             .sum::<f32>()
