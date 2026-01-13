@@ -177,7 +177,7 @@ impl SceneInstanceWidget<'_> {
         });
     }
 
-    fn dimmer(&self, ui: &mut Ui) {
+    fn dimmer(&mut self, ui: &mut Ui) {
         ui.scope_builder(UiBuilder::new(), |ui| {
             ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                 Frame::default().show(ui, |ui| {
@@ -198,7 +198,7 @@ impl SceneInstanceWidget<'_> {
                         },
                         size: 20.0,
                         max_value: 100.0,
-                        value: &mut self.scene_instance.opacity.multiplier(),
+                        value: &mut self.scene_instance.opacity.multiplier,
                         show_label: false,
                         horizontal: false,
                     });
