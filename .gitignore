@@ -3,3 +3,4 @@
 /.cargo-packager
 /public
 /mdbook*
+/.idea/copilot.data.migration.agent.xml

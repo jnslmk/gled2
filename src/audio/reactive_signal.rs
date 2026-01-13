@@ -1,6 +1,6 @@
-use crate::audio::state::{FREQ_BINS, MAX_BIN_FREQ};
-use std::f32::consts::TAU;
+use crate::audio::state::{FREQ_BINS, MAX_FREQ};
 use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
+use std::f32::consts::TAU;
 
 #[derive(Debug, Clone)]
 pub struct AdsrParams {
@@ -35,11 +35,11 @@ impl AdsrParams {
             trigger_happiness,
             gate_threshold,
         };
-        ret.set_filtertune(f_center, f_radius);
+        ret.set_filter_tune(f_center, f_radius);
         ret
     }
-    pub fn set_filtertune(&mut self, f_center: f32, f_radius: f32) {
-        let f_per_bin = MAX_BIN_FREQ / FREQ_BINS as f32;
+    pub fn set_filter_tune(&mut self, f_center: f32, f_radius: f32) {
+        let f_per_bin = *MAX_FREQ / FREQ_BINS as f32;
         let center_bin = ((f_center / f_per_bin).round() as usize).min(FREQ_BINS - 1);
         let bin_radius = (f_radius / f_per_bin).round() as usize;
         self.center_bin = center_bin;
@@ -198,8 +198,9 @@ impl ReactiveSignal {
 
     #[inline(always)]
     pub fn tick_lowpass(&mut self, bins: &Vec<f32>) -> f32 {
-        let amplitude = bins[(self.params.center_bin.saturating_sub(self.params.bin_radius)).clamp(0, FREQ_BINS - 1)
-            ..self.params.center_bin + self.params.bin_radius.clamp(0, FREQ_BINS - 1)]
+        let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
+        let amplitude = bins[(self.params.center_bin.saturating_sub(self.params.bin_radius).clamp(0, FREQ_BINS - 1))
+            ..max_f]
             .iter()
             .sum::<f32>()
             / (2. * self.params.bin_radius as f32 + 1.) + 1.;

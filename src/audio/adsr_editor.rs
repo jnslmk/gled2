@@ -1,6 +1,6 @@
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
 use crate::audio::register_reactive_signal;
-use crate::audio::state::fft_data_u8;
+use crate::audio::state::{fft_data_u8, MAX_FREQ};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
@@ -11,7 +11,7 @@ use atomic_float::AtomicF32;
 use egui::load::SizedTexture;
 use egui::{Color32, Context, Frame, Id, Image, Layout, Ui, UiBuilder, ViewportId};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
-use emath::{pos2, vec2, Align, Pos2, Rect, Vec2};
+use emath::{pos2, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
 use epaint::{PathStroke, Stroke};
 use once_cell::sync::Lazy;
 use std::num::NonZeroU64;
@@ -332,8 +332,21 @@ impl ADSREditor {
 
     fn draw_spectrum(&mut self, ui: &mut Ui) {
         let size = vec2(ui.available_width(), 190.);
+        let mut spectrum_rect = Rect::from_min_size(ui.cursor().min, size);
         let spectrum = Image::new(SizedTexture::new(self.spectrum_texture_id.0, size));
         ui.add(spectrum);
+
+        let lower_f = self.f_center - self.f_radius;
+        let upper_f = self.f_center + self.f_radius;
+        let max_frequency_range = 0.0..=*MAX_FREQ;
+
+        let ui_position_range = spectrum_rect.left()..=spectrum_rect.right();
+        let lower_x = remap_clamp(lower_f, max_frequency_range.clone(), ui_position_range.clone());
+        let upper_x = remap_clamp(upper_f, max_frequency_range.clone(), ui_position_range.clone());
+        spectrum_rect.min.x = lower_x;
+        spectrum_rect.max.x = upper_x;
+
+        ui.painter().rect_filled(spectrum_rect, 0., Color32::from_white_alpha(150));
 
         scoped_frame(
             ui,
@@ -369,7 +382,7 @@ impl ADSREditor {
                     .with_label("Sensitivity", LabelPosition::Bottom),
                 );
                 self.working_copy_params
-                    .set_filtertune(self.f_center, self.f_radius);
+                    .set_filter_tune(self.f_center, self.f_radius);
             },
         );
     }

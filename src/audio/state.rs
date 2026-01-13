@@ -1,15 +1,16 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{SampleFormat, StreamConfig};
+use cpal::{Device, Host, SampleFormat, SampleRate, StreamConfig};
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::Arc;
 
-pub const MAX_BIN_FREQ: f32 = 32768.;
+
+pub const SAMPLE_RATE: Lazy<SampleRate> = Lazy::new(|| get_sample_rate_().unwrap_or(48_000));
+pub const MAX_FREQ: Lazy<f32> = Lazy::new(|| get_sample_rate_().unwrap_or(48_000) as f32 / 2.0);
 
 // FFT size - power of 2 for efficient FFT
 const FFT_SIZE: usize = 512;
-// Number of frequency bins to expose to shader (typically half of FFT_SIZE due to Nyquist)
 pub const FREQ_BINS: usize = 256;
 
 static FFT_DATA: Lazy<Arc<Mutex<Vec<f32>>>> =
@@ -17,6 +18,30 @@ static FFT_DATA: Lazy<Arc<Mutex<Vec<f32>>>> =
 
 pub fn fft_data() -> Vec<f32> {
     FFT_DATA.lock().clone()
+}
+
+
+pub fn get_fft_bin_index_by_frequency(frequency: f32) -> Option<usize>{
+    let k = frequency / (*SAMPLE_RATE as f32 * FFT_SIZE as f32);
+    Some(k.floor() as usize)
+}
+
+fn get_sample_rate_() -> Option<SampleRate> {
+    // the frequency of every bin is k as f32 * input_sample_rate / FFT_SIZE as f32
+    let device = get_audio_config()?;
+    let config = match device.default_input_config() {
+        Ok(config) => config,
+        Err(err) => {
+            log::error!("Failed to get default input config: {}", err);
+            return None;
+        }
+    };
+    let sample_rate = config.sample_rate();
+    Some(sample_rate)
+}
+
+pub fn max_frequency() -> f32{
+    *SAMPLE_RATE as f32 / FREQ_BINS as f32
 }
 
 pub fn fft_data_u8() -> [u8; FREQ_BINS * 4] {
@@ -34,9 +59,7 @@ pub fn start() {
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio:capture");
 
-    let host = cpal::default_host();
-
-    let device = match host.default_input_device() {
+    let device = match get_audio_config() {
         Some(device) => {
             log::info!(
                 "Using audio input device: {}",
@@ -94,7 +117,7 @@ pub fn start() {
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
-                        data.iter().map(|&s| s as f32 / MAX_BIN_FREQ).collect();
+                        data.iter().map(|&s| s as f32 / *MAX_FREQ).collect();
                     process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_data);
                 },
                 |err| {
@@ -140,6 +163,11 @@ pub fn start() {
             log::error!("Failed to build audio stream: {}", err);
         }
     }
+}
+
+fn get_audio_config() -> Option<Device> {
+    let host = cpal::default_host();
+    host.default_input_device()
 }
 
 fn process_audio_samples(
