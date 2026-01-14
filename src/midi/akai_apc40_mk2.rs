@@ -11,7 +11,7 @@ use crate::storage::asset::scene::grid::GridLocation;
 
 
 fn location_from_peripheral_id(index: usize) -> GridLocation {
-    let col = index % GRID_HEIGHT;
+    let col = index % GRID_WIDTH;
     let row = index / GRID_WIDTH;
     GridLocation{col, row}
 }
@@ -220,5 +220,5 @@ impl AkaiApc40Mk2MidiColor for SceneInstanceColor {
     }
 }
 
-pub const GRID_WIDTH: usize = 6;
-pub const GRID_HEIGHT: usize = 4;
+pub const GRID_WIDTH: usize = 8;
+pub const GRID_HEIGHT: usize = 6;
