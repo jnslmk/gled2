@@ -1,12 +1,13 @@
 use super::App;
 use crate::{
+    app::timing::LINK_ACTIVE_COLOR,
     network_stats,
     storage::{
         action::StorageAction, asset::curve::polynomial::polynomials_fitting, staged_files, working,
     },
     ui::temperature::temperature,
 };
-use egui::{Button, Label, Layout, Margin, Spinner, TextEdit, Ui, ViewportId};
+use egui::{Button, Label, Layout, Margin, RichText, Spinner, TextEdit, Ui, ViewportId};
 use egui_flex::{Flex, item};
 
 impl App {
@@ -16,28 +17,44 @@ impl App {
                 .inner_margin(Margin::from(1.0))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
+                        ui.add(Label::new(temperature()).selectable(false));
+
                         if let Some(framerate) = self.timing.framerate() {
-                            ui.add(Label::new(format!("{framerate:.0} fps")));
+                            ui.add_space(8.0);
+                            ui.add(
+                                Label::new(format!(
+                                    "{} {framerate:.0} fps",
+                                    egui_phosphor::regular::GAUGE
+                                ))
+                                .selectable(false),
+                            );
                         }
 
                         let network_stats = network_stats::stats();
                         if !network_stats.is_empty() {
                             ui.add_space(8.0);
-                            ui.add(Label::new(network_stats));
+                            ui.add(Label::new(network_stats).selectable(false));
                         }
 
                         let connected_ableton_peers = crate::app::timing::CONNECTED_PEERS
                             .load(std::sync::atomic::Ordering::Relaxed);
                         if connected_ableton_peers > 0 {
                             ui.add_space(8.0);
-                            ui.add(Label::new(format!(
-                                "🔗 {connected_ableton_peers} Ableton Link peer{}",
-                                if connected_ableton_peers == 1 {
-                                    ""
-                                } else {
-                                    "s"
-                                }
-                            )));
+                            ui.add(
+                                Label::new(
+                                    RichText::new(format!(
+                                        " {} {connected_ableton_peers} Ableton Link peer{} ",
+                                        egui_phosphor::regular::METRONOME,
+                                        if connected_ableton_peers == 1 {
+                                            ""
+                                        } else {
+                                            "s"
+                                        }
+                                    ))
+                                    .color(LINK_ACTIVE_COLOR),
+                                )
+                                .selectable(false),
+                            );
                         }
 
                         #[cfg(not(debug_assertions))]
@@ -50,18 +67,20 @@ impl App {
                         }
 
                         ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                            ui.add(Label::new(temperature()));
                             ui.add_space(4.0);
                             self.git_button(ui);
                             ui.add_space(4.0);
                             match polynomials_fitting() {
                                 0 => (),
                                 n => {
-                                    ui.label(if n == 1 {
-                                        "Fitting one polynomial".to_owned()
-                                    } else {
-                                        format!("Fitting {n} polynomials")
-                                    });
+                                    ui.add(
+                                        Label::new(if n == 1 {
+                                            "Fitting one polynomial".to_owned()
+                                        } else {
+                                            format!("Fitting {n} polynomials")
+                                        })
+                                        .selectable(false),
+                                    );
                                     ui.add(Spinner::new());
                                     ui.add_space(4.0);
                                 }
@@ -74,7 +93,11 @@ impl App {
 
     fn git_button(&mut self, ui: &mut Ui) {
         ui.menu_button(
-            format!("{}", if staged_files() > 0 { "*" } else { "" }),
+            format!(
+                "{} git{}",
+                egui_phosphor::regular::GIT_BRANCH,
+                if staged_files() > 0 { "*" } else { "" }
+            ),
             |ui| {
                 self.git_menu(ui);
             },

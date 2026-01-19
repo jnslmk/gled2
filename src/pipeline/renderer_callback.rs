@@ -56,4 +56,14 @@ impl CallbackTrait for RendererCallback {
 
         buffers
     }
+
+    fn finish_prepare(
+        &self,
+        _device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+        _egui_encoder: &mut wgpu::CommandEncoder,
+        _callback_resources: &mut eframe::egui_wgpu::CallbackResources,
+    ) -> Vec<wgpu::CommandBuffer> {
+        Vec::new()
+    }
 }

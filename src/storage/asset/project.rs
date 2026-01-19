@@ -334,19 +334,44 @@ impl Project {
 
         PreviewIndices::get().prepare(queue);
 
+        #[allow(unused_mut)]
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations"),
         });
 
-        OutputClear::get().run(&mut encoder);
-
-        for scene_instance in self.all_scene_instances() {
-            scene_instance.render(&mut encoder, blackout, always_render);
+        #[cfg(feature = "profiling")]
+        {
+            let mut wgpu_profiler = crate::WGPU_PROFILER.lock();
+            OutputClear::get().run(&mut wgpu_profiler.scope("OutputClear", &mut encoder));
+            for scene_instance in self.all_scene_instances() {
+                scene_instance.render(
+                    &mut wgpu_profiler.scope(
+                        format!(
+                            "Render scene \"{}\"",
+                            Asset::get(scene_instance.scene).unwrap_or_default().name()
+                        ),
+                        &mut encoder,
+                    ),
+                    blackout,
+                    always_render,
+                );
+            }
+            ExtractOutput::get().run(&mut wgpu_profiler.scope("ExtractOutput", &mut encoder));
+            PreviewIndices::get().run(&mut wgpu_profiler.scope("PreviewIndices", &mut encoder));
+            Preview::run(&mut wgpu_profiler.scope("Preview", &mut encoder));
+            wgpu_profiler.resolve_queries(&mut encoder);
         }
 
-        ExtractOutput::get().run(&mut encoder);
-        PreviewIndices::get().run(&mut encoder);
-        Preview::run(&mut encoder);
+        #[cfg(not(feature = "profiling"))]
+        {
+            OutputClear::get().run(&mut encoder);
+            for scene_instance in self.all_scene_instances() {
+                scene_instance.render(&mut encoder, blackout, always_render);
+            }
+            ExtractOutput::get().run(&mut encoder);
+            PreviewIndices::get().run(&mut encoder);
+            Preview::run(&mut encoder);
+        }
 
         RendererCallback::add(encoder.finish());
     }

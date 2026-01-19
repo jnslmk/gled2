@@ -101,7 +101,7 @@ impl AnimationWindow {
                 1.0,
             );
             let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-                label: Some("Render animations for scene editor"),
+                label: Some("Render animations for animation editor"),
             });
             effect.render(effect_state, &mut encoder, false);
             if self.copy_rendered_image_to_clipboard {
