@@ -1,3 +1,4 @@
+use std::cell::OnceCell;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, Host, SampleFormat, SampleRate, StreamConfig};
 use egui::mutex::Mutex;
@@ -6,8 +7,8 @@ use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::Arc;
 
 
-pub const SAMPLE_RATE: Lazy<SampleRate> = Lazy::new(|| get_sample_rate_().unwrap_or(48_000));
-pub const MAX_FREQ: Lazy<f32> = Lazy::new(|| get_sample_rate_().unwrap_or(48_000) as f32 / 2.0);
+pub const SAMPLE_RATE: f32 = 48_000.0;
+pub const MAX_FREQ: f32 = 24_000.0;
 
 // FFT size - power of 2 for efficient FFT
 const FFT_SIZE: usize = 512;
@@ -22,7 +23,7 @@ pub fn fft_data() -> Vec<f32> {
 
 
 pub fn get_fft_bin_index_by_frequency(frequency: f32) -> Option<usize>{
-    let k = frequency / (*SAMPLE_RATE as f32 * FFT_SIZE as f32);
+    let k = frequency / (SAMPLE_RATE * FFT_SIZE as f32);
     Some(k.floor() as usize)
 }
 
@@ -41,7 +42,7 @@ fn get_sample_rate_() -> Option<SampleRate> {
 }
 
 pub fn max_frequency() -> f32{
-    *SAMPLE_RATE as f32 / FREQ_BINS as f32
+    SAMPLE_RATE as f32 / FREQ_BINS as f32
 }
 
 pub fn fft_data_u8() -> [u8; FREQ_BINS * 4] {
@@ -117,7 +118,7 @@ pub fn start() {
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
-                        data.iter().map(|&s| s as f32 / *MAX_FREQ).collect();
+                        data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
                     process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_data);
                 },
                 |err| {
@@ -177,6 +178,8 @@ fn process_audio_samples(
     fft: &Arc<dyn rustfft::Fft<f32>>,
     fft_data: &Arc<Mutex<Vec<f32>>>,
 ) {
+    #[cfg(feature = "profiling")]
+    puffin::profile_function!("audio:process_audio_samples");
     // Convert interleaved samples to mono by averaging channels
     for chunk in data.chunks(channels) {
         let mono_sample = if channels > 1 {

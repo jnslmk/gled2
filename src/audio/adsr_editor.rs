@@ -1,6 +1,6 @@
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
 use crate::audio::register_reactive_signal;
-use crate::audio::state::{fft_data_u8, MAX_FREQ};
+use crate::audio::state::{fft_data_u8, max_frequency, MAX_FREQ};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
@@ -159,6 +159,8 @@ impl ADSREditor {
         if !self.open {
             return;
         }
+        #[cfg(feature = "profiling")]
+        puffin::profile_function!("ADSREditor::update");
         let input_level = self.reactive_signal.read().unwrap().impulse;
         let output_level = self.reactive_signal.read().unwrap().current_level;
 
@@ -331,6 +333,8 @@ impl ADSREditor {
     }
 
     fn draw_spectrum(&mut self, ui: &mut Ui) {
+        #[cfg(feature = "profiling")]
+        puffin::profile_function!("ADSREditor::draw_spectrum");
         let size = vec2(ui.available_width(), 190.);
         let mut spectrum_rect = Rect::from_min_size(ui.cursor().min, size);
         let spectrum = Image::new(SizedTexture::new(self.spectrum_texture_id.0, size));
@@ -338,13 +342,14 @@ impl ADSREditor {
 
         let lower_f = self.f_center - self.f_radius;
         let upper_f = self.f_center + self.f_radius;
-        let max_frequency_range = 0.0..=*MAX_FREQ;
+        let max_frequency_range = 0.0..=MAX_FREQ;
 
         let ui_position_range = spectrum_rect.left()..=spectrum_rect.right();
         let lower_x = remap_clamp(lower_f, max_frequency_range.clone(), ui_position_range.clone());
         let upper_x = remap_clamp(upper_f, max_frequency_range.clone(), ui_position_range.clone());
         spectrum_rect.min.x = lower_x;
         spectrum_rect.max.x = upper_x;
+
 
         ui.painter().rect_filled(spectrum_rect, 0., Color32::from_white_alpha(150));
 
@@ -358,6 +363,8 @@ impl ADSREditor {
                 .layout(Layout::left_to_right(Align::Max)),
             Frame::default().inner_margin(5.0),
             |ui| {
+                #[cfg(feature = "profiling")]
+                puffin::profile_function!("ADSREditor::draw_spectrum_knobs");
                 // Frequency center
                 ui.add(
                     knob_default(Knob::new(&mut self.f_center, 0., 16_000., KnobStyle::Wiper))

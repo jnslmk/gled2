@@ -39,7 +39,7 @@ impl AdsrParams {
         ret
     }
     pub fn set_filter_tune(&mut self, f_center: f32, f_radius: f32) {
-        let f_per_bin = *MAX_FREQ / FREQ_BINS as f32;
+        let f_per_bin = MAX_FREQ / FREQ_BINS as f32;
         let center_bin = ((f_center / f_per_bin).round() as usize).min(FREQ_BINS - 1);
         let bin_radius = (f_radius / f_per_bin).round() as usize;
         self.center_bin = center_bin;
