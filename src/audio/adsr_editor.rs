@@ -17,6 +17,7 @@ use once_cell::sync::Lazy;
 use std::num::NonZeroU64;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, RwLock};
+use ndarray::Array1;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
@@ -141,8 +142,8 @@ impl Default for ADSREditor {
 
         Self {
             reactive_signal,
-            f_center: 2000.,
-            f_radius: 1000.,
+            f_center: 8200.,
+            f_radius: 990.,
             working_copy_params: params,
             open: true,
             spectrum_pipeline,
@@ -161,10 +162,11 @@ impl ADSREditor {
         }
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::update");
-        let input_level = self.reactive_signal.read().unwrap().impulse;
+        let spectrum = self.reactive_signal.read().unwrap().spectrum.clone();
+        let impulse = self.reactive_signal.read().unwrap().impulse;
         let output_level = self.reactive_signal.read().unwrap().current_level;
 
-        self.draw_spectrum_texture();
+        self.draw_spectrum_texture(spectrum);
         // update: reactive audio thread -> ui copy of adsr params
         self.working_copy_params = self.reactive_signal.read().unwrap().params.clone();
 
@@ -184,7 +186,7 @@ impl ADSREditor {
                         Frame::new().inner_margin(5.).show(ui, |ui| {
                             self.draw_spectrum(ui);
                             ui.separator();
-                            self.draw_adsr(ui, input_level, output_level);
+                            self.draw_adsr(ui, impulse, output_level);
                         });
                     });
                 });
@@ -196,7 +198,7 @@ impl ADSREditor {
         );
     }
 
-    fn draw_spectrum_texture(&self) {
+    fn draw_spectrum_texture(&self, input_level: Array1<f32>) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
         if let Some(mut view) = wgpu_render_state.queue.write_buffer_with(
@@ -204,7 +206,7 @@ impl ADSREditor {
             0,
             NonZeroU64::new(1024).expect("Contents length is zero"),
         ) {
-            view.copy_from_slice(&fft_data_u8());
+            view.copy_from_slice(&fft_data_u8(input_level.to_vec()));
         }
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations for scene editor"),
@@ -249,11 +251,21 @@ impl ADSREditor {
                 .rect_filled(value_rect, 0., Color32::LIGHT_GREEN);
 
             let threshold_line_y =
-                rect.min.y + meter_height * (1.0 - self.working_copy_params.gate_threshold);
+                rect.min.y + meter_height * (1.0 - self.working_copy_params.gate_activation_threshold);
             ui.painter().line(
                 vec![
                     pos2(rect.min.x, threshold_line_y),
                     pos2(rect.max.x, threshold_line_y),
+                ],
+                Stroke::new(2., Color32::BLUE),
+            );
+
+            let threshold_deac_line_y =
+                rect.min.y + meter_height * (1.0 - self.working_copy_params.gate_deactivation_threshold);
+            ui.painter().line(
+                vec![
+                    pos2(rect.min.x, threshold_deac_line_y),
+                    pos2(rect.max.x, threshold_deac_line_y),
                 ],
                 Stroke::new(2., Color32::BLUE),
             );
@@ -319,7 +331,7 @@ impl ADSREditor {
                     // Threshold knob
                     ui.add(
                         knob_default(Knob::new(
-                            &mut self.working_copy_params.gate_threshold,
+                            &mut self.working_copy_params.gate_activation_threshold,
                             0.0,
                             1.0,
                             KnobStyle::Wiper,
@@ -367,22 +379,22 @@ impl ADSREditor {
                 puffin::profile_function!("ADSREditor::draw_spectrum_knobs");
                 // Frequency center
                 ui.add(
-                    knob_default(Knob::new(&mut self.f_center, 0., 16_000., KnobStyle::Wiper))
+                    knob_default(Knob::new(&mut self.f_center, 0., 20_000., KnobStyle::Wiper))
                         .with_size(50.0)
                         .with_label("Frequency", LabelPosition::Bottom),
                 );
                 // Frequency radius
                 ui.add(
-                    knob_default(Knob::new(&mut self.f_radius, 0., 16_000., KnobStyle::Wiper))
+                    knob_default(Knob::new(&mut self.f_radius, 0., 20_000., KnobStyle::Wiper))
                         .with_size(50.0)
                         .with_label("Range", LabelPosition::Bottom),
                 );
                 // Sensitivity knob
                 ui.add(
                     knob_default(Knob::new(
-                        &mut self.working_copy_params.trigger_happiness,
-                        1.0,
-                        100.0,
+                        &mut self.working_copy_params.sensitivity,
+                        0.1,
+                        10.0,
                         KnobStyle::Wiper,
                     ))
                     .with_size(50.0)

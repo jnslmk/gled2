@@ -1,4 +1,3 @@
-use std::cell::OnceCell;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, Host, SampleFormat, SampleRate, StreamConfig};
 use egui::mutex::Mutex;
@@ -45,8 +44,7 @@ pub fn max_frequency() -> f32{
     SAMPLE_RATE as f32 / FREQ_BINS as f32
 }
 
-pub fn fft_data_u8() -> [u8; FREQ_BINS * 4] {
-    let fft_data = FFT_DATA.lock();
+pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
     let mut fft_data_u8 = [0u8; FREQ_BINS * 4];
     for (i, &value) in fft_data.iter().enumerate() {
         let bytes = value.to_le_bytes();
