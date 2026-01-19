@@ -1,6 +1,6 @@
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
 use crate::audio::register_reactive_signal;
-use crate::audio::state::{fft_data_u8, max_frequency, MAX_FREQ};
+use crate::audio::state::{fft_data_u8, MAX_FREQ};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
@@ -13,11 +13,12 @@ use egui::{Color32, Context, Frame, Id, Image, Layout, Ui, UiBuilder, ViewportId
 use egui_knob::{Knob, KnobStyle, LabelPosition};
 use emath::{pos2, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
 use epaint::{PathStroke, Stroke};
+use ndarray::Array1;
 use once_cell::sync::Lazy;
+use rustfft::num_traits::float::FloatCore;
 use std::num::NonZeroU64;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, RwLock};
-use ndarray::Array1;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
@@ -163,7 +164,7 @@ impl ADSREditor {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::update");
         let spectrum = self.reactive_signal.read().unwrap().spectrum.clone();
-        let impulse = self.reactive_signal.read().unwrap().impulse;
+        let impulse = self.reactive_signal.read().unwrap().impulse.clamp(0.0, 1.0);
         let output_level = self.reactive_signal.read().unwrap().current_level;
 
         self.draw_spectrum_texture(spectrum);

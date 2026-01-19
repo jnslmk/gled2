@@ -2,6 +2,8 @@ use crate::audio::state::{FREQ_BINS, MAX_FREQ};
 use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
 use ndarray::{s, Array1};
 use std::f32::consts::TAU;
+use std::ops::Mul;
+use rustfft::num_traits::Float;
 
 #[derive(Debug, Clone)]
 pub struct AdsrParams {
@@ -89,6 +91,7 @@ pub struct ReactiveSignal {
     pub spectrum: Array1<f32>,
     pub ema: Array1<f32>,
     pub current_level: f32,
+    prev_gamma: Array1<f32>,
 }
 
 impl Default for ReactiveSignal {
@@ -108,6 +111,7 @@ impl ReactiveSignal {
             params,
             current_level: 0.0,
             impulse: 0.0,
+            prev_gamma: Array1::zeros(FREQ_BINS),
         }
     }
 
@@ -119,7 +123,7 @@ impl ReactiveSignal {
         self.impulse = self.spectrum.slice(s![self.params.center_bin.saturating_sub(self.params.bin_radius).clamp(0, FREQ_BINS - 1)..max_f])
             .iter()
             .sum::<f32>()
-            / (2. * self.params.bin_radius as f32 + 1.);
+            / (2. * self.params.bin_radius as f32 + 1.).sqrt();
         self.tick_adsr(self.impulse);
     }
 
@@ -213,11 +217,10 @@ impl ReactiveSignal {
         let bins = Array1::from(bins.clone());
         // calculate an exponential moving average to prevent aliasing
         let alpha = 1.0 - (-self.delta_time * 100.0 / TAU).exp(); // Sample-rate-aware alpha
-        self.ema = alpha * &bins + (1.0 - alpha) * &self.ema;
-        self.spectrum = self.spectrum_plot_level(&self.ema);
-    }
+        self.ema = alpha * bins + (1.0 - alpha) * &self.ema;
 
-    fn spectrum_plot_level(&self, input: &Array1<f32>) -> Array1<f32> {
-        input.mapv(|exp| 1.0 - 0.5f32.powf(exp * (1.0/self.params.sensitivity)))
+        let gamma = (10.0 + 100.0 * self.params.sensitivity * &self.ema).log(10.0);
+        self.spectrum = (&gamma - &self.prev_gamma).mul(self.delta_time * 100.0).clamp(0.0, f32::infinity()).powi(2).mul(10.0);
+        self.prev_gamma = gamma.clone();
     }
 }
