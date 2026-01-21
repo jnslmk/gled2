@@ -1,7 +1,8 @@
 use crate::ui::logo::icon;
 use crate::ui::logo::logo_image;
-use egui::ViewportBuilder;
+use egui::{Button, ViewportBuilder};
 use egui::{Image, Rect, Vec2, ViewportCommand};
+use egui_phosphor_icons::icons;
 
 pub fn gled_window_frame(
     ctx: &egui::Context,
@@ -99,13 +100,11 @@ fn title_bar_ui(ui: &mut egui::Ui, title_bar_rect: eframe::epaint::Rect, title: 
 }
 
 pub fn window_buttons(ui: &mut egui::Ui) {
-    use egui::{Button, RichText};
-
     let button_height = 20.0;
 
     let close_response = ui
         .add(Button::new(
-            RichText::new(egui_phosphor::regular::X).size(button_height),
+            icons::X.regular().size(button_height),
         ))
         .on_hover_text("Close the window");
     if close_response.clicked() {
@@ -118,7 +117,7 @@ pub fn window_buttons(ui: &mut egui::Ui) {
     if is_maximized {
         let maximized_response = ui
             .add(Button::new(
-                RichText::new(egui_phosphor::regular::ARROWS_IN).size(button_height),
+                icons::ARROWS_IN.regular().size(button_height),
             ))
             .on_hover_text("Restore window");
         if maximized_response.clicked() {
@@ -128,7 +127,7 @@ pub fn window_buttons(ui: &mut egui::Ui) {
     } else {
         let maximized_response = ui
             .add(Button::new(
-                RichText::new(egui_phosphor::regular::ARROWS_OUT).size(button_height),
+                icons::ARROWS_OUT.regular().size(button_height),
             ))
             .on_hover_text("Maximize window");
         if maximized_response.clicked() {

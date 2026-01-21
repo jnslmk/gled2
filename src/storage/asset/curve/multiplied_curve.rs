@@ -104,7 +104,7 @@ impl<R: Range> MultipliedCurve<R> {
         self.adsr_editor.as_ref().map(|editor| {
             editor.reactive_signal_handle.level()
         }
-        ).unwrap_or(0.0)
+        ).unwrap_or(1.0)
     }
 }
 
