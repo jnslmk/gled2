@@ -10,7 +10,7 @@ use egui::load::SizedTexture;
 use egui::{Color32, Frame, Image, Layout, Ui, UiBuilder};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
 use emath::{pos2, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
-use epaint::{PathStroke, Stroke};
+use epaint::{PathShape, PathStroke, Stroke};
 use ndarray::Array1;
 use std::num::NonZeroU64;
 use std::sync::MutexGuard;
@@ -146,7 +146,7 @@ impl Default for ADSREditor {
 impl ADSREditor {
     pub fn show(&mut self, ui: &mut Ui) {
         #[cfg(feature = "profiling")]
-        puffin::profile_function!("ADSREditor::update");
+        puffin::profile_function!("ADSREditor::show");
         Frame::new().inner_margin(5.).show(ui, |ui| {
             let signal = self.reactive_signal_handle.update_params_and_fetch_signal().unwrap_or_default();
             let spectrum = signal.spectrum.clone();
@@ -154,10 +154,49 @@ impl ADSREditor {
             let output_level = signal.current_level;
 
             self.draw_spectrum_texture(spectrum);
-            
+
             self.draw_spectrum(ui);
             ui.separator();
             self.draw_adsr(ui, impulse, output_level);
+        });
+    }
+
+    pub fn show_minified(&mut self, ui: &mut Ui, rect: Rect) {
+        #[cfg(feature = "profiling")]
+        puffin::profile_function!("ADSREditor::show_minified");
+        let level = self.reactive_signal_handle.level();
+        scoped_frame(ui, UiBuilder::new().max_rect(rect), Frame::default(), |ui| {
+            let to_screen = emath::RectTransform::from_to(
+                Rect::from_min_size(Pos2::ZERO, Vec2::new(4.0, 1.0)),
+                rect,
+            );
+            let painter = ui.painter().with_clip_rect(rect);
+
+            for i in 0..=4 {
+                let stroke = Stroke::new(
+                    match i {
+                        0 | 4 => 1.0,
+                        _ => 0.5,
+                    },
+                    Color32::GRAY,
+                );
+                painter.add(PathShape::line(
+                    vec![
+                        to_screen.transform_pos(Pos2::new(i as f32, 0.0)),
+                        to_screen.transform_pos(Pos2::new(i as f32, 1.0)),
+                    ],
+                    stroke,
+                ));
+                painter.add(PathShape::line(
+                    vec![
+                        to_screen.transform_pos(Pos2::new(0.0, i as f32 * 0.25)),
+                        to_screen.transform_pos(Pos2::new(4.0, i as f32 * 0.25)),
+                    ],
+                    stroke,
+                ));
+            }
+
+            self.draw_curve(ui, rect, level);
         });
     }
 
@@ -239,7 +278,11 @@ impl ADSREditor {
 
             let mut rect = ui.available_rect_before_wrap();
             rect.set_height(200.);
-            self.draw_curve(ui, rect, output_level);
+            let frame = Frame::new().inner_margin(5.0).fill(Color32::from_gray(60));
+            scoped_frame(ui, UiBuilder::new().max_rect(rect), frame, |ui| {
+                let rect = ui.available_rect_before_wrap();
+                self.draw_curve(ui, rect, output_level);
+            });
         });
         scoped_frame(
             ui,
@@ -375,42 +418,38 @@ impl ADSREditor {
     fn draw_curve(&self, ui: &mut Ui, rect: Rect, output_level: f32) {
         let n = 300;
 
-        let frame = Frame::new().inner_margin(5.0).fill(Color32::from_gray(60));
-        scoped_frame(ui, UiBuilder::new().max_rect(rect), frame, |ui| {
-            let rect = ui.available_rect_before_wrap();
-            let to_screen =
-                emath::RectTransform::from_to(Rect::from_x_y_ranges(0.0..=1.0, 0.0..=1.0), rect);
+        let to_screen =
+            emath::RectTransform::from_to(Rect::from_x_y_ranges(0.0..=1.0, 0.0..=1.0), rect);
 
-            let mut level_rect = rect.clone();
-            level_rect.min.y += (1.0 - (output_level)) * rect.height();
-            ui.painter()
-                .rect_filled(level_rect, 0., Color32::LIGHT_GREEN);
+        let mut level_rect = rect.clone();
+        level_rect.min.y += (1.0 - (output_level)) * rect.height();
+        ui.painter()
+            .rect_filled(level_rect, 0., Color32::LIGHT_GREEN);
 
-            let mut adsr = ReactiveSignal::new(self.lock_params().clone(), 100.);
-            let points: Vec<Pos2> = (0..=n)
-                .map(|i| {
-                    let t = i as f32 / (n as f32);
-                    let input = if 0.2 < t
-                        && t < (0.4
-                            + adsr.params.decay_duration * 0.4
-                            + adsr.params.attack_duration * 0.4)
-                    {
-                        1.0
-                    } else {
-                        0.0
-                    };
-                    let y = -1. * adsr.tick_adsr(input) + 1.;
-                    to_screen * pos2(t as f32, y)
-                })
-                .collect();
+        let mut adsr = ReactiveSignal::new(self.lock_params().clone(), 100.);
+        let points: Vec<Pos2> = (0..=n)
+            .map(|i| {
+                let t = i as f32 / (n as f32);
+                let input = if 0.2 < t
+                    && t < (0.4
+                        + adsr.params.decay_duration * 0.4
+                        + adsr.params.attack_duration * 0.4)
+                {
+                    1.0
+                } else {
+                    0.0
+                };
+                let y = -1. * adsr.tick_adsr(input) + 1.;
+                to_screen * pos2(t as f32, y)
+            })
+            .collect();
 
-            let thickness = 1.0;
-            let shape = epaint::Shape::line(points, PathStroke::new(thickness, Color32::WHITE));
+        let thickness = 1.0;
+        let shape = epaint::Shape::line(points, PathStroke::new(thickness, Color32::WHITE));
 
-            ui.painter().add(shape);
-        });
+        ui.painter().add(shape);
     }
-}
+    }
 
 fn knob_default(knob: Knob) -> Knob {
     knob.with_font_size(12.0)
