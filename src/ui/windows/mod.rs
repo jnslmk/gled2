@@ -1,6 +1,5 @@
 use crate::{app::timing::Timing, storage::asset::project::Project};
 use egui::Context;
-use crate::ui::windows::adsr::ADSREditorWindow;
 
 pub mod about;
 pub mod animation;
@@ -15,7 +14,6 @@ pub mod palettes;
 pub mod projects;
 pub mod scenes;
 pub mod shortcuts;
-pub mod adsr;
 
 #[derive(Default)]
 pub struct Windows {
@@ -31,7 +29,6 @@ pub struct Windows {
     pub palettes: palettes::PalettesWindow,
     pub projects: projects::ProjectsWindow,
     pub scenes: scenes::ScenesWindow,
-    pub adsr_editor: ADSREditorWindow,
     pub shortcuts: shortcuts::ShortcutsWindow,
 }
 
@@ -50,7 +47,6 @@ impl Windows {
         self.palettes.update(ctx);
         self.projects.update(ctx);
         self.scenes.update(ctx, timing);
-        self.adsr_editor.update(ctx);
         self.shortcuts.update(ctx, project);
     }
 }

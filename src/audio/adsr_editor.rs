@@ -416,7 +416,7 @@ impl ADSREditor {
         );
     }
     fn draw_curve(&self, ui: &mut Ui, rect: Rect, output_level: f32) {
-        let n = 300;
+        let n = 100;
 
         let to_screen =
             emath::RectTransform::from_to(Rect::from_x_y_ranges(0.0..=1.0, 0.0..=1.0), rect);
