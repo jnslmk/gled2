@@ -239,6 +239,7 @@ impl<R: Range> MultipliedCurve<R> {
                             self.adsr_editor = None;
                             changed = true;
                             ui.close_kind(UiKind::Menu);
+                            return;
                         };
 
                         ui.set_min_height(400.0);
