@@ -1,13 +1,10 @@
 use super::Curve;
-use crate::audio::ReactiveSignalHandle;
+use crate::audio::adsr_editor::ADSREditor;
 use crate::{
     storage::{Asset, AssetId, AssetTrait},
     ui::{asset_tree::AssetTree, gled_slider::GledSlider},
 };
-use egui::{
-    containers::menu::{MenuButton, MenuConfig}, Button, Color32,
-    UiKind,
-};
+use egui::{containers::menu::{MenuButton, MenuConfig}, Button, Color32, UiKind};
 use egui_ltreeview::TreeViewState;
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
@@ -21,7 +18,7 @@ pub struct MultipliedCurve<R: Range> {
     #[serde(alias = "Curve", deserialize_with = "deserialize_curve")]
     curve: Option<AssetId<Curve>>,
     #[serde(skip)]
-    reactive_signal: Option<ReactiveSignalHandle>,
+    reactive_signal: Option<ADSREditor>,
     #[serde(skip)]
     _phantom: PhantomData<R>,
 }
@@ -98,7 +95,14 @@ impl<R: Range> MultipliedCurve<R> {
             .unwrap_or(1.0)
             * self.multiplier
             * R::MAX
-            //+ crate::audio::adsr_editor::ADSR_VALUE.load(std::sync::atomic::Ordering::Relaxed)
+            * self.adsr_value()
+    }
+
+    pub fn adsr_value(&self) -> f32 {
+        self.reactive_signal.as_ref().map(|editor| {
+            editor.reactive_signal_handle.level()
+        }
+        ).unwrap_or(0.0)
     }
 }
 
@@ -145,7 +149,8 @@ impl<R: Range> MultipliedCurve<R> {
                             .and_then(Asset::get)
                             .map(|curve| curve.data.value(beat_progression % 4.0))
                             .unwrap_or(1.0)
-                            * self.multiplier,
+                            * self.multiplier
+                            * self.adsr_value(),
                         value: &mut self.multiplier,
                         size: left.height(),
                         horizontal: true,
@@ -203,13 +208,12 @@ impl<R: Range> MultipliedCurve<R> {
             });
 
             // Menu for reactive sound
-            /*
             ui.scope(|ui| {
                 ui.set_max_width(right.shrink(2.0).width());
-                let rect = MenuButton::new(if self.curve.is_some() {
+                let rect = MenuButton::new(if self.reactive_signal.is_some() {
                     "                        "
                 } else {
-                    "Sound Reactive"
+                    "Sound"
                 })
                     .config(
                         MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
@@ -217,7 +221,7 @@ impl<R: Range> MultipliedCurve<R> {
                     .ui(ui, |ui| {
                         ui.set_min_width(300.0);
                         // Remove Button
-                        if self.curve.is_some()
+                        if self.reactive_signal.is_some()
                             && ui
                             .vertical_centered_justified(|ui| {
                                 ui.add(Button::new("Remove ADSR").fill(Color32::DARK_RED))
@@ -233,15 +237,12 @@ impl<R: Range> MultipliedCurve<R> {
 
                         ui.set_min_height(400.0);
                         // create a reactive signal as clicking the menu button is interpreted as adding reactive sound behavior
-                        if self.reactive_signal.is_none() {
-                            self.reactive_signal = Some(REACTIVE_SIGNAL_THREAD
-                                .write()
-                                .unwrap()
-                                .register_reactive_signal());
+                        if self.reactive_signal.is_none(){
+                            self.reactive_signal = Some(ADSREditor::default());
                         }
                         // show controls for the reactive signal
-                        if let Some(handle) = &self.reactive_signal {
-                            crate::audio::adsr_editor::adsr_editor_ui(ui, handle);
+                        if let Some(editor) = &mut self.reactive_signal {
+                            editor.show(ui);
                         }
                     })
                     .0
@@ -252,7 +253,7 @@ impl<R: Range> MultipliedCurve<R> {
                         .clone()
                         .draw(ui, false, Some(beat_progression), rect);
                 }
-            });*/
+            });
 
         });
 

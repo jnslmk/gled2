@@ -42,6 +42,10 @@ impl ReactiveSignalHandle {
             signal.clone()
         })
     }
+    pub fn level(&self) -> f32 {
+        REACTIVE_SIGNAL_THREAD.write().unwrap().signals.get_mut(&self.uuid).map(|(_, signal)|
+            {signal.current_level}).unwrap_or(0.0)
+    }
 }
 
 impl Hash for ReactiveSignalHandle {

@@ -9,9 +9,10 @@ pub struct ADSREditorWindow {
 }
 impl Default for ADSREditorWindow {
     fn default() -> Self {
+        let editor = ADSREditor::default();
         Self {
             open: true,
-            editor: ADSREditor::default(),
+            editor,
         }
     }
 }
@@ -35,7 +36,7 @@ impl ADSREditorWindow {
                 });
                 gled_window_frame(ctx, "ADSR Editor", |ui| {
                     egui::CentralPanel::default().show_inside(ui, |ui| {
-                        self.editor.update(ui);
+                        self.editor.show(ui);
                     });
                 });
             },

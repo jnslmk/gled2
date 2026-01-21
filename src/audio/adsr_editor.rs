@@ -6,24 +6,20 @@ use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
 use crate::ui::scoped_frame;
 use crate::wgpu_render_state;
-use atomic_float::AtomicF32;
 use egui::load::SizedTexture;
 use egui::{Color32, Frame, Image, Layout, Ui, UiBuilder};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
 use emath::{pos2, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
 use epaint::{PathStroke, Stroke};
 use ndarray::Array1;
-use once_cell::sync::Lazy;
 use std::num::NonZeroU64;
-use std::sync::atomic::Ordering;
 use std::sync::MutexGuard;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
-pub static ADSR_VALUE: Lazy<AtomicF32> = Lazy::new(|| AtomicF32::new(0.0));
-
+#[derive(PartialEq, Clone, Debug)]
 pub struct ADSREditor {
-    reactive_signal_handle: ReactiveSignalHandle,
+    pub(crate) reactive_signal_handle: ReactiveSignalHandle,
     f_center: f32,
     f_radius: f32,
     spectrum_pipeline: RenderPipeline,
@@ -148,7 +144,7 @@ impl Default for ADSREditor {
 }
 
 impl ADSREditor {
-    pub fn update(&mut self, ui: &mut Ui) {
+    pub fn show(&mut self, ui: &mut Ui) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::update");
         Frame::new().inner_margin(5.).show(ui, |ui| {
@@ -162,9 +158,6 @@ impl ADSREditor {
             self.draw_spectrum(ui);
             ui.separator();
             self.draw_adsr(ui, impulse, output_level);
-
-            // update: ui copy of adsr params -> reactive audio thread
-            ADSR_VALUE.store(output_level, Ordering::Relaxed);
         });
     }
 

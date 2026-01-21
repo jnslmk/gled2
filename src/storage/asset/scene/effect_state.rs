@@ -181,7 +181,7 @@ impl EffectState {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct OwnedTextureId(pub TextureId);
 
 impl Drop for OwnedTextureId {
