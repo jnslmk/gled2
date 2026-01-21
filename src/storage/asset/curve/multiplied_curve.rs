@@ -201,6 +201,59 @@ impl<R: Range> MultipliedCurve<R> {
                         .draw(ui, false, Some(beat_progression), rect);
                 }
             });
+
+            // Menu for reactive sound
+            /*
+            ui.scope(|ui| {
+                ui.set_max_width(right.shrink(2.0).width());
+                let rect = MenuButton::new(if self.curve.is_some() {
+                    "                        "
+                } else {
+                    "Sound Reactive"
+                })
+                    .config(
+                        MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
+                    )
+                    .ui(ui, |ui| {
+                        ui.set_min_width(300.0);
+                        // Remove Button
+                        if self.curve.is_some()
+                            && ui
+                            .vertical_centered_justified(|ui| {
+                                ui.add(Button::new("Remove ADSR").fill(Color32::DARK_RED))
+                            })
+                            .inner
+                            .clicked()
+                        {
+                            // this will automatically remove the reactive signal from the audio thread
+                            self.reactive_signal = None;
+                            changed = true;
+                            ui.close_kind(UiKind::Menu);
+                        };
+
+                        ui.set_min_height(400.0);
+                        // create a reactive signal as clicking the menu button is interpreted as adding reactive sound behavior
+                        if self.reactive_signal.is_none() {
+                            self.reactive_signal = Some(REACTIVE_SIGNAL_THREAD
+                                .write()
+                                .unwrap()
+                                .register_reactive_signal());
+                        }
+                        // show controls for the reactive signal
+                        if let Some(handle) = &self.reactive_signal {
+                            crate::audio::adsr_editor::adsr_editor_ui(ui, handle);
+                        }
+                    })
+                    .0
+                    .rect;
+                if let Some(curve) = self.curve.and_then(Asset::get) {
+                    curve
+                        .data
+                        .clone()
+                        .draw(ui, false, Some(beat_progression), rect);
+                }
+            });*/
+
         });
 
         changed

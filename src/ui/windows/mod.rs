@@ -1,6 +1,6 @@
-use crate::audio::adsr_editor::ADSREditor;
 use crate::{app::timing::Timing, storage::asset::project::Project};
 use egui::Context;
+use crate::ui::windows::adsr::ADSREditorWindow;
 
 pub mod about;
 pub mod animation;
@@ -15,6 +15,7 @@ pub mod palettes;
 pub mod projects;
 pub mod scenes;
 pub mod shortcuts;
+pub mod adsr;
 
 #[derive(Default)]
 pub struct Windows {
@@ -30,7 +31,7 @@ pub struct Windows {
     pub palettes: palettes::PalettesWindow,
     pub projects: projects::ProjectsWindow,
     pub scenes: scenes::ScenesWindow,
-    pub adsr_editor: ADSREditor,
+    pub adsr_editor: ADSREditorWindow,
     pub shortcuts: shortcuts::ShortcutsWindow,
 }
 

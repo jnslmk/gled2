@@ -1,15 +1,14 @@
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
-use crate::audio::{ReactiveSignalHandle, REACTIVE_SIGNAL_THREAD};
 use crate::audio::state::{fft_data_u8, MAX_FREQ};
+use crate::audio::{ReactiveSignalHandle, REACTIVE_SIGNAL_THREAD};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
 use crate::ui::scoped_frame;
-use crate::ui::window_common::{default_viewport_builder, gled_window_frame};
 use crate::wgpu_render_state;
 use atomic_float::AtomicF32;
 use egui::load::SizedTexture;
-use egui::{Color32, Context, Frame, Id, Image, Layout, Ui, UiBuilder, ViewportId};
+use egui::{Color32, Frame, Image, Layout, Ui, UiBuilder};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
 use emath::{pos2, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
 use epaint::{PathStroke, Stroke};
@@ -21,13 +20,12 @@ use std::sync::MutexGuard;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
-pub(crate) static ADSR_VALUE: Lazy<AtomicF32> = Lazy::new(|| AtomicF32::new(0.0));
+pub static ADSR_VALUE: Lazy<AtomicF32> = Lazy::new(|| AtomicF32::new(0.0));
 
 pub struct ADSREditor {
     reactive_signal_handle: ReactiveSignalHandle,
     f_center: f32,
     f_radius: f32,
-    open: bool,
     spectrum_pipeline: RenderPipeline,
     spectrum_bind_group: BindGroup,
     spectrum_texture_buffer: Buffer,
@@ -140,7 +138,6 @@ impl Default for ADSREditor {
             reactive_signal_handle,
             f_center: 8200.,
             f_radius: 990.,
-            open: true,
             spectrum_pipeline,
             spectrum_bind_group,
             spectrum_texture_buffer,
@@ -151,44 +148,24 @@ impl Default for ADSREditor {
 }
 
 impl ADSREditor {
-    pub fn update(&mut self, ctx: &Context) {
-        if !self.open {
-            return;
-        }
+    pub fn update(&mut self, ui: &mut Ui) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::update");
-        let signal = self.reactive_signal_handle.update_params_and_fetch_signal().unwrap_or_default();
-        let spectrum = signal.spectrum.clone();
-        let impulse = signal.impulse.clamp(0.0, 1.0);
-        let output_level = signal.current_level;
+        Frame::new().inner_margin(5.).show(ui, |ui| {
+            let signal = self.reactive_signal_handle.update_params_and_fetch_signal().unwrap_or_default();
+            let spectrum = signal.spectrum.clone();
+            let impulse = signal.impulse.clamp(0.0, 1.0);
+            let output_level = signal.current_level;
 
-        self.draw_spectrum_texture(spectrum);
-        // update: reactive audio thread -> ui copy of adsr params
-        ctx.show_viewport_immediate(
-            ViewportId(Id::new("ADSR Editor")),
-            default_viewport_builder()
-                .with_inner_size(Vec2::new(500., 700.))
-                .with_min_inner_size(Vec2::new(500.0, 700.)),
-            |ctx, _viewport_class| {
-                ctx.input(|input| {
-                    if input.viewport().close_requested() {
-                        self.open = false;
-                    }
-                });
-                gled_window_frame(ctx, "ADSR Editor", |ui| {
-                    egui::CentralPanel::default().show_inside(ui, |ui| {
-                        Frame::new().inner_margin(5.).show(ui, |ui| {
-                            self.draw_spectrum(ui);
-                            ui.separator();
-                            self.draw_adsr(ui, impulse, output_level);
-                        });
-                    });
-                });
+            self.draw_spectrum_texture(spectrum);
+            
+            self.draw_spectrum(ui);
+            ui.separator();
+            self.draw_adsr(ui, impulse, output_level);
 
-                // update: ui copy of adsr params -> reactive audio thread
-                ADSR_VALUE.store(output_level, Ordering::Relaxed);
-            },
-        );
+            // update: ui copy of adsr params -> reactive audio thread
+            ADSR_VALUE.store(output_level, Ordering::Relaxed);
+        });
     }
 
     fn lock_params(&self) -> MutexGuard<'_, AdsrParams> {

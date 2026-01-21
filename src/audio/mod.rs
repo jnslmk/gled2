@@ -13,7 +13,7 @@ use std::thread::spawn;
 use std::time::Duration;
 use uuid::Uuid;
 
-static REACTIVE_SIGNAL_THREAD: Lazy<RwLock<ReactiveSignalThread>> = Lazy::new(|| {RwLock::new(ReactiveSignalThread::new())});
+pub static REACTIVE_SIGNAL_THREAD: Lazy<RwLock<ReactiveSignalThread>> = Lazy::new(|| {RwLock::new(ReactiveSignalThread::new())});
 
 static ADSR_SAMPLE_INTERVAL_MS: u64 = 10;
 
