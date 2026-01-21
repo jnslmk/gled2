@@ -1,25 +1,27 @@
-use std::marker::PhantomData;
-
 use super::Curve;
+use crate::audio::ReactiveSignalHandle;
 use crate::{
     storage::{Asset, AssetId, AssetTrait},
     ui::{asset_tree::AssetTree, gled_slider::GledSlider},
 };
 use egui::{
-    Button, Color32, UiKind,
-    containers::menu::{MenuButton, MenuConfig},
+    containers::menu::{MenuButton, MenuConfig}, Button, Color32,
+    UiKind,
 };
 use egui_ltreeview::TreeViewState;
 use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(default)]
 pub struct MultipliedCurve<R: Range> {
     #[serde(alias = "Static", deserialize_with = "deserialize_static")]
     multiplier: f32,
     #[serde(alias = "Curve", deserialize_with = "deserialize_curve")]
     curve: Option<AssetId<Curve>>,
+    #[serde(skip)]
+    reactive_signal: Option<ReactiveSignalHandle>,
     #[serde(skip)]
     _phantom: PhantomData<R>,
 }
@@ -64,6 +66,7 @@ impl<R: Range> MultipliedCurve<R> {
         Self {
             multiplier,
             curve: None,
+            reactive_signal: None,
             _phantom: PhantomData,
         }
     }
@@ -72,6 +75,7 @@ impl<R: Range> MultipliedCurve<R> {
         Self {
             multiplier: 1.0,
             curve: Some(AssetId::from_uuid(Uuid::from_bytes(bytes))),
+            reactive_signal: None,
             _phantom: PhantomData,
         }
     }
@@ -94,7 +98,7 @@ impl<R: Range> MultipliedCurve<R> {
             .unwrap_or(1.0)
             * self.multiplier
             * R::MAX
-            + crate::audio::adsr_editor::ADSR_VALUE.load(std::sync::atomic::Ordering::Relaxed)
+            //+ crate::audio::adsr_editor::ADSR_VALUE.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 

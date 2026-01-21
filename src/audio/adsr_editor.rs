@@ -1,5 +1,5 @@
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
-use crate::audio::register_reactive_signal;
+use crate::audio::{ReactiveSignalHandle, REACTIVE_SIGNAL_THREAD};
 use crate::audio::state::{fft_data_u8, MAX_FREQ};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
@@ -15,18 +15,16 @@ use emath::{pos2, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
 use epaint::{PathStroke, Stroke};
 use ndarray::Array1;
 use once_cell::sync::Lazy;
-use rustfft::num_traits::float::FloatCore;
 use std::num::NonZeroU64;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, RwLock};
+use std::sync::MutexGuard;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
 pub(crate) static ADSR_VALUE: Lazy<AtomicF32> = Lazy::new(|| AtomicF32::new(0.0));
 
 pub struct ADSREditor {
-    reactive_signal: Arc<RwLock<ReactiveSignal>>,
-    working_copy_params: AdsrParams,
+    reactive_signal_handle: ReactiveSignalHandle,
     f_center: f32,
     f_radius: f32,
     open: bool,
@@ -136,16 +134,12 @@ impl Default for ADSREditor {
                 wgpu::FilterMode::Nearest,
             ));
 
-        let reactive_signal = register_reactive_signal(ReactiveSignal::default());
-        // we keep an editing copy of adsr params, which is updated in the reactive signal
-        // for when we acquire the lock next time
-        let params = reactive_signal.read().unwrap().params.clone();
+        let reactive_signal_handle = REACTIVE_SIGNAL_THREAD.write().unwrap().register_reactive_signal();
 
         Self {
-            reactive_signal,
+            reactive_signal_handle,
             f_center: 8200.,
             f_radius: 990.,
-            working_copy_params: params,
             open: true,
             spectrum_pipeline,
             spectrum_bind_group,
@@ -163,14 +157,13 @@ impl ADSREditor {
         }
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::update");
-        let spectrum = self.reactive_signal.read().unwrap().spectrum.clone();
-        let impulse = self.reactive_signal.read().unwrap().impulse.clamp(0.0, 1.0);
-        let output_level = self.reactive_signal.read().unwrap().current_level;
+        let signal = self.reactive_signal_handle.update_params_and_fetch_signal().unwrap_or_default();
+        let spectrum = signal.spectrum.clone();
+        let impulse = signal.impulse.clamp(0.0, 1.0);
+        let output_level = signal.current_level;
 
         self.draw_spectrum_texture(spectrum);
         // update: reactive audio thread -> ui copy of adsr params
-        self.working_copy_params = self.reactive_signal.read().unwrap().params.clone();
-
         ctx.show_viewport_immediate(
             ViewportId(Id::new("ADSR Editor")),
             default_viewport_builder()
@@ -193,10 +186,13 @@ impl ADSREditor {
                 });
 
                 // update: ui copy of adsr params -> reactive audio thread
-                self.reactive_signal.write().unwrap().params = self.working_copy_params.clone();
                 ADSR_VALUE.store(output_level, Ordering::Relaxed);
             },
         );
+    }
+
+    fn lock_params(&self) -> MutexGuard<'_, AdsrParams> {
+        self.reactive_signal_handle.params.lock().unwrap()
     }
 
     fn draw_spectrum_texture(&self, input_level: Array1<f32>) {
@@ -252,7 +248,7 @@ impl ADSREditor {
                 .rect_filled(value_rect, 0., Color32::LIGHT_GREEN);
 
             let threshold_line_y =
-                rect.min.y + meter_height * (1.0 - self.working_copy_params.gate_activation_threshold);
+                rect.min.y + meter_height * (1.0 - self.reactive_signal_handle.params.lock().unwrap().gate_activation_threshold);
             ui.painter().line(
                 vec![
                     pos2(rect.min.x, threshold_line_y),
@@ -262,7 +258,7 @@ impl ADSREditor {
             );
 
             let threshold_deac_line_y =
-                rect.min.y + meter_height * (1.0 - self.working_copy_params.gate_deactivation_threshold);
+                rect.min.y + meter_height * (1.0 - self.reactive_signal_handle.params.lock().unwrap().gate_deactivation_threshold);
             ui.painter().line(
                 vec![
                     pos2(rect.min.x, threshold_deac_line_y),
@@ -290,7 +286,7 @@ impl ADSREditor {
                 Frame::new().inner_margin(5.).show(ui, |ui| {
                     ui.add(
                         knob_default(Knob::new(
-                            &mut self.working_copy_params.attack_duration,
+                            &mut self.lock_params().attack_duration,
                             0.0,
                             2.0,
                             KnobStyle::Wiper,
@@ -301,7 +297,7 @@ impl ADSREditor {
 
                     ui.add(
                         knob_default(Knob::new(
-                            &mut self.working_copy_params.decay_duration,
+                            &mut self.lock_params().decay_duration,
                             0.0,
                             10.0,
                             KnobStyle::Wiper,
@@ -311,7 +307,7 @@ impl ADSREditor {
                     );
                     ui.add(
                         knob_default(Knob::new(
-                            &mut self.working_copy_params.sustain_level,
+                            &mut self.lock_params().sustain_level,
                             0.0,
                             1.0,
                             KnobStyle::Wiper,
@@ -321,7 +317,7 @@ impl ADSREditor {
                     );
                     ui.add(
                         knob_default(Knob::new(
-                            &mut self.working_copy_params.release_duration,
+                            &mut self.lock_params().release_duration,
                             0.0,
                             10.0,
                             KnobStyle::Wiper,
@@ -332,7 +328,7 @@ impl ADSREditor {
                     // Threshold knob
                     ui.add(
                         knob_default(Knob::new(
-                            &mut self.working_copy_params.gate_activation_threshold,
+                            &mut self.lock_params().gate_activation_threshold,
                             0.0,
                             1.0,
                             KnobStyle::Wiper,
@@ -393,7 +389,7 @@ impl ADSREditor {
                 // Sensitivity knob
                 ui.add(
                     knob_default(Knob::new(
-                        &mut self.working_copy_params.sensitivity,
+                        &mut self.lock_params().sensitivity,
                         0.1,
                         10.0,
                         KnobStyle::Wiper,
@@ -401,7 +397,7 @@ impl ADSREditor {
                     .with_size(50.0)
                     .with_label("Sensitivity", LabelPosition::Bottom),
                 );
-                self.working_copy_params
+                self.lock_params()
                     .set_filter_tune(self.f_center, self.f_radius);
             },
         );
@@ -420,14 +416,14 @@ impl ADSREditor {
             ui.painter()
                 .rect_filled(level_rect, 0., Color32::LIGHT_GREEN);
 
-            let mut adsr = ReactiveSignal::new(self.working_copy_params.clone(), 100.);
+            let mut adsr = ReactiveSignal::new(self.lock_params().clone(), 100.);
             let points: Vec<Pos2> = (0..=n)
                 .map(|i| {
                     let t = i as f32 / (n as f32);
                     let input = if 0.2 < t
                         && t < (0.4
-                            + self.working_copy_params.decay_duration * 0.4
-                            + self.working_copy_params.attack_duration * 0.4)
+                            + adsr.params.decay_duration * 0.4
+                            + adsr.params.attack_duration * 0.4)
                     {
                         1.0
                     } else {

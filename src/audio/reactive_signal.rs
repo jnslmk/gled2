@@ -5,7 +5,7 @@ use std::f32::consts::TAU;
 use std::ops::Mul;
 use rustfft::num_traits::Float;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub struct AdsrParams {
     center_bin: usize,
     bin_radius: usize,
@@ -82,6 +82,7 @@ impl Default for AdsrPhase {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct ReactiveSignal {
     pub phase: AdsrPhase,
     pub gate_active: bool,
