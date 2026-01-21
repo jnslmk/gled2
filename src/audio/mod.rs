@@ -60,7 +60,7 @@ impl  ReactiveSignalThread {
     }
     pub fn register_reactive_signal(&mut self) -> ReactiveSignalHandle {
         let uuid = Uuid::new_v4();
-        let signal = ReactiveSignal::new(AdsrParams::default(), ADSR_SAMPLE_INTERVAL_MS as f32);
+        let signal = ReactiveSignal::new(AdsrParams::default(), ADSR_SAMPLE_INTERVAL_MS as f32 / 1000.);
         let dead_mans_switch = Arc::new(Mutex::new(signal.params.clone()));
         self.signals.insert(
             uuid,
@@ -69,21 +69,20 @@ impl  ReactiveSignalThread {
         ReactiveSignalHandle{uuid, params: dead_mans_switch}
     }
 }
-    pub fn start_reactive_sound_thread() {
-        spawn(||
-        loop {
-            let spectrum = fft_data();
+pub fn start_reactive_sound_thread() {
+    loop {
+        let spectrum = fft_data();
 
-            REACTIVE_SIGNAL_THREAD.write().unwrap().signals.values_mut().for_each(|(_, signal)| {
-                signal.tick(&spectrum);
-            });
-
-            // Garbage collect references to ReactiveSignals which do not exist anymore
-            REACTIVE_SIGNAL_THREAD.write().unwrap().signals
-                .retain(|_, (dead_mans_switch, _)| dead_mans_switch.upgrade().is_some());
-
-            // this delay needs to be long enough to allow the ui thread to copy data in time
-            // this may be suboptimal
-            thread::sleep(Duration::from_millis(ADSR_SAMPLE_INTERVAL_MS));
+        REACTIVE_SIGNAL_THREAD.write().unwrap().signals.values_mut().for_each(|(_, signal)| {
+            signal.tick(&spectrum);
         });
+
+        // Garbage collect references to ReactiveSignals which do not exist anymore
+        REACTIVE_SIGNAL_THREAD.write().unwrap().signals
+            .retain(|_, (dead_mans_switch, _)| dead_mans_switch.upgrade().is_some());
+
+        // this delay needs to be long enough to allow the ui thread to copy data in time
+        // this may be suboptimal
+        thread::sleep(Duration::from_millis(ADSR_SAMPLE_INTERVAL_MS));
     }
+}
