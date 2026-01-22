@@ -510,6 +510,7 @@ fn knob_default(knob: Knob) -> Knob {
     knob.with_font_size(12.0)
         .with_colors(egui::Color32::GRAY, Color32::WHITE, Color32::WHITE)
         .with_stroke_width(3.0)
+        .with_logarithmic_scaling()
 }
 
 fn draw_cursor_area(ui: &mut Ui) {
