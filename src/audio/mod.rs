@@ -62,9 +62,9 @@ impl  ReactiveSignalThread {
     fn new() -> Self {
         Self { signals: HashMap::new() }
     }
-    pub fn register_reactive_signal(&mut self) -> ReactiveSignalHandle {
+    pub fn register_reactive_signal(&mut self, adsr_params: AdsrParams) -> ReactiveSignalHandle {
         let uuid = Uuid::new_v4();
-        let signal = ReactiveSignal::new(AdsrParams::default(), ADSR_SAMPLE_INTERVAL_MS as f32 / 1000.);
+        let signal = ReactiveSignal::new(adsr_params, ADSR_SAMPLE_INTERVAL_MS as f32 / 1000.);
         let dead_mans_switch = Arc::new(Mutex::new(signal.params.clone()));
         self.signals.insert(
             uuid,

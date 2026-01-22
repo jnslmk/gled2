@@ -14,12 +14,15 @@ use epaint::{PathShape, PathStroke, Stroke};
 use ndarray::Array1;
 use std::num::NonZeroU64;
 use std::sync::MutexGuard;
+use artnet_protocol::bitflags::__private::serde::Deserializer;
+use serde::{Deserialize, Serialize};
+use serde::ser::SerializeStruct;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct ADSREditor {
-    pub(crate) reactive_signal_handle: ReactiveSignalHandle,
+    pub reactive_signal_handle: ReactiveSignalHandle,
     f_center: f32,
     f_radius: f32,
     spectrum_pipeline: RenderPipeline,
@@ -29,8 +32,40 @@ pub struct ADSREditor {
     spectrum_texture_id: OwnedTextureId,
 }
 
+impl Serialize for ADSREditor {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let params = self.lock_params().clone();
+        let mut state = serializer.serialize_struct("ADSREditor", 3)?;
+        state.serialize_field("params", &params)?;
+        state.serialize_field("f_center", &self.f_center)?;
+        state.serialize_field("f_radius", &self.f_radius)?;
+        state.end()
+    }
+}
+
+#[derive(Deserialize)]
+struct AdsrEditorShell {params: AdsrParams, f_center: f32, f_radius: f32,}
+impl<'de> Deserialize<'de> for ADSREditor {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>
+    {
+        let shell = AdsrEditorShell::deserialize(deserializer)?;
+        let editor = ADSREditor::new(shell.params, shell.f_center, shell.f_radius,);
+        Ok(editor)
+    }
+}
+
 impl Default for ADSREditor {
     fn default() -> Self {
+        Self::new(AdsrParams::default(),8200.,990.,)
+    }
+}
+impl ADSREditor {
+    fn new(adsr_params: AdsrParams, f_center: f32, f_radius: f32,) -> Self {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE as u32,
@@ -128,12 +163,12 @@ impl Default for ADSREditor {
                 wgpu::FilterMode::Nearest,
             ));
 
-        let reactive_signal_handle = REACTIVE_SIGNAL_THREAD.write().unwrap().register_reactive_signal();
+        let reactive_signal_handle = REACTIVE_SIGNAL_THREAD.write().unwrap().register_reactive_signal(adsr_params);
 
         Self {
             reactive_signal_handle,
-            f_center: 8200.,
-            f_radius: 990.,
+            f_center,
+            f_radius,
             spectrum_pipeline,
             spectrum_bind_group,
             spectrum_texture_buffer,

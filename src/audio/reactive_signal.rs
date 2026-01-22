@@ -4,8 +4,9 @@ use ndarray::{s, Array1};
 use std::f32::consts::TAU;
 use std::ops::Mul;
 use rustfft::num_traits::Float;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct AdsrParams {
     center_bin: usize,
     bin_radius: usize,

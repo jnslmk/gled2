@@ -19,7 +19,6 @@ pub struct MultipliedCurve<R: Range> {
     multiplier: f32,
     #[serde(alias = "Curve", deserialize_with = "deserialize_curve")]
     curve: Option<AssetId<Curve>>,
-    #[serde(skip)]
     adsr_editor: Option<ADSREditor>,
     #[serde(skip)]
     _phantom: PhantomData<R>,
