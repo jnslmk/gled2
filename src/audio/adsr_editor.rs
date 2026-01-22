@@ -458,8 +458,8 @@ impl ADSREditor {
                 ui.add(
                     knob_default(Knob::new(
                         &mut self.lock_params().sensitivity,
-                        0.1,
-                        10.0,
+                        0.0,
+                        1.0,
                         KnobStyle::Wiper,
                     ))
                     .with_size(50.0)

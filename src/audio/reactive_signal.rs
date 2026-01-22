@@ -122,10 +122,11 @@ impl ReactiveSignal {
         puffin::profile_function!("ReactiveSignal::tick");
         self.tick_lowpass(input);
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
-        self.impulse = self.spectrum.slice(s![self.params.center_bin.saturating_sub(self.params.bin_radius).clamp(0, FREQ_BINS - 1)..max_f])
+        self.impulse = (self.spectrum.slice(s![self.params.center_bin.saturating_sub(self.params.bin_radius).clamp(1, FREQ_BINS - 1)..max_f])
             .iter()
+            .map(|x| x.powf(2.))
             .sum::<f32>()
-            / (2. * self.params.bin_radius as f32 + 1.).sqrt();
+            / (2. * self.params.bin_radius as f32)).sqrt().mul(4.0);
         self.tick_adsr(self.impulse);
     }
 
@@ -221,8 +222,8 @@ impl ReactiveSignal {
         let alpha = 1.0 - (-self.delta_time * 100.0 / TAU).exp(); // Sample-rate-aware alpha
         self.ema = alpha * bins + (1.0 - alpha) * &self.ema;
 
-        let gamma = (10.0 + 100.0 * self.params.sensitivity * &self.ema).log(10.0);
-        self.spectrum = (&gamma - &self.prev_gamma).mul(self.delta_time * 100.0).clamp(0.0, f32::infinity()).powi(2).mul(10.0);
+        let gamma = (1.0 + 100.0 * self.params.sensitivity * &self.ema).log(10.0);
+        self.spectrum = (&gamma - &self.prev_gamma).mul(self.delta_time * 100.0).clamp(0.0, f32::infinity());
         self.prev_gamma = gamma.clone();
     }
 }
