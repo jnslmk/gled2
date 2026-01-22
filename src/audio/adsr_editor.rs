@@ -5,7 +5,7 @@ use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
 use crate::ui::scoped_frame;
-use crate::wgpu_render_state;
+use crate::{wgpu_render_state, WGPU_RENDER_STATE};
 use egui::load::SizedTexture;
 use egui::{Color32, Frame, Image, Layout, Ui, UiBuilder};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
@@ -21,10 +21,7 @@ use wgpu::util::DeviceExt;
 use wgpu::*;
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct ADSREditor {
-    pub reactive_signal_handle: ReactiveSignalHandle,
-    f_center: f32,
-    f_radius: f32,
+struct PreviewShader{
     spectrum_pipeline: RenderPipeline,
     spectrum_bind_group: BindGroup,
     spectrum_texture_buffer: Buffer,
@@ -32,40 +29,8 @@ pub struct ADSREditor {
     spectrum_texture_id: OwnedTextureId,
 }
 
-impl Serialize for ADSREditor {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let params = self.lock_params().clone();
-        let mut state = serializer.serialize_struct("ADSREditor", 3)?;
-        state.serialize_field("params", &params)?;
-        state.serialize_field("f_center", &self.f_center)?;
-        state.serialize_field("f_radius", &self.f_radius)?;
-        state.end()
-    }
-}
-
-#[derive(Deserialize)]
-struct AdsrEditorShell {params: AdsrParams, f_center: f32, f_radius: f32,}
-impl<'de> Deserialize<'de> for ADSREditor {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>
-    {
-        let shell = AdsrEditorShell::deserialize(deserializer)?;
-        let editor = ADSREditor::new(shell.params, shell.f_center, shell.f_radius,);
-        Ok(editor)
-    }
-}
-
-impl Default for ADSREditor {
-    fn default() -> Self {
-        Self::new(AdsrParams::default(),8200.,990.,)
-    }
-}
-impl ADSREditor {
-    fn new(adsr_params: AdsrParams, f_center: f32, f_radius: f32,) -> Self {
+impl PreviewShader {
+    fn try_init() -> Option<Self>{
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE as u32,
@@ -81,7 +46,7 @@ impl ADSREditor {
             view_formats: &[TextureFormat::Bgra8Unorm],
         };
 
-        let wgpu_render_state = wgpu_render_state();
+        let wgpu_render_state = WGPU_RENDER_STATE.get()?.clone();
         let device = wgpu_render_state.device;
 
         let spectrum_texture = device.create_texture(&texture_desc);
@@ -163,17 +128,105 @@ impl ADSREditor {
                 wgpu::FilterMode::Nearest,
             ));
 
-        let reactive_signal_handle = REACTIVE_SIGNAL_THREAD.write().unwrap().register_reactive_signal(adsr_params);
-
-        Self {
-            reactive_signal_handle,
-            f_center,
-            f_radius,
+        Some(Self {
             spectrum_pipeline,
             spectrum_bind_group,
             spectrum_texture_buffer,
             spectrum_texture_view,
             spectrum_texture_id,
+        })
+    }
+
+    fn draw_spectrum_texture(&self, input_level: Array1<f32>) {
+        let wgpu_render_state = wgpu_render_state();
+        let device = wgpu_render_state.device;
+        if let Some(mut view) = wgpu_render_state.queue.write_buffer_with(
+            &self.spectrum_texture_buffer,
+            0,
+            NonZeroU64::new(1024).expect("Contents length is zero"),
+        ) {
+            view.copy_from_slice(&fft_data_u8(input_level.to_vec()));
+        }
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("Render animations for scene editor"),
+        });
+        {
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("Renderer Pass"),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &self.spectrum_texture_view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: Operations {
+                        load: LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 1.0,
+                        }),
+                        store: StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            render_pass.set_pipeline(&self.spectrum_pipeline);
+            render_pass.set_bind_group(0, &self.spectrum_bind_group, &[]);
+            render_pass.draw(0..3, 0..1);
+        }
+        RendererCallback::add(encoder.finish());
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct ADSREditor {
+    pub reactive_signal_handle: ReactiveSignalHandle,
+    f_center: f32,
+    f_radius: f32,
+    preview_shader: Option<PreviewShader>,
+}
+
+impl Serialize for ADSREditor {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let params = self.lock_params().clone();
+        let mut state = serializer.serialize_struct("ADSREditor", 3)?;
+        state.serialize_field("params", &params)?;
+        state.serialize_field("f_center", &self.f_center)?;
+        state.serialize_field("f_radius", &self.f_radius)?;
+        state.end()
+    }
+}
+
+#[derive(Deserialize)]
+struct AdsrEditorShell {params: AdsrParams, f_center: f32, f_radius: f32,}
+impl<'de> Deserialize<'de> for ADSREditor {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>
+    {
+        let shell = AdsrEditorShell::deserialize(deserializer)?;
+        let editor = ADSREditor::new(shell.params, shell.f_center, shell.f_radius,);
+        Ok(editor)
+    }
+}
+
+impl Default for ADSREditor {
+    fn default() -> Self {
+        Self::new(AdsrParams::default(),8200.,990.,)
+    }
+}
+impl ADSREditor {
+    fn new(adsr_params: AdsrParams, f_center: f32, f_radius: f32,) -> Self {
+        let reactive_signal_handle = REACTIVE_SIGNAL_THREAD.write().unwrap().register_reactive_signal(adsr_params);
+        Self {
+            reactive_signal_handle,
+            f_center,
+            f_radius,
+            preview_shader: None,
         }
     }
 }
@@ -188,7 +241,12 @@ impl ADSREditor {
             let impulse = signal.impulse.clamp(0.0, 1.0);
             let output_level = signal.current_level;
 
-            self.draw_spectrum_texture(spectrum);
+            if self.preview_shader.is_none() {
+                self.preview_shader = PreviewShader::try_init();
+            }
+            if let Some(preview_shader) = &self.preview_shader {
+                preview_shader.draw_spectrum_texture(spectrum);
+            }
 
             self.draw_spectrum(ui);
             ui.separator();
@@ -237,47 +295,6 @@ impl ADSREditor {
 
     fn lock_params(&self) -> MutexGuard<'_, AdsrParams> {
         self.reactive_signal_handle.params.lock().unwrap()
-    }
-
-    fn draw_spectrum_texture(&self, input_level: Array1<f32>) {
-        let wgpu_render_state = wgpu_render_state();
-        let device = wgpu_render_state.device;
-        if let Some(mut view) = wgpu_render_state.queue.write_buffer_with(
-            &self.spectrum_texture_buffer,
-            0,
-            NonZeroU64::new(1024).expect("Contents length is zero"),
-        ) {
-            view.copy_from_slice(&fft_data_u8(input_level.to_vec()));
-        }
-        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("Render animations for scene editor"),
-        });
-        {
-            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: Some("Renderer Pass"),
-                color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &self.spectrum_texture_view,
-                    resolve_target: None,
-                    depth_slice: None,
-                    ops: Operations {
-                        load: LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 1.0,
-                        }),
-                        store: StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-            render_pass.set_pipeline(&self.spectrum_pipeline);
-            render_pass.set_bind_group(0, &self.spectrum_bind_group, &[]);
-            render_pass.draw(0..3, 0..1);
-        }
-        RendererCallback::add(encoder.finish());
     }
 
     fn draw_adsr(&mut self, ui: &mut Ui, input_level: f32, output_level: f32) {
@@ -394,8 +411,11 @@ impl ADSREditor {
         puffin::profile_function!("ADSREditor::draw_spectrum");
         let size = vec2(ui.available_width(), 190.);
         let mut spectrum_rect = Rect::from_min_size(ui.cursor().min, size);
-        let spectrum = Image::new(SizedTexture::new(self.spectrum_texture_id.0, size));
-        ui.add(spectrum);
+
+        if let Some(preview_shader) = &self.preview_shader {
+            let spectrum = Image::new(SizedTexture::new(preview_shader.spectrum_texture_id.0, size));
+            ui.add(spectrum);
+        }
 
         let lower_f = self.f_center - self.f_radius;
         let upper_f = self.f_center + self.f_radius;
