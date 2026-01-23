@@ -86,7 +86,13 @@ impl App {
                                                         })
                                                     });
 
-                                                if self.selected_scene_instance == location {
+                                                if ui.ctx().is_being_dragged(item_id) {
+                                                    ui.painter().rect_filled(
+                                                        widget_response.rect,
+                                                        5.0,
+                                                        Color32::from_gray(100),
+                                                    );
+                                                } else if self.selected_scene_instance == location {
                                                     ui.painter().rect_stroke(
                                                         widget_response.rect,
                                                         5.0,
@@ -104,7 +110,7 @@ impl App {
                                                 if widget_response.clicked() {
                                                     self.selected_scene_instance = location;
                                                 }
-                                            } // Some(scene) =>
+                                            }
                                             None => {
                                                 ui.add(EmptyGridSpot { location });
                                             }
@@ -113,6 +119,7 @@ impl App {
                                 )
                             })
                             .inner; // dnd_drop_zone
+
                         if let Some(dragged_payload) = dropped_payload {
                             // The user dropped onto this cell
                             let from = GridLocation {
