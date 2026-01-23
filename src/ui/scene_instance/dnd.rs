@@ -35,7 +35,7 @@ where
         // So this is fine!
 
         if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
-            let delta = pointer_pos - response.rect.center();
+            let delta = pointer_pos - response.rect.center_top();
             ui.ctx()
                 .transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
         }
