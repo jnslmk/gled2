@@ -123,7 +123,9 @@ impl Default for Project {
 impl Project {
     pub fn next_empty_grid_location(&self, start: GridLocation) -> GridLocation {
         for row in 0..GRID_HEIGHT {
+            let row = (start.row + row) % GRID_HEIGHT;
             for col in 0..GRID_WIDTH {
+                let col = (start.col + col) % GRID_WIDTH;
                 let location = GridLocation { row, col };
                 if !self.scenes_instances_grid.contains_key(&location) {
                     return location;
