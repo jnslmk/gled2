@@ -31,7 +31,7 @@ const INNER_MARGIN: f32 = 6.0;
 
 impl Widget for SceneInstanceWidget<'_> {
     fn ui(mut self, ui: &mut Ui) -> Response {
-        let name = self.scene_instance.id.to_string();
+        let name = self.scene_instance.name.clone();
         let rect = Rect::from_min_size(
             ui.cursor().min,
             Vec2::splat(PersistantState::effects_size()),

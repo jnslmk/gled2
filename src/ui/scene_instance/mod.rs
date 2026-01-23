@@ -58,6 +58,9 @@ impl SceneInstance {
                         .show(ui, |ui| {
                             ui.set_max_width(width / 2.0);
                             ui.vertical(|ui| {
+                                ui.label("Name");
+                                ui.text_edit_singleline(&mut self.name);
+
                                 ui.label("Activation Input");
                                 self.activation_input.change_button(ui);
 
