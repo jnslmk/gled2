@@ -1,27 +1,27 @@
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
-use crate::audio::state::{fft_data_u8, MAX_FREQ};
-use crate::audio::{ReactiveSignalHandle, REACTIVE_SIGNAL_THREAD};
+use crate::audio::state::{MAX_FREQ, fft_data_u8};
+use crate::audio::{REACTIVE_SIGNAL_THREAD, ReactiveSignalHandle};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
 use crate::ui::scoped_frame;
-use crate::{wgpu_render_state, WGPU_RENDER_STATE};
+use crate::{WGPU_RENDER_STATE, wgpu_render_state};
+use artnet_protocol::bitflags::__private::serde::Deserializer;
 use egui::load::SizedTexture;
 use egui::{Color32, Frame, Image, Layout, Ui, UiBuilder};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
-use emath::{pos2, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
+use emath::{Align, Pos2, Rect, Vec2, pos2, remap_clamp, vec2};
 use epaint::{PathShape, PathStroke, Stroke};
 use ndarray::Array1;
+use serde::ser::SerializeStruct;
+use serde::{Deserialize, Serialize};
 use std::num::NonZeroU64;
 use std::sync::MutexGuard;
-use artnet_protocol::bitflags::__private::serde::Deserializer;
-use serde::{Deserialize, Serialize};
-use serde::ser::SerializeStruct;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
 #[derive(PartialEq, Clone, Debug)]
-struct PreviewShader{
+struct PreviewShader {
     spectrum_pipeline: RenderPipeline,
     spectrum_bind_group: BindGroup,
     spectrum_texture_buffer: Buffer,
@@ -30,7 +30,7 @@ struct PreviewShader{
 }
 
 impl PreviewShader {
-    fn try_init() -> Option<Self>{
+    fn try_init() -> Option<Self> {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE as u32,
@@ -192,7 +192,7 @@ impl Serialize for ADSREditor {
     where
         S: serde::Serializer,
     {
-        let params = self.lock_params().clone();
+        let params = *self.lock_params();
         let mut state = serializer.serialize_struct("ADSREditor", 3)?;
         state.serialize_field("params", &params)?;
         state.serialize_field("f_center", &self.f_center)?;
@@ -202,26 +202,33 @@ impl Serialize for ADSREditor {
 }
 
 #[derive(Deserialize)]
-struct AdsrEditorShell {params: AdsrParams, f_center: f32, f_radius: f32,}
+struct AdsrEditorShell {
+    params: AdsrParams,
+    f_center: f32,
+    f_radius: f32,
+}
 impl<'de> Deserialize<'de> for ADSREditor {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>
+        D: Deserializer<'de>,
     {
         let shell = AdsrEditorShell::deserialize(deserializer)?;
-        let editor = ADSREditor::new(shell.params, shell.f_center, shell.f_radius,);
+        let editor = ADSREditor::new(shell.params, shell.f_center, shell.f_radius);
         Ok(editor)
     }
 }
 
 impl Default for ADSREditor {
     fn default() -> Self {
-        Self::new(AdsrParams::default(),8200.,990.,)
+        Self::new(AdsrParams::default(), 8200., 990.)
     }
 }
 impl ADSREditor {
-    fn new(adsr_params: AdsrParams, f_center: f32, f_radius: f32,) -> Self {
-        let reactive_signal_handle = REACTIVE_SIGNAL_THREAD.write().unwrap().register_reactive_signal(adsr_params);
+    fn new(adsr_params: AdsrParams, f_center: f32, f_radius: f32) -> Self {
+        let reactive_signal_handle = REACTIVE_SIGNAL_THREAD
+            .write()
+            .unwrap()
+            .register_reactive_signal(adsr_params);
         Self {
             reactive_signal_handle,
             f_center,
@@ -236,7 +243,10 @@ impl ADSREditor {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::show");
         Frame::new().inner_margin(5.).show(ui, |ui| {
-            let signal = self.reactive_signal_handle.update_params_and_fetch_signal().unwrap_or_default();
+            let signal = self
+                .reactive_signal_handle
+                .update_params_and_fetch_signal()
+                .unwrap_or_default();
             let spectrum = signal.spectrum.clone();
             let impulse = signal.impulse.clamp(0.0, 1.0);
             let output_level = signal.current_level;
@@ -258,39 +268,44 @@ impl ADSREditor {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::show_minified");
         let level = self.reactive_signal_handle.level();
-        scoped_frame(ui, UiBuilder::new().max_rect(rect), Frame::default(), |ui| {
-            let to_screen = emath::RectTransform::from_to(
-                Rect::from_min_size(Pos2::ZERO, Vec2::new(4.0, 1.0)),
-                rect,
-            );
-            let painter = ui.painter().with_clip_rect(rect);
-
-            for i in 0..=4 {
-                let stroke = Stroke::new(
-                    match i {
-                        0 | 4 => 1.0,
-                        _ => 0.5,
-                    },
-                    Color32::GRAY,
+        scoped_frame(
+            ui,
+            UiBuilder::new().max_rect(rect),
+            Frame::default(),
+            |ui| {
+                let to_screen = emath::RectTransform::from_to(
+                    Rect::from_min_size(Pos2::ZERO, Vec2::new(4.0, 1.0)),
+                    rect,
                 );
-                painter.add(PathShape::line(
-                    vec![
-                        to_screen.transform_pos(Pos2::new(i as f32, 0.0)),
-                        to_screen.transform_pos(Pos2::new(i as f32, 1.0)),
-                    ],
-                    stroke,
-                ));
-                painter.add(PathShape::line(
-                    vec![
-                        to_screen.transform_pos(Pos2::new(0.0, i as f32 * 0.25)),
-                        to_screen.transform_pos(Pos2::new(4.0, i as f32 * 0.25)),
-                    ],
-                    stroke,
-                ));
-            }
+                let painter = ui.painter().with_clip_rect(rect);
 
-            self.draw_curve(ui, rect, level);
-        });
+                for i in 0..=4 {
+                    let stroke = Stroke::new(
+                        match i {
+                            0 | 4 => 1.0,
+                            _ => 0.5,
+                        },
+                        Color32::GRAY,
+                    );
+                    painter.add(PathShape::line(
+                        vec![
+                            to_screen.transform_pos(Pos2::new(i as f32, 0.0)),
+                            to_screen.transform_pos(Pos2::new(i as f32, 1.0)),
+                        ],
+                        stroke,
+                    ));
+                    painter.add(PathShape::line(
+                        vec![
+                            to_screen.transform_pos(Pos2::new(0.0, i as f32 * 0.25)),
+                            to_screen.transform_pos(Pos2::new(4.0, i as f32 * 0.25)),
+                        ],
+                        stroke,
+                    ));
+                }
+
+                self.draw_curve(ui, rect, level);
+            },
+        );
     }
 
     fn lock_params(&self) -> MutexGuard<'_, AdsrParams> {
@@ -303,13 +318,20 @@ impl ADSREditor {
             let (_, rect) = ui.allocate_space(Vec2::new(40.0, meter_height));
             ui.painter().rect_filled(rect, 0., Color32::from_gray(100));
 
-            let mut value_rect = rect.clone();
+            let mut value_rect = rect;
             value_rect.min.y += meter_height * (1.0 - input_level);
             ui.painter()
                 .rect_filled(value_rect, 0., Color32::LIGHT_GREEN);
 
-            let threshold_line_y =
-                rect.min.y + meter_height * (1.0 - self.reactive_signal_handle.params.lock().unwrap().gate_activation_threshold);
+            let threshold_line_y = rect.min.y
+                + meter_height
+                    * (1.0
+                        - self
+                            .reactive_signal_handle
+                            .params
+                            .lock()
+                            .unwrap()
+                            .gate_activation_threshold);
             ui.painter().line(
                 vec![
                     pos2(rect.min.x, threshold_line_y),
@@ -318,8 +340,15 @@ impl ADSREditor {
                 Stroke::new(2., Color32::BLUE),
             );
 
-            let threshold_deac_line_y =
-                rect.min.y + meter_height * (1.0 - self.reactive_signal_handle.params.lock().unwrap().gate_deactivation_threshold);
+            let threshold_deac_line_y = rect.min.y
+                + meter_height
+                    * (1.0
+                        - self
+                            .reactive_signal_handle
+                            .params
+                            .lock()
+                            .unwrap()
+                            .gate_deactivation_threshold);
             ui.painter().line(
                 vec![
                     pos2(rect.min.x, threshold_deac_line_y),
@@ -398,8 +427,8 @@ impl ADSREditor {
                             1.0,
                             KnobStyle::Wiper,
                         ))
-                            .with_size(30.0)
-                            .with_label("Threshold", LabelPosition::Bottom),
+                        .with_size(30.0)
+                        .with_label("Threshold", LabelPosition::Bottom),
                     );
                 });
             },
@@ -413,7 +442,10 @@ impl ADSREditor {
         let mut spectrum_rect = Rect::from_min_size(ui.cursor().min, size);
 
         if let Some(preview_shader) = &self.preview_shader {
-            let spectrum = Image::new(SizedTexture::new(preview_shader.spectrum_texture_id.0, size));
+            let spectrum = Image::new(SizedTexture::new(
+                preview_shader.spectrum_texture_id.0,
+                size,
+            ));
             ui.add(spectrum);
         }
 
@@ -422,13 +454,21 @@ impl ADSREditor {
         let max_frequency_range = 0.0..=MAX_FREQ;
 
         let ui_position_range = spectrum_rect.left()..=spectrum_rect.right();
-        let lower_x = remap_clamp(lower_f, max_frequency_range.clone(), ui_position_range.clone());
-        let upper_x = remap_clamp(upper_f, max_frequency_range.clone(), ui_position_range.clone());
+        let lower_x = remap_clamp(
+            lower_f,
+            max_frequency_range.clone(),
+            ui_position_range.clone(),
+        );
+        let upper_x = remap_clamp(
+            upper_f,
+            max_frequency_range.clone(),
+            ui_position_range.clone(),
+        );
         spectrum_rect.min.x = lower_x;
         spectrum_rect.max.x = upper_x;
 
-
-        ui.painter().rect_filled(spectrum_rect, 0., Color32::from_white_alpha(150));
+        ui.painter()
+            .rect_filled(spectrum_rect, 0., Color32::from_white_alpha(150));
 
         scoped_frame(
             ui,
@@ -476,12 +516,12 @@ impl ADSREditor {
         let to_screen =
             emath::RectTransform::from_to(Rect::from_x_y_ranges(0.0..=1.0, 0.0..=1.0), rect);
 
-        let mut level_rect = rect.clone();
+        let mut level_rect = rect;
         level_rect.min.y += (1.0 - (output_level)) * rect.height();
         ui.painter()
             .rect_filled(level_rect, 0., Color32::LIGHT_GREEN);
 
-        let mut adsr = ReactiveSignal::new(self.lock_params().clone(), 100.);
+        let mut adsr = ReactiveSignal::new(*self.lock_params(), 100.);
         let points: Vec<Pos2> = (0..=n)
             .map(|i| {
                 let t = i as f32 / (n as f32);
@@ -494,8 +534,8 @@ impl ADSREditor {
                 } else {
                     0.0
                 };
-                let y = -1. * adsr.tick_adsr(input) + 1.;
-                to_screen * pos2(t as f32, y)
+                let y = -adsr.tick_adsr(input) + 1.;
+                to_screen * pos2(t, y)
             })
             .collect();
 
@@ -504,16 +544,11 @@ impl ADSREditor {
 
         ui.painter().add(shape);
     }
-    }
+}
 
 fn knob_default(knob: Knob) -> Knob {
     knob.with_font_size(12.0)
         .with_colors(egui::Color32::GRAY, Color32::WHITE, Color32::WHITE)
         .with_stroke_width(3.0)
         .with_logarithmic_scaling()
-}
-
-fn draw_cursor_area(ui: &mut Ui) {
-    ui.painter()
-        .rect_filled(ui.cursor(), 0., Color32::PLACEHOLDER);
 }

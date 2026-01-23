@@ -5,7 +5,6 @@ use once_cell::sync::Lazy;
 use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::Arc;
 
-
 pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
 
@@ -20,8 +19,7 @@ pub fn fft_data() -> Vec<f32> {
     FFT_DATA.lock().clone()
 }
 
-
-pub fn get_fft_bin_index_by_frequency(frequency: f32) -> Option<usize>{
+pub fn get_fft_bin_index_by_frequency(frequency: f32) -> Option<usize> {
     let k = frequency / (SAMPLE_RATE * FFT_SIZE as f32);
     Some(k.floor() as usize)
 }
@@ -40,8 +38,8 @@ fn get_sample_rate_() -> Option<SampleRate> {
     Some(sample_rate)
 }
 
-pub fn max_frequency() -> f32{
-    SAMPLE_RATE as f32 / FREQ_BINS as f32
+pub fn max_frequency() -> f32 {
+    SAMPLE_RATE / FREQ_BINS as f32
 }
 
 pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
@@ -115,8 +113,7 @@ pub fn start() {
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                    let f32_data: Vec<f32> =
-                        data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
+                    let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
                     process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_data);
                 },
                 |err| {

@@ -1,10 +1,10 @@
-use crate::audio::state::{FREQ_BINS, MAX_FREQ};
 use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
-use ndarray::{s, Array1};
-use std::f32::consts::TAU;
-use std::ops::Mul;
+use crate::audio::state::{FREQ_BINS, MAX_FREQ};
+use ndarray::{Array1, s};
 use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
+use std::f32::consts::TAU;
+use std::ops::Mul;
 
 #[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct AdsrParams {
@@ -20,6 +20,7 @@ pub struct AdsrParams {
     pub gate_deactivation_threshold: f32,
 }
 impl AdsrParams {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         f_center: f32,
         f_radius: f32,
@@ -56,31 +57,18 @@ impl AdsrParams {
 
 impl Default for AdsrParams {
     fn default() -> Self {
-        AdsrParams::new(8520.,
-                        990.,
-                        0.1,
-                        0.2,
-                        0.5,
-                        1.,
-                        1.,
-                        0.5
-        )
+        AdsrParams::new(8520., 990., 0.1, 0.2, 0.5, 1., 1., 0.5)
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum AdsrPhase {
+    #[default]
     Idle,
     Attack,
     Decay,
     Sustain,
     Release,
-}
-
-impl Default for AdsrPhase {
-    fn default() -> Self {
-        AdsrPhase::Idle
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -98,7 +86,10 @@ pub struct ReactiveSignal {
 
 impl Default for ReactiveSignal {
     fn default() -> Self {
-        ReactiveSignal::new(AdsrParams::default(), ADSR_SAMPLE_INTERVAL_MS as f32 / 1000.)
+        ReactiveSignal::new(
+            AdsrParams::default(),
+            ADSR_SAMPLE_INTERVAL_MS as f32 / 1000.,
+        )
     }
 }
 
@@ -117,16 +108,24 @@ impl ReactiveSignal {
         }
     }
 
-    pub fn tick(&mut self, input: &Vec<f32>) {
+    pub fn tick(&mut self, input: &[f32]) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ReactiveSignal::tick");
         self.tick_lowpass(input);
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
-        self.impulse = (self.spectrum.slice(s![self.params.center_bin.saturating_sub(self.params.bin_radius).clamp(1, FREQ_BINS - 1)..max_f])
+        self.impulse = (self
+            .spectrum
+            .slice(s![self
+                .params
+                .center_bin
+                .saturating_sub(self.params.bin_radius)
+                .clamp(1, FREQ_BINS - 1)..max_f])
             .iter()
             .map(|x| x.powf(2.))
             .sum::<f32>()
-            / (2. * self.params.bin_radius as f32)).sqrt().mul(4.0);
+            / (2. * self.params.bin_radius as f32))
+            .sqrt()
+            .mul(4.0);
         self.tick_adsr(self.impulse);
     }
 
@@ -134,11 +133,12 @@ impl ReactiveSignal {
     ///
     /// # Arguments
     /// * `input` - A continuous float control signal (Gate).
-    ///             > 0.5 triggers Attack/Sustain.
-    ///             <= 0.5 triggers Release.
     pub fn tick_adsr(&mut self, input: f32) -> f32 {
-        self.gate_active = if self.gate_active {input > self.params.gate_deactivation_threshold}
-        else {input > self.params.gate_activation_threshold};
+        self.gate_active = if self.gate_active {
+            input > self.params.gate_deactivation_threshold
+        } else {
+            input > self.params.gate_activation_threshold
+        };
 
         // 1. Handle State Transitions
         match self.phase {
@@ -216,14 +216,16 @@ impl ReactiveSignal {
     }
 
     #[inline(always)]
-    pub fn tick_lowpass(&mut self, bins: &Vec<f32>) {
-        let bins = Array1::from(bins.clone());
+    pub fn tick_lowpass(&mut self, bins: &[f32]) {
+        let bins = Array1::from(bins.to_vec());
         // calculate an exponential moving average to prevent aliasing
         let alpha = 1.0 - (-self.delta_time * 100.0 / TAU).exp(); // Sample-rate-aware alpha
         self.ema = alpha * bins + (1.0 - alpha) * &self.ema;
 
         let gamma = (1.0 + 100.0 * self.params.sensitivity * &self.ema).log(10.0);
-        self.spectrum = (&gamma - &self.prev_gamma).mul(self.delta_time * 100.0).clamp(0.0, f32::infinity());
+        self.spectrum = (&gamma - &self.prev_gamma)
+            .mul(self.delta_time * 100.0)
+            .clamp(0.0, f32::infinity());
         self.prev_gamma = gamma.clone();
     }
 }
