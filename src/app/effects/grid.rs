@@ -142,12 +142,9 @@ impl App {
                     }
                 }
 
-                if let Some((dragged_payload, row, col)) = dropped {
+                if let Some((location, row, col)) = dropped {
                     // The user dropped onto this cell
-                    let from = GridLocation {
-                        row: dragged_payload.row,
-                        col: dragged_payload.col,
-                    };
+                    let from = *location;
                     let to = GridLocation { row, col };
 
                     // Ownership of the scene instances must temporarily be taken to swap
@@ -160,6 +157,7 @@ impl App {
                     if let Some(to_item) = to_item {
                         grid.insert(from, to_item);
                     }
+                    UiAction::SelectSceneByLocation(to).enqueue();
                 }
 
                 static SHOW_TRASH_ONE_MORE_FRAME: AtomicBool = AtomicBool::new(false);

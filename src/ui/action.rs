@@ -27,6 +27,7 @@ pub enum UiAction {
     AddScene(GridLocation, AssetId<Scene>),
     SetProject(AssetId<Project>),
     SelectScene(SceneInstanceUnion),
+    SelectSceneByLocation(GridLocation),
     DeleteSceneInstance {
         location: GridLocation,
     },
@@ -130,6 +131,11 @@ impl App {
                 (Some(project), UiAction::SelectScene(location)) => {
                     if let Some(pos) = project.location_by_location_or_quick_index(location) {
                         self.selected_scene_instance = pos;
+                    }
+                }
+                (Some(project), UiAction::SelectSceneByLocation(location)) => {
+                    if project.scenes_instances_grid.contains_key(&location) {
+                        self.selected_scene_instance = location;
                     }
                 }
                 (_, UiAction::Tap) => {
