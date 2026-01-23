@@ -34,6 +34,8 @@ impl App {
 
                 let grid = &mut project.scenes_instances_grid;
                 let start_pos = ui.cursor().min;
+
+                let mut dropped = None;
                 for row in 0..GRID_HEIGHT {
                     if row == GRID_HEIGHT - 1 {
                         let quick_scene_rect = Rect::from_min_size(
@@ -50,6 +52,7 @@ impl App {
                             Color32::GOLD.blend(Color32::from_black_alpha(200)),
                         );
                     }
+
                     for col in 0..GRID_WIDTH {
                         let location = GridLocation { col, row };
 
@@ -120,27 +123,31 @@ impl App {
                             })
                             .inner; // dnd_drop_zone
 
-                        if let Some(dragged_payload) = dropped_payload {
-                            // The user dropped onto this cell
-                            let from = GridLocation {
-                                row: dragged_payload.row,
-                                col: dragged_payload.col,
-                            };
-                            let to = GridLocation { row, col };
-
-                            // Ownership of the scene instances must temporarily be taken to swap
-                            let to_item = grid.remove(&to);
-                            let from_item = { grid.remove(&from) };
-                            if let Some(from_item) = from_item {
-                                grid.insert(to, from_item);
-                            }
-                            // reinsert the to item to the from location
-                            if let Some(to_item) = to_item {
-                                grid.insert(from, to_item);
-                            }
+                        if let Some(payload) = dropped_payload {
+                            dropped = Some((payload, row, col));
                         }
                     }
-                } // grid
+                }
+
+                if let Some((dragged_payload, row, col)) = dropped {
+                    // The user dropped onto this cell
+                    let from = GridLocation {
+                        row: dragged_payload.row,
+                        col: dragged_payload.col,
+                    };
+                    let to = GridLocation { row, col };
+
+                    // Ownership of the scene instances must temporarily be taken to swap
+                    let to_item = grid.remove(&to);
+                    let from_item = { grid.remove(&from) };
+                    if let Some(from_item) = from_item {
+                        grid.insert(to, from_item);
+                    }
+                    // reinsert the to item to the from location
+                    if let Some(to_item) = to_item {
+                        grid.insert(from, to_item);
+                    }
+                }
             });
     }
 }
