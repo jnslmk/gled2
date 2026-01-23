@@ -1,29 +1,50 @@
-use atomic_float::AtomicF32;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{SampleFormat, StreamConfig};
+use cpal::{Device, SampleFormat, SampleRate, StreamConfig};
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 
-pub const MAX_BIN_FREQ: f32 = 32768.;
+
+pub const SAMPLE_RATE: f32 = 48_000.0;
+pub const MAX_FREQ: f32 = 24_000.0;
 
 // FFT size - power of 2 for efficient FFT
 const FFT_SIZE: usize = 512;
-// Number of frequency bins to expose to shader (typically half of FFT_SIZE due to Nyquist)
 pub const FREQ_BINS: usize = 256;
 
 static FFT_DATA: Lazy<Arc<Mutex<Vec<f32>>>> =
     Lazy::new(|| Arc::new(Mutex::new(vec![0.0; FREQ_BINS])));
-static FFT_MAX_MAGNITUDE: AtomicF32 = AtomicF32::new(1e-6);
 
 pub fn fft_data() -> Vec<f32> {
     FFT_DATA.lock().clone()
 }
 
-pub fn fft_data_u8() -> [u8; FREQ_BINS * 4] {
-    let fft_data = FFT_DATA.lock();
+
+pub fn get_fft_bin_index_by_frequency(frequency: f32) -> Option<usize>{
+    let k = frequency / (SAMPLE_RATE * FFT_SIZE as f32);
+    Some(k.floor() as usize)
+}
+
+fn get_sample_rate_() -> Option<SampleRate> {
+    // the frequency of every bin is k as f32 * input_sample_rate / FFT_SIZE as f32
+    let device = get_audio_config()?;
+    let config = match device.default_input_config() {
+        Ok(config) => config,
+        Err(err) => {
+            log::error!("Failed to get default input config: {}", err);
+            return None;
+        }
+    };
+    let sample_rate = config.sample_rate();
+    Some(sample_rate)
+}
+
+pub fn max_frequency() -> f32{
+    SAMPLE_RATE as f32 / FREQ_BINS as f32
+}
+
+pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
     let mut fft_data_u8 = [0u8; FREQ_BINS * 4];
     for (i, &value) in fft_data.iter().enumerate() {
         let bytes = value.to_le_bytes();
@@ -37,9 +58,7 @@ pub fn start() {
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio:capture");
 
-    let host = cpal::default_host();
-
-    let device = match host.default_input_device() {
+    let device = match get_audio_config() {
         Some(device) => {
             log::info!(
                 "Using audio input device: {}",
@@ -97,7 +116,7 @@ pub fn start() {
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
-                        data.iter().map(|&s| s as f32 / MAX_BIN_FREQ).collect();
+                        data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
                     process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_data);
                 },
                 |err| {
@@ -145,6 +164,11 @@ pub fn start() {
     }
 }
 
+fn get_audio_config() -> Option<Device> {
+    let host = cpal::default_host();
+    host.default_input_device()
+}
+
 fn process_audio_samples(
     data: &[f32],
     channels: usize,
@@ -152,6 +176,8 @@ fn process_audio_samples(
     fft: &Arc<dyn rustfft::Fft<f32>>,
     fft_data: &Arc<Mutex<Vec<f32>>>,
 ) {
+    #[cfg(feature = "profiling")]
+    puffin::profile_function!("audio:process_audio_samples");
     // Convert interleaved samples to mono by averaging channels
     for chunk in data.chunks(channels) {
         let mono_sample = if channels > 1 {
@@ -184,12 +210,10 @@ fn process_audio_samples(
         // Calculate magnitude for each frequency bin
         // Only use first FREQ_BINS (Nyquist frequency limit)
         let mut linear_magnitudes = Vec::with_capacity(FREQ_BINS);
-        let mut max_magnitude = FFT_MAX_MAGNITUDE.load(Ordering::Relaxed);
 
         for sample in complex_samples.iter().take(FREQ_BINS) {
             // Calculate magnitude (norm of complex number)
             let magnitude = sample.norm();
-            max_magnitude = max_magnitude.max(magnitude);
             linear_magnitudes.push(magnitude);
         }
 
@@ -222,14 +246,7 @@ fn process_audio_samples(
                 let scaled_mag = lower_mag * (1.0 - fraction) + upper_mag * fraction;
                 *magnitude_slot = scaled_mag;
                 // Update max_magnitude with the scaled value
-                max_magnitude = max_magnitude.max(scaled_mag);
             }
-        }
-
-        FFT_MAX_MAGNITUDE.store(max_magnitude, Ordering::Relaxed);
-        let scale = 1.0 / max_magnitude;
-        for magnitude in magnitudes.iter_mut() {
-            *magnitude = (*magnitude * scale).clamp(0.0, 1.0);
         }
 
         *fft_data.lock() = magnitudes;

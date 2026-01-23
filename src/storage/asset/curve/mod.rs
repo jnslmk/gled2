@@ -74,7 +74,7 @@ impl Curve {
         linear_points
     }
 
-    pub fn draw(
+    pub fn draw_curve(
         &mut self,
         ui: &mut Ui,
         edit_mode: bool,
@@ -354,6 +354,6 @@ impl AssetTrait for Curve {
         let rect = Rect::from_min_max(min, rect.max);
 
         let mut curve = self.clone();
-        curve.draw(ui, false, None, rect);
+        curve.draw_curve(ui, false, None, rect);
     }
 }

@@ -1,24 +1,27 @@
-use std::num::{NonZero, NonZeroU64};
-
-use crate::audio::adsr::{Adsr, AdsrParams, LowPass};
-use crate::audio::state::{fft_data, fft_data_u8};
+use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
+use crate::audio::state::{fft_data_u8, MAX_FREQ};
+use crate::audio::{ReactiveSignalHandle, REACTIVE_SIGNAL_THREAD};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
-use crate::ui::window_common::{default_viewport_builder, gled_window_frame};
-use crate::wgpu_render_state;
+use crate::ui::scoped_frame;
+use crate::{wgpu_render_state, WGPU_RENDER_STATE};
 use egui::load::SizedTexture;
-use egui::{Color32, Context, Frame, Id, Image, Ui, ViewportId};
+use egui::{Color32, Frame, Image, Layout, Ui, UiBuilder};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
-use emath::{Pos2, Rect, Vec2, pos2, vec2};
-use epaint::{PathStroke, Stroke, StrokeKind};
+use emath::{pos2, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
+use epaint::{PathShape, PathStroke, Stroke};
+use ndarray::Array1;
+use std::num::NonZeroU64;
+use std::sync::MutexGuard;
+use artnet_protocol::bitflags::__private::serde::Deserializer;
+use serde::{Deserialize, Serialize};
+use serde::ser::SerializeStruct;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
-pub struct ADSREditor {
-    adsr: Adsr,
-    low_pass: LowPass,
-    open: bool,
+#[derive(PartialEq, Clone, Debug)]
+struct PreviewShader{
     spectrum_pipeline: RenderPipeline,
     spectrum_bind_group: BindGroup,
     spectrum_texture_buffer: Buffer,
@@ -26,8 +29,8 @@ pub struct ADSREditor {
     spectrum_texture_id: OwnedTextureId,
 }
 
-impl Default for ADSREditor {
-    fn default() -> Self {
+impl PreviewShader {
+    fn try_init() -> Option<Self>{
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE as u32,
@@ -43,7 +46,7 @@ impl Default for ADSREditor {
             view_formats: &[TextureFormat::Bgra8Unorm],
         };
 
-        let wgpu_render_state = wgpu_render_state();
+        let wgpu_render_state = WGPU_RENDER_STATE.get()?.clone();
         let device = wgpu_render_state.device;
 
         let spectrum_texture = device.create_texture(&texture_desc);
@@ -125,59 +128,16 @@ impl Default for ADSREditor {
                 wgpu::FilterMode::Nearest,
             ));
 
-        Self {
-            adsr: Adsr::new(AdsrParams::default(), 100.),
-            low_pass: LowPass::new(400., 200., 100.),
-            open: true,
+        Some(Self {
             spectrum_pipeline,
             spectrum_bind_group,
             spectrum_texture_buffer,
             spectrum_texture_view,
             spectrum_texture_id,
-        }
-    }
-}
-
-impl ADSREditor {
-    pub fn update(&mut self, ctx: &Context) {
-        if !self.open {
-            return;
-        }
-
-        self.draw_spectrum_texture();
-
-        ctx.show_viewport_immediate(
-            ViewportId(Id::new("ADSR Editor")),
-            default_viewport_builder()
-                .with_inner_size(Vec2::new(660.0, 500.0))
-                .with_min_inner_size(Vec2::new(660.0, 500.0)),
-            |ctx, _viewport_class| {
-                ctx.input(|input| {
-                    if input.viewport().close_requested() {
-                        self.open = false;
-                    }
-                });
-
-                gled_window_frame(ctx, "ADSR Editor", |ui| {
-                    egui::CentralPanel::default().show_inside(ui, |ui| {
-                        self.draw_curve(ui);
-                        let size = ui.available_size().min(Vec2::splat(300.0));
-                        let spectrum =
-                            Image::new(SizedTexture::new(self.spectrum_texture_id.0, size));
-                        ui.add(spectrum);
-
-                        ui.horizontal(|ui| {
-                            Frame::new().inner_margin(5.).show(ui, |ui| {
-                                self.draw_controls(ui);
-                            });
-                        });
-                    });
-                });
-            },
-        );
+        })
     }
 
-    fn draw_spectrum_texture(&self) {
+    fn draw_spectrum_texture(&self, input_level: Array1<f32>) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
         if let Some(mut view) = wgpu_render_state.queue.write_buffer_with(
@@ -185,7 +145,7 @@ impl ADSREditor {
             0,
             NonZeroU64::new(1024).expect("Contents length is zero"),
         ) {
-            view.copy_from_slice(&fft_data_u8());
+            view.copy_from_slice(&fft_data_u8(input_level.to_vec()));
         }
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations for scene editor"),
@@ -217,158 +177,343 @@ impl ADSREditor {
         }
         RendererCallback::add(encoder.finish());
     }
+}
 
-    fn draw_controls(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            let amp = (self.low_pass.tick(&fft_data())).log2().clamp(0.0, 1.0);
-            self.draw_meter(ui, amp);
+#[derive(PartialEq, Clone, Debug)]
+pub struct ADSREditor {
+    pub reactive_signal_handle: ReactiveSignalHandle,
+    f_center: f32,
+    f_radius: f32,
+    preview_shader: Option<PreviewShader>,
+}
 
-            Frame::new().inner_margin(5.).show(ui, |ui| {
-                ui.vertical(|ui| {
-                    // Sensitivity knob
+impl Serialize for ADSREditor {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let params = self.lock_params().clone();
+        let mut state = serializer.serialize_struct("ADSREditor", 3)?;
+        state.serialize_field("params", &params)?;
+        state.serialize_field("f_center", &self.f_center)?;
+        state.serialize_field("f_radius", &self.f_radius)?;
+        state.end()
+    }
+}
+
+#[derive(Deserialize)]
+struct AdsrEditorShell {params: AdsrParams, f_center: f32, f_radius: f32,}
+impl<'de> Deserialize<'de> for ADSREditor {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>
+    {
+        let shell = AdsrEditorShell::deserialize(deserializer)?;
+        let editor = ADSREditor::new(shell.params, shell.f_center, shell.f_radius,);
+        Ok(editor)
+    }
+}
+
+impl Default for ADSREditor {
+    fn default() -> Self {
+        Self::new(AdsrParams::default(),8200.,990.,)
+    }
+}
+impl ADSREditor {
+    fn new(adsr_params: AdsrParams, f_center: f32, f_radius: f32,) -> Self {
+        let reactive_signal_handle = REACTIVE_SIGNAL_THREAD.write().unwrap().register_reactive_signal(adsr_params);
+        Self {
+            reactive_signal_handle,
+            f_center,
+            f_radius,
+            preview_shader: None,
+        }
+    }
+}
+
+impl ADSREditor {
+    pub fn show(&mut self, ui: &mut Ui) {
+        #[cfg(feature = "profiling")]
+        puffin::profile_function!("ADSREditor::show");
+        Frame::new().inner_margin(5.).show(ui, |ui| {
+            let signal = self.reactive_signal_handle.update_params_and_fetch_signal().unwrap_or_default();
+            let spectrum = signal.spectrum.clone();
+            let impulse = signal.impulse.clamp(0.0, 1.0);
+            let output_level = signal.current_level;
+
+            if self.preview_shader.is_none() {
+                self.preview_shader = PreviewShader::try_init();
+            }
+            if let Some(preview_shader) = &self.preview_shader {
+                preview_shader.draw_spectrum_texture(spectrum);
+            }
+
+            self.draw_spectrum(ui);
+            ui.separator();
+            self.draw_adsr(ui, impulse, output_level);
+        });
+    }
+
+    pub fn show_minified(&mut self, ui: &mut Ui, rect: Rect) {
+        #[cfg(feature = "profiling")]
+        puffin::profile_function!("ADSREditor::show_minified");
+        let level = self.reactive_signal_handle.level();
+        scoped_frame(ui, UiBuilder::new().max_rect(rect), Frame::default(), |ui| {
+            let to_screen = emath::RectTransform::from_to(
+                Rect::from_min_size(Pos2::ZERO, Vec2::new(4.0, 1.0)),
+                rect,
+            );
+            let painter = ui.painter().with_clip_rect(rect);
+
+            for i in 0..=4 {
+                let stroke = Stroke::new(
+                    match i {
+                        0 | 4 => 1.0,
+                        _ => 0.5,
+                    },
+                    Color32::GRAY,
+                );
+                painter.add(PathShape::line(
+                    vec![
+                        to_screen.transform_pos(Pos2::new(i as f32, 0.0)),
+                        to_screen.transform_pos(Pos2::new(i as f32, 1.0)),
+                    ],
+                    stroke,
+                ));
+                painter.add(PathShape::line(
+                    vec![
+                        to_screen.transform_pos(Pos2::new(0.0, i as f32 * 0.25)),
+                        to_screen.transform_pos(Pos2::new(4.0, i as f32 * 0.25)),
+                    ],
+                    stroke,
+                ));
+            }
+
+            self.draw_curve(ui, rect, level);
+        });
+    }
+
+    fn lock_params(&self) -> MutexGuard<'_, AdsrParams> {
+        self.reactive_signal_handle.params.lock().unwrap()
+    }
+
+    fn draw_adsr(&mut self, ui: &mut Ui, input_level: f32, output_level: f32) {
+        ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
+            let meter_height = 200.0;
+            let (_, rect) = ui.allocate_space(Vec2::new(40.0, meter_height));
+            ui.painter().rect_filled(rect, 0., Color32::from_gray(100));
+
+            let mut value_rect = rect.clone();
+            value_rect.min.y += meter_height * (1.0 - input_level);
+            ui.painter()
+                .rect_filled(value_rect, 0., Color32::LIGHT_GREEN);
+
+            let threshold_line_y =
+                rect.min.y + meter_height * (1.0 - self.reactive_signal_handle.params.lock().unwrap().gate_activation_threshold);
+            ui.painter().line(
+                vec![
+                    pos2(rect.min.x, threshold_line_y),
+                    pos2(rect.max.x, threshold_line_y),
+                ],
+                Stroke::new(2., Color32::BLUE),
+            );
+
+            let threshold_deac_line_y =
+                rect.min.y + meter_height * (1.0 - self.reactive_signal_handle.params.lock().unwrap().gate_deactivation_threshold);
+            ui.painter().line(
+                vec![
+                    pos2(rect.min.x, threshold_deac_line_y),
+                    pos2(rect.max.x, threshold_deac_line_y),
+                ],
+                Stroke::new(2., Color32::BLUE),
+            );
+
+            let mut rect = ui.available_rect_before_wrap();
+            rect.set_height(200.);
+            let frame = Frame::new().inner_margin(5.0).fill(Color32::from_gray(60));
+            scoped_frame(ui, UiBuilder::new().max_rect(rect), frame, |ui| {
+                let rect = ui.available_rect_before_wrap();
+                self.draw_curve(ui, rect, output_level);
+            });
+        });
+        scoped_frame(
+            ui,
+            UiBuilder::new()
+                .max_rect(Rect::from_min_size(
+                    ui.cursor().min,
+                    vec2(ui.available_width(), 100.),
+                ))
+                .layout(Layout::left_to_right(Align::Max).with_cross_justify(true)),
+            Frame::default().inner_margin(5.0),
+            |ui| {
+                // Frequency center
+                // ADSR knobs
+                Frame::new().inner_margin(5.).show(ui, |ui| {
                     ui.add(
                         knob_default(Knob::new(
-                            &mut self.low_pass.trigger_happiness,
-                            1.0,
-                            100.0,
+                            &mut self.lock_params().attack_duration,
+                            0.0,
+                            2.0,
                             KnobStyle::Wiper,
                         ))
                         .with_size(50.0)
-                        .with_label("Sensitivity", LabelPosition::Bottom),
+                        .with_label("Attack", LabelPosition::Bottom),
                     );
 
-                    // Threshold knob
                     ui.add(
                         knob_default(Knob::new(
-                            &mut self.adsr.params.gate_threshold,
+                            &mut self.lock_params().decay_duration,
+                            0.0,
+                            10.0,
+                            KnobStyle::Wiper,
+                        ))
+                        .with_size(50.0)
+                        .with_label("Decay", LabelPosition::Bottom),
+                    );
+                    ui.add(
+                        knob_default(Knob::new(
+                            &mut self.lock_params().sustain_level,
                             0.0,
                             1.0,
                             KnobStyle::Wiper,
                         ))
-                        .with_size(30.0)
-                        .with_label("Threshold", LabelPosition::Bottom),
+                        .with_size(50.0)
+                        .with_label("Sustain", LabelPosition::Bottom),
+                    );
+                    ui.add(
+                        knob_default(Knob::new(
+                            &mut self.lock_params().release_duration,
+                            0.0,
+                            10.0,
+                            KnobStyle::Wiper,
+                        ))
+                        .with_size(50.0)
+                        .with_label("Release", LabelPosition::Bottom),
+                    );
+                    // Threshold knob
+                    ui.add(
+                        knob_default(Knob::new(
+                            &mut self.lock_params().gate_activation_threshold,
+                            0.0,
+                            1.0,
+                            KnobStyle::Wiper,
+                        ))
+                            .with_size(30.0)
+                            .with_label("Threshold", LabelPosition::Bottom),
                     );
                 });
-            });
-            ui.separator();
-            // ADSR knobs
-            Frame::new().inner_margin(5.).show(ui, |ui| {
-                ui.add(
-                    knob_default(Knob::new(
-                        &mut self.adsr.params.attack_duration,
-                        0.0,
-                        2.0,
-                        KnobStyle::Wiper,
-                    ))
-                    .with_size(50.0)
-                    .with_label("Attack", LabelPosition::Bottom),
-                );
+            },
+        );
+    }
 
+    fn draw_spectrum(&mut self, ui: &mut Ui) {
+        #[cfg(feature = "profiling")]
+        puffin::profile_function!("ADSREditor::draw_spectrum");
+        let size = vec2(ui.available_width(), 190.);
+        let mut spectrum_rect = Rect::from_min_size(ui.cursor().min, size);
+
+        if let Some(preview_shader) = &self.preview_shader {
+            let spectrum = Image::new(SizedTexture::new(preview_shader.spectrum_texture_id.0, size));
+            ui.add(spectrum);
+        }
+
+        let lower_f = self.f_center - self.f_radius;
+        let upper_f = self.f_center + self.f_radius;
+        let max_frequency_range = 0.0..=MAX_FREQ;
+
+        let ui_position_range = spectrum_rect.left()..=spectrum_rect.right();
+        let lower_x = remap_clamp(lower_f, max_frequency_range.clone(), ui_position_range.clone());
+        let upper_x = remap_clamp(upper_f, max_frequency_range.clone(), ui_position_range.clone());
+        spectrum_rect.min.x = lower_x;
+        spectrum_rect.max.x = upper_x;
+
+
+        ui.painter().rect_filled(spectrum_rect, 0., Color32::from_white_alpha(150));
+
+        scoped_frame(
+            ui,
+            UiBuilder::new()
+                .max_rect(Rect::from_min_size(
+                    ui.cursor().min,
+                    vec2(ui.available_width(), 100.),
+                ))
+                .layout(Layout::left_to_right(Align::Max)),
+            Frame::default().inner_margin(5.0),
+            |ui| {
+                #[cfg(feature = "profiling")]
+                puffin::profile_function!("ADSREditor::draw_spectrum_knobs");
+                // Frequency center
                 ui.add(
-                    knob_default(Knob::new(
-                        &mut self.adsr.params.decay_duration,
-                        0.0,
-                        10.0,
-                        KnobStyle::Wiper,
-                    ))
-                    .with_size(50.0)
-                    .with_label("Decay", LabelPosition::Bottom),
+                    knob_default(Knob::new(&mut self.f_center, 0., 20_000., KnobStyle::Wiper))
+                        .with_size(50.0)
+                        .with_label("Frequency", LabelPosition::Bottom),
                 );
+                // Frequency radius
+                ui.add(
+                    knob_default(Knob::new(&mut self.f_radius, 0., 20_000., KnobStyle::Wiper))
+                        .with_size(50.0)
+                        .with_label("Range", LabelPosition::Bottom),
+                );
+                // Sensitivity knob
                 ui.add(
                     knob_default(Knob::new(
-                        &mut self.adsr.params.sustain_level,
+                        &mut self.lock_params().sensitivity,
                         0.0,
                         1.0,
                         KnobStyle::Wiper,
                     ))
                     .with_size(50.0)
-                    .with_label("Sustain", LabelPosition::Bottom),
+                    .with_label("Sensitivity", LabelPosition::Bottom),
                 );
-                ui.add(
-                    knob_default(Knob::new(
-                        &mut self.adsr.params.release_duration,
-                        0.0,
-                        10.0,
-                        KnobStyle::Wiper,
-                    ))
-                    .with_size(50.0)
-                    .with_label("Release", LabelPosition::Bottom),
-                );
-            });
-            ui.separator();
-            let control_amp = self.adsr.tick(amp);
-            self.draw_meter(ui, control_amp);
-        });
-    }
-
-    fn draw_meter(&mut self, ui: &mut Ui, amp: f32) {
-        let meter_height = 200.0;
-        let (_, rect) = ui.allocate_space(Vec2::new(40.0, meter_height));
-        ui.painter().rect_stroke(
-            rect,
-            0.,
-            Stroke::new(2., Color32::WHITE),
-            StrokeKind::Outside,
+                self.lock_params()
+                    .set_filter_tune(self.f_center, self.f_radius);
+            },
         );
+    }
+    fn draw_curve(&self, ui: &mut Ui, rect: Rect, output_level: f32) {
+        let n = 100;
 
-        let mut value_rect = rect.clone();
-        value_rect.min.y += meter_height * (1.0 - amp);
+        let to_screen =
+            emath::RectTransform::from_to(Rect::from_x_y_ranges(0.0..=1.0, 0.0..=1.0), rect);
+
+        let mut level_rect = rect.clone();
+        level_rect.min.y += (1.0 - (output_level)) * rect.height();
         ui.painter()
-            .rect_filled(value_rect, 0., Color32::LIGHT_GREEN);
+            .rect_filled(level_rect, 0., Color32::LIGHT_GREEN);
 
-        let threshold_line_y = rect.min.y + meter_height * (1.0 - self.adsr.params.gate_threshold);
-        ui.painter().line(
-            vec![
-                pos2(rect.min.x, threshold_line_y),
-                pos2(rect.max.x, threshold_line_y),
-            ],
-            Stroke::new(2., Color32::BLUE),
-        );
+        let mut adsr = ReactiveSignal::new(self.lock_params().clone(), 100.);
+        let points: Vec<Pos2> = (0..=n)
+            .map(|i| {
+                let t = i as f32 / (n as f32);
+                let input = if 0.2 < t
+                    && t < (0.4
+                        + adsr.params.decay_duration * 0.4
+                        + adsr.params.attack_duration * 0.4)
+                {
+                    1.0
+                } else {
+                    0.0
+                };
+                let y = -1. * adsr.tick_adsr(input) + 1.;
+                to_screen * pos2(t as f32, y)
+            })
+            .collect();
+
+        let thickness = 1.0;
+        let shape = epaint::Shape::line(points, PathStroke::new(thickness, Color32::WHITE));
+
+        ui.painter().add(shape);
     }
-    fn draw_curve(&self, ui: &mut Ui) {
-        let n = 300;
-
-        Frame::new()
-            .outer_margin(5.0)
-            .fill(Color32::from_gray(60))
-            .show(ui, |child_ui| {
-                let desired_size = child_ui.available_width() * vec2(1.0, 0.35);
-
-                let (_id, rect) = child_ui.allocate_space(desired_size);
-                let to_screen = emath::RectTransform::from_to(
-                    Rect::from_x_y_ranges(0.0..=1.0, 0.0..=1.0),
-                    rect,
-                );
-
-                let mut adsr = Adsr::new(self.adsr.params.clone(), 100.);
-
-                let points: Vec<Pos2> = (0..=n)
-                    .map(|i| {
-                        let t = i as f32 / (n as f32);
-                        let input = if 0.2 < t
-                            && t < (0.4
-                                + self.adsr.params.decay_duration * 0.4
-                                + self.adsr.params.attack_duration * 0.4)
-                        {
-                            1.0
-                        } else {
-                            0.0
-                        };
-                        let y = -0.8 * adsr.tick(input) + 1.;
-                        to_screen * pos2(t as f32, y)
-                    })
-                    .collect();
-
-                let thickness = 1.0;
-                let shape = epaint::Shape::line(points, PathStroke::new(thickness, Color32::WHITE));
-
-                child_ui.painter().add(shape);
-            });
     }
-}
 
 fn knob_default(knob: Knob) -> Knob {
     knob.with_font_size(12.0)
         .with_colors(egui::Color32::GRAY, Color32::WHITE, Color32::WHITE)
         .with_stroke_width(3.0)
+        .with_logarithmic_scaling()
+}
+
+fn draw_cursor_area(ui: &mut Ui) {
+    ui.painter()
+        .rect_filled(ui.cursor(), 0., Color32::PLACEHOLDER);
 }

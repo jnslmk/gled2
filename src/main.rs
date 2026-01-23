@@ -17,7 +17,10 @@ use egui_extras::install_image_loaders;
 use input::Input;
 use once_cell::sync::Lazy;
 use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallback};
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
+use egui_phosphor_icons::add_fonts;
+use epaint::FontFamily;
+use epaint::text::{FontData, FontDefinitions, FontTweak};
 use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
 
@@ -56,7 +59,7 @@ fn main() {
     storage::start_thread();
     ui::temperature::start_thread();
     midi::start_thread();
-    audio::start_thread();
+    audio::start_fft_thread();
     network_stats::start_thread();
     let output_package_sender = output_sender::start().expect("Could not start output sender");
 
@@ -96,8 +99,32 @@ fn main() {
         "gled",
         options,
         Box::new(|cc| {
-            let mut fonts = egui::FontDefinitions::default();
-            egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
+            let mut fonts = FontDefinitions::default();
+            add_fonts(&mut fonts);
+
+            let oxanium_tweak = FontTweak{
+                scale: 1.0,
+                y_offset_factor: 0.15,
+                y_offset: 0.0,
+            };
+            // Register the font by name
+            fonts.font_data.insert(
+                "Oxanium_Regular".to_owned(),
+                Arc::from(FontData::from_static(include_bytes!("../assets/Oxanium-Regular.ttf")).tweak(oxanium_tweak)),
+            );
+            fonts.font_data.insert(
+                "Oxanium_Semi_Bold".to_owned(),
+                Arc::from(FontData::from_static(include_bytes!("../assets/Oxanium-SemiBold.ttf")).tweak(oxanium_tweak)),
+            );
+
+            fonts
+                .families
+                .get_mut(&FontFamily::Proportional)
+                .unwrap()
+                .insert(0, "Oxanium_Regular".to_owned());
+
+            fonts.families.insert(FontFamily::Name("Bold".into()), vec!["Oxanium_Semi_Bold".into()]);
+
             cc.egui_ctx.set_fonts(fonts);
 
             cc.egui_ctx
