@@ -54,6 +54,7 @@ impl ArtnetConfig {
     }
 }
 
+//TODO: Artnet Proxy
 pub fn start_thread(_output_package_sender: Sender<OutputPackage>) -> Receiver<ArtnetEvent> {
     let (sender, receiver) = unbounded();
 

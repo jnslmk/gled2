@@ -74,10 +74,6 @@ pub struct Project {
     pub groups: Groups,
     #[serde(deserialize_with = "deserialize_scene_instances")]
     pub scenes_instances_grid: HashMap<GridLocation, SceneInstance>,
-    /* TODO  add serde backwards compatiblity to integrate old quick scenes into the grid?
-    #[serde(deserialize_with = "deserialize_scene_instances")]
-    pub scenes_instances_quick: HashMap<GridLocation, SceneInstance>,
-     */
     #[serde(skip)]
     pub auto_mode_last_change: Option<Instant>,
     pub svg: Option<Svg>,
