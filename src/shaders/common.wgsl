@@ -77,14 +77,14 @@ fn gradient_color(index: i32) -> vec3<f32> {
 fn audio_bin(index: i32) -> f32 {
     let vec4_index = index / 4;
     let component = index % 4;
-    let vec = uniforms.audio_data[vec4_index % 64];
+    let data = uniforms.audio_data[vec4_index % 64];
     if component == 0 {
-        return vec.x;
+        return data.x;
     } else if component == 1 {
-        return vec.y;
+        return data.y;
     } else if component == 2 {
-        return vec.z;
+        return data.z;
     } else {
-        return vec.w;
+        return data.w;
     }
 }

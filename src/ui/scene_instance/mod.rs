@@ -1,3 +1,4 @@
+pub mod dnd;
 pub mod widget;
 
 use super::{ChangeButton, action::UiAction};
@@ -8,7 +9,7 @@ use crate::{
     ui::effect::widget::EffectWidget,
 };
 use egui::{
-    Button, Checkbox, Color32, Frame, Margin, Modifiers, ScrollArea, TopBottomPanel, Vec2,
+    Button, Checkbox, Color32, Frame, Margin, ScrollArea, TopBottomPanel, Vec2,
     scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
 use egui_modal::Modal;
@@ -42,36 +43,6 @@ impl SceneInstance {
                             }
                         });
                     });
-                    egui::Frame::NONE.show(ui, |ui| {
-                        ui.set_max_width(width / 2.0);
-                        ui.vertical_centered_justified(|ui| {
-                            if ui
-                                .add(
-                                    Button::new("↕ Move Scene to other Grid")
-                                        .fill(Color32::DARK_BLUE),
-                                )
-                                .clicked()
-                            {
-                                UiAction::MoveSelectedSceneToOtherGrid.enqueue();
-                            }
-                        });
-                    });
-                });
-
-                ui.vertical_centered_justified(|ui| {
-                    if ui
-                        .add(Button::new("🗑 Remove Scene").fill(Color32::DARK_RED))
-                        .clicked()
-                        || {
-                            !ui.ctx().wants_keyboard_input()
-                                && ui.ctx().input_mut(|i| {
-                                    i.consume_key(Modifiers::default(), egui::Key::Backspace)
-                                        || i.consume_key(Modifiers::default(), egui::Key::Delete)
-                                })
-                        }
-                    {
-                        UiAction::DeleteSelectedSceneInstance.enqueue();
-                    }
                 });
             });
 
@@ -87,6 +58,9 @@ impl SceneInstance {
                         .show(ui, |ui| {
                             ui.set_max_width(width / 2.0);
                             ui.vertical(|ui| {
+                                ui.label("Name");
+                                ui.text_edit_singleline(&mut self.name);
+
                                 ui.label("Activation Input");
                                 self.activation_input.change_button(ui);
 

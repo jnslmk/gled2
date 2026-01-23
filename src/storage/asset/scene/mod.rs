@@ -2,6 +2,7 @@ pub mod color;
 pub mod effect;
 pub mod effect_state;
 pub mod instance;
+pub(crate) mod grid;
 
 use super::{Asset, AssetTrait, animation::Animation, palette::Palette};
 use crate::{

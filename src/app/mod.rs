@@ -10,16 +10,13 @@ pub mod storage;
 pub mod svg;
 pub mod timing;
 
+use crate::storage::asset::scene::grid::GridLocation;
 use crate::{
     input::Input,
     midi::state::MidiState,
     pipeline::renderer_callback::RendererCallback,
     storage::{
-        asset::{
-            Asset,
-            palette::Palette,
-            project::{DeckPath, Project, scene_instance_path::SceneInstancePathId},
-        },
+        asset::{Asset, palette::Palette, project::Project},
         asset_id::AssetId,
         loading,
     },
@@ -45,7 +42,7 @@ pub struct App {
     pub other_main_windows: HashSet<ViewportId>,
     pub blackout: bool,
     pub blackout_hold: bool,
-    pub selected_scene_instance: SceneInstancePathId,
+    pub selected_scene_instance: GridLocation,
     pub git_commit_message: String,
     pub ui_action_receiver: Receiver<UiAction>,
     pub last_title: String,
@@ -121,9 +118,12 @@ impl eframe::App for App {
                     .as_mut()
                     .map_or_else(Default::default, |project| {
                         project
-                            .all_scene_instances_index()
+                            .scenes_instances_grid
+                            .iter_mut()
                             .filter_map(
-                                |(path, scene)| if scene.active { Some(path) } else { None },
+                                |(location, scene)| {
+                                    if scene.active { Some(*location) } else { None }
+                                },
                             )
                             .collect()
                     }),
@@ -132,8 +132,13 @@ impl eframe::App for App {
                     .as_mut()
                     .map_or_else(Default::default, |project| {
                         project
-                            .all_scene_instances_index()
-                            .filter_map(|(path, scene)| if scene.flash { Some(path) } else { None })
+                            .scenes_instances_grid
+                            .iter_mut()
+                            .filter_map(
+                                |(location, scene)| {
+                                    if scene.flash { Some(*location) } else { None }
+                                },
+                            )
                             .collect()
                     }),
                 available_scenes_grid: self.project.as_mut().map_or_else(
@@ -142,17 +147,7 @@ impl eframe::App for App {
                         project
                             .scenes_instances_grid
                             .iter()
-                            .map(|scene_instance| scene_instance.color)
-                            .collect()
-                    },
-                ),
-                available_scenes_quick: self.project.as_mut().map_or_else(
-                    Default::default,
-                    |project| {
-                        project
-                            .scenes_instances_quick
-                            .iter()
-                            .map(|scene_instance| scene_instance.color)
+                            .map(|(location, scene_instance)| (*location, scene_instance.color))
                             .collect()
                     },
                 ),
@@ -160,16 +155,16 @@ impl eframe::App for App {
                     let mut beat_progression = self.timing.beat_progression();
 
                     self.project
-                        .as_ref()
+                        .as_mut()
                         .and_then(|project| {
-                            project.scene_instance(self.selected_scene_instance).map(
-                                |scene_instance| {
+                            project
+                                .get_scenes_instance(&self.selected_scene_instance)
+                                .map(|scene_instance| {
                                     beat_progression += scene_instance
                                         .beat_progression_offset
                                         .value(beat_progression);
                                     scene_instance.opacity.value(beat_progression)
-                                },
-                            )
+                                })
                         })
                         .unwrap_or(1.0)
                 },
@@ -232,10 +227,6 @@ impl App {
             }
 
             if self.project.is_some() {
-                egui::TopBottomPanel::bottom("scenes_quick")
-                    .resizable(false)
-                    .exact_height(PersistantState::effects_size() + 80.0)
-                    .show_inside(&mut ui, |ui| self.scenes(ui, DeckPath::Quick));
                 egui::SidePanel::left("config")
                     .resizable(false)
                     .exact_width(400.0)
@@ -245,8 +236,7 @@ impl App {
                     .default_height(200.0)
                     .min_height(200.0)
                     .show_inside(&mut ui, |ui| self.preview(ui));
-                egui::CentralPanel::default()
-                    .show_inside(&mut ui, |ui| self.scenes(ui, DeckPath::Grid));
+                egui::CentralPanel::default().show_inside(&mut ui, |ui| self.scenes(ui));
             } else {
                 self.no_project(&mut ui);
             }

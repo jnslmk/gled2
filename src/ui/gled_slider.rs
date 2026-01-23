@@ -39,10 +39,6 @@ impl Widget for GledSlider<'_> {
                     )
                 };
 
-                ui.painter().add(
-                    RectShape::filled(rect.expand(2.0), corner_radius, Color32::BLACK)
-                        .with_blur_width(20.0),
-                );
                 ui.painter_at(left)
                     .rect_filled(rect, corner_radius, BOTTOM_COLOR);
                 ui.painter_at(right)
@@ -96,8 +92,8 @@ impl Widget for GledSlider<'_> {
                 };
 
                 ui.painter().add(
-                    RectShape::filled(rect.expand(2.0), corner_radius, Color32::BLACK)
-                        .with_blur_width(20.0),
+                    RectShape::filled(rect.expand(2.0), corner_radius, Color32::from_black_alpha(60))
+                        .with_blur_width(6.0),
                 );
                 ui.painter_at(top)
                     .rect_filled(rect, corner_radius, TOP_COLOR);

@@ -10,21 +10,21 @@ pub mod storage;
 pub mod svg;
 pub mod ui;
 
+use crate::pipeline::output_sender;
 use app::{App, persistant_state::PersistantState};
+use clap::Parser;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
 use egui::{Color32, ThemePreference};
 use egui_extras::install_image_loaders;
+use egui_phosphor_icons::add_fonts;
+use epaint::FontFamily;
+use epaint::text::{FontData, FontDefinitions, FontTweak};
 use input::Input;
 use once_cell::sync::Lazy;
 use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallback};
 use std::sync::{Arc, OnceLock};
-use egui_phosphor_icons::add_fonts;
-use epaint::FontFamily;
-use epaint::text::{FontData, FontDefinitions, FontTweak};
 use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
-
-use crate::pipeline::output_sender;
 
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
 pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
@@ -50,7 +50,25 @@ static WGPU_PROFILER: Lazy<egui::mutex::Mutex<wgpu_profiler::GpuProfiler>> = Laz
 pub static PUFFIN_GPU_PROFILER: Lazy<egui::mutex::Mutex<puffin::GlobalProfiler>> =
     Lazy::new(|| egui::mutex::Mutex::new(puffin::GlobalProfiler::default()));
 
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Show OpenFont License
+    #[arg(short, long)]
+    show_open_font_license: bool,
+}
+
 fn main() {
+    let args = Args::parse();
+    if args.show_open_font_license {
+        println!(
+            "{}",
+            std::str::from_utf8(include_bytes!("../assets/OFL.txt"))
+                .expect("Could not read OpenFont License")
+        );
+        return;
+    }
+
     #[cfg(feature = "profiling")]
     let _puffin_servers = start_profile_servers();
     env_logger::init();
@@ -102,7 +120,7 @@ fn main() {
             let mut fonts = FontDefinitions::default();
             add_fonts(&mut fonts);
 
-            let oxanium_tweak = FontTweak{
+            let oxanium_tweak = FontTweak {
                 scale: 1.0,
                 y_offset_factor: 0.15,
                 y_offset: 0.0,
@@ -110,11 +128,17 @@ fn main() {
             // Register the font by name
             fonts.font_data.insert(
                 "Oxanium_Regular".to_owned(),
-                Arc::from(FontData::from_static(include_bytes!("../assets/Oxanium-Regular.ttf")).tweak(oxanium_tweak)),
+                Arc::from(
+                    FontData::from_static(include_bytes!("../assets/Oxanium-Regular.ttf"))
+                        .tweak(oxanium_tweak),
+                ),
             );
             fonts.font_data.insert(
                 "Oxanium_Semi_Bold".to_owned(),
-                Arc::from(FontData::from_static(include_bytes!("../assets/Oxanium-SemiBold.ttf")).tweak(oxanium_tweak)),
+                Arc::from(
+                    FontData::from_static(include_bytes!("../assets/Oxanium-SemiBold.ttf"))
+                        .tweak(oxanium_tweak),
+                ),
             );
 
             fonts
@@ -123,7 +147,10 @@ fn main() {
                 .unwrap()
                 .insert(0, "Oxanium_Regular".to_owned());
 
-            fonts.families.insert(FontFamily::Name("Bold".into()), vec!["Oxanium_Semi_Bold".into()]);
+            fonts.families.insert(
+                FontFamily::Name("Bold".into()),
+                vec!["Oxanium_Semi_Bold".into()],
+            );
 
             cc.egui_ctx.set_fonts(fonts);
 

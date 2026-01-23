@@ -25,6 +25,8 @@ use wgpu::{CommandEncoder, Queue};
 pub struct SceneInstance {
     #[serde(default = "Uuid::new_v4")]
     pub id: Uuid,
+    #[serde(default = "unnamed_scene")]
+    pub name: String,
 
     #[serde(default)]
     pub color: SceneInstanceColor,
@@ -67,9 +69,14 @@ pub struct SceneInstance {
     pub flash: bool,
 }
 
+fn unnamed_scene() -> String {
+    "Unnamed Scene".to_string()
+}
+
 impl Clone for SceneInstance {
     fn clone(&self) -> Self {
         Self {
+            name: self.name.clone(),
             id: self.id,
             color: self.color,
             active: self.active,
@@ -102,6 +109,9 @@ impl From<AssetId<Scene>> for SceneInstance {
     fn from(scene: AssetId<Scene>) -> Self {
         Self {
             scene,
+            name: Asset::get(scene)
+                .and_then(|scene| scene.path.last().map(|s| s.to_string()))
+                .unwrap_or_else(unnamed_scene),
             color: Default::default(),
             id: Uuid::new_v4(),
             active: Default::default(),

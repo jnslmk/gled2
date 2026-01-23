@@ -1,5 +1,8 @@
-use egui::{Color32, RichText};
+use egui::{Color32, FontSelection, RichText, Ui};
 use std::sync::atomic::AtomicU16;
+use egui_phosphor_icons::icons;
+use emath::Align;
+use epaint::text::LayoutJob;
 
 pub static TEMPERATURE: AtomicU16 = AtomicU16::new(0);
 
@@ -25,17 +28,21 @@ pub fn start_thread() {
     });
 }
 
-pub fn temperature() -> RichText {
+pub fn temperature(ui: &Ui) -> LayoutJob {
     let temperature = TEMPERATURE.load(std::sync::atomic::Ordering::Relaxed);
-    let mut text = RichText::new(format!(
-        "{} {temperature}°C",
-        egui_phosphor::regular::THERMOMETER
-    ))
-    .size(14.0);
+    let mut job = LayoutJob::default();
+    icons::THERMOMETER.regular().append_to(&mut job, ui.style(), FontSelection::Default, Align::Center);
+    RichText::new(format!(" {temperature}°C")).size(14.0)
+        .append_to(&mut job, ui.style(), FontSelection::Default, Align::Center);
+
     if temperature >= 90 {
-        text = text.color(Color32::RED);
+        for section in &mut job.sections {
+            section.format.color = Color32::RED;
+        }
     } else if temperature >= 80 {
-        text = text.color(Color32::ORANGE);
+        for section in &mut job.sections {
+            section.format.color = Color32::ORANGE;
+        }
     }
-    text
+    job
 }

@@ -4,6 +4,10 @@ use super::{
     AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
     scene::instance::SceneInstance,
 };
+use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
+use crate::pipeline::transition::{Transition, TransitionGoal};
+use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
+use crate::storage::asset::scene::grid::GridLocation;
 use crate::{
     app::{svg::Svg, timing::Timing},
     input::{
@@ -11,34 +15,55 @@ use crate::{
         event::{GamepadEvent, InputEvent},
     },
     pipeline::{
-        extract_output::ExtractOutput,
-        group::Groups,
-        output_clear::OutputClear,
-        preview::Preview,
-        preview_indices::PreviewIndices,
-        renderer_callback::RendererCallback,
-        transition::{Transition, TransitionGoal},
+        extract_output::ExtractOutput, group::Groups, output_clear::OutputClear, preview::Preview,
+        preview_indices::PreviewIndices, renderer_callback::RendererCallback,
     },
     storage::{
-        asset::{
-            Asset, palette::Palette, project::scene_instance_path::SceneInstancePathIndex,
-            scene::Scene,
-        },
+        asset::{Asset, palette::Palette, scene::Scene},
         asset_id::AssetId,
     },
     ui::windows::channel_overwrites::ChannelOverwrites,
     wgpu_render_state,
 };
 use rand::seq::IndexedMutRandom;
-use scene_instance_path::SceneInstancePathId;
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use std::{
-    collections::{BTreeSet, HashSet},
+    collections::BTreeSet,
     time::{Duration, Instant},
 };
-use uuid::Uuid;
 use wgpu::CommandEncoderDescriptor;
 
+pub fn deserialize_scene_instances<'de, D>(
+    deserializer: D,
+) -> Result<HashMap<GridLocation, SceneInstance>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Variants {
+        V1(Vec<SceneInstance>),
+        Current(Vec<HashMap<GridLocation, SceneInstance>>),
+    }
+
+    match Variants::deserialize(deserializer)? {
+        Variants::V1(instances) => Ok(instances
+            .into_iter()
+            .enumerate()
+            .map(|(idx, instance)| {
+                (
+                    GridLocation {
+                        row: idx / GRID_HEIGHT,
+                        col: idx % GRID_WIDTH,
+                    },
+                    instance,
+                )
+            })
+            .collect()),
+        Variants::Current(instances) => Ok(instances.into_iter().flatten().collect()),
+    }
+}
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Project {
@@ -47,9 +72,8 @@ pub struct Project {
     pub auto_mode_seconds: u64,
     pub auto_mode_max_scenes: usize,
     pub groups: Groups,
-    pub scenes_instances_grid: Vec<SceneInstance>,
-    pub scenes_instances_quick: Vec<SceneInstance>,
-
+    #[serde(deserialize_with = "deserialize_scene_instances")]
+    pub scenes_instances_grid: HashMap<GridLocation, SceneInstance>,
     #[serde(skip)]
     pub auto_mode_last_change: Option<Instant>,
     pub svg: Option<Svg>,
@@ -72,8 +96,7 @@ impl Default for Project {
             auto_mode_seconds: 10,
             auto_mode_max_scenes: 2,
             groups: Groups::default(),
-            scenes_instances_grid: Vec::new(),
-            scenes_instances_quick: Vec::new(),
+            scenes_instances_grid: HashMap::new(),
             auto_mode_last_change: None,
             svg: Default::default(),
             channel_overwrites: Default::default(),
@@ -93,165 +116,95 @@ impl Default for Project {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum DeckPath {
-    #[default]
-    Grid,
-    Quick,
-}
-
 impl Project {
-    #[inline(always)]
-    pub fn all_scene_instances(&mut self) -> impl Iterator<Item = &mut SceneInstance> {
-        self.scenes_instances_grid
-            .iter_mut()
-            .chain(self.scenes_instances_quick.iter_mut())
+    pub fn next_empty_grid_location(&self, start: GridLocation) -> GridLocation {
+        for row in 0..GRID_HEIGHT {
+            let row = (start.row + row) % GRID_HEIGHT;
+            for col in 0..GRID_WIDTH {
+                let col = (start.col + col) % GRID_WIDTH;
+                let location = GridLocation { row, col };
+                if !self.scenes_instances_grid.contains_key(&location) {
+                    return location;
+                }
+            }
+        }
+        start
     }
 
-    pub fn all_scene_instances_id(
-        &mut self,
-    ) -> impl Iterator<Item = (SceneInstancePathId, &mut SceneInstance)> {
-        self.scenes_instances_grid
-            .iter_mut()
-            .map(|scene_instance| {
-                (
-                    SceneInstancePathId {
-                        deck_path: DeckPath::Grid,
-                        id: scene_instance.id,
-                    },
-                    scene_instance,
-                )
-            })
-            .chain(
-                self.scenes_instances_quick
-                    .iter_mut()
-                    .map(|scene_instance| {
-                        (
-                            SceneInstancePathId {
-                                deck_path: DeckPath::Quick,
-                                id: scene_instance.id,
-                            },
-                            scene_instance,
-                        )
-                    }),
-            )
+    pub fn get_scenes_instance(&mut self, pos: &GridLocation) -> Option<&mut SceneInstance> {
+        self.scenes_instances_grid.get_mut(pos)
+    }
+    pub fn scenes_instances_grid_len(&self) -> usize {
+        self.scenes_instances_grid.len()
     }
 
-    pub fn all_scene_instances_index(
+    pub fn scene_instance_by_location_or_quick_index(
         &mut self,
-    ) -> impl Iterator<Item = (SceneInstancePathIndex, &mut SceneInstance)> {
+        index_or_grid: SceneInstanceUnion,
+    ) -> Option<&mut SceneInstance> {
+        let pos = &self.location_by_location_or_quick_index(index_or_grid)?;
+        self.get_scenes_instance(pos)
+    }
+    pub fn location_by_location_or_quick_index(
+        &mut self,
+        index_or_grid: SceneInstanceUnion,
+    ) -> Option<GridLocation> {
+        match index_or_grid {
+            SceneInstanceUnion::Grid(location) => Some(location),
+            SceneInstanceUnion::Quick(quick_scene_instance_index) => Some(GridLocation {
+                row: GRID_HEIGHT - 1,
+                col: quick_scene_instance_index.index,
+            }),
+        }
+    }
+
+    pub fn all_scene_instance_locations(&self) -> impl Iterator<Item = &GridLocation> {
+        self.scenes_instances_grid.keys()
+    }
+
+    pub fn scenes_instances_quick(&self) -> impl Iterator<Item = (&GridLocation, &SceneInstance)> {
         self.scenes_instances_grid
-            .iter_mut()
-            .enumerate()
-            .map(|(index, scene_instance)| {
-                (
-                    SceneInstancePathIndex {
-                        deck_path: DeckPath::Grid,
-                        index,
-                    },
-                    scene_instance,
-                )
-            })
-            .chain(self.scenes_instances_quick.iter_mut().enumerate().map(
-                |(index, scene_instance)| {
-                    (
-                        SceneInstancePathIndex {
-                            deck_path: DeckPath::Quick,
-                            index,
-                        },
-                        scene_instance,
-                    )
-                },
-            ))
+            .iter()
+            .filter(|(location, _)| location.row == GRID_HEIGHT - 1)
     }
 
     pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
-        self.all_scene_instances().for_each(|scene_instance| {
-            scene_instance.reload_shader_code(animation);
-        });
+        self.scenes_instances_grid
+            .values_mut()
+            .for_each(|scene_instance| {
+                scene_instance.reload_shader_code(animation);
+            });
     }
 
     pub fn send_positions(&mut self) {
-        self.all_scene_instances().for_each(|scene_instance| {
-            scene_instance.send_positions();
-        });
+        self.scenes_instances_grid
+            .values_mut()
+            .for_each(|scene_instance| {
+                scene_instance.send_positions();
+            });
     }
 
     pub fn init_gpu(&mut self) {
-        self.all_scene_instances().for_each(|scene_instance| {
-            scene_instance.init_states();
-        });
+        self.scenes_instances_grid
+            .values_mut()
+            .for_each(|scene_instance| {
+                scene_instance.init_states();
+            });
         self.set_buffers();
     }
 
     pub fn set_buffers(&mut self) {
-        self.all_scene_instances().for_each(|scene_instance| {
-            scene_instance.set_output_mix_buffers();
-        });
+        self.scenes_instances_grid
+            .values_mut()
+            .for_each(|scene_instance| {
+                scene_instance.set_output_mix_buffers();
+            });
         Preview::set_buffers();
     }
 
-    pub fn scene_instance(&self, path: SceneInstancePathId) -> Option<&SceneInstance> {
-        match path.deck_path {
-            DeckPath::Grid => self
-                .scenes_instances_grid
-                .iter()
-                .find(|scene_instance| scene_instance.id == path.id),
-            DeckPath::Quick => self
-                .scenes_instances_quick
-                .iter()
-                .find(|scene_instance| scene_instance.id == path.id),
-        }
-    }
-
-    #[inline(always)]
-    pub fn scene_instance_mut(&mut self, path: SceneInstancePathId) -> Option<&mut SceneInstance> {
-        match path.deck_path {
-            DeckPath::Grid => self
-                .scenes_instances_grid
-                .iter_mut()
-                .find(|scene_instance| scene_instance.id == path.id),
-            DeckPath::Quick => self
-                .scenes_instances_quick
-                .iter_mut()
-                .find(|scene_instance| scene_instance.id == path.id),
-        }
-    }
-
-    pub fn scene_instance_by_index(
-        &mut self,
-        path: SceneInstancePathIndex,
-    ) -> Option<&mut SceneInstance> {
-        match path.deck_path {
-            DeckPath::Grid => self.scenes_instances_grid.get_mut(path.index),
-            DeckPath::Quick => self.scenes_instances_quick.get_mut(path.index),
-        }
-    }
-
-    #[inline(always)]
-    pub fn scene_instances(&mut self, deck_path: DeckPath) -> &mut Vec<SceneInstance> {
-        match deck_path {
-            DeckPath::Grid => &mut self.scenes_instances_grid,
-            DeckPath::Quick => &mut self.scenes_instances_quick,
-        }
-    }
-
     /// Remove scene instance at path and update path to the next scene instance
-    pub fn remove_scene_instance(
-        &mut self,
-        path: &mut SceneInstancePathId,
-    ) -> Option<SceneInstance> {
-        let scene_instances = match path.deck_path {
-            DeckPath::Grid => &mut self.scenes_instances_grid,
-            DeckPath::Quick => &mut self.scenes_instances_quick,
-        };
-
-        let pos = scene_instances.iter().position(|s| s.id == path.id)?;
-        let scene_instance = scene_instances.remove(pos);
-        path.id = scene_instances
-            .get(pos.saturating_sub(1))
-            .map_or_else(Uuid::nil, |s| s.id);
-        Some(scene_instance)
+    pub fn remove_scene_instance(&mut self, pos: GridLocation) -> Option<SceneInstance> {
+        self.scenes_instances_grid.remove(&pos)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -265,7 +218,6 @@ impl Project {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
-
         if self.auto_mode_active {
             if self
                 .auto_mode_last_change
@@ -280,19 +232,18 @@ impl Project {
                     let mut indices = self
                         .scenes_instances_grid
                         .iter()
-                        .enumerate()
                         .filter(|(_index, scene)| scene.active)
-                        .map(|(index, _scene)| index)
+                        .map(|(location, _scene)| *location)
                         .collect::<Vec<_>>();
 
                     let mut disable_count =
                         (indices.len() + 1).saturating_sub(auto_mode_max_scenes);
                     while disable_count > 0 {
-                        if let Some(index) = indices.choose_mut(&mut rand::rng()).copied()
-                            && prev.insert(index)
+                        if let Some(location) = indices.choose_mut(&mut rand::rng()).copied()
+                            && prev.insert(location)
                         {
                             disable_count -= 1;
-                            if let Some(scene) = self.scenes_instances_grid.get_mut(index) {
+                            if let Some(scene) = self.scenes_instances_grid.get_mut(&location) {
                                 scene.set_transition(Transition::new(
                                     TransitionGoal::TurnOff,
                                     fade_duration,
@@ -305,8 +256,7 @@ impl Project {
                 let mut scenes = self
                     .scenes_instances_grid
                     .iter_mut()
-                    .enumerate()
-                    .filter(|(index, _scene)| !prev.contains(index))
+                    .filter(|(location, _scene)| !prev.contains(location))
                     .collect::<Vec<_>>();
                 if let Some((_index, scene)) = scenes.choose_mut(&mut rand::rng()) {
                     scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
@@ -321,7 +271,7 @@ impl Project {
         let palette = self.palette.and_then(Asset::get);
         let deck_groups = self.groups.clone();
         let main_dimmer = self.main_dimmer;
-        for scene_instance in self.all_scene_instances() {
+        for scene_instance in self.scenes_instances_grid.values_mut() {
             scene_instance.prepare(
                 queue,
                 always_render,
@@ -343,7 +293,7 @@ impl Project {
         {
             let mut wgpu_profiler = crate::WGPU_PROFILER.lock();
             OutputClear::get().run(&mut wgpu_profiler.scope("OutputClear", &mut encoder));
-            for scene_instance in self.all_scene_instances() {
+            for scene_instance in self.scenes_instances_grid.values_mut() {
                 scene_instance.render(
                     &mut wgpu_profiler.scope(
                         format!(
@@ -365,7 +315,7 @@ impl Project {
         #[cfg(not(feature = "profiling"))]
         {
             OutputClear::get().run(&mut encoder);
-            for scene_instance in self.all_scene_instances() {
+            for scene_instance in self.scenes_instances_grid.values_mut() {
                 scene_instance.render(&mut encoder, blackout, always_render);
             }
             ExtractOutput::get().run(&mut encoder);
@@ -400,32 +350,20 @@ impl Project {
         self.double_input_events.iter().any(|event| event.is_new())
     }
 
-    pub fn add_scene(&mut self, deck_path: DeckPath, scene: AssetId<Scene>) -> SceneInstancePathId {
+    pub fn add_scene(&mut self, pos: GridLocation, scene: AssetId<Scene>) {
         let mut scene_instance: SceneInstance = scene.into();
         scene_instance.init_states();
-        self.add_scene_instance(deck_path, scene_instance)
+        self.add_scene_instance(pos, scene_instance);
     }
 
-    pub fn add_scene_instance(
-        &mut self,
-        deck_path: DeckPath,
-        scene_instance: SceneInstance,
-    ) -> SceneInstancePathId {
-        let scene_instances = match deck_path {
-            DeckPath::Grid => &mut self.scenes_instances_grid,
-            DeckPath::Quick => &mut self.scenes_instances_quick,
-        };
-        let path = SceneInstancePathId {
-            deck_path,
-            id: scene_instance.id,
-        };
-        scene_instances.push(scene_instance);
-        path
+    pub fn add_scene_instance(&mut self, pos: GridLocation, scene_instance: SceneInstance) {
+        let scene_instances = &mut self.scenes_instances_grid;
+        scene_instances.insert(pos, scene_instance);
     }
 
     pub fn remove_nonexistant_groups(&mut self) {
         self.groups.remove_nonexistant_groups();
-        for scene_instance in self.all_scene_instances() {
+        for scene_instance in self.scenes_instances_grid.values_mut() {
             scene_instance.remove_nonexistant_groups();
         }
     }
