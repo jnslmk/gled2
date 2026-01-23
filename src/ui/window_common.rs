@@ -104,7 +104,9 @@ pub fn window_buttons(ui: &mut egui::Ui) {
     let button_height = 20.0;
 
     let close_response = ui
-        .add(Button::new(RichText::new("❌").size(button_height)))
+        .add(Button::new(
+            RichText::new(egui_phosphor::regular::X).size(button_height),
+        ))
         .on_hover_text("Close the window");
     if close_response.clicked() {
         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
@@ -115,7 +117,9 @@ pub fn window_buttons(ui: &mut egui::Ui) {
     let is_maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
     if is_maximized {
         let maximized_response = ui
-            .add(Button::new(RichText::new("⊟").size(button_height)))
+            .add(Button::new(
+                RichText::new(egui_phosphor::regular::ARROWS_IN).size(button_height),
+            ))
             .on_hover_text("Restore window");
         if maximized_response.clicked() {
             ui.ctx()
@@ -123,7 +127,9 @@ pub fn window_buttons(ui: &mut egui::Ui) {
         }
     } else {
         let maximized_response = ui
-            .add(Button::new(RichText::new("⊞").size(button_height)))
+            .add(Button::new(
+                RichText::new(egui_phosphor::regular::ARROWS_OUT).size(button_height),
+            ))
             .on_hover_text("Maximize window");
         if maximized_response.clicked() {
             ui.ctx().send_viewport_cmd(ViewportCommand::Maximized(true));

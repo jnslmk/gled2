@@ -1,5 +1,6 @@
 use super::{App, PersistantState, svg::Svg};
 use crate::{
+    app::timing::{CONNECTED_PEERS, LINK_ACTIVE_COLOR},
     input::artnet::ARTNET_CONFIG,
     pipeline::extract_output::ExtractOutput,
     storage::{STORAGE_DIR, asset::Asset},
@@ -15,7 +16,7 @@ use egui::{
 use log::debug;
 use rand::Rng;
 use std::{
-    sync::Arc,
+    sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -372,6 +373,15 @@ impl App {
                         .map(|project| project.blackout_hold_input_is_live())
                         .unwrap_or_default();
 
+                    if CONNECTED_PEERS.load(Relaxed) > 0 {
+                        ui.painter().rect_filled(
+                            ui.available_rect_before_wrap().shrink2(Vec2::new(0.0, 2.0)),
+                            3.0,
+                            LINK_ACTIVE_COLOR,
+                        );
+                    }
+
+                    ui.add_space(5.0);
                     self.timing.tap_button(
                         ui,
                         menu_button_size,
@@ -399,6 +409,7 @@ impl App {
                     ui.separator();
 
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        ui.add_space(5.0);
                         let slider_width = ui.available_width() - 70.0;
                         if slider_width > 5.0 {
                             ui.spacing_mut().slider_width = slider_width;

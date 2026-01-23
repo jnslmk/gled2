@@ -21,6 +21,8 @@ use std::sync::OnceLock;
 use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
 
+use crate::pipeline::output_sender;
+
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
 pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
     wgpu_render_state().device.create_buffer(&BufferDescriptor {
@@ -31,9 +33,23 @@ pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
     })
 });
 
+#[cfg(feature = "profiling")]
+static WGPU_PROFILER: Lazy<egui::mutex::Mutex<wgpu_profiler::GpuProfiler>> = Lazy::new(|| {
+    egui::mutex::Mutex::new(
+        wgpu_profiler::GpuProfiler::new(
+            &wgpu_render_state().device,
+            wgpu_profiler::GpuProfilerSettings::default(),
+        )
+        .expect("Could not create WGPU profiler"),
+    )
+});
+#[cfg(feature = "profiling")]
+pub static PUFFIN_GPU_PROFILER: Lazy<egui::mutex::Mutex<puffin::GlobalProfiler>> =
+    Lazy::new(|| egui::mutex::Mutex::new(puffin::GlobalProfiler::default()));
+
 fn main() {
     #[cfg(feature = "profiling")]
-    let _puffin_server = start_profile_server();
+    let _puffin_servers = start_profile_servers();
     env_logger::init();
     let ui_action_receiver = UiAction::init_queue();
     RendererCallback::init();
@@ -42,12 +58,12 @@ fn main() {
     midi::start_thread();
     audio::start_thread();
     network_stats::start_thread();
+    let output_package_sender = output_sender::start().expect("Could not start output sender");
 
     #[cfg(not(debug_assertions))]
     ui::update_check::Update::start_thread();
 
     let mut wgpu_options = WgpuConfiguration::default();
-    wgpu_options.desired_maximum_frame_latency = Some(2);
     wgpu_options.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
@@ -56,9 +72,15 @@ fn main() {
             } else {
                 PowerPreference::LowPower
             },
+            #[cfg(feature = "profiling")]
+            device_descriptor: std::sync::Arc::new(|adapter| wgpu::DeviceDescriptor {
+                required_features: adapter.features()
+                    & wgpu_profiler::GpuProfiler::ALL_WGPU_TIMER_FEATURES,
+                ..Default::default()
+            }),
             ..create_new
         }),
-        existing => existing,
+        _ => unreachable!(),
     };
 
     let options = eframe::NativeOptions {
@@ -66,15 +88,18 @@ fn main() {
             .with_inner_size([1300.0, 1024.0])
             .with_drag_and_drop(true)
             .with_min_inner_size([300.0, 200.0]),
-        renderer: eframe::Renderer::Wgpu,
-        vsync: false,
         wgpu_options,
+        dithering: false,
         ..Default::default()
     };
     eframe::run_native(
         "gled",
         options,
         Box::new(|cc| {
+            let mut fonts = egui::FontDefinitions::default();
+            egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
+            cc.egui_ctx.set_fonts(fonts);
+
             cc.egui_ctx
                 .options_mut(|options| options.theme_preference = ThemePreference::Dark);
             cc.egui_ctx.style_mut(|style| {
@@ -82,7 +107,7 @@ fn main() {
                 style.visuals.panel_fill = Color32::from_gray(5);
             });
             install_image_loaders(&cc.egui_ctx);
-            Input::init(&cc.egui_ctx);
+            Input::init(&cc.egui_ctx, output_package_sender);
 
             WGPU_RENDER_STATE
                 .set(
@@ -108,13 +133,39 @@ pub fn wgpu_render_state() -> RenderState {
 }
 
 #[cfg(feature = "profiling")]
-fn start_profile_server() -> puffin_http::Server {
-    let server_addr = format!("0.0.0.0:{}", puffin_http::DEFAULT_PORT);
-    let puffin_server =
-        puffin_http::Server::new(&server_addr).expect("Could not start puffin server");
+struct PuffinViewerChildGuard(std::process::Child);
+#[cfg(feature = "profiling")]
+impl Drop for PuffinViewerChildGuard {
+    fn drop(&mut self) {
+        match self.0.kill() {
+            Err(e) => println!("Could not kill puffin viewer process: {}", e),
+            Ok(_) => println!("Successfully killed puffin viewer process"),
+        }
+    }
+}
+
+#[cfg(feature = "profiling")]
+fn start_profile_servers() -> (
+    puffin_http::Server,
+    puffin_http::Server,
+    PuffinViewerChildGuard,
+    PuffinViewerChildGuard,
+) {
     puffin::set_scopes_on(true);
-    std::process::Command::new("puffin_viewer").spawn().expect(
-        "Could not run puffin_viewer, maybe install it with: \"cargo install puffin_viewer\"",
-    );
-    puffin_server
+    let cpu_server = puffin_http::Server::new(&format!("0.0.0.0:{}", puffin_http::DEFAULT_PORT))
+        .expect("Could not start puffin server for cpu");
+    let gpu_server = puffin_http::Server::new_custom(
+        &format!("0.0.0.0:{}", puffin_http::DEFAULT_PORT + 1),
+        |sink| PUFFIN_GPU_PROFILER.lock().add_sink(sink),
+        |id| _ = PUFFIN_GPU_PROFILER.lock().remove_sink(id),
+    )
+    .expect("Could not start puffin server for gpu");
+    let cpu_profiler =
+        PuffinViewerChildGuard(std::process::Command::new("puffin_viewer").spawn().expect(
+            "Could not run puffin_viewer, maybe install it with: \"cargo install puffin_viewer\"",
+        ));
+    let gpu_profiler = PuffinViewerChildGuard(std::process::Command::new("puffin_viewer").arg("--url").arg(format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT + 1)).spawn().expect(
+            "Could not run puffin_viewer, maybe install it with: \"cargo install puffin_viewer\"",
+        ));
+    (cpu_server, gpu_server, cpu_profiler, gpu_profiler)
 }

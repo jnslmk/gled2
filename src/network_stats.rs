@@ -21,8 +21,11 @@ pub fn start_thread() {
             let incoming = INCOMING_BYTES.swap(0, Relaxed);
             let outgoing = OUTGOING_BYTES.swap(0, Relaxed);
             let stats = format!(
-                "⬇ {:.2} MBit/s ⬆ {:.2} MBit/s",
+                "{} {} {:.2} MBit/s {} {:.2} MBit/s",
+                egui_phosphor::regular::NETWORK,
+                egui_phosphor::regular::CARET_DOWN,
                 incoming as f64 / COUNTED_BYTES_TO_MBIT,
+                egui_phosphor::regular::CARET_UP,
                 outgoing as f64 / COUNTED_BYTES_TO_MBIT
             );
             *STATS.lock() = stats;

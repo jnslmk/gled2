@@ -1,17 +1,17 @@
 use artnet_protocol::{ArtCommand, PollReply, PortAddress};
+use crossbeam_channel::{Receiver, Sender, unbounded};
 use egui::mutex::Mutex;
-use log::{debug, info, trace, warn};
+use log::{debug, trace, warn};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
     net::{Ipv4Addr, UdpSocket},
-    sync::{
-        Arc,
-        mpsc::{Receiver, Sender},
-    },
+    sync::Arc,
     thread,
     time::Duration,
 };
+
+use crate::pipeline::output_sender::OutputPackage;
 
 static ARTNET_PORT: u16 = 6454;
 pub static ARTNET_SOCKET: Lazy<Arc<UdpSocket>> = Lazy::new(|| {
@@ -54,16 +54,9 @@ impl ArtnetConfig {
     }
 }
 
-pub fn start_thread() -> Receiver<ArtnetEvent> {
-    let (sender, receiver) = std::sync::mpsc::channel();
+pub fn start_thread(output_package_sender: Sender<OutputPackage>) -> Receiver<ArtnetEvent> {
+    let (sender, receiver) = unbounded();
 
-    info!("Spawning worker threads");
-    threads(sender);
-
-    receiver
-}
-
-fn threads(sender: Sender<ArtnetEvent>) {
     trace!("Opening udp sockets on artnet port");
 
     let sender = sender.clone();
@@ -199,4 +192,6 @@ fn threads(sender: Sender<ArtnetEvent>) {
             }
         })
         .expect("Could not spawn artnet receive thread for {addr}");
+
+    receiver
 }
