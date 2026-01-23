@@ -1,10 +1,11 @@
 pub mod scene_instance_path;
 
 use super::{
-    animation::Animation, output_device::routing::OutputRoutings, scene::instance::SceneInstance,
-    AssetTrait,
+    AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
+    scene::instance::SceneInstance,
 };
 use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
+use crate::pipeline::transition::{Transition, TransitionGoal};
 use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::{
@@ -18,21 +19,20 @@ use crate::{
         preview_indices::PreviewIndices, renderer_callback::RendererCallback,
     },
     storage::{
-        asset::{palette::Palette, scene::Scene, Asset},
+        asset::{Asset, palette::Palette, scene::Scene},
         asset_id::AssetId,
     },
     ui::windows::channel_overwrites::ChannelOverwrites,
     wgpu_render_state,
 };
+use rand::seq::IndexedMutRandom;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::{
     collections::BTreeSet,
     time::{Duration, Instant},
 };
-use rand::seq::IndexedMutRandom;
 use wgpu::CommandEncoderDescriptor;
-use crate::pipeline::transition::{Transition, TransitionGoal};
 
 pub fn deserialize_scene_instances<'de, D>(
     deserializer: D,
@@ -135,11 +135,16 @@ impl Project {
         let pos = &self.location_by_location_or_quick_index(index_or_grid)?;
         self.get_scenes_instance(pos)
     }
-    pub fn location_by_location_or_quick_index(&mut self, index_or_grid: SceneInstanceUnion) -> Option<GridLocation> {
+    pub fn location_by_location_or_quick_index(
+        &mut self,
+        index_or_grid: SceneInstanceUnion,
+    ) -> Option<GridLocation> {
         match index_or_grid {
             SceneInstanceUnion::Grid(location) => Some(location),
-            SceneInstanceUnion::Quick(quick_scene_instance_index) =>
-                    Some(GridLocation { row: GRID_HEIGHT-1, col: quick_scene_instance_index.index})
+            SceneInstanceUnion::Quick(quick_scene_instance_index) => Some(GridLocation {
+                row: GRID_HEIGHT - 1,
+                col: quick_scene_instance_index.index,
+            }),
         }
     }
 
@@ -148,8 +153,9 @@ impl Project {
     }
 
     pub fn scenes_instances_quick(&self) -> impl Iterator<Item = (&GridLocation, &SceneInstance)> {
-        self.scenes_instances_grid.iter()
-            .filter(|(location, _)| {location.row == GRID_HEIGHT-1})
+        self.scenes_instances_grid
+            .iter()
+            .filter(|(location, _)| location.row == GRID_HEIGHT - 1)
     }
 
     pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
@@ -187,12 +193,8 @@ impl Project {
     }
 
     /// Remove scene instance at path and update path to the next scene instance
-    pub fn remove_scene_instance(
-        &mut self,
-        pos: GridLocation,
-    ) -> Option<SceneInstance> {
-        let scene_instance =  self.scenes_instances_grid.remove(&pos);
-        scene_instance
+    pub fn remove_scene_instance(&mut self, pos: GridLocation) -> Option<SceneInstance> {
+        self.scenes_instances_grid.remove(&pos)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -221,7 +223,7 @@ impl Project {
                         .scenes_instances_grid
                         .iter()
                         .filter(|(_index, scene)| scene.active)
-                        .map(|(location, _scene)| location.clone())
+                        .map(|(location, _scene)| *location)
                         .collect::<Vec<_>>();
 
                     let mut disable_count =
@@ -253,7 +255,7 @@ impl Project {
                 self.auto_mode_last_change.take();
             }
         } else {
-        self.auto_mode_last_change.take();
+            self.auto_mode_last_change.take();
         }
 
         let palette = self.palette.and_then(Asset::get);

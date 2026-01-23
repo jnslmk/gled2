@@ -1,13 +1,13 @@
+use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
+use crate::storage::asset::scene::Scene;
+use crate::storage::asset::scene::grid::GridLocation;
 use crate::{
     app::{App, persistant_state::PersistantState, svg::Svg},
     input::artnet::ARTNET_CONFIG,
     pipeline::extract_output::ExtractOutput,
     storage::{
         asset::{
-            Asset,
-            animation::Animation,
-            curve::multiplied_curve::MultipliedCurve,
-            project::Project,
+            Asset, animation::Animation, curve::multiplied_curve::MultipliedCurve, project::Project,
         },
         asset_id::AssetId,
     },
@@ -19,9 +19,6 @@ use std::sync::{
     Arc,
     mpsc::{Receiver, Sender},
 };
-use crate::storage::asset::project::scene_instance_path::{SceneInstanceUnion};
-use crate::storage::asset::scene::grid::GridLocation;
-use crate::storage::asset::scene::Scene;
 
 static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 
@@ -95,7 +92,9 @@ impl App {
                     project.remove_nonexistant_groups();
                 }
                 (Some(project), UiAction::SetSceneOpacity(path, opacity)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_location_or_quick_index(path) {
+                    if let Some(scene_instance) =
+                        project.scene_instance_by_location_or_quick_index(path)
+                    {
                         scene_instance.opacity = MultipliedCurve::new_multiplier(opacity);
                     }
                 }
@@ -110,12 +109,16 @@ impl App {
                     project.main_dimmer = dimmer;
                 }
                 (Some(project), UiAction::ToggleSceneActive(location)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_location_or_quick_index(location) {
+                    if let Some(scene_instance) =
+                        project.scene_instance_by_location_or_quick_index(location)
+                    {
                         scene_instance.active = !scene_instance.active;
                     }
                 }
                 (Some(project), UiAction::SetSceneActive(location, active)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_location_or_quick_index(location) {
+                    if let Some(scene_instance) =
+                        project.scene_instance_by_location_or_quick_index(location)
+                    {
                         scene_instance.active = active;
                     }
                 }
@@ -147,7 +150,7 @@ impl App {
                         self.selected_scene_instance = project
                             .all_scene_instance_locations()
                             .next()
-                            .map(|l| l.clone())
+                            .copied()
                             .unwrap_or_default();
                         *ExtractOutput::get().routings.lock() = project.output_routings.clone();
                         *ARTNET_CONFIG.lock() = project.artnet_config.clone();

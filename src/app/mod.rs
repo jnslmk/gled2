@@ -10,16 +10,13 @@ pub mod storage;
 pub mod svg;
 pub mod timing;
 
+use crate::storage::asset::scene::grid::GridLocation;
 use crate::{
     input::Input,
     midi::state::MidiState,
     pipeline::renderer_callback::RendererCallback,
     storage::{
-        asset::{
-            palette::Palette,
-            project::Project,
-            Asset,
-        },
+        asset::{Asset, palette::Palette, project::Project},
         asset_id::AssetId,
         loading,
     },
@@ -29,12 +26,11 @@ use crate::{
     },
 };
 use eframe::egui_wgpu::Callback;
-use egui::{ahash::HashSet, CentralPanel, Id, Rect, UiBuilder, ViewportId};
+use egui::{CentralPanel, Id, Rect, UiBuilder, ViewportId, ahash::HashSet};
 use persistant_state::PersistantState;
 use std::{sync::mpsc::Receiver, time::Instant};
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
-use crate::storage::asset::scene::grid::GridLocation;
 
 pub struct App {
     pub startup: bool,
@@ -125,7 +121,9 @@ impl eframe::App for App {
                             .scenes_instances_grid
                             .iter_mut()
                             .filter_map(
-                                |(location, scene)| if scene.active { Some(location.clone()) } else { None },
+                                |(location, scene)| {
+                                    if scene.active { Some(*location) } else { None }
+                                },
                             )
                             .collect()
                     }),
@@ -136,7 +134,11 @@ impl eframe::App for App {
                         project
                             .scenes_instances_grid
                             .iter_mut()
-                            .filter_map(|(location, scene)| if scene.flash { Some(location.clone()) } else { None })
+                            .filter_map(
+                                |(location, scene)| {
+                                    if scene.flash { Some(*location) } else { None }
+                                },
+                            )
                             .collect()
                     }),
                 available_scenes_grid: self.project.as_mut().map_or_else(
@@ -145,7 +147,7 @@ impl eframe::App for App {
                         project
                             .scenes_instances_grid
                             .iter()
-                            .map(|(location, scene_instance)| (location.clone(), scene_instance.color))
+                            .map(|(location, scene_instance)| (*location, scene_instance.color))
                             .collect()
                     },
                 ),
@@ -155,14 +157,14 @@ impl eframe::App for App {
                     self.project
                         .as_mut()
                         .and_then(|project| {
-                            project.get_scenes_instance(&self.selected_scene_instance).map(
-                                |scene_instance| {
+                            project
+                                .get_scenes_instance(&self.selected_scene_instance)
+                                .map(|scene_instance| {
                                     beat_progression += scene_instance
                                         .beat_progression_offset
                                         .value(beat_progression);
                                     scene_instance.opacity.value(beat_progression)
-                                },
-                            )
+                                })
                         })
                         .unwrap_or(1.0)
                 },
@@ -234,8 +236,7 @@ impl App {
                     .default_height(200.0)
                     .min_height(200.0)
                     .show_inside(&mut ui, |ui| self.preview(ui));
-                egui::CentralPanel::default()
-                    .show_inside(&mut ui, |ui| self.scenes(ui));
+                egui::CentralPanel::default().show_inside(&mut ui, |ui| self.scenes(ui));
             } else {
                 self.no_project(&mut ui);
             }

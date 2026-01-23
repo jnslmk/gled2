@@ -20,7 +20,10 @@ pub fn start_thread() {
 
             let incoming = INCOMING_BYTES.swap(0, Relaxed);
             let outgoing = OUTGOING_BYTES.swap(0, Relaxed);
-            *STATS.lock() = Some((incoming as f64 / COUNTED_BYTES_TO_MBIT, outgoing as f64 / COUNTED_BYTES_TO_MBIT));
+            *STATS.lock() = Some((
+                incoming as f64 / COUNTED_BYTES_TO_MBIT,
+                outgoing as f64 / COUNTED_BYTES_TO_MBIT,
+            ));
         }
     });
 }
@@ -34,5 +37,5 @@ pub fn add_outgoing_bytes(bytes: usize) {
 }
 
 pub fn stats() -> Option<(f64, f64)> {
-    STATS.lock().clone()
+    *STATS.lock()
 }

@@ -57,8 +57,8 @@ polyfit-rs = "0.2"
 rand = "0.9"
 rayon = "1.10"
 reqwest = { version = "0.13", features = ["blocking", "json"] }
-resvg = { version = "0.45", default-features = false }
-rfd = "0.16"
+resvg = { version = "0.46", default-features = false }
+rfd = "0.17"
 rustfft = "6"
 rusty_link = "0.4"
 semver = "1"
@@ -75,10 +75,10 @@ tiny-skia = { version = "0.11", default-features = false, features = [
     "std",
 ] }
 typemap = "0.3"
-usvg = "0.45"
+usvg = "0.46"
 uuid = { version = "1", features = ["v4", "serde"] }
 wgpu = "27"
-whoami = "1"
+whoami = "2"
 
 profiling = { version = "1", features = [
     "profile-with-puffin",

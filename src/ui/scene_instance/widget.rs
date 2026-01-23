@@ -1,6 +1,6 @@
 use crate::storage::asset::project::scene_instance_path::grid_scene_instance_index;
-use crate::storage::asset::scene::grid::GridLocation;
 use crate::storage::asset::scene::Scene;
+use crate::storage::asset::scene::grid::GridLocation;
 use crate::ui::action::UiAction;
 use crate::ui::asset_tree::AssetTree;
 use crate::{
@@ -8,7 +8,10 @@ use crate::{
     ui::gled_slider::GledSlider,
 };
 use egui::containers::menu::MenuButton;
-use egui::{epaint::RectShape, pos2, Align, Button, Color32, CornerRadius, Frame, InnerResponse, Label, Layout, Rect, Response, RichText, Sense, Shape, TextureHandle, Ui, UiBuilder, Vec2, Widget};
+use egui::{
+    Align, Button, Color32, CornerRadius, Frame, InnerResponse, Label, Layout, Rect, Response,
+    RichText, Sense, Shape, TextureHandle, Ui, UiBuilder, Vec2, Widget, epaint::RectShape, pos2,
+};
 use egui_ltreeview::TreeViewState;
 use egui_phosphor_icons::icons;
 use emath::vec2;
@@ -38,7 +41,8 @@ impl Widget for SceneInstanceWidget<'_> {
                 self.dimmer(ui);
             });
             if !self.scene_instance.active {
-                ui.painter().rect_filled(rect.expand(1.), 0., Color32::from_black_alpha(200));
+                ui.painter()
+                    .rect_filled(rect.expand(1.), 0., Color32::from_black_alpha(200));
             }
             self.draw_enable_button(ui, button_rect);
             text_response
@@ -76,7 +80,9 @@ impl SceneInstanceWidget<'_> {
                 );
                 let resp = scoped_frame(
                     ui,
-                    UiBuilder::new().max_rect(title_rect).sense(Sense::click_and_drag()),
+                    UiBuilder::new()
+                        .max_rect(title_rect)
+                        .sense(Sense::click_and_drag()),
                     Frame::new().inner_margin(INNER_MARGIN),
                     |ui| {
                         ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
@@ -87,7 +93,7 @@ impl SceneInstanceWidget<'_> {
                                     .size(12.0)
                                     .color(Color32::WHITE),
                             )
-                                .truncate();
+                            .truncate();
 
                             // when accessing text layout information,
                             // painting has to be done manually instead
@@ -96,11 +102,7 @@ impl SceneInstanceWidget<'_> {
                             let text_rec = galley.rect.translate(galley_pos.to_vec2());
 
                             ui.painter().add(
-                                RectShape::filled(
-                                    text_rec,
-                                    5.,
-                                    Color32::from_black_alpha(60),
-                                )
+                                RectShape::filled(text_rec, 5., Color32::from_black_alpha(60))
                                     .with_blur_width(20.0),
                             );
                             ui.painter().add(epaint::TextShape::new(
@@ -109,7 +111,7 @@ impl SceneInstanceWidget<'_> {
                                 response_color,
                             ));
                             text_resp
-                        }).response;
+                        });
                     },
                 );
 
@@ -117,7 +119,8 @@ impl SceneInstanceWidget<'_> {
                 let button_rect = Rect::from_min_size(
                     title_rect.right_top(),
                     Vec2::new(button_width, header_height),
-                ).shrink(2.);
+                )
+                .shrink(2.);
                 self.draw_enable_button(ui, button_rect);
                 ui.painter().line(
                     vec![header_rect.left_bottom(), header_rect.right_bottom()],
@@ -135,22 +138,22 @@ impl SceneInstanceWidget<'_> {
             Button::new(if self.scene_instance.active {
                 icons::PAUSE.fill().color(Color32::GREEN).size(18.0)
             } else {
-                icons::PLAY.fill().color(Color32::GREEN.blend(Color32::from_black_alpha(100))).size(18.0)
+                icons::PLAY
+                    .fill()
+                    .color(Color32::GREEN.blend(Color32::from_black_alpha(100)))
+                    .size(18.0)
             })
-                .corner_radius(CornerRadius {
-                    nw: 0,
-                    ne: CORNER_RADIUS,
-                    sw: 0,
-                    se: 0,
-                })
-                .fill(
-                    if self.scene_instance.active {
-                        Color32::from_black_alpha(50)
-                    }
-                    else {
-                        Color32::from(self.scene_instance.color).blend(Color32::from_black_alpha(160))
-                    }
-                )
+            .corner_radius(CornerRadius {
+                nw: 0,
+                ne: CORNER_RADIUS,
+                sw: 0,
+                se: 0,
+            })
+            .fill(if self.scene_instance.active {
+                Color32::from_black_alpha(50)
+            } else {
+                Color32::from(self.scene_instance.color).blend(Color32::from_black_alpha(160))
+            }),
         );
         if button_response.clicked() {
             self.scene_instance.active = !self.scene_instance.active;
@@ -171,8 +174,12 @@ impl SceneInstanceWidget<'_> {
                         ),
                 ));
             }
-            if !self.scene_instance.active{
-                ui.painter().rect_filled(preview_rect.expand(1.), 0., Color32::from_black_alpha(100));
+            if !self.scene_instance.active {
+                ui.painter().rect_filled(
+                    preview_rect.expand(1.),
+                    0.,
+                    Color32::from_black_alpha(100),
+                );
             }
         });
     }
@@ -219,9 +226,12 @@ impl SceneInstanceWidget<'_> {
             StrokeKind::Outside,
         );
         // background glare / shadow
-        let glare_shape =
-            RectShape::filled(rect.expand(2.), CORNER_RADIUS, Color32::from_white_alpha(80))
-                .with_blur_width(10.);
+        let glare_shape = RectShape::filled(
+            rect.expand(2.),
+            CORNER_RADIUS,
+            Color32::from_white_alpha(80),
+        )
+        .with_blur_width(10.);
         let mut painter = ui.ctx().layer_painter(ui.layer_id());
         painter.set_clip_rect(rect.intersect(ui.clip_rect()));
         painter.add(glare_shape);
@@ -252,32 +262,29 @@ impl Widget for EmptyGridSpot {
     fn ui(self, ui: &mut Ui) -> Response {
         let rect = Rect::from_min_size(ui.cursor().min, vec2(SCENE_WIDGET_SIZE, SCENE_WIDGET_SIZE));
         const EMPTY_COLOR: Color32 = Color32::from_gray(80);
-        let response = scoped_frame(ui,
+        let response = scoped_frame(
+            ui,
             UiBuilder::new().max_rect(rect),
             Frame::default()
-            .stroke(Stroke {
-                width: 0.3,
-                color: EMPTY_COLOR,
-            })
-            .corner_radius(2),|ui| {
+                .stroke(Stroke {
+                    width: 0.3,
+                    color: EMPTY_COLOR,
+                })
+                .corner_radius(2),
+            |ui| {
                 ui.with_layout(Layout::top_down(Align::Center), |ui| {
                     MenuButton::from_button(
-                        Button::new(
-                            icons::PLUS
-                                .regular()
-                                .size(60.0)
-                                .color(EMPTY_COLOR),
-                        )
-                        .fill(Color32::TRANSPARENT)
-                        .min_size(Vec2 {
-                            x: SCENE_WIDGET_SIZE,
-                            y: SCENE_WIDGET_SIZE,
-                        }),
+                        Button::new(icons::PLUS.regular().size(60.0).color(EMPTY_COLOR))
+                            .fill(Color32::TRANSPARENT)
+                            .min_size(Vec2 {
+                                x: SCENE_WIDGET_SIZE,
+                                y: SCENE_WIDGET_SIZE,
+                            }),
                     )
                     .ui(ui, |ui| {
                         let scene = AssetTree::<Scene>::show_asset_selection(
                             ui,
-                            ui.make_persistent_id(&self.location),
+                            ui.make_persistent_id(self.location),
                         );
                         if let Some(scene) = scene {
                             UiAction::AddScene(self.location, scene).enqueue();
@@ -287,13 +294,14 @@ impl Widget for EmptyGridSpot {
 
                             ui.data_mut(|d| {
                                 d.remove::<TreeViewState<usize>>(
-                                    ui.make_persistent_id(&self.location),
+                                    ui.make_persistent_id(self.location),
                                 )
                             });
                         }
                     })
                 });
-            });
+            },
+        );
         response.response
     }
 }

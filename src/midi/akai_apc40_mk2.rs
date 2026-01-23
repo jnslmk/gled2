@@ -1,19 +1,17 @@
 use super::state::MidiState;
-use crate::{
-    storage::asset::scene::color::SceneInstanceColor,
-    ui::action::UiAction,
+use crate::storage::asset::project::scene_instance_path::{
+    SceneInstanceUnion, grid_scene_instance_index, quick_scene_instance_index,
 };
+use crate::storage::asset::scene::grid::GridLocation;
+use crate::{storage::asset::scene::color::SceneInstanceColor, ui::action::UiAction};
 use crossbeam_channel::Receiver;
 use midir::MidiOutputConnection;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use crate::storage::asset::project::scene_instance_path::{grid_scene_instance_index, quick_scene_instance_index, SceneInstanceUnion};
-use crate::storage::asset::scene::grid::GridLocation;
-
 
 fn location_from_peripheral_id(index: usize) -> GridLocation {
     let col = index % GRID_WIDTH;
     let row = index / GRID_WIDTH;
-    GridLocation{col, row}
+    GridLocation { col, row }
 }
 pub fn handle_input(_stamp: u64, message: &[u8]) {
     if message.len() != 3 {
@@ -35,18 +33,20 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
                 32..40 => peripheral_id as usize - 32,
                 _ => unreachable!(),
             };
-            UiAction::ToggleSceneActive(SceneInstanceUnion::Grid(location_from_peripheral_id(index)))
+            UiAction::ToggleSceneActive(SceneInstanceUnion::Grid(location_from_peripheral_id(
+                index,
+            )))
         }
         // scene toggle for quick scenes
-        (144..152, 48, 127) => UiAction::ToggleSceneActive(quick_scene_instance_index(status as usize - 144)),
-        (144..152, 52, 127) => UiAction::SetSceneActive(
-            quick_scene_instance_index(status as usize - 144),
-            true,
-        ),
-        (128..136, 52, 0) => UiAction::SetSceneActive(
-            quick_scene_instance_index(status as usize - 128),
-            false,
-        ),
+        (144..152, 48, 127) => {
+            UiAction::ToggleSceneActive(quick_scene_instance_index(status as usize - 144))
+        }
+        (144..152, 52, 127) => {
+            UiAction::SetSceneActive(quick_scene_instance_index(status as usize - 144), true)
+        }
+        (128..136, 52, 0) => {
+            UiAction::SetSceneActive(quick_scene_instance_index(status as usize - 128), false)
+        }
         (144, 91, 127) => UiAction::SetBlackout(false),
         (128, 91, 127) => UiAction::SetBlackout(true),
         (144, 82..=85 | 99, 127) => UiAction::Tap,
@@ -70,8 +70,10 @@ pub fn handle_input(_stamp: u64, message: &[u8]) {
         }),
         (176, 48, 0..120) => {
             let value = value as usize / 3;
-            UiAction::SelectScene(grid_scene_instance_index(location_from_peripheral_id(value / 3)))
-        },
+            UiAction::SelectScene(grid_scene_instance_index(location_from_peripheral_id(
+                value / 3,
+            )))
+        }
         (176, 49, val) => UiAction::SetSelectedSceneOpacity(f32::from(val) / 127.0),
         _ => {
             //dbg!(status, data1, data2);
@@ -143,9 +145,7 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
             }
         }
         // iterate over all grid locations
-        for location in { 0..48 }
-            .map(|index| location_from_peripheral_id( index))
-        {
+        for location in { 0..48 }.map(location_from_peripheral_id) {
             let value = {
                 let flashed = state.flashed_scenes.contains(&location);
                 let active = state.active_scenes.contains(&location);
@@ -167,13 +167,38 @@ pub fn send_output(state_receiver: Receiver<MidiState>, mut connection: MidiOutp
             };
 
             let message = match location.row {
-                (0..8) => [0x90, (location.col + location.row *8) as u8 + 32, value, 127],
-                (8..16) => [0x90, (location.col + location.row *8) as u8 + 16, value, 127],
-                (16..24) => [0x90, (location.col + location.row *8) as u8, value, 127],
-                (24..32) => [0x90, (location.col + location.row *8)as u8 - 16, value, 127],
-                (32..40) => [0x90, (location.col + location.row *8) as u8 - 32, value, 127],
+                (0..8) => [
+                    0x90,
+                    (location.col + location.row * 8) as u8 + 32,
+                    value,
+                    127,
+                ],
+                (8..16) => [
+                    0x90,
+                    (location.col + location.row * 8) as u8 + 16,
+                    value,
+                    127,
+                ],
+                (16..24) => [0x90, (location.col + location.row * 8) as u8, value, 127],
+                (24..32) => [
+                    0x90,
+                    (location.col + location.row * 8) as u8 - 16,
+                    value,
+                    127,
+                ],
+                (32..40) => [
+                    0x90,
+                    (location.col + location.row * 8) as u8 - 32,
+                    value,
+                    127,
+                ],
                 // TODO what is the right offset of quick scenes?
-                _ => [0x90 + (location.col + location.row *8) as u8, 48, value, 127],
+                _ => [
+                    0x90 + (location.col + location.row * 8) as u8,
+                    48,
+                    value,
+                    127,
+                ],
                 // _ => unreachable!(),
             };
             if let Err(err) = connection.send(&message) {

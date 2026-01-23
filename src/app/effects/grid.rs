@@ -38,9 +38,17 @@ impl App {
                     if row == GRID_HEIGHT - 1 {
                         let quick_scene_rect = Rect::from_min_size(
                             start_pos + vec2(20., 20. + row as f32 * (SCENE_WIDGET_SIZE + 20.)),
-                            vec2((SCENE_WIDGET_SIZE + 20.) * GRID_WIDTH as f32 -20., SCENE_WIDGET_SIZE),
-                        ).expand(10.);
-                        ui.painter().rect_filled(quick_scene_rect, 5., Color32::GOLD.blend(Color32::from_black_alpha(200)));
+                            vec2(
+                                (SCENE_WIDGET_SIZE + 20.) * GRID_WIDTH as f32 - 20.,
+                                SCENE_WIDGET_SIZE,
+                            ),
+                        )
+                        .expand(10.);
+                        ui.painter().rect_filled(
+                            quick_scene_rect,
+                            5.,
+                            Color32::GOLD.blend(Color32::from_black_alpha(200)),
+                        );
                     }
                     for col in 0..GRID_WIDTH {
                         let location = GridLocation { col, row };
@@ -85,18 +93,13 @@ impl App {
                                                         Stroke::new(2., Color32::from_gray(200)),
                                                         StrokeKind::Outside,
                                                     );
-                                                } else {
-                                                    if widget_response.hovered() {
-                                                        ui.painter().rect_stroke(
-                                                            widget_response.rect,
-                                                            5.0,
-                                                            Stroke::new(
-                                                                1.,
-                                                                Color32::from_gray(160),
-                                                            ),
-                                                            StrokeKind::Outside,
-                                                        );
-                                                    }
+                                                } else if widget_response.hovered() {
+                                                    ui.painter().rect_stroke(
+                                                        widget_response.rect,
+                                                        5.0,
+                                                        Stroke::new(1., Color32::from_gray(160)),
+                                                        StrokeKind::Outside,
+                                                    );
                                                 }
                                                 if widget_response.clicked() {
                                                     self.selected_scene_instance = location;
