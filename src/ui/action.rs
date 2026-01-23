@@ -1,16 +1,13 @@
+use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
+use crate::storage::asset::scene::Scene;
+use crate::storage::asset::scene::grid::GridLocation;
 use crate::{
     app::{App, persistant_state::PersistantState, svg::Svg},
     input::artnet::ARTNET_CONFIG,
     pipeline::extract_output::ExtractOutput,
     storage::{
         asset::{
-            Asset,
-            animation::Animation,
-            curve::multiplied_curve::MultipliedCurve,
-            project::{
-                DeckPath, Project,
-                scene_instance_path::{SceneInstancePathId, SceneInstancePathIndex},
-            },
+            Asset, animation::Animation, curve::multiplied_curve::MultipliedCurve, project::Project,
         },
         asset_id::AssetId,
     },
@@ -27,11 +24,14 @@ static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 
 #[derive(Debug)]
 pub enum UiAction {
+    AddScene(GridLocation, AssetId<Scene>),
     SetProject(AssetId<Project>),
-    SelectScene(SceneInstancePathIndex),
-    DeleteSelectedSceneInstance,
+    SelectScene(SceneInstanceUnion),
+    SelectSceneByLocation(GridLocation),
+    DeleteSceneInstance {
+        location: GridLocation,
+    },
     CloneSelectedSceneInstance,
-    MoveSelectedSceneToOtherGrid,
     InitGPU,
     SendPositions,
     ReloadShaderCode(AssetId<Animation>),
@@ -45,10 +45,10 @@ pub enum UiAction {
     /// Set opacity for a scene instance
     ///
     /// This also activates the scene instance
-    SetSceneOpacity(SceneInstancePathIndex, f32),
+    SetSceneOpacity(SceneInstanceUnion, f32),
     SetSelectedSceneOpacity(f32),
-    ToggleSceneActive(SceneInstancePathIndex),
-    SetSceneActive(SceneInstancePathIndex, bool),
+    ToggleSceneActive(SceneInstanceUnion),
+    SetSceneActive(SceneInstanceUnion, bool),
     SetMainDimmer(f32),
     MidiOutputActive(bool),
     Error(String),
@@ -64,30 +64,21 @@ impl App {
             log::trace!("Handling ui action: {action:?}");
 
             match (&mut self.project, action) {
-                (Some(project), UiAction::DeleteSelectedSceneInstance) => {
-                    project.remove_scene_instance(&mut self.selected_scene_instance);
+                (Some(project), UiAction::AddScene(pos, scene)) => {
+                    project.add_scene(pos, scene);
+                }
+                (Some(project), UiAction::DeleteSceneInstance { location }) => {
+                    project.remove_scene_instance(location);
                     UiAction::InitGPU.enqueue();
                 }
                 (Some(project), UiAction::CloneSelectedSceneInstance) => {
                     if let Some(scene) = project
-                        .scene_instance_mut(self.selected_scene_instance)
+                        .get_scenes_instance(&self.selected_scene_instance)
                         .map(|scene_instance| scene_instance.scene)
                     {
-                        self.selected_scene_instance =
-                            project.add_scene(self.selected_scene_instance.deck_path, scene);
-                        UiAction::InitGPU.enqueue();
-                    }
-                }
-                (Some(project), UiAction::MoveSelectedSceneToOtherGrid) => {
-                    if let Some(scene) =
-                        project.remove_scene_instance(&mut self.selected_scene_instance)
-                    {
-                        self.selected_scene_instance = project.add_scene_instance(
-                            match self.selected_scene_instance.deck_path {
-                                DeckPath::Grid => DeckPath::Quick,
-                                DeckPath::Quick => DeckPath::Grid,
-                            },
-                            scene.to_owned(),
+                        project.add_scene(
+                            project.next_empty_grid_location(self.selected_scene_instance),
+                            scene,
                         );
                         UiAction::InitGPU.enqueue();
                     }
@@ -107,13 +98,15 @@ impl App {
                     project.remove_nonexistant_groups();
                 }
                 (Some(project), UiAction::SetSceneOpacity(path, opacity)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index(path) {
+                    if let Some(scene_instance) =
+                        project.scene_instance_by_location_or_quick_index(path)
+                    {
                         scene_instance.opacity = MultipliedCurve::new_multiplier(opacity);
                     }
                 }
                 (Some(project), UiAction::SetSelectedSceneOpacity(opacity)) => {
                     if let Some(scene_instance) =
-                        project.scene_instance_mut(self.selected_scene_instance)
+                        project.get_scenes_instance(&self.selected_scene_instance)
                     {
                         scene_instance.opacity = MultipliedCurve::new_multiplier(opacity);
                     }
@@ -121,22 +114,28 @@ impl App {
                 (Some(project), UiAction::SetMainDimmer(dimmer)) => {
                     project.main_dimmer = dimmer;
                 }
-                (Some(project), UiAction::ToggleSceneActive(path)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index(path) {
+                (Some(project), UiAction::ToggleSceneActive(location)) => {
+                    if let Some(scene_instance) =
+                        project.scene_instance_by_location_or_quick_index(location)
+                    {
                         scene_instance.active = !scene_instance.active;
                     }
                 }
-                (Some(project), UiAction::SetSceneActive(path, active)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index(path) {
+                (Some(project), UiAction::SetSceneActive(location, active)) => {
+                    if let Some(scene_instance) =
+                        project.scene_instance_by_location_or_quick_index(location)
+                    {
                         scene_instance.active = active;
                     }
                 }
-                (Some(project), UiAction::SelectScene(path)) => {
-                    if let Some(scene_instance) = project.scene_instance_by_index(path) {
-                        self.selected_scene_instance = SceneInstancePathId {
-                            deck_path: path.deck_path,
-                            id: scene_instance.id,
-                        };
+                (Some(project), UiAction::SelectScene(location)) => {
+                    if let Some(pos) = project.location_by_location_or_quick_index(location) {
+                        self.selected_scene_instance = pos;
+                    }
+                }
+                (Some(project), UiAction::SelectSceneByLocation(location)) => {
+                    if project.scenes_instances_grid.contains_key(&location) {
+                        self.selected_scene_instance = location;
                     }
                 }
                 (_, UiAction::Tap) => {
@@ -158,11 +157,11 @@ impl App {
                         persistant_state.save();
 
                         self.project_id = Some(project.id);
-                        let mut project = Arc::unwrap_or_clone(project).data;
+                        let project = Arc::unwrap_or_clone(project).data;
                         self.selected_scene_instance = project
-                            .all_scene_instances_id()
+                            .all_scene_instance_locations()
                             .next()
-                            .map(|(path, _)| path)
+                            .copied()
                             .unwrap_or_default();
                         *ExtractOutput::get().routings.lock() = project.output_routings.clone();
                         *ARTNET_CONFIG.lock() = project.artnet_config.clone();

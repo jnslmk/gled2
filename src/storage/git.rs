@@ -104,7 +104,7 @@ impl Git {
         callbacks.credentials(move |_url, username_from_url, _allowed_types| {
             let username = username_from_url
                 .map(|username| username.to_owned())
-                .unwrap_or(whoami::username());
+                .unwrap_or(whoami::username().expect("Could not get username"));
 
             let credentials = PersistantState::git_credentials();
             if let Some(private_key) = credentials

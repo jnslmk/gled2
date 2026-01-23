@@ -13,7 +13,7 @@ const TEXTURE_SIZE_F: f32 = 2048.0;
 @fragment
 fn fs_main(@location(0) coord: vec2<f32>) -> @location(0) vec4<f32> {
     let x: u32 = u32(round(coord.x * (TEXTURE_SIZE_F - 1.0)));
-    let y: u32 = u32(round(coord.y * (TEXTURE_SIZE_F - 1.0)));
+    let y: u32 = u32(round((1.0 - coord.y) * (TEXTURE_SIZE_F - 1.0)));
 
     let i: u32 = y * (TEXTURE_SIZE_U / 2u) + x / 2u;
     let index = indices[i];

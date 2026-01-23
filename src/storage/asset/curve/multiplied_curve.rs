@@ -17,7 +17,7 @@ use uuid::Uuid;
 #[serde(default)]
 pub struct MultipliedCurve<R: Range> {
     #[serde(alias = "Static", deserialize_with = "deserialize_static")]
-    multiplier: f32,
+    pub multiplier: f32,
     #[serde(alias = "Curve", deserialize_with = "deserialize_curve")]
     curve: Option<AssetId<Curve>>,
     #[serde(skip)]
@@ -74,10 +74,6 @@ impl<R: Range> MultipliedCurve<R> {
             curve: Some(AssetId::from_uuid(Uuid::from_bytes(bytes))),
             _phantom: PhantomData,
         }
-    }
-
-    pub fn multiplier(&self) -> f32 {
-        self.multiplier
     }
 }
 
