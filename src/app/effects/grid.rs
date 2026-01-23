@@ -3,8 +3,8 @@ use crate::app::PersistantState;
 use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::ui::scene_instance::dnd::{dnd_drag_source, dnd_drop_zone};
+use crate::ui::scene_instance::widget::EmptyGridSpot;
 use crate::ui::scene_instance::widget::SceneInstanceWidget;
-use crate::ui::scene_instance::widget::{EmptyGridSpot, SCENE_WIDGET_SIZE};
 use egui::{
     Color32, Frame, Id, TextureHandle, Ui, UiBuilder, Vec2,
     scroll_area::ScrollBarVisibility::AlwaysVisible,
@@ -22,8 +22,8 @@ impl App {
                 let Some(project) = self.project.as_mut() else {
                     return;
                 };
-                ui.set_width(GRID_WIDTH as f32 * (SCENE_WIDGET_SIZE + 20.) + 20.);
-                ui.set_height(GRID_HEIGHT as f32 * (SCENE_WIDGET_SIZE + 20.) + 20.);
+                ui.set_width(GRID_WIDTH as f32 * (PersistantState::effects_size() + 20.) + 20.);
+                ui.set_height(GRID_HEIGHT as f32 * (PersistantState::effects_size() + 20.) + 20.);
 
                 let to_global = ui
                     .ctx()
@@ -39,10 +39,14 @@ impl App {
                 for row in 0..GRID_HEIGHT {
                     if row == GRID_HEIGHT - 1 {
                         let quick_scene_rect = Rect::from_min_size(
-                            start_pos + vec2(20., 20. + row as f32 * (SCENE_WIDGET_SIZE + 20.)),
+                            start_pos
+                                + vec2(
+                                    20.,
+                                    20. + row as f32 * (PersistantState::effects_size() + 20.),
+                                ),
                             vec2(
-                                (SCENE_WIDGET_SIZE + 20.) * GRID_WIDTH as f32 - 20.,
-                                SCENE_WIDGET_SIZE,
+                                (PersistantState::effects_size() + 20.) * GRID_WIDTH as f32 - 20.,
+                                PersistantState::effects_size(),
                             ),
                         )
                         .expand(10.);
@@ -60,10 +64,13 @@ impl App {
                             start_pos
                                 + vec2(20., 20.)
                                 + vec2(
-                                    col as f32 * (SCENE_WIDGET_SIZE + 20.),
-                                    row as f32 * (SCENE_WIDGET_SIZE + 20.),
+                                    col as f32 * (PersistantState::effects_size() + 20.),
+                                    row as f32 * (PersistantState::effects_size() + 20.),
                                 ),
-                            vec2(SCENE_WIDGET_SIZE, SCENE_WIDGET_SIZE),
+                            vec2(
+                                PersistantState::effects_size(),
+                                PersistantState::effects_size(),
+                            ),
                         ));
                         let (_, dropped_payload) = ui
                             .scope_builder(UiBuilder::new().max_rect(rect), |ui| {

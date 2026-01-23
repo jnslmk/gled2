@@ -1,3 +1,4 @@
+use crate::app::persistant_state::PersistantState;
 use crate::storage::asset::project::scene_instance_path::grid_scene_instance_index;
 use crate::storage::asset::scene::Scene;
 use crate::storage::asset::scene::grid::GridLocation;
@@ -17,7 +18,6 @@ use egui_phosphor_icons::icons;
 use emath::vec2;
 use epaint::{FontFamily, Stroke, StrokeKind};
 
-pub(crate) const SCENE_WIDGET_SIZE: f32 = 150.0;
 pub struct SceneInstanceWidget<'a> {
     pub scene_instance: &'a mut SceneInstance,
     pub groups: &'a Groups,
@@ -32,7 +32,10 @@ const INNER_MARGIN: f32 = 6.0;
 impl Widget for SceneInstanceWidget<'_> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         let name = self.scene_instance.id.to_string();
-        let rect = Rect::from_min_size(ui.cursor().min, vec2(SCENE_WIDGET_SIZE, SCENE_WIDGET_SIZE));
+        let rect = Rect::from_min_size(
+            ui.cursor().min,
+            Vec2::splat(PersistantState::effects_size()),
+        );
         ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
             self.draw_background(ui, &rect);
             let (text_response, button_rect) = self.header_bar(name, ui);
@@ -54,7 +57,7 @@ impl Widget for SceneInstanceWidget<'_> {
 impl SceneInstanceWidget<'_> {
     fn header_bar(&mut self, name: String, ui: &mut Ui) -> (Response, Rect) {
         let start_pos = ui.cursor().min;
-        let available_width = SCENE_WIDGET_SIZE;
+        let available_width = PersistantState::effects_size();
 
         // --- Header Strip (Name + Play Button) ---
         let header_height = 30.;
@@ -260,7 +263,10 @@ pub struct EmptyGridSpot {
 
 impl Widget for EmptyGridSpot {
     fn ui(self, ui: &mut Ui) -> Response {
-        let rect = Rect::from_min_size(ui.cursor().min, vec2(SCENE_WIDGET_SIZE, SCENE_WIDGET_SIZE));
+        let rect = Rect::from_min_size(
+            ui.cursor().min,
+            Vec2::splat(PersistantState::effects_size()),
+        );
         const EMPTY_COLOR: Color32 = Color32::from_gray(80);
         let response = scoped_frame(
             ui,
@@ -276,10 +282,7 @@ impl Widget for EmptyGridSpot {
                     MenuButton::from_button(
                         Button::new(icons::PLUS.regular().size(60.0).color(EMPTY_COLOR))
                             .fill(Color32::TRANSPARENT)
-                            .min_size(Vec2 {
-                                x: SCENE_WIDGET_SIZE,
-                                y: SCENE_WIDGET_SIZE,
-                            }),
+                            .min_size(Vec2::splat(PersistantState::effects_size())),
                     )
                     .ui(ui, |ui| {
                         let scene = AssetTree::<Scene>::show_asset_selection(
