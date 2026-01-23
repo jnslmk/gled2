@@ -121,6 +121,18 @@ impl Default for Project {
 }
 
 impl Project {
+    pub fn next_empty_grid_location(&self, start: GridLocation) -> GridLocation {
+        for row in 0..GRID_HEIGHT {
+            for col in 0..GRID_WIDTH {
+                let location = GridLocation { row, col };
+                if !self.scenes_instances_grid.contains_key(&location) {
+                    return location;
+                }
+            }
+        }
+        start
+    }
+
     pub fn get_scenes_instance(&mut self, pos: &GridLocation) -> Option<&mut SceneInstance> {
         self.scenes_instances_grid.get_mut(pos)
     }
@@ -340,15 +352,15 @@ impl Project {
         self.double_input_events.iter().any(|event| event.is_new())
     }
 
-    pub fn add_scene(&mut self, pos: &GridLocation, scene: AssetId<Scene>) {
+    pub fn add_scene(&mut self, pos: GridLocation, scene: AssetId<Scene>) {
         let mut scene_instance: SceneInstance = scene.into();
         scene_instance.init_states();
         self.add_scene_instance(pos, scene_instance);
     }
 
-    pub fn add_scene_instance(&mut self, pos: &GridLocation, scene_instance: SceneInstance) {
+    pub fn add_scene_instance(&mut self, pos: GridLocation, scene_instance: SceneInstance) {
         let scene_instances = &mut self.scenes_instances_grid;
-        scene_instances.insert(*pos, scene_instance);
+        scene_instances.insert(pos, scene_instance);
     }
 
     pub fn remove_nonexistant_groups(&mut self) {

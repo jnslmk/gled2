@@ -1,5 +1,5 @@
-pub mod widget;
 pub mod dnd;
+pub mod widget;
 
 use super::{ChangeButton, action::UiAction};
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
     ui::effect::widget::EffectWidget,
 };
 use egui::{
-    Button, Checkbox, Color32, Frame, Margin, Modifiers, ScrollArea, TopBottomPanel, Vec2,
+    Button, Checkbox, Color32, Frame, Margin, ScrollArea, TopBottomPanel, Vec2,
     scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
 use egui_modal::Modal;
@@ -43,22 +43,6 @@ impl SceneInstance {
                             }
                         });
                     });
-                });
-
-                ui.vertical_centered_justified(|ui| {
-                    if ui
-                        .add(Button::new("🗑 Remove Scene").fill(Color32::DARK_RED))
-                        .clicked()
-                        || {
-                            !ui.ctx().wants_keyboard_input()
-                                && ui.ctx().input_mut(|i| {
-                                    i.consume_key(Modifiers::default(), egui::Key::Backspace)
-                                        || i.consume_key(Modifiers::default(), egui::Key::Delete)
-                                })
-                        }
-                    {
-                        UiAction::DeleteSelectedSceneInstance.enqueue();
-                    }
                 });
             });
 

@@ -27,7 +27,9 @@ pub enum UiAction {
     AddScene(GridLocation, AssetId<Scene>),
     SetProject(AssetId<Project>),
     SelectScene(SceneInstanceUnion),
-    DeleteSelectedSceneInstance,
+    DeleteSceneInstance {
+        location: GridLocation,
+    },
     CloneSelectedSceneInstance,
     InitGPU,
     SendPositions,
@@ -62,10 +64,10 @@ impl App {
 
             match (&mut self.project, action) {
                 (Some(project), UiAction::AddScene(pos, scene)) => {
-                    project.add_scene(&pos, scene);
+                    project.add_scene(pos, scene);
                 }
-                (Some(project), UiAction::DeleteSelectedSceneInstance) => {
-                    project.remove_scene_instance(self.selected_scene_instance);
+                (Some(project), UiAction::DeleteSceneInstance { location }) => {
+                    project.remove_scene_instance(location);
                     UiAction::InitGPU.enqueue();
                 }
                 (Some(project), UiAction::CloneSelectedSceneInstance) => {
@@ -73,7 +75,10 @@ impl App {
                         .get_scenes_instance(&self.selected_scene_instance)
                         .map(|scene_instance| scene_instance.scene)
                     {
-                        project.add_scene(&self.selected_scene_instance, scene);
+                        project.add_scene(
+                            project.next_empty_grid_location(self.selected_scene_instance),
+                            scene,
+                        );
                         UiAction::InitGPU.enqueue();
                     }
                 }

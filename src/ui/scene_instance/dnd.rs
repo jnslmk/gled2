@@ -1,4 +1,7 @@
-use egui::{CursorIcon, DragAndDrop, Frame, Id, InnerResponse, LayerId, Order, Response, Sense, Ui, UiBuilder};
+use egui::{
+    CursorIcon, DragAndDrop, Frame, Id, InnerResponse, LayerId, Order, Response, Sense, Ui,
+    UiBuilder,
+};
 use std::any::Any;
 use std::sync::Arc;
 
@@ -19,8 +22,10 @@ where
 
         // Paint the body to a new layer:
         let layer_id = LayerId::new(Order::Tooltip, id);
-        let InnerResponse { inner: _inner, response } =
-            ui.scope_builder(UiBuilder::new().layer_id(layer_id), add_contents);
+        let InnerResponse {
+            inner: _inner,
+            response,
+        } = ui.scope_builder(UiBuilder::new().layer_id(layer_id), add_contents);
 
         // Now we move the visuals of the body to where the mouse is.
         // Normally you need to decide a location for a widget first,
@@ -41,14 +46,12 @@ where
             ui.scope_builder(UiBuilder::new().sense(Sense::click()), add_contents);
 
         // Check for drags:
-        ui
-            .interact(inner.rect, id, Sense::drag())
+        ui.interact(inner.rect, id, Sense::drag())
             .on_hover_cursor(CursorIcon::Grab);
 
         response
     }
 }
-
 
 #[doc(alias = "drag and drop")]
 pub fn dnd_drop_zone<Payload, R>(
@@ -60,8 +63,7 @@ where
     Payload: Any + Send + Sync,
 {
     let is_anything_being_dragged = DragAndDrop::has_any_payload(ui.ctx());
-    let can_accept_what_is_being_dragged =
-        DragAndDrop::has_payload_of_type::<Payload>(ui.ctx());
+    let can_accept_what_is_being_dragged = DragAndDrop::has_payload_of_type::<Payload>(ui.ctx());
 
     let mut frame = frame.begin(ui);
     let inner = add_contents(&mut frame.content_ui);

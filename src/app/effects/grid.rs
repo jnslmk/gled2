@@ -1,7 +1,11 @@
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
+
 use super::App;
 use crate::app::PersistantState;
 use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 use crate::storage::asset::scene::grid::GridLocation;
+use crate::ui::action::UiAction;
 use crate::ui::scene_instance::dnd::{dnd_drag_source, dnd_drop_zone};
 use crate::ui::scene_instance::widget::EmptyGridSpot;
 use crate::ui::scene_instance::widget::SceneInstanceWidget;
@@ -9,6 +13,8 @@ use egui::{
     Color32, Frame, Id, TextureHandle, Ui, UiBuilder, Vec2,
     scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
+use egui::{DragAndDrop, Label, LayerId, Order, Response, Sense, Widget};
+use egui_phosphor_icons::icons;
 use emath::{Rect, vec2};
 use epaint::{Stroke, StrokeKind};
 
@@ -155,6 +161,50 @@ impl App {
                         grid.insert(from, to_item);
                     }
                 }
+
+                static SHOW_TRASH_ONE_MORE_FRAME: AtomicBool = AtomicBool::new(false);
+                let is_dragging = DragAndDrop::has_payload_of_type::<GridLocation>(ui.ctx());
+                if is_dragging || SHOW_TRASH_ONE_MORE_FRAME.load(Relaxed) {
+                    SHOW_TRASH_ONE_MORE_FRAME.store(is_dragging, Relaxed);
+                    let id = Id::new("Trash");
+                    let layer_id = LayerId::new(Order::Foreground, id);
+                    ui.scope_builder(UiBuilder::new().layer_id(layer_id), |ui| {
+                        ui.set_clip_rect(ui.ctx().content_rect());
+                        let rect = Rect::from_min_size(
+                            ui.ctx().content_rect().left_bottom()
+                                + vec2(10.0, -(PersistantState::effects_size() + 10.0)),
+                            Vec2::splat(PersistantState::effects_size()),
+                        );
+                        ui.place(rect, TrashWidget {});
+                    });
+                }
             });
+    }
+}
+
+pub struct TrashWidget {}
+
+impl Widget for TrashWidget {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let (response, dropped) =
+            dnd_drop_zone::<GridLocation, ()>(ui, Frame::default().corner_radius(2.), |ui| {
+                let rect = Rect::from_min_size(
+                    ui.cursor().min,
+                    Vec2::splat(PersistantState::effects_size()),
+                );
+                ui.painter()
+                    .rect_filled(rect, 5.0, Color32::from_rgb(150, 0, 0));
+                ui.place(
+                    rect,
+                    Label::new(icons::TRASH.regular().size(40.0).color(Color32::WHITE)),
+                );
+
+                ui.allocate_rect(rect, Sense::hover());
+            });
+        if let Some(dropped) = dropped {
+            UiAction::DeleteSceneInstance { location: *dropped }.enqueue();
+        }
+
+        response.response
     }
 }
