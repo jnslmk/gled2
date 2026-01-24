@@ -1,7 +1,7 @@
 use crate::storage::curve::multiplied_curve::{MultipliedCurve, RangeDegrees, RangePercentage};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum FloatValue {
     F32(f32),
     Percentage(MultipliedCurve<RangePercentage>),

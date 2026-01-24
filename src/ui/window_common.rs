@@ -1,6 +1,6 @@
 use crate::ui::logo::icon;
 use crate::ui::logo::logo_image;
-use egui::ViewportBuilder;
+use egui::{Button, ViewportBuilder};
 use egui::{Image, Rect, Vec2, ViewportCommand};
 use egui_phosphor_icons::icons;
 
@@ -39,7 +39,7 @@ pub fn gled_window_frame(
 }
 
 fn title_bar_ui(ui: &mut egui::Ui, title_bar_rect: eframe::epaint::Rect, title: &str) {
-    use egui::{vec2, Align2, FontId, Id, PointerButton, Sense, UiBuilder};
+    use egui::{Align2, FontId, Id, PointerButton, Sense, UiBuilder, vec2};
 
     let painter = ui.painter();
 
@@ -100,14 +100,10 @@ fn title_bar_ui(ui: &mut egui::Ui, title_bar_rect: eframe::epaint::Rect, title: 
 }
 
 pub fn window_buttons(ui: &mut egui::Ui) {
-    use egui::Button;
-
     let button_height = 20.0;
 
     let close_response = ui
-        .add(Button::new(
-            icons::X.regular().size(button_height),
-        ))
+        .add(Button::new(icons::X.regular().size(button_height)))
         .on_hover_text("Close the window");
     if close_response.clicked() {
         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
@@ -118,9 +114,7 @@ pub fn window_buttons(ui: &mut egui::Ui) {
     let is_maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
     if is_maximized {
         let maximized_response = ui
-            .add(Button::new(
-                icons::ARROWS_IN.regular().size(button_height),
-            ))
+            .add(Button::new(icons::ARROWS_IN.regular().size(button_height)))
             .on_hover_text("Restore window");
         if maximized_response.clicked() {
             ui.ctx()
@@ -128,9 +122,7 @@ pub fn window_buttons(ui: &mut egui::Ui) {
         }
     } else {
         let maximized_response = ui
-            .add(Button::new(
-                icons::ARROWS_OUT.regular().size(button_height),
-            ))
+            .add(Button::new(icons::ARROWS_OUT.regular().size(button_height)))
             .on_hover_text("Maximize window");
         if maximized_response.clicked() {
             ui.ctx().send_viewport_cmd(ViewportCommand::Maximized(true));

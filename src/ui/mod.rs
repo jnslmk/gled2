@@ -1,4 +1,4 @@
-use egui::{Color32, Stroke, Ui};
+use egui::{Color32, Frame, InnerResponse, Stroke, Ui, UiBuilder};
 
 pub mod action;
 pub mod asset;
@@ -63,3 +63,20 @@ impl<T: OverwriteChangeButton> ChangeButton for Option<T> {
         changed
     }
 }
+
+pub fn scoped_frame<T>(
+    ui: &mut Ui,
+    ui_builder: UiBuilder,
+    frame: Frame,
+    add_contents: impl FnOnce(&mut Ui) -> T,
+) -> InnerResponse<T> {
+    ui.scope_builder(ui_builder, |ui| {
+        frame
+            .show(ui, |ui| {
+                ui.take_available_space();
+                add_contents(ui)
+            })
+            .inner
+    })
+}
+
