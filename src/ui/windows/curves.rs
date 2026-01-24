@@ -88,7 +88,7 @@ fn curve_editor(ui: &mut Ui, curve: &mut Asset<Curve>, dirty: &mut bool) {
             });
     });
 
-    *dirty |= curve.data.draw(
+    *dirty |= curve.data.draw_curve(
         ui,
         true,
         None,

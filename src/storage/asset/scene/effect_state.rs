@@ -1,6 +1,5 @@
 use super::Effect;
 use crate::{
-    audio::state::get_fft_data,
     pipeline::{
         group::Group, output_mix::OutputMix, renderer_callback::RendererCallback,
         texture_to_output::TextureToOutput,
@@ -91,21 +90,11 @@ impl EffectState {
         );
 
         // Write FFT data (256 frequency bins = 1024 bytes)
-        let fft_data = get_fft_data();
+        // TODO receive updates again
+        // let fft_data = fft_data_u8();
+        let fft_data = [0u8; 256 * 4];
         let fft_offset = 28 + AnimationConfig::size();
-        for (i, &value) in fft_data.iter().take(256).enumerate() {
-            let offset = fft_offset + i * 4;
-            if offset + 4 <= data.len() {
-                data[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
-            }
-        }
-        // Fill remaining slots with zeros if FFT data is shorter than expected
-        for i in fft_data.len().min(256)..256 {
-            let offset = fft_offset + i * 4;
-            if offset + 4 <= data.len() {
-                data[offset..offset + 4].copy_from_slice(&0.0f32.to_le_bytes());
-            }
-        }
+        data[fft_offset..fft_offset + fft_data.len()].copy_from_slice(&fft_data);
     }
 
     pub const fn size() -> usize {
@@ -192,7 +181,7 @@ impl EffectState {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct OwnedTextureId(pub TextureId);
 
 impl Drop for OwnedTextureId {
