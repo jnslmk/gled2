@@ -27,25 +27,6 @@ impl SceneInstance {
         beat_progression += self.beat_progression_offset.value(beat_progression);
         let width = ui.available_width() - 20.0;
 
-        TopBottomPanel::bottom("Scene Instance action buttons")
-            .resizable(false)
-            .frame(Frame::NONE.inner_margin(Margin::from(6.0)))
-            .show_inside(ui, |ui| {
-                ui.horizontal(|ui| {
-                    egui::Frame::NONE.show(ui, |ui| {
-                        ui.set_max_width(width / 2.0);
-                        ui.vertical_centered_justified(|ui| {
-                            if ui
-                                .add(Button::new("🗐 Duplicate Scene").fill(Color32::DARK_BLUE))
-                                .clicked()
-                            {
-                                UiAction::CloneSelectedSceneInstance.enqueue();
-                            }
-                        });
-                    });
-                });
-            });
-
         ScrollArea::vertical()
             .scroll_bar_visibility(AlwaysVisible)
             .show(ui, |ui| {

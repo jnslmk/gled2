@@ -9,13 +9,11 @@ use crate::ui::action::UiAction;
 use crate::ui::scene_instance::dnd::{dnd_drag_source, dnd_drop_zone};
 use crate::ui::scene_instance::widget::EmptyGridSpot;
 use crate::ui::scene_instance::widget::SceneInstanceWidget;
-use egui::{
-    Color32, Frame, Id, TextureHandle, Ui, UiBuilder, Vec2,
-    scroll_area::ScrollBarVisibility::AlwaysVisible,
-};
+use crate::ui::ContextMenuBuilder;
+use egui::{scroll_area::ScrollBarVisibility::AlwaysVisible, Color32, Frame, Id, KeyboardShortcut, Modifiers, TextureHandle, Ui, UiBuilder, Vec2};
 use egui::{DragAndDrop, Label, LayerId, Order, Response, Sense, Widget};
 use egui_phosphor_icons::icons;
-use emath::{Rect, vec2};
+use emath::{vec2, Rect};
 use epaint::{Stroke, StrokeKind};
 
 impl App {
@@ -91,7 +89,7 @@ impl App {
                                                     "Draggable Scene Widget",
                                                     scene_instance.id,
                                                 ));
-                                                let widget_response =
+                                                let mut widget_response =
                                                     dnd_drag_source(ui, item_id, location, |ui| {
                                                         ui.add(SceneInstanceWidget {
                                                             scene_instance,
@@ -101,6 +99,34 @@ impl App {
                                                             timing: &self.timing,
                                                         })
                                                     });
+
+                                                // setup context actions
+                                                ContextMenuBuilder::default()
+                                                    .add_action(
+                                                        "Duplicate Scene",
+                                                        KeyboardShortcut::new(
+                                                            Modifiers::COMMAND,
+                                                            egui::Key::D,
+                                                        ),
+                                                        |location|{ UiAction::CloneSceneInstance(location).enqueue(); },
+                                                        ||{ UiAction::CloneSelectedSceneInstance.enqueue(); }
+                                                    )
+                                                    .add_action(
+                                                        "Delete Scene",
+                                                        KeyboardShortcut::new(
+                                                            Modifiers::default(),
+                                                            egui::Key::Delete),
+                                                        |location|{ UiAction::DeleteSceneInstance { location }.enqueue(); },
+                                                        ||{ UiAction::DeleteSelectedSceneInstance.enqueue(); }
+                                                    )
+                                                    .show(&mut widget_response, location);
+
+                                                // also handle backspace as delete action for MacOS
+                                                if ui.ctx().input_mut(|i| {
+                                                    i.consume_key(Modifiers::default(), egui::Key::Backspace) }) {
+                                                    UiAction::DeleteSelectedSceneInstance.enqueue();
+                                                }
+
 
                                                 if ui.ctx().is_being_dragged(item_id) {
                                                     ui.painter().rect_filled(
