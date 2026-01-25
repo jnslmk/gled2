@@ -44,7 +44,7 @@ where
     #[serde(untagged)]
     enum Variants {
         V1(Vec<SceneInstance>),
-        Current(Vec<HashMap<GridLocation, SceneInstance>>),
+        Current(HashMap<GridLocation, SceneInstance>),
     }
 
     match Variants::deserialize(deserializer)? {
@@ -61,7 +61,7 @@ where
                 )
             })
             .collect()),
-        Variants::Current(instances) => Ok(instances.into_iter().flatten().collect()),
+        Variants::Current(instances) => Ok(instances),
     }
 }
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
