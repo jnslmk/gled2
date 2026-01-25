@@ -5,6 +5,7 @@ pub mod state;
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
 use crate::audio::state::fft_data;
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex, RwLock};
@@ -23,7 +24,7 @@ pub fn start_fft_thread() {
     spawn(start_reactive_sound_thread);
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReactiveSignalHandle {
     uuid: Uuid,
     params: Arc<Mutex<AdsrParams>>,

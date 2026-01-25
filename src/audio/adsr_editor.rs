@@ -6,14 +6,12 @@ use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
 use crate::ui::scoped_frame;
 use crate::{WGPU_RENDER_STATE, wgpu_render_state};
-use artnet_protocol::bitflags::__private::serde::Deserializer;
 use egui::load::SizedTexture;
 use egui::{Color32, Frame, Image, Layout, Ui, UiBuilder};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
 use emath::{Align, Pos2, Rect, Vec2, pos2, remap_clamp, vec2};
 use epaint::{PathShape, PathStroke, Stroke};
 use ndarray::Array1;
-use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU64;
 use std::sync::MutexGuard;
@@ -179,51 +177,53 @@ impl PreviewShader {
     }
 }
 
-#[derive(PartialEq, Clone, Debug)]
-pub struct ADSREditor {
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[serde(from = "AdsrEditorShell", into = "AdsrEditorShell")]
+pub struct ADSR {
     pub reactive_signal_handle: ReactiveSignalHandle,
     f_center: f32,
     f_radius: f32,
     preview_shader: Option<PreviewShader>,
 }
 
-impl Serialize for ADSREditor {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let params = *self.lock_params();
-        let mut state = serializer.serialize_struct("ADSREditor", 3)?;
-        state.serialize_field("params", &params)?;
-        state.serialize_field("f_center", &self.f_center)?;
-        state.serialize_field("f_radius", &self.f_radius)?;
-        state.end()
-    }
-}
-
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct AdsrEditorShell {
     params: AdsrParams,
     f_center: f32,
     f_radius: f32,
 }
-impl<'de> Deserialize<'de> for ADSREditor {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let shell = AdsrEditorShell::deserialize(deserializer)?;
-        let editor = ADSREditor::new(shell.params, shell.f_center, shell.f_radius);
-        Ok(editor)
+
+impl From<AdsrEditorShell> for ADSR {
+    fn from(shell: AdsrEditorShell) -> Self {
+        let reactive_signal_handle = REACTIVE_SIGNAL_THREAD
+            .write()
+            .unwrap()
+            .register_reactive_signal(shell.params);
+        Self {
+            reactive_signal_handle,
+            f_center: shell.f_center,
+            f_radius: shell.f_radius,
+            preview_shader: None,
+        }
+    }
+}
+impl From<ADSR> for AdsrEditorShell {
+    fn from(editor: ADSR) -> Self {
+        let params = *editor.reactive_signal_handle.params.lock().unwrap();
+        Self {
+            params,
+            f_center: editor.f_center,
+            f_radius: editor.f_radius,
+        }
     }
 }
 
-impl Default for ADSREditor {
+impl Default for ADSR {
     fn default() -> Self {
         Self::new(AdsrParams::default(), 8200., 990.)
     }
 }
-impl ADSREditor {
+impl ADSR {
     fn new(adsr_params: AdsrParams, f_center: f32, f_radius: f32) -> Self {
         let reactive_signal_handle = REACTIVE_SIGNAL_THREAD
             .write()
@@ -238,7 +238,7 @@ impl ADSREditor {
     }
 }
 
-impl ADSREditor {
+impl ADSR {
     pub fn show(&mut self, ui: &mut Ui) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::show");
