@@ -31,7 +31,9 @@ pub enum UiAction {
     DeleteSceneInstance {
         location: GridLocation,
     },
+    DeleteSelectedSceneInstance,
     CloneSelectedSceneInstance,
+    CloneSceneInstance(GridLocation),
     InitGPU,
     SendPositions,
     ReloadShaderCode(AssetId<Animation>),
@@ -71,6 +73,11 @@ impl App {
                     project.remove_scene_instance(location);
                     UiAction::InitGPU.enqueue();
                 }
+                (Some(project), UiAction::DeleteSelectedSceneInstance) => {
+                    project.remove_scene_instance(self.selected_scene_instance);
+                    UiAction::InitGPU.enqueue();
+                }
+                
                 (Some(project), UiAction::CloneSelectedSceneInstance) => {
                     if let Some(scene) = project
                         .get_scenes_instance(&self.selected_scene_instance)
@@ -78,6 +85,18 @@ impl App {
                     {
                         project.add_scene(
                             project.next_empty_grid_location(self.selected_scene_instance),
+                            scene,
+                        );
+                        UiAction::InitGPU.enqueue();
+                    }
+                }
+                (Some(project), UiAction::CloneSceneInstance(location)) => {
+                    if let Some(scene) = project
+                        .get_scenes_instance(&location)
+                        .map(|scene_instance| scene_instance.scene)
+                    {
+                        project.add_scene(
+                            project.next_empty_grid_location(location),
                             scene,
                         );
                         UiAction::InitGPU.enqueue();
