@@ -1,9 +1,8 @@
+use crate::audio::state::{FFT_DATA, FREQ_BINS, MAX_FREQ};
 use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
-use crate::audio::state::{FREQ_BINS, MAX_FREQ};
-use ndarray::{Array1, s};
+use ndarray::{s, Array1, Axis, Slice};
 use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
-use std::f32::consts::TAU;
 use std::ops::Mul;
 
 #[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
@@ -79,7 +78,6 @@ pub struct ReactiveSignal {
     pub impulse: f32,
     pub delta_time: f32,
     pub spectrum: Array1<f32>,
-    pub ema: Array1<f32>,
     pub current_level: f32,
     prev_gamma: Array1<f32>,
 }
@@ -99,7 +97,6 @@ impl ReactiveSignal {
             delta_time,
             gate_active: false,
             spectrum: Array1::zeros(FREQ_BINS),
-            ema: Array1::zeros(FREQ_BINS),
             phase: AdsrPhase::Idle,
             params,
             current_level: 0.0,
@@ -108,10 +105,10 @@ impl ReactiveSignal {
         }
     }
 
-    pub fn tick(&mut self, input: &[f32]) {
+    pub fn tick(&mut self) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ReactiveSignal::tick");
-        self.tick_lowpass(input);
+        self.rms();
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
         self.impulse = (self
             .spectrum
@@ -216,16 +213,15 @@ impl ReactiveSignal {
     }
 
     #[inline(always)]
-    pub fn tick_lowpass(&mut self, bins: &[f32]) {
-        let bins = Array1::from(bins.to_vec());
-        // calculate an exponential moving average to prevent aliasing
-        let alpha = 1.0 - (-self.delta_time * 100.0 / TAU).exp(); // Sample-rate-aware alpha
-        self.ema = alpha * bins + (1.0 - alpha) * &self.ema;
+    pub fn rms(&mut self) {
+        let mut rms_buffer = FFT_DATA.lock().clone();
+        rms_buffer.slice_axis_inplace(Axis(0), Slice::new(-20, None, 1));
+        let mut rms_buffer = rms_buffer.mean_axis(Axis(0)).expect("RMS buffer could not be calculated");
+        rms_buffer.map_inplace(|x|{*x = x.sqrt()});
 
-        let gamma = (1.0 + 100.0 * self.params.sensitivity * &self.ema).log(10.0);
-        self.spectrum = (&gamma - &self.prev_gamma)
-            .mul(self.delta_time * 100.0)
-            .clamp(0.0, f32::infinity());
-        self.prev_gamma = gamma.clone();
+        // calculate gamma
+        rms_buffer.map_inplace(|x|{*x = 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.log10()});
+
+        self.spectrum = rms_buffer.mul(self.delta_time * 10.0).clamp(0.0, f32::infinity());
     }
 }

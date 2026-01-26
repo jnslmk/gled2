@@ -3,25 +3,25 @@ use cpal::{Device, SampleFormat, SampleRate, StreamConfig};
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use rustfft::{FftPlanner, num_complex::Complex};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
+use emath::Vec2;
+use ndarray::{s, Array1, Array2, ArrayBase, Axis, Ix2, OwnedRepr, Slice};
+
 
 pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
 
 // FFT size - power of 2 for efficient FFT
-const FFT_SIZE: usize = 512;
+const WINDOW_SIZE: usize = 512;
 pub const FREQ_BINS: usize = 256;
 
-static FFT_DATA: Lazy<Arc<Mutex<Vec<f32>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(vec![0.0; FREQ_BINS])));
+const RMS_BUFFER_SIZE: usize = 100;
+pub static FFT_DATA: Lazy<Arc<Mutex<Array2<f32>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(Array2::zeros((RMS_BUFFER_SIZE, FREQ_BINS)))));
 
-pub fn fft_data() -> Vec<f32> {
-    FFT_DATA.lock().clone()
-}
-
-pub fn get_fft_bin_index_by_frequency(frequency: f32) -> Option<usize> {
-    let k = frequency / (SAMPLE_RATE * FFT_SIZE as f32);
-    Some(k.floor() as usize)
+pub fn get_fft_bin_index_by_frequency(frequency: f32) -> usize {
+    let k = WINDOW_SIZE as f32 * frequency / SAMPLE_RATE;
+    k.floor() as usize
 }
 
 fn get_sample_rate_() -> Option<SampleRate> {
@@ -86,11 +86,11 @@ pub fn start() {
     let channels = config.channels() as usize;
 
     // Create a buffer to accumulate samples (wrapped in Arc<Mutex> for thread safety)
-    let mut sample_buffer = Vec::with_capacity(FFT_SIZE * channels);
+    let mut sample_buffer = Vec::with_capacity(WINDOW_SIZE * channels);
 
     // Create FFT planner
     let mut planner = FftPlanner::new();
-    let fft = Arc::new(planner.plan_fft_forward(FFT_SIZE));
+    let fft = Arc::new(planner.plan_fft_forward(WINDOW_SIZE));
 
     let fft_data = FFT_DATA.clone();
 
@@ -100,7 +100,7 @@ pub fn start() {
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                    process_audio_samples(data, channels, &mut sample_buffer, &fft, &fft_data);
+                    process_audio_samples(data, channels, &mut sample_buffer, &fft);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -114,7 +114,7 @@ pub fn start() {
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
-                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_data);
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -129,7 +129,7 @@ pub fn start() {
                 move |data: &[u16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
                         data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
-                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_data);
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -171,7 +171,6 @@ fn process_audio_samples(
     channels: usize,
     sample_buffer: &mut Vec<f32>,
     fft: &Arc<dyn rustfft::Fft<f32>>,
-    fft_data: &Arc<Mutex<Vec<f32>>>,
 ) {
     #[cfg(feature = "profiling")]
     puffin::profile_function!("audio:process_audio_samples");
@@ -186,9 +185,9 @@ fn process_audio_samples(
     }
 
     // When we have enough samples, perform FFT
-    if sample_buffer.len() >= FFT_SIZE {
+    if sample_buffer.len() >= WINDOW_SIZE {
         // Take the last FFT_SIZE samples
-        let samples: Vec<f32> = sample_buffer[sample_buffer.len() - FFT_SIZE..].to_vec();
+        let samples: Vec<f32> = sample_buffer[sample_buffer.len() - WINDOW_SIZE..].to_vec();
 
         // Convert to complex numbers (imaginary part is 0 for real input)
         let mut complex_samples: Vec<Complex<f32>> =
@@ -197,7 +196,7 @@ fn process_audio_samples(
         // Apply window function (Hanning window) to reduce spectral leakage
         for (i, sample) in complex_samples.iter_mut().enumerate() {
             let window = 0.5
-                * (1.0 - (2.0 * std::f32::consts::PI * i as f32 / (FFT_SIZE as f32 - 1.0)).cos());
+                * (1.0 - (2.0 * std::f32::consts::PI * i as f32 / (WINDOW_SIZE as f32 - 1.0)).cos());
             sample.re *= window;
         }
 
@@ -214,44 +213,50 @@ fn process_audio_samples(
             linear_magnitudes.push(magnitude);
         }
 
-        // Apply logarithmic frequency scaling
-        // Map linear FFT bins to logarithmic frequency bins
-        let mut magnitudes = vec![0.0f32; FREQ_BINS];
-        for (output_bin, magnitude_slot) in magnitudes.iter_mut().enumerate() {
-            // Map output bin to logarithmic frequency scale
-            // Use logarithmic mapping: log(freq) = log(min) + (log(max) - log(min)) * (bin / total_bins)
-            let min_freq = 1.0f32;
-            let max_freq = FREQ_BINS as f32;
-            let log_min = min_freq.ln();
-            let log_max = max_freq.ln();
-            let log_freq = log_min + (log_max - log_min) * (output_bin as f32 / FREQ_BINS as f32);
-            let linear_freq = log_freq.exp();
-
-            // Find the corresponding linear bin(s) and interpolate
-            let linear_bin = linear_freq - 1.0;
-            let lower_bin = linear_bin.floor() as usize;
-            let upper_bin = (linear_bin.ceil() as usize).min(FREQ_BINS - 1);
-            let fraction = linear_bin - lower_bin as f32;
-
-            if lower_bin < FREQ_BINS {
-                let lower_mag = linear_magnitudes[lower_bin];
-                let upper_mag = if upper_bin < FREQ_BINS && upper_bin != lower_bin {
-                    linear_magnitudes[upper_bin]
-                } else {
-                    lower_mag
-                };
-                let scaled_mag = lower_mag * (1.0 - fraction) + upper_mag * fraction;
-                *magnitude_slot = scaled_mag;
-                // Update max_magnitude with the scaled value
-            }
-        }
-
-        *fft_data.lock() = magnitudes;
+        //// Apply logarithmic frequency scaling
+        //// Map linear FFT bins to logarithmic frequency bins
+        //let mut magnitudes = vec![0.0f32; FREQ_BINS];
+        //for (output_bin, magnitude_slot) in magnitudes.iter_mut().enumerate() {
+        //    // Map output bin to logarithmic frequency scale
+        //    // Use logarithmic mapping: log(freq) = log(min) + (log(max) - log(min)) * (bin / total_bins)
+        //    let min_freq = 1.0f32;
+        //    let max_freq = FREQ_BINS as f32;
+        //    let log_min = min_freq.ln();
+        //    let log_max = max_freq.ln();
+        //    let log_freq = log_min + (log_max - log_min) * (output_bin as f32 / FREQ_BINS as f32);
+        //    let linear_freq = log_freq.exp();
+//
+        //    // Find the corresponding linear bin(s) and interpolate
+        //    let linear_bin = linear_freq - 1.0;
+        //    let lower_bin = linear_bin.floor() as usize;
+        //    let upper_bin = (linear_bin.ceil() as usize).min(FREQ_BINS - 1);
+        //    let fraction = linear_bin - lower_bin as f32;
+//
+        //    if lower_bin < FREQ_BINS {
+        //        let lower_mag = linear_magnitudes[lower_bin];
+        //        let upper_mag = if upper_bin < FREQ_BINS && upper_bin != lower_bin {
+        //            linear_magnitudes[upper_bin]
+        //        } else {
+        //            lower_mag
+        //        };
+        //        let scaled_mag = lower_mag * (1.0 - fraction) + upper_mag * fraction;
+        //        *magnitude_slot = scaled_mag;
+        //        // Update max_magnitude with the scaled value
+        //    }
+        //}
 
         // Keep only the last FFT_SIZE samples for overlap
         let buffer_len = sample_buffer.len();
-        if buffer_len > FFT_SIZE {
-            sample_buffer.drain(0..buffer_len - FFT_SIZE);
+        if buffer_len > WINDOW_SIZE {
+            sample_buffer.drain(0..buffer_len - WINDOW_SIZE);
+        }
+
+        let mut linear_magnitudes = Array1::from_vec(linear_magnitudes);
+        linear_magnitudes.map_inplace(|mut x| {*x *= *x;});
+        {
+            let mut buffer = FFT_DATA.lock();
+            buffer.slice_axis_inplace(Axis(0), Slice::new(1, None, 1));
+            buffer.push_row(linear_magnitudes.view()).expect("Failed to push FFT data");
         }
     }
 }

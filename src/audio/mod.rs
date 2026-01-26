@@ -3,7 +3,6 @@ pub mod reactive_signal;
 pub mod state;
 
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
-use crate::audio::state::fft_data;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -97,7 +96,6 @@ impl ReactiveSignalThread {
 }
 pub fn start_reactive_sound_thread() {
     loop {
-        let spectrum = fft_data();
 
         REACTIVE_SIGNAL_THREAD
             .write()
@@ -105,7 +103,7 @@ pub fn start_reactive_sound_thread() {
             .signals
             .values_mut()
             .for_each(|signal| {
-                signal.tick(&spectrum);
+                signal.tick();
             });
 
         // this delay needs to be long enough to allow the ui thread to copy data in time
