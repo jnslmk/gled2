@@ -1,12 +1,15 @@
+use std::array;
+use std::ops::Add;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, SampleFormat, SampleRate, StreamConfig};
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::{Arc, OnceLock};
+use std::sync::atomic::AtomicUsize;
 use emath::Vec2;
 use ndarray::{s, Array1, Array2, ArrayBase, Axis, Ix2, OwnedRepr, Slice};
-
+use rustfft::num_traits::Pow;
 
 pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
@@ -15,9 +18,12 @@ pub const MAX_FREQ: f32 = 24_000.0;
 const WINDOW_SIZE: usize = 512;
 pub const FREQ_BINS: usize = 256;
 
-const RMS_BUFFER_SIZE: usize = 100;
-pub static FFT_DATA: Lazy<Arc<Mutex<Array2<f32>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(Array2::zeros((RMS_BUFFER_SIZE, FREQ_BINS)))));
+pub const RMS_BUFFER_SIZE: usize = 100;
+pub static FFT_DATA: Lazy<[Mutex<[f32; FREQ_BINS ]>; RMS_BUFFER_SIZE]> =
+    Lazy::new(|| array::from_fn(|_| {
+            Mutex::new([0f32; FREQ_BINS])
+        }));
+pub static RMS_INDEX: AtomicUsize = AtomicUsize::new(0);
 
 pub fn get_fft_bin_index_by_frequency(frequency: f32) -> usize {
     let k = WINDOW_SIZE as f32 * frequency / SAMPLE_RATE;
@@ -209,7 +215,7 @@ fn process_audio_samples(
 
         for sample in complex_samples.iter().take(FREQ_BINS) {
             // Calculate magnitude (norm of complex number)
-            let magnitude = sample.norm();
+            let magnitude = sample.norm().pow(2);
             linear_magnitudes.push(magnitude);
         }
 
@@ -251,12 +257,9 @@ fn process_audio_samples(
             sample_buffer.drain(0..buffer_len - WINDOW_SIZE);
         }
 
-        let mut linear_magnitudes = Array1::from_vec(linear_magnitudes);
-        linear_magnitudes.map_inplace(|mut x| {*x *= *x;});
-        {
-            let mut buffer = FFT_DATA.lock();
-            buffer.slice_axis_inplace(Axis(0), Slice::new(1, None, 1));
-            buffer.push_row(linear_magnitudes.view()).expect("Failed to push FFT data");
-        }
+        let linear_magnitudes: &[f32] = &linear_magnitudes[..FREQ_BINS];
+        let current_index = RMS_INDEX.load(std::sync::atomic::Ordering::Relaxed).add(1) % RMS_BUFFER_SIZE;
+        RMS_INDEX.store(current_index, std::sync::atomic::Ordering::Relaxed);
+        FFT_DATA[current_index].lock().copy_from_slice(&linear_magnitudes);
     }
 }

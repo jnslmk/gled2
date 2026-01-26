@@ -1,9 +1,11 @@
-use crate::audio::state::{FFT_DATA, FREQ_BINS, MAX_FREQ};
+use crate::audio::state::{FFT_DATA, FREQ_BINS, MAX_FREQ, RMS_BUFFER_SIZE, RMS_INDEX};
 use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
 use ndarray::{s, Array1, Axis, Slice};
-use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
 use std::ops::Mul;
+use std::sync::atomic::Ordering::Relaxed;
+
+const RMS_LENGTH: usize = 1;
 
 #[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct AdsrParams {
@@ -80,6 +82,8 @@ pub struct ReactiveSignal {
     pub spectrum: Array1<f32>,
     pub current_level: f32,
     prev_gamma: Array1<f32>,
+    rms_buffer: [[f32; FREQ_BINS ]; RMS_BUFFER_SIZE],
+    running_rms_sum: Array1<f32>,
 }
 
 impl Default for ReactiveSignal {
@@ -102,13 +106,19 @@ impl ReactiveSignal {
             current_level: 0.0,
             impulse: 0.0,
             prev_gamma: Array1::zeros(FREQ_BINS),
+            rms_buffer: [[0.0; FREQ_BINS]; RMS_BUFFER_SIZE],
+            running_rms_sum: Array1::zeros(FREQ_BINS),
         }
     }
 
     pub fn tick(&mut self) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ReactiveSignal::tick");
-        self.rms();
+        let current_rms_sample = FFT_DATA[RMS_INDEX.load(Relaxed)].lock().clone();
+        let current_rms_index = RMS_INDEX.load(Relaxed) % RMS_BUFFER_SIZE;
+        self.rms(current_rms_sample, current_rms_index);
+        self.spectrum.map_inplace(|x|{*x = 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.log10()});
+
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
         self.impulse = (self
             .spectrum
@@ -213,15 +223,41 @@ impl ReactiveSignal {
     }
 
     #[inline(always)]
-    pub fn rms(&mut self) {
-        let mut rms_buffer = FFT_DATA.lock().clone();
-        rms_buffer.slice_axis_inplace(Axis(0), Slice::new(-20, None, 1));
-        let mut rms_buffer = rms_buffer.mean_axis(Axis(0)).expect("RMS buffer could not be calculated");
-        rms_buffer.map_inplace(|x|{*x = x.sqrt()});
+    pub fn rms(&mut self, current_rms_sample: [f32; FREQ_BINS], current_rms_index: usize) {
+        self.rms_buffer[current_rms_index] = current_rms_sample;
+        // add RMS_BUFFER_SIZE to the index before substraction to prevent overflows
+        let drop_index = (current_rms_index + RMS_BUFFER_SIZE - RMS_LENGTH) % RMS_BUFFER_SIZE;
+        let drop_value = self.rms_buffer[drop_index];
+        self.running_rms_sum = &self.running_rms_sum + Array1::from_vec(current_rms_sample.to_vec()) - Array1::from_vec(drop_value.to_vec());
+        self.spectrum = self.running_rms_sum.mapv(|x|{x.mul(1.0/(RMS_LENGTH as f32))}.sqrt());
+    }
+}
 
-        // calculate gamma
-        rms_buffer.map_inplace(|x|{*x = 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.log10()});
 
-        self.spectrum = rms_buffer.mul(self.delta_time * 10.0).clamp(0.0, f32::infinity());
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn run_for_with_impulse_at(run_for: usize, at: usize, impulse: f32) -> ReactiveSignal {
+        let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
+        for i in 0..run_for {
+            let sample = if i == at {[impulse; FREQ_BINS]} else {[0f32; FREQ_BINS]};
+            signal.rms(sample, i);
+            eprintln!(" = {:?}", signal.running_rms_sum);
+            eprintln!("--------------")
+        }
+        signal
+    }
+
+    #[test]
+    fn test_running_sum_removal(){
+        let signal = run_for_with_impulse_at(2+RMS_LENGTH, 1, 1.0);
+        assert_eq!(signal.running_rms_sum, Array1::from_vec(vec![0f32; FREQ_BINS]));
+    }
+
+    #[test]
+    fn test_spectrum(){
+        let signal = run_for_with_impulse_at(RMS_LENGTH, 0, 4.0);
+        assert_eq!(signal.spectrum, Array1::from_vec(vec![(4.0 / RMS_LENGTH as f32).sqrt(); FREQ_BINS]));
     }
 }
