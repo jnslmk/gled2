@@ -7,6 +7,7 @@ use once_cell::sync::Lazy;
 use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::{Arc, OnceLock};
 use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::Relaxed;
 use emath::Vec2;
 use ndarray::{s, Array1, Array2, ArrayBase, Axis, Ix2, OwnedRepr, Slice};
 use rustfft::num_traits::Pow;
@@ -258,8 +259,12 @@ fn process_audio_samples(
         }
 
         let linear_magnitudes: &[f32] = &linear_magnitudes[..FREQ_BINS];
-        let current_index = RMS_INDEX.load(std::sync::atomic::Ordering::Relaxed).add(1) % RMS_BUFFER_SIZE;
-        RMS_INDEX.store(current_index, std::sync::atomic::Ordering::Relaxed);
+        let mut current_index = RMS_INDEX.load(Relaxed);
+        current_index = (current_index + 1) % RMS_BUFFER_SIZE;
+        if current_index == 100{
+            let a = 0;
+        }
+        RMS_INDEX.store(current_index,Relaxed);
         FFT_DATA[current_index].lock().copy_from_slice(&linear_magnitudes);
     }
 }
