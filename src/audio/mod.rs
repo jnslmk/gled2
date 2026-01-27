@@ -13,6 +13,7 @@ use std::thread::spawn;
 use std::time::Duration;
 use uuid::Uuid;
 
+
 pub static REACTIVE_SIGNAL_THREAD: Lazy<RwLock<ReactiveSignalThread>> =
     Lazy::new(|| RwLock::new(ReactiveSignalThread::new()));
 
@@ -95,17 +96,21 @@ impl ReactiveSignalThread {
     }
 }
 pub fn start_reactive_sound_thread() {
+    #[cfg(feature = "profiling")]
+    profiling::register_thread!("audio");
     loop {
-
-        REACTIVE_SIGNAL_THREAD
-            .write()
-            .unwrap()
-            .signals
-            .values_mut()
-            .for_each(|signal| {
-                signal.tick();
-            });
-
+        {
+            #[cfg(feature = "profiling")]
+            puffin::profile_scope!("ReactiveSignalThread::tick");
+            REACTIVE_SIGNAL_THREAD
+                .write()
+                .unwrap()
+                .signals
+                .values_mut()
+                .for_each(|signal| {
+                    signal.tick();
+                });
+        }
         // this delay needs to be long enough to allow the ui thread to copy data in time
         // this may be suboptimal
         thread::sleep(Duration::from_millis(ADSR_SAMPLE_INTERVAL_MS));

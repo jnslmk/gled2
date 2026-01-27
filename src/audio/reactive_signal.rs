@@ -1,11 +1,12 @@
 use crate::audio::state::{FFT_DATA, FREQ_BINS, MAX_FREQ, RMS_BUFFER_SIZE, RMS_INDEX};
 use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
-use ndarray::{s, Array1, Axis, Slice};
+use ndarray::{s, Array1, Array2, Axis, Slice};
 use serde::{Deserialize, Serialize};
 use std::ops::Mul;
 use std::sync::atomic::Ordering::Relaxed;
+use rustfft::num_traits::Float;
 
-const RMS_LENGTH: usize = 1;
+const RMS_LENGTH: usize = 10;
 
 #[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct AdsrParams {
@@ -82,7 +83,7 @@ pub struct ReactiveSignal {
     pub spectrum: Array1<f32>,
     pub current_level: f32,
     prev_gamma: Array1<f32>,
-    rms_buffer: [[f32; FREQ_BINS ]; RMS_BUFFER_SIZE],
+    rms_buffer: Array2<f32>,
     running_rms_sum: Array1<f32>,
 }
 
@@ -106,7 +107,7 @@ impl ReactiveSignal {
             current_level: 0.0,
             impulse: 0.0,
             prev_gamma: Array1::zeros(FREQ_BINS),
-            rms_buffer: [[0.0; FREQ_BINS]; RMS_BUFFER_SIZE],
+            rms_buffer: Array2::zeros((RMS_BUFFER_SIZE, FREQ_BINS)),
             running_rms_sum: Array1::zeros(FREQ_BINS),
         }
     }
@@ -117,7 +118,8 @@ impl ReactiveSignal {
         let current_rms_sample = FFT_DATA[RMS_INDEX.load(Relaxed)].lock().clone();
         let current_rms_index = RMS_INDEX.load(Relaxed) % RMS_BUFFER_SIZE;
         self.rms(current_rms_sample, current_rms_index);
-        self.spectrum.map_inplace(|x|{*x = 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.log10()});
+        self.spectrum.map_inplace(|x|{ *x = 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.log10() });
+        self.spectrum.map_inplace(|x|{ *x = x.mul(self.delta_time * 10.0).clamp(0.0, f32::infinity());});
 
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
         self.impulse = (self
@@ -224,11 +226,21 @@ impl ReactiveSignal {
 
     #[inline(always)]
     pub fn rms(&mut self, current_rms_sample: [f32; FREQ_BINS], current_rms_index: usize) {
-        self.rms_buffer[current_rms_index] = current_rms_sample;
-        // add RMS_BUFFER_SIZE to the index before substraction to prevent overflows
+        let current_rms_sample = Array1::from_vec(current_rms_sample.to_vec());
+        self.rms_buffer.row_mut(current_rms_index).assign(&Array1::from_vec(current_rms_sample.to_vec()));
+
         let drop_index = (current_rms_index + RMS_BUFFER_SIZE - RMS_LENGTH) % RMS_BUFFER_SIZE;
-        let drop_value = self.rms_buffer[drop_index];
-        self.running_rms_sum = &self.running_rms_sum + Array1::from_vec(current_rms_sample.to_vec()) - Array1::from_vec(drop_value.to_vec());
+        // add RMS_BUFFER_SIZE to the index before substraction to prevent overflows
+        // the following is for implementing wraparound indices
+        if drop_index > current_rms_index{
+            self.running_rms_sum =
+                // right subinterval
+                self.rms_buffer.slice(s![current_rms_index+1.., ..]).sum_axis(Axis(0))
+                // left subinterval
+                + self.rms_buffer.slice(s![..drop_index, ..]).sum_axis(Axis(0));
+        } else {
+            self.running_rms_sum = self.rms_buffer.slice(s![drop_index+1..=current_rms_index, ..]).sum_axis(Axis(0));
+        }
         self.spectrum = self.running_rms_sum.mapv(|x|{x.mul(1.0/(RMS_LENGTH as f32))}.sqrt());
     }
 }
