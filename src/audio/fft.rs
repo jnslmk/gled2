@@ -8,6 +8,7 @@ use rustfft::{FftPlanner, num_complex::Complex};
 use std::sync::{Arc, OnceLock};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::mpsc::Receiver;
 use emath::Vec2;
 use ndarray::{s, Array1, Array2, ArrayBase, Axis, Ix2, OwnedRepr, Slice};
 use rustfft::num_traits::Pow;
@@ -58,7 +59,7 @@ pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
     fft_data_u8
 }
 
-pub fn start() {
+pub fn start(rx: Receiver<()>) {
     log::info!("Starting audio capture thread");
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio:capture");
@@ -107,6 +108,7 @@ pub fn start() {
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                    if rx.try_recv().is_ok(){ return; }
                     process_audio_samples(data, channels, &mut sample_buffer, &fft);
                 },
                 |err| {
@@ -121,6 +123,7 @@ pub fn start() {
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
+                    if rx.try_recv().is_ok(){ return; }
                     process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft);
                 },
                 |err| {
@@ -136,6 +139,7 @@ pub fn start() {
                 move |data: &[u16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
                         data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
+                    if rx.try_recv().is_ok(){ return; }
                     process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft);
                 },
                 |err| {

@@ -1,28 +1,51 @@
 pub mod adsr_editor;
 pub mod reactive_signal;
-pub mod state;
+pub mod fft;
 
+use crate::audio::fft::{FFT_DATA, RMS_INDEX};
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
+use cpal::traits::HostTrait;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::sync::{Arc, Mutex, RwLock};
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::mpsc::{channel, Sender};
+use std::sync::{Arc, Mutex, OnceLock, RwLock};
 use std::thread;
 use std::thread::spawn;
 use std::time::Duration;
 use uuid::Uuid;
-use crate::audio::state::{FFT_DATA, RMS_INDEX};
 
 pub static REACTIVE_SIGNAL_THREAD: Lazy<RwLock<ReactiveSignalThread>> =
     Lazy::new(|| RwLock::new(ReactiveSignalThread::new()));
 
 static ADSR_SAMPLE_INTERVAL_MS: u64 = 10;
 
+static FFT_THREAD: OnceLock<FFTThread> = OnceLock::new();
+
 pub fn start_fft_thread() {
-    spawn(state::start);
+    FFT_THREAD.set(FFTThread::start()).expect("Failed to start FFT thread");
     spawn(start_reactive_sound_thread);
+}
+
+#[derive(Debug)]
+pub struct FFTThread{
+    tx: Sender<()>,
+}
+impl FFTThread{
+    pub fn start() -> FFTThread {
+        let (tx, rx) = channel::<()>();
+        spawn(|| fft::start(rx));
+        Self{tx}
+    }
+    pub fn stop(&self){
+        self.tx.send(()).unwrap();
+    }
+    pub fn get_input_devices(&self){
+        let host = cpal::default_host();
+        host.devices();
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

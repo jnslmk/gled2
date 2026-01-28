@@ -1,4 +1,4 @@
-use crate::audio::state::{FREQ_BINS, MAX_FREQ, RMS_BUFFER_SIZE};
+use crate::audio::fft::{FREQ_BINS, MAX_FREQ, RMS_BUFFER_SIZE};
 use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
 use ndarray::{s, Array1, Array2, Axis};
 use rustfft::num_traits::Float;

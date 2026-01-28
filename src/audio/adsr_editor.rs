@@ -1,5 +1,5 @@
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
-use crate::audio::state::{MAX_FREQ, fft_data_u8, get_fft_bin_index_by_frequency, FREQ_BINS};
+use crate::audio::fft::{MAX_FREQ, fft_data_u8, get_fft_bin_index_by_frequency, FREQ_BINS};
 use crate::audio::{REACTIVE_SIGNAL_THREAD, ReactiveSignalHandle};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;

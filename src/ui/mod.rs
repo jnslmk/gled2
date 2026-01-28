@@ -14,6 +14,7 @@ pub mod temperature;
 pub mod update_check;
 pub mod window_common;
 pub mod windows;
+mod settings;
 
 pub static FRAME_STROKE: Stroke = Stroke {
     width: 0.3,
