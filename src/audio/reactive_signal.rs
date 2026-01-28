@@ -1,10 +1,9 @@
-use crate::audio::state::{FFT_DATA, FREQ_BINS, MAX_FREQ, RMS_BUFFER_SIZE, RMS_INDEX};
+use crate::audio::state::{FREQ_BINS, MAX_FREQ, RMS_BUFFER_SIZE};
 use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
-use ndarray::{s, Array1, Array2, Axis, Slice};
+use ndarray::{s, Array1, Array2, Axis};
+use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
 use std::ops::Mul;
-use std::sync::atomic::Ordering::Relaxed;
-use rustfft::num_traits::Float;
 
 #[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct AdsrParams {
@@ -18,6 +17,7 @@ pub struct AdsrParams {
     pub sensitivity: f32,
     pub gate_activation_threshold: f32,
     pub gate_deactivation_threshold: f32,
+    pub rms_length: usize,
 }
 impl AdsrParams {
     #[allow(clippy::too_many_arguments)]
@@ -41,6 +41,7 @@ impl AdsrParams {
             sensitivity,
             gate_activation_threshold: gate_threshold,
             gate_deactivation_threshold: gate_threshold * 0.5,
+            rms_length: 10,
         };
         ret.set_filter_tune(f_center, f_radius);
         ret
@@ -83,7 +84,6 @@ pub struct ReactiveSignal {
     prev_gamma: Array1<f32>,
     rms_buffer: Array2<f32>,
     running_rms_sum: Array1<f32>,
-    rms_length: usize,
 }
 
 impl Default for ReactiveSignal {
@@ -109,7 +109,6 @@ impl ReactiveSignal {
             prev_gamma: Array1::zeros(FREQ_BINS),
             rms_buffer: Array2::zeros((RMS_BUFFER_SIZE, FREQ_BINS)),
             running_rms_sum: Array1::zeros(FREQ_BINS),
-            rms_length: 2,
         }
     }
 
@@ -228,19 +227,19 @@ impl ReactiveSignal {
         let current_rms_sample = Array1::from_vec(current_rms_sample.to_vec());
         self.rms_buffer.row_mut(current_rms_index).assign(&Array1::from_vec(current_rms_sample.to_vec()));
 
-        let drop_index = (current_rms_index + RMS_BUFFER_SIZE - self.rms_length) % RMS_BUFFER_SIZE;
+        let drop_index = (current_rms_index + RMS_BUFFER_SIZE - self.params.rms_length) % RMS_BUFFER_SIZE;
         // add RMS_BUFFER_SIZE to the index before substraction to prevent overflows
         // the following is for implementing wraparound indices
         if drop_index > current_rms_index{
             self.running_rms_sum =
                 // right subinterval
-                self.rms_buffer.slice(s![current_rms_index+1.., ..]).sum_axis(Axis(0))
+                self.rms_buffer.slice(s![drop_index+1..RMS_BUFFER_SIZE, ..]).sum_axis(Axis(0))
                 // left subinterval
-                + self.rms_buffer.slice(s![..drop_index, ..]).sum_axis(Axis(0));
+                + self.rms_buffer.slice(s![..=current_rms_index, ..]).sum_axis(Axis(0));
         } else {
             self.running_rms_sum = self.rms_buffer.slice(s![drop_index+1..=current_rms_index, ..]).sum_axis(Axis(0));
         }
-        self.running_rms_sum.mapv(|x|{x.mul(1.0/(self.rms_length as f32))}.sqrt());
+        self.running_rms_sum.mapv(|x|{x.mul(1.0/(self.params.rms_length as f32))}.sqrt());
     }
 }
 
@@ -251,12 +250,12 @@ mod tests {
 
     fn run_for_with_impulse_at(run_for: usize, at: usize, impulse: f32) -> ReactiveSignal {
         let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
-        signal.rms_length = 2;
+        signal.params.rms_length = 2;
         for i in 0..run_for {
             let idx = i%RMS_BUFFER_SIZE;
             let sample = if i == at {[impulse; FREQ_BINS]} else {[0f32; FREQ_BINS]};
             signal.tick(sample, idx);
-            eprintln!(" = {:?}", signal.spectrum);
+            eprintln!("{:?}", signal.spectrum);
             eprintln!("--------------")
         }
         signal
@@ -275,7 +274,17 @@ mod tests {
     }
     #[test]
     fn test_wraparound(){
-            let signal = run_for_with_impulse_at(RMS_BUFFER_SIZE+2, RMS_BUFFER_SIZE, 1.0);
-            assert_eq!(signal.running_rms_sum, Array1::from_vec(vec![1f32; FREQ_BINS]));
+            let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
+            signal.params.rms_length = 2;
+            for i in 0..110 {
+                let idx = i%RMS_BUFFER_SIZE;
+                signal.tick([1f32; FREQ_BINS], idx);
+                eprintln!("idx = {}", idx);
+                eprintln!("running_rms_sum = {:?}", signal.running_rms_sum);
+                eprintln!("--------------");
+                if i >= 2 {
+                    assert_eq!(signal.running_rms_sum, Array1::from_vec(vec![2f32; FREQ_BINS]))
+                }
+            }
         }
 }
