@@ -1,17 +1,15 @@
-use std::array;
-use std::ops::Add;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Device, SampleFormat, SampleRate, StreamConfig};
+use cpal::{Device, DeviceId, SampleFormat, SampleRate, StreamConfig};
 use egui::mutex::Mutex;
+use ndarray::{s, Array1, Array2, ArrayBase, Axis, Ix2, OwnedRepr, Slice};
 use once_cell::sync::Lazy;
-use rustfft::{FftPlanner, num_complex::Complex};
-use std::sync::{Arc, OnceLock};
+use rustfft::num_traits::Pow;
+use rustfft::{num_complex::Complex, FftPlanner};
+use std::array;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::mpsc::Receiver;
-use emath::Vec2;
-use ndarray::{s, Array1, Array2, ArrayBase, Axis, Ix2, OwnedRepr, Slice};
-use rustfft::num_traits::Pow;
+use std::sync::Arc;
 
 pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
@@ -59,7 +57,7 @@ pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
     fft_data_u8
 }
 
-pub fn start(rx: Receiver<()>) {
+pub fn start(rx: Receiver<()>, device_id: DeviceId) {
     log::info!("Starting audio capture thread");
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio:capture");
@@ -99,8 +97,6 @@ pub fn start(rx: Receiver<()>) {
     // Create FFT planner
     let mut planner = FftPlanner::new();
     let fft = Arc::new(planner.plan_fft_forward(WINDOW_SIZE));
-
-    let fft_data = FFT_DATA.clone();
 
     let stream = match config.sample_format() {
         SampleFormat::F32 => {
@@ -265,9 +261,7 @@ fn process_audio_samples(
         let linear_magnitudes: &[f32] = &linear_magnitudes[..FREQ_BINS];
         let mut current_index = RMS_INDEX.load(Relaxed);
         current_index = (current_index + 1) % RMS_BUFFER_SIZE;
-        if current_index == 100{
-            let a = 0;
-        }
+
         RMS_INDEX.store(current_index,Relaxed);
         FFT_DATA[current_index].lock().copy_from_slice(&linear_magnitudes);
     }

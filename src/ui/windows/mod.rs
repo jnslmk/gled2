@@ -14,6 +14,7 @@ pub mod palettes;
 pub mod projects;
 pub mod scenes;
 pub mod shortcuts;
+mod settings;
 
 #[derive(Default)]
 pub struct Windows {
@@ -30,6 +31,7 @@ pub struct Windows {
     pub projects: projects::ProjectsWindow,
     pub scenes: scenes::ScenesWindow,
     pub shortcuts: shortcuts::ShortcutsWindow,
+    pub settings: settings::SettingsWindow,
 }
 
 impl Windows {
@@ -47,6 +49,7 @@ impl Windows {
         self.palettes.update(ctx);
         self.projects.update(ctx);
         self.scenes.update(ctx, timing);
+        self.settings.update(ctx);
         self.shortcuts.update(ctx, project);
     }
 }

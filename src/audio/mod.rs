@@ -4,14 +4,15 @@ pub mod fft;
 
 use crate::audio::fft::{FFT_DATA, RMS_INDEX};
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
-use cpal::traits::HostTrait;
+use cpal::traits::{DeviceTrait, HostTrait};
+use cpal::{DeviceDescription, DeviceId};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::hash::Hash;
+use std::hash::{DefaultHasher, Hash};
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::mpsc::{channel, Sender};
-use std::sync::{Arc, Mutex, OnceLock, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::thread::spawn;
 use std::time::Duration;
@@ -19,32 +20,50 @@ use uuid::Uuid;
 
 pub static REACTIVE_SIGNAL_THREAD: Lazy<RwLock<ReactiveSignalThread>> =
     Lazy::new(|| RwLock::new(ReactiveSignalThread::new()));
-
 static ADSR_SAMPLE_INTERVAL_MS: u64 = 10;
+pub static FFT_THREAD: Lazy<Mutex<FFTThread>> = Lazy::new(|| Mutex::new(FFTThread::init()));
+pub static AUDIO_DEVICES: Lazy<Mutex<Vec<(DeviceId, DeviceDescription)>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
-static FFT_THREAD: OnceLock<FFTThread> = OnceLock::new();
 
 pub fn start_fft_thread() {
-    FFT_THREAD.set(FFTThread::start()).expect("Failed to start FFT thread");
+    let host = cpal::default_host();
+    let default_device = host.default_input_device();
+    if let Some(default_device) = default_device {
+        {
+            let mut fft_thread = FFT_THREAD.lock().unwrap();
+            fft_thread.selected_device = default_device.id().ok();
+            fft_thread.restart_fft(None);
+        }
+    }
     spawn(start_reactive_sound_thread);
 }
 
 #[derive(Debug)]
 pub struct FFTThread{
-    tx: Sender<()>,
+    handle: Option<(thread::JoinHandle<()>, Sender<()>)>,
+    pub selected_device: Option<DeviceId>,
 }
+
 impl FFTThread{
-    pub fn start() -> FFTThread {
-        let (tx, rx) = channel::<()>();
-        spawn(|| fft::start(rx));
-        Self{tx}
+    pub fn init() -> FFTThread {
+        spawn(audio_device_info_loop);
+        Self{handle: None, selected_device: None}
     }
-    pub fn stop(&self){
-        self.tx.send(()).unwrap();
-    }
-    pub fn get_input_devices(&self){
-        let host = cpal::default_host();
-        host.devices();
+    pub fn restart_fft(&mut self, device_id: Option<DeviceId>){
+        if let Some(handle) = self.handle.take() {
+            // wait for the thread to stop
+            handle.1.send(()).unwrap();
+            handle.0.join().unwrap();
+        }
+
+        if let Some(device_id) = device_id {
+            let (tx, rx) = channel::<()>();
+            let handle = spawn(|| fft::start(rx, device_id));
+            self.handle = Some((handle, tx));
+        }
+        else {
+            self.handle = None
+        }
     }
 }
 
@@ -140,5 +159,29 @@ pub fn start_reactive_sound_thread() {
         // this delay needs to be long enough to allow the ui thread to copy data in time
         // this may be suboptimal
         thread::sleep(Duration::from_millis(ADSR_SAMPLE_INTERVAL_MS));
+    }
+}
+
+// poll for audio device changes every second
+pub fn audio_device_info_loop(){
+    #[cfg(feature = "profiling")]
+    profiling::register_thread!("audio_device_info_loop");
+    loop {
+        {
+            #[cfg(feature = "profiling")]
+            puffin::profile_scope!("audio_device_info_loop");
+
+            let host = cpal::default_host();
+            let devices = host.input_devices().expect("Failed to get audio devices");
+            let mut device_map = Vec::from_iter(devices.map(|device| (
+                device.id().expect("Failed to get audio device id"),
+                device.description().expect("Failed to get audio device description"))));
+            let mut hasher = DefaultHasher::new();
+            device_map.sort_by(|a, b| a.0.hash(&mut hasher).cmp(&b.0.hash(&mut hasher)));
+
+            eprintln!("{:?}", device_map);
+            *AUDIO_DEVICES.lock().unwrap() = device_map;
+        }
+        thread::sleep(Duration::from_millis(1000));
     }
 }
