@@ -6,7 +6,7 @@ use std::clone::Clone;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
-use tokio::sync::broadcast;
+use crossbeam_channel::Sender;
 
 pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
@@ -42,14 +42,17 @@ pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
     fft_data_u8
 }
 
-pub async fn start(device_id: DeviceId, fft_tx: broadcast::Sender<RootSample>) {
+pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>) {
     log::info!("Starting audio capture thread");
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio:capture");
     RMS_INDEX.store(0, Relaxed);
     log::info!("Starting FFT thread");
 
-    let device = match get_audio_config() {
+    let host = cpal::default_host();
+    let device = host.device_by_id(&device_id);
+
+    let device = match device {
         Some(device) => {
             log::info!(
                 "Using audio input device: {}",
@@ -91,7 +94,7 @@ pub async fn start(device_id: DeviceId, fft_tx: broadcast::Sender<RootSample>) {
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                    process_audio_samples(data, channels, &mut sample_buffer, &fft, &fft_tx);
+                    process_audio_samples(data, channels, &mut sample_buffer, &fft, &fft_tx, &device_id);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -105,7 +108,7 @@ pub async fn start(device_id: DeviceId, fft_tx: broadcast::Sender<RootSample>) {
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
-                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_tx);
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_tx, &device_id);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -120,7 +123,7 @@ pub async fn start(device_id: DeviceId, fft_tx: broadcast::Sender<RootSample>) {
                 move |data: &[u16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
                         data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
-                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_tx);
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_tx, &device_id);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -152,20 +155,16 @@ pub async fn start(device_id: DeviceId, fft_tx: broadcast::Sender<RootSample>) {
     }
 }
 
-fn get_audio_config() -> Option<Device> {
-    let host = cpal::default_host();
-    host.default_input_device()
-}
-
 fn process_audio_samples(
     data: &[f32],
     channels: usize,
     sample_buffer: &mut Vec<f32>,
     fft: &Arc<dyn rustfft::Fft<f32>>,
-    fft_tx: &broadcast::Sender<RootSample>,
+    fft_tx: &Sender<RootSample>,
+    device_id: &DeviceId
 ) {
     #[cfg(feature = "profiling")]
-    puffin::profile_function!("audio:process_audio_samples");
+    puffin::profile_function!(format!("audio:process_audio_samples from {}", device_id));
     // Convert interleaved samples to mono by averaging channels
     for chunk in data.chunks(channels) {
         let mono_sample = if channels > 1 {
