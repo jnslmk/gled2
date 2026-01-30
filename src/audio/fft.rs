@@ -1,15 +1,12 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Device, DeviceId, SampleFormat, SampleRate, StreamConfig};
-use egui::mutex::Mutex;
-use ndarray::{s, Array1, Array2, ArrayBase, Axis, Ix2, OwnedRepr, Slice};
-use once_cell::sync::Lazy;
+use cpal::{Device, DeviceId, SampleFormat, StreamConfig};
 use rustfft::num_traits::Pow;
 use rustfft::{num_complex::Complex, FftPlanner};
-use std::array;
+use std::clone::Clone;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::mpsc::Receiver;
 use std::sync::Arc;
+use tokio::sync::broadcast;
 
 pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
@@ -19,29 +16,17 @@ const WINDOW_SIZE: usize = 512;
 pub const FREQ_BINS: usize = 256;
 
 pub const RMS_BUFFER_SIZE: usize = 100;
-pub static FFT_DATA: Lazy<[Mutex<[f32; FREQ_BINS ]>; RMS_BUFFER_SIZE]> =
-    Lazy::new(|| array::from_fn(|_| {
-            Mutex::new([0f32; FREQ_BINS])
-        }));
-pub static RMS_INDEX: AtomicUsize = AtomicUsize::new(0);
+static RMS_INDEX: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Clone)]
+pub struct RootSample {
+    pub data: [f32; FREQ_BINS],
+    pub index: usize,
+}
 
 pub fn get_fft_bin_index_by_frequency(frequency: f32) -> usize {
     let k = WINDOW_SIZE as f32 * frequency / SAMPLE_RATE;
     k.floor() as usize
-}
-
-fn get_sample_rate_() -> Option<SampleRate> {
-    // the frequency of every bin is k as f32 * input_sample_rate / FFT_SIZE as f32
-    let device = get_audio_config()?;
-    let config = match device.default_input_config() {
-        Ok(config) => config,
-        Err(err) => {
-            log::error!("Failed to get default input config: {}", err);
-            return None;
-        }
-    };
-    let sample_rate = config.sample_rate();
-    Some(sample_rate)
 }
 
 pub fn max_frequency() -> f32 {
@@ -57,10 +42,12 @@ pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
     fft_data_u8
 }
 
-pub fn start(rx: Receiver<()>, device_id: DeviceId) {
+pub async fn start(device_id: DeviceId, fft_tx: broadcast::Sender<RootSample>) {
     log::info!("Starting audio capture thread");
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio:capture");
+    RMS_INDEX.store(0, Relaxed);
+    log::info!("Starting FFT thread");
 
     let device = match get_audio_config() {
         Some(device) => {
@@ -104,8 +91,7 @@ pub fn start(rx: Receiver<()>, device_id: DeviceId) {
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                    if rx.try_recv().is_ok(){ return; }
-                    process_audio_samples(data, channels, &mut sample_buffer, &fft);
+                    process_audio_samples(data, channels, &mut sample_buffer, &fft, &fft_tx);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -119,8 +105,7 @@ pub fn start(rx: Receiver<()>, device_id: DeviceId) {
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
-                    if rx.try_recv().is_ok(){ return; }
-                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft);
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_tx);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -135,8 +120,7 @@ pub fn start(rx: Receiver<()>, device_id: DeviceId) {
                 move |data: &[u16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
                         data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
-                    if rx.try_recv().is_ok(){ return; }
-                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft);
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_tx);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -159,7 +143,7 @@ pub fn start(rx: Receiver<()>, device_id: DeviceId) {
             log::info!("Audio stream started successfully");
             // Keep the thread alive
             loop {
-                std::thread::sleep(std::time::Duration::from_secs(1));
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             }
         }
         Err(err) => {
@@ -178,6 +162,7 @@ fn process_audio_samples(
     channels: usize,
     sample_buffer: &mut Vec<f32>,
     fft: &Arc<dyn rustfft::Fft<f32>>,
+    fft_tx: &broadcast::Sender<RootSample>,
 ) {
     #[cfg(feature = "profiling")]
     puffin::profile_function!("audio:process_audio_samples");
@@ -258,11 +243,13 @@ fn process_audio_samples(
             sample_buffer.drain(0..buffer_len - WINDOW_SIZE);
         }
 
-        let linear_magnitudes: &[f32] = &linear_magnitudes[..FREQ_BINS];
         let mut current_index = RMS_INDEX.load(Relaxed);
         current_index = (current_index + 1) % RMS_BUFFER_SIZE;
-
         RMS_INDEX.store(current_index,Relaxed);
-        FFT_DATA[current_index].lock().copy_from_slice(&linear_magnitudes);
+        let sample = RootSample {
+            data: linear_magnitudes.try_into().unwrap(),
+            index: current_index,
+        };
+        let _ = fft_tx.send(sample);
     }
 }

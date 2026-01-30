@@ -1,6 +1,5 @@
-use cpal::traits::{DeviceTrait, HostTrait};
-use egui::Ui;
 use crate::audio::{AUDIO_DEVICES, FFT_THREAD};
+use egui::Ui;
 
 #[derive(Default)]
 pub struct SettingsEditor{}
@@ -9,8 +8,6 @@ impl SettingsEditor{
     pub fn show(ui: &mut Ui){
         #[cfg(feature = "profiling")]
         puffin::profile_function!("SettingsEditor::show");
-        // Audio input device
-        let host = cpal::default_host();
 
         let mut selected = FFT_THREAD.lock().unwrap().selected_device.clone();
         let old_selected = selected.clone();
@@ -27,7 +24,7 @@ impl SettingsEditor{
             {
                 let mut fft_thread = FFT_THREAD.lock().unwrap();
                 fft_thread.selected_device = selected.clone();
-                fft_thread.restart_fft(selected);
+                fft_thread.restart_fft();
             }
         }
 

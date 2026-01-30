@@ -1,4 +1,4 @@
-use crate::audio::fft::{FREQ_BINS, MAX_FREQ, RMS_BUFFER_SIZE};
+use crate::audio::fft::{RootSample, FREQ_BINS, MAX_FREQ, RMS_BUFFER_SIZE};
 use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
 use ndarray::{s, Array1, Array2, Axis};
 use rustfft::num_traits::Float;
@@ -112,10 +112,10 @@ impl ReactiveSignal {
         }
     }
 
-    pub fn tick(&mut self, current_rms_sample: [f32; 256], current_rms_index: usize) {
+    pub fn tick(&mut self, root_sample: RootSample) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ReactiveSignal::tick");
-        self.rms(current_rms_sample, current_rms_index);
+        self.rms(root_sample.data, root_sample.index);
         self.spectrum = self.running_rms_sum.map(|x|{ 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.log10() });
         self.spectrum.map_inplace(|x|{ *x = x.mul(self.delta_time * 10.0).clamp(0.0, f32::infinity());});
 
@@ -252,9 +252,9 @@ mod tests {
         let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
         signal.params.rms_length = 2;
         for i in 0..run_for {
-            let idx = i%RMS_BUFFER_SIZE;
-            let sample = if i == at {[impulse; FREQ_BINS]} else {[0f32; FREQ_BINS]};
-            signal.tick(sample, idx);
+            let index = i%RMS_BUFFER_SIZE;
+            let data = if i == at {[impulse; FREQ_BINS]} else {[0f32; FREQ_BINS]};
+            signal.tick(RootSample{data, index });
             eprintln!("{:?}", signal.spectrum);
             eprintln!("--------------")
         }
@@ -277,9 +277,9 @@ mod tests {
             let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
             signal.params.rms_length = 2;
             for i in 0..110 {
-                let idx = i%RMS_BUFFER_SIZE;
-                signal.tick([1f32; FREQ_BINS], idx);
-                eprintln!("idx = {}", idx);
+                let index = i%RMS_BUFFER_SIZE;
+                signal.tick(RootSample{data: [1f32; FREQ_BINS], index});
+                eprintln!("index = {}", index);
                 eprintln!("running_rms_sum = {:?}", signal.running_rms_sum);
                 eprintln!("--------------");
                 if i >= 2 {
