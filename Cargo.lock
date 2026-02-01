@@ -1116,8 +1116,9 @@ dependencies = [
 
 [[package]]
 name = "egui_knob"
-version = "0.3.9"
-source = "git+https://github.com/bratorange/egui_knob?branch=logarithmic#e3a378cc6e63b0031c80cefc242ef837b75b5086"
+version = "0.3.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da10548855bf8796e558f0e76aeff8f5075b80196522fa7aa4cd9b432dceb8bf"
 dependencies = [
  "egui",
 ]
@@ -1659,7 +1660,6 @@ dependencies = [
  "gilrs",
  "git2",
  "home",
- "image",
  "keyring",
  "kurbo",
  "log",

@@ -19,6 +19,7 @@ use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
 };
+use crate::audio::{AUDIO_DEVICES, FFT_THREAD};
 
 impl App {
     pub fn menu(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
@@ -301,7 +302,7 @@ impl App {
                     ui.separator();
 
                     let mut persistant_state = PersistantState::get();
-                    ui.label("Size:");
+                    ui.label("Scene preview size");
                     if ui
                         .add(
                             Slider::new(&mut persistant_state.effects_size, 50.0..=500.0)
@@ -311,6 +312,26 @@ impl App {
                     {
                         persistant_state.save();
                     }
+
+                    ui.separator();
+                    ui.label("Audio input device");
+                    let mut selected = FFT_THREAD.lock().unwrap().selected_device.clone();
+                    let old_selected = selected.clone();
+
+                    let devices = AUDIO_DEVICES.lock().unwrap().clone();
+                    for (id, desc) in devices {
+                        ui.selectable_value(&mut selected, Some(id), desc.name());
+                    }
+                    
+                    if selected != old_selected {
+                        log::info!("Audio input device changed to {:?}", selected);
+                        {
+                            let mut fft_thread = FFT_THREAD.lock().unwrap();
+                            fft_thread.selected_device = selected.clone();
+                            fft_thread.restart_fft();
+                        }
+                    }
+
                 });
 
                 let mut open_new_window = ui

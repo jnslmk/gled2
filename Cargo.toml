@@ -26,7 +26,7 @@ egui = { version = "0.33", features = ["persistence"] }
 egui_dnd = "0.14"
 egui_extras = { version = "0.33", features = ["image", "syntect"] }
 egui_flex = "0.5"
-egui_knob = { git = "https://github.com/bratorange/egui_knob", branch = "logarithmic" }
+egui_knob = "0.3.10"
 egui_ltreeview = { version = "0.6", features = ["persistence"] }
 egui_phosphor_icons = "0.2"
 egui-modal.git = "https://github.com/elwerene/egui-modal"
@@ -36,7 +36,6 @@ epaint = "0.33"
 gilrs = "0.11"
 git2 = "0.20"
 home = "0.5"
-image = { version = "0.25", default-features = false, features = ["png"] }
 keyring = { version = "3", features = [
     "apple-native",
     "windows-native",
