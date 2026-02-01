@@ -1660,6 +1660,7 @@ dependencies = [
  "gilrs",
  "git2",
  "home",
+ "image",
  "keyring",
  "kurbo",
  "log",
