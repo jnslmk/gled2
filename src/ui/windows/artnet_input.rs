@@ -13,7 +13,6 @@ use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 #[derive(Default)]
 pub struct ArtnetInputWindow {
     open: bool,
-    universe: Option<String>,
     start: Option<String>,
     channels: Option<String>,
     addresses: Vec<Ipv4Addr>,
@@ -98,14 +97,7 @@ impl ArtnetInputWindow {
                             ui.heading("Input Config");
                             ui.add_space(3.0);
                             ui.label("Universe");
-                            let universe = self
-                                .universe
-                                .get_or_insert_with(|| config.universe.to_string());
-                            if ui.add(TextEdit::singleline(universe)).changed()
-                                && let Ok(universe) = universe.parse::<u16>()
-                            {
-                                config.universe = universe;
-                            }
+                            ui.add(Slider::new(&mut config.universe, 0..=32768));
 
                             ui.label("Start channel");
                             let start = self.start.get_or_insert_with(|| config.start.to_string());
@@ -169,6 +161,7 @@ impl ArtnetInputWindow {
                                                 if let Some(universe) =
                                                     bridge.output_universe.as_mut()
                                                 {
+                                                    ui.label("Output universe:");
                                                     ui.add(Slider::new(universe, 0..=32768));
                                                 }
                                             });
