@@ -1,10 +1,12 @@
 use artnet_protocol::{ArtCommand, PollReply, PortAddress};
+use chrono::{DateTime, Utc};
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use egui::mutex::Mutex;
 use log::{debug, trace, warn};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeMap,
     net::{Ipv4Addr, UdpSocket},
     sync::Arc,
     thread,
@@ -34,6 +36,13 @@ pub struct ArtnetConfig {
     pub start: u16,
     pub channels: u16,
     pub bind_ip: Ipv4Addr,
+    pub bridge: BTreeMap<u16, Bridge>,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Bridge {
+    pub last_data_at: DateTime<Utc>,
+    pub output_universe: Option<u16>,
 }
 
 impl Default for ArtnetConfig {
@@ -44,6 +53,7 @@ impl Default for ArtnetConfig {
             start: 1,
             channels: 100,
             bind_ip: Ipv4Addr::LOCALHOST,
+            bridge: Default::default(),
         }
     }
 }
@@ -170,24 +180,24 @@ pub fn start_thread(_output_package_sender: Sender<OutputPackage>) -> Receiver<A
                     };
                     trace!("parsed artnet");
 
-                    let config = ARTNET_CONFIG.lock();
-                    if output.port_address != config.port_address() {
-                        debug!("Ignoring universe {:?}", output.port_address);
-                        std::thread::sleep(Duration::from_millis(10));
-                        continue;
-                    }
-                    trace!("data on correct universe");
+                    let mut config = ARTNET_CONFIG.lock();
+                    if output.port_address == config.port_address() {
+                        trace!("artnet data on input universe");
+                        let data = output.data.as_ref();
+                        for i in 0..config.channels as usize {
+                            let channel = config.start as usize + i - 1;
+                            sender
+                                .send(ArtnetEvent {
+                                    channel: i as u8,
+                                    value: data[channel],
+                                })
+                                .expect("Could not send event");
+                        }
+                    } else {
+                        trace!("artnet data on another universe");
 
-                    let data = output.data.as_ref();
-
-                    for i in 0..config.channels as usize {
-                        let channel = config.start as usize + i - 1;
-                        sender
-                            .send(ArtnetEvent {
-                                channel: i as u8,
-                                value: data[channel],
-                            })
-                            .expect("Could not send event");
+                        let bridge = config.bridge.entry(output.port_address.into()).or_default();
+                        bridge.last_data_at = Utc::now();
                     }
                 }
             }

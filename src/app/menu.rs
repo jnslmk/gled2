@@ -119,7 +119,7 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.project.is_some(), Button::new("Artnet Input"))
+                        .add_enabled(self.project.is_some(), Button::new("Artnet Inputs/Bridge"))
                         .clicked()
                     {
                         self.windows.artnet_input.open();
