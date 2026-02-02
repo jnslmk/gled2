@@ -108,7 +108,7 @@ impl ReactiveSignal {
             impulse: 0.0,
             prev_gamma: Array1::zeros(FREQ_BINS),
             rms_buffer: Array2::zeros((RMS_BUFFER_SIZE, FREQ_BINS)),
-            running_rms_sum: Array1::ones(FREQ_BINS),
+            running_rms_sum: Array1::zeros(FREQ_BINS),
         }
     }
 
@@ -119,7 +119,7 @@ impl ReactiveSignal {
         self.impulse = 0.0;
         self.prev_gamma = Array1::zeros(FREQ_BINS);
         self.rms_buffer = Array2::zeros((RMS_BUFFER_SIZE, FREQ_BINS));
-        self.running_rms_sum = Array1::ones(FREQ_BINS);
+        self.running_rms_sum = Array1::zeros(FREQ_BINS);
         self.spectrum = Array1::zeros(FREQ_BINS);
     }
 
