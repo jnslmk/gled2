@@ -1,16 +1,16 @@
+use crate::audio::fft::{fft_data_u8, get_fft_bin_index_by_frequency, FREQ_BINS, MAX_FREQ};
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
-use crate::audio::fft::{MAX_FREQ, fft_data_u8, get_fft_bin_index_by_frequency, FREQ_BINS};
-use crate::audio::{REACTIVE_SIGNAL_THREAD, ReactiveSignalHandle};
+use crate::audio::{ReactiveSignalHandle, REACTIVE_SIGNAL_THREAD};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
 use crate::ui::scoped_frame;
-use crate::{WGPU_RENDER_STATE, wgpu_render_state};
+use crate::{wgpu_render_state, WGPU_RENDER_STATE};
 use egui::load::SizedTexture;
-use egui::{Color32, Frame, Image, Layout, Ui, UiBuilder};
+use egui::{Color32, Frame, Image, Label, Layout, RichText, Ui, UiBuilder};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
-use emath::{Align, Pos2, Rect, Vec2, pos2, remap_clamp, vec2, remap, Align2};
-use epaint::{FontId, PathShape, PathStroke, Stroke, StrokeKind};
+use emath::{pos2, remap, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
+use epaint::{PathShape, PathStroke, Stroke};
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU64;
@@ -469,25 +469,29 @@ impl ADSR {
         spectrum_rect.max.x = upper_x;
 
         ui.painter()
-            .rect(
+            .rect_filled(
             spectrum_rect,
             0.,
-            Color32::from_white_alpha(100),
-            Stroke{ width: 2.0, color: Color32::WHITE},
-            StrokeKind::Outside);
+            Color32::from_white_alpha(100));
 
         Frame::new().show(ui, |ui| {
             ui.take_available_width();
-            ui.set_height(50.);
+            ui.set_height(20.);
             let rect = ui.available_rect_before_wrap();
             // draw spectrum frequency indicators
             let length = size.x;
             for i in 0..=9 {
-                let freq = (i as f32).exp2() * 1000.;
+                let freq = (i as f32).exp2() * 110.;
                 let bin = get_fft_bin_index_by_frequency(freq);
                 let x = remap(bin as f32, 0f32..=(FREQ_BINS as f32), ui_position_range.clone());
-                ui.painter().vline(x, rect.top()..=rect.bottom(), Stroke{width: 1.0, color: Color32::WHITE});
-                ui.painter().text(pos2(x, rect.bottom()), Align2::CENTER_CENTER, format!("{}", freq), FontId::default(), Color32::WHITE);
+                if x > length {
+                    break;
+                }
+                ui.painter().vline(x, rect.top()..=rect.bottom()-10.0, Stroke{width: 1.0, color: Color32::WHITE});
+                ui.place(
+                    Rect::from_min_max(pos2(x-10.0, rect.bottom()-10.0), pos2(x+10.0, rect.bottom())),
+                    Label::new(RichText::new(format!("{}", freq)).monospace().size(10.0)),
+                );
             }
         });
 

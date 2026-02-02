@@ -1,5 +1,5 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Device, DeviceId, SampleFormat, StreamConfig};
+use cpal::{DeviceId, SampleFormat, StreamConfig};
 use rustfft::num_traits::Pow;
 use rustfft::{num_complex::Complex, FftPlanner};
 use std::clone::Clone;
@@ -94,7 +94,7 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>) {
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                    process_audio_samples(data, channels, &mut sample_buffer, &fft, &fft_tx, &device_id);
+                    process_audio_samples(data, channels, &mut sample_buffer, &fft, &fft_tx);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -108,7 +108,7 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>) {
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
-                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_tx, &device_id);
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_tx);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -123,7 +123,7 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>) {
                 move |data: &[u16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
                         data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
-                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_tx, &device_id);
+                    process_audio_samples(&f32_data, channels, &mut sample_buffer, &fft, &fft_tx);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -161,7 +161,6 @@ fn process_audio_samples(
     sample_buffer: &mut Vec<f32>,
     fft: &Arc<dyn rustfft::Fft<f32>>,
     fft_tx: &Sender<RootSample>,
-    device_id: &DeviceId
 ) {
     #[cfg(feature = "profiling")]
     puffin::profile_function!(format!("audio:process_audio_samples from {}", device_id));

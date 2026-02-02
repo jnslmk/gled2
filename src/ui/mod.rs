@@ -93,7 +93,7 @@ impl ContextMenuBuilder {
     }
     pub fn show(self, response: &mut Response, location: GridLocation) {
         response.context_menu(|ctx_menu_ui| {
-            for ((keyboard_shortcut, description, ctx_action, _)) in &self.actions {
+            for (keyboard_shortcut, description, ctx_action, _) in &self.actions {
                 let context_button =
                     Button::new(format!(
                         "{}\t{}",

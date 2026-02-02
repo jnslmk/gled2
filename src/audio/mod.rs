@@ -2,7 +2,7 @@ pub mod adsr_editor;
 pub mod reactive_signal;
 pub mod fft;
 
-use crate::audio::fft::{RootSample, FREQ_BINS, RMS_BUFFER_SIZE};
+use crate::audio::fft::RootSample;
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{DeviceDescription, DeviceId};
@@ -13,7 +13,6 @@ use std::hash::{DefaultHasher, Hash};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 use crossbeam_channel::{Receiver, Sender};
-use egui::IntoAtoms;
 use futures::future::{join_all, JoinAll};
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
@@ -161,7 +160,7 @@ impl ReactiveSignalThread {
         let handles: Vec<JoinHandle<()>> = self.signals
             .values_mut()
             .map(move |signal| {
-                let mut signal = Arc::clone(signal);
+                let signal = Arc::clone(signal);
                 let sample_copy = root_sample.clone();
                 tokio::spawn(async move {
                     let mut signal_guard = signal.lock().unwrap();
@@ -181,8 +180,7 @@ impl ReactiveSignalThread {
             });
     }
 }
-pub async fn start_reactive_sound_thread(mut rx: Receiver<RootSample>) {
-    let mut interval = interval(Duration::from_millis(ADSR_SAMPLE_INTERVAL_MS));
+pub async fn start_reactive_sound_thread(rx: Receiver<RootSample>) {
     loop {
         {
             #[cfg(feature = "profiling")]
