@@ -319,10 +319,11 @@ impl App {
                     let old_selected = selected.clone();
 
                     let devices = AUDIO_DEVICES.lock().unwrap().clone();
+                    ui.selectable_value(&mut selected, None, "None");
                     for (id, desc) in devices {
                         ui.selectable_value(&mut selected, Some(id), desc.name());
                     }
-                    
+
                     if selected != old_selected {
                         log::info!("Audio input device changed to {:?}", selected);
                         {

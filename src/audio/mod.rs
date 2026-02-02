@@ -2,7 +2,7 @@ pub mod adsr_editor;
 pub mod reactive_signal;
 pub mod fft;
 
-use crate::audio::fft::RootSample;
+use crate::audio::fft::{RootSample, FREQ_BINS, RMS_BUFFER_SIZE};
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{DeviceDescription, DeviceId};
@@ -78,8 +78,9 @@ impl AudioPool {
             self.fft_abort_sender = Some(handle);
         }
         else {
-            log::warn!("No audio input device selected, audio analysis disabled");
-            self.fft_abort_sender = None
+            log::info!("No audio input device selected, audio analysis disabled");
+            self.fft_abort_sender = None;
+            REACTIVE_SIGNAL_THREAD.write().unwrap().reset();
         }
     }
 }
@@ -168,6 +169,16 @@ impl ReactiveSignalThread {
                 })
             }).collect();
         join_all(handles)
+    }
+
+    fn reset(&mut self) {
+        self.signals
+            .values_mut()
+            .for_each(move |signal| {
+                let signal = Arc::clone(signal);
+                let mut signal_guard = signal.lock().unwrap();
+                signal_guard.reset();
+            });
     }
 }
 pub async fn start_reactive_sound_thread(mut rx: Receiver<RootSample>) {

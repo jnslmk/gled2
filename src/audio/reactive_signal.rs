@@ -108,8 +108,19 @@ impl ReactiveSignal {
             impulse: 0.0,
             prev_gamma: Array1::zeros(FREQ_BINS),
             rms_buffer: Array2::zeros((RMS_BUFFER_SIZE, FREQ_BINS)),
-            running_rms_sum: Array1::zeros(FREQ_BINS),
+            running_rms_sum: Array1::ones(FREQ_BINS),
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.phase = AdsrPhase::Idle;
+        self.gate_active = false;
+        self.current_level = 0.0;
+        self.impulse = 0.0;
+        self.prev_gamma = Array1::zeros(FREQ_BINS);
+        self.rms_buffer = Array2::zeros((RMS_BUFFER_SIZE, FREQ_BINS));
+        self.running_rms_sum = Array1::ones(FREQ_BINS);
+        self.spectrum = Array1::zeros(FREQ_BINS);
     }
 
     pub fn tick(&mut self, root_sample: RootSample) {
