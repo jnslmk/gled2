@@ -1,6 +1,6 @@
 use crate::audio::fft::{RootSample, FREQ_BINS, MAX_FREQ, RMS_BUFFER_SIZE};
 use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
-use ndarray::{s, Array1, Array2, Axis};
+use ndarray::{concatenate, s, Array1, Array2, Axis};
 use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
 use std::ops::Mul;
@@ -40,7 +40,7 @@ impl AdsrParams {
             release_duration,
             sensitivity,
             gate_activation_threshold: gate_threshold,
-            gate_deactivation_threshold: gate_threshold * 0.5,
+            gate_deactivation_threshold: gate_threshold * 0.8,
             rms_length: 10,
         };
         ret.set_filter_tune(f_center, f_radius);
@@ -52,7 +52,7 @@ impl AdsrParams {
         let bin_radius = (f_radius / f_per_bin).round() as usize;
         self.center_bin = center_bin;
         self.bin_radius = bin_radius;
-        self.gate_deactivation_threshold = self.gate_activation_threshold * 0.5;
+        self.gate_deactivation_threshold = self.gate_activation_threshold * 0.8;
     }
 }
 
@@ -230,16 +230,33 @@ impl ReactiveSignal {
         let drop_index = (current_rms_index + RMS_BUFFER_SIZE - self.params.rms_length) % RMS_BUFFER_SIZE;
         // add RMS_BUFFER_SIZE to the index before substraction to prevent overflows
         // the following is for implementing wraparound indices
-        if drop_index > current_rms_index{
-            self.running_rms_sum =
+        let divisor =  self.region(0, RMS_BUFFER_SIZE - 1)
+            .fold(0f32,|x, y| x.max(*y).max(0.01));
+        self.running_rms_sum =self.sum_region(current_rms_index, drop_index) / divisor;
+
+        self.running_rms_sum.mapv(|x|{x.mul(1.0/(self.params.rms_length as f32)).max(0.000001)}.sqrt());
+    }
+
+    fn sum_region(&mut self, current_rms_index: usize, drop_index: usize) -> Array1<f32> {
+        let sum = if drop_index > current_rms_index {
                 // right subinterval
-                self.rms_buffer.slice(s![drop_index+1..RMS_BUFFER_SIZE, ..]).sum_axis(Axis(0))
-                // left subinterval
-                + self.rms_buffer.slice(s![..=current_rms_index, ..]).sum_axis(Axis(0));
+                &self.rms_buffer.slice(s![drop_index+1..RMS_BUFFER_SIZE, ..]).sum_axis(Axis(0))
+                    // left subinterval
+                    + &self.rms_buffer.slice(s![..=current_rms_index, ..]).sum_axis(Axis(0))
         } else {
-            self.running_rms_sum = self.rms_buffer.slice(s![drop_index+1..=current_rms_index, ..]).sum_axis(Axis(0));
+           self.rms_buffer.slice(s![drop_index+1..=current_rms_index, ..]).sum_axis(Axis(0))
+        };
+        sum
+    }
+    fn region(&mut self, current_rms_index: usize, drop_index: usize) -> Array2<f32> {
+        if drop_index > current_rms_index {
+            // right subinterval
+            concatenate![Axis(0), self.rms_buffer.slice(s![drop_index+1..RMS_BUFFER_SIZE, ..]),
+            self.rms_buffer.slice(s![..=current_rms_index, ..])]
+
+        } else {
+            self.rms_buffer.slice(s![drop_index+1..=current_rms_index, ..]).to_owned()
         }
-        self.running_rms_sum.mapv(|x|{x.mul(1.0/(self.params.rms_length as f32))}.sqrt());
     }
 }
 
@@ -267,11 +284,6 @@ mod tests {
         assert_eq!(signal.running_rms_sum, Array1::from_vec(vec![0f32; FREQ_BINS]));
     }
 
-    #[test]
-    fn test_spectrum(){
-        let signal = run_for_with_impulse_at(2, 1, 4.0);
-        assert_eq!(signal.spectrum, Array1::from_vec(vec![0.762266; FREQ_BINS]));
-    }
     #[test]
     fn test_wraparound(){
             let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);

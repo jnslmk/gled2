@@ -12,7 +12,7 @@ pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
 
 // FFT size - power of 2 for efficient FFT
-const WINDOW_SIZE: usize = 512;
+const WINDOW_SIZE: usize = 4096;
 pub const FREQ_BINS: usize = 256;
 
 pub const RMS_BUFFER_SIZE: usize = 100;
