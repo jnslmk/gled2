@@ -232,22 +232,11 @@ impl ReactiveSignal {
         // the following is for implementing wraparound indices
         let divisor =  self.region(0, RMS_BUFFER_SIZE - 1)
             .fold(0f32,|x, y| x.max(*y).max(0.01));
-        self.running_rms_sum =self.sum_region(current_rms_index, drop_index) / divisor;
+        self.running_rms_sum =self.region(current_rms_index, drop_index).sum_axis(Axis(0)) / divisor;
 
         self.running_rms_sum.mapv(|x|{x.mul(1.0/(self.params.rms_length as f32)).max(0.000001)}.sqrt());
     }
 
-    fn sum_region(&mut self, current_rms_index: usize, drop_index: usize) -> Array1<f32> {
-        let sum = if drop_index > current_rms_index {
-                // right subinterval
-                &self.rms_buffer.slice(s![drop_index+1..RMS_BUFFER_SIZE, ..]).sum_axis(Axis(0))
-                    // left subinterval
-                    + &self.rms_buffer.slice(s![..=current_rms_index, ..]).sum_axis(Axis(0))
-        } else {
-           self.rms_buffer.slice(s![drop_index+1..=current_rms_index, ..]).sum_axis(Axis(0))
-        };
-        sum
-    }
     fn region(&mut self, current_rms_index: usize, drop_index: usize) -> Array2<f32> {
         if drop_index > current_rms_index {
             // right subinterval
