@@ -52,7 +52,7 @@ impl AdsrParams {
         let bin_radius = (f_radius / f_per_bin).round() as usize;
         self.center_bin = center_bin;
         self.bin_radius = bin_radius;
-        self.gate_deactivation_threshold = self.gate_activation_threshold * 0.8;
+        self.gate_deactivation_threshold = self.gate_activation_threshold * 0.9;
     }
 }
 
@@ -243,7 +243,7 @@ impl ReactiveSignal {
         // the following is for implementing wraparound indices
         let divisor =  self.region(0, RMS_BUFFER_SIZE - 1)
             .fold(0f32,|x, y| x.max(*y).max(0.01));
-        self.running_rms_sum =self.region(current_rms_index, drop_index).sum_axis(Axis(0)) / divisor;
+        self.running_rms_sum =self.region(current_rms_index, drop_index).sum_axis(Axis(0)) * 0.01; // / divisor;
 
         self.running_rms_sum.mapv(|x|{x.mul(1.0/(self.params.rms_length as f32)).max(0.000001)}.sqrt());
     }
