@@ -51,7 +51,7 @@ pub type GroupIndices = BTreeSet<usize>;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct Groups(
-    #[serde(deserialize_with = "crate::storage::serde::deserialize_index_btreemap")]
+    #[serde(deserialize_with = "crate::storage::serde::deserialize_usize_index_btreemap")]
     BTreeMap<usize, Group>,
 );
 

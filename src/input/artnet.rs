@@ -13,7 +13,10 @@ use std::{
     time::Duration,
 };
 
-use crate::pipeline::output_sender::OutputPackage;
+use crate::{
+    pipeline::{constants::UNIVERSE_BUFFER_SIZE, output_sender::OutputPackage},
+    storage::asset::output_device::routing::OutputRouting,
+};
 
 static ARTNET_PORT: u16 = 6454;
 pub static ARTNET_SOCKET: Lazy<Arc<UdpSocket>> = Lazy::new(|| {
@@ -36,13 +39,16 @@ pub struct ArtnetConfig {
     pub start: u16,
     pub channels: u16,
     pub bind_ip: Ipv4Addr,
+    #[serde(deserialize_with = "crate::storage::serde::deserialize_u16_index_btreemap")]
     pub bridge: BTreeMap<u16, Bridge>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Bridge {
     pub last_data_at: DateTime<Utc>,
-    pub output_universe: Option<u16>,
+    pub updates: usize,
+    pub output_routing: OutputRouting,
+    pub htp: bool,
 }
 
 impl Default for ArtnetConfig {
@@ -64,8 +70,7 @@ impl ArtnetConfig {
     }
 }
 
-//TODO: Artnet Proxy
-pub fn start_thread(_output_package_sender: Sender<OutputPackage>) -> Receiver<ArtnetEvent> {
+pub fn start_thread(output_package_sender: Sender<OutputPackage>) -> Receiver<ArtnetEvent> {
     let (sender, receiver) = unbounded();
 
     trace!("Opening udp sockets on artnet port");
@@ -198,6 +203,22 @@ pub fn start_thread(_output_package_sender: Sender<OutputPackage>) -> Receiver<A
 
                         let bridge = config.bridge.entry(output.port_address.into()).or_default();
                         bridge.last_data_at = Utc::now();
+                        bridge.updates += 1;
+
+                        if let Some(recipient) = bridge.output_routing.recipient() {
+                            trace!("artnet bridge has output routing");
+
+                            let mut data = [0u8; UNIVERSE_BUFFER_SIZE as usize];
+                            data.copy_from_slice(output.data.as_ref());
+
+                            output_package_sender
+                                .send(OutputPackage::ArtnetInput {
+                                    recipient,
+                                    data,
+                                    htp: bridge.htp,
+                                })
+                                .ok();
+                        }
                     }
                 }
             }

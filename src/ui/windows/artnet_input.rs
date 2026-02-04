@@ -2,12 +2,19 @@ use std::net::Ipv4Addr;
 
 use crate::{
     input::artnet::ARTNET_CONFIG,
-    ui::window_common::{default_viewport_builder, gled_window_frame},
+    storage::asset::{Asset, output_device::routing::OutputRouting},
+    ui::{
+        ChangeButton,
+        window_common::{default_viewport_builder, gled_window_frame},
+        windows::output_routings::HOVERED_OUTPUT_ROUTING,
+    },
 };
 use chrono::Local;
 use egui::{
-    CentralPanel, Context, Id, Layout, RichText, SidePanel, Slider, TextEdit, Vec2, ViewportId,
+    Button, CentralPanel, ComboBox, Context, Id, Layout, RichText, SidePanel, Slider, TextEdit,
+    Vec2, ViewportId, WidgetText,
 };
+use egui_phosphor_icons::icons;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
 #[derive(Default)]
@@ -43,8 +50,8 @@ impl ArtnetInputWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("artnet inputs window")),
             default_viewport_builder()
-                .with_inner_size(Vec2::new(800.0, 400.0))
-                .with_min_inner_size(Vec2::new(800.0, 400.0))
+                .with_inner_size(Vec2::new(800.0, 500.0))
+                .with_min_inner_size(Vec2::new(800.0, 500.0))
                 .with_resizable(false)
                 .with_minimize_button(false)
                 .with_maximize_button(false),
@@ -91,7 +98,7 @@ impl ArtnetInputWindow {
                     });
 
                     SidePanel::left("artnet_input_config")
-                        .exact_width(ui.available_width() / 3.0)
+                        .exact_width(ui.available_width() / 5.0)
                         .resizable(false)
                         .show_inside(ui, |ui| {
                             ui.heading("Input Config");
@@ -135,6 +142,8 @@ impl ArtnetInputWindow {
                                 ui.with_layout(
                                     Layout::top_down_justified(egui::Align::Min),
                                     |ui| {
+                                        let mut hovered_output_routing = None;
+
                                         for (universe, bridge) in config.bridge.iter_mut() {
                                             ui.label(
                                                 RichText::new(format!("Universe: {universe}"))
@@ -142,30 +151,90 @@ impl ArtnetInputWindow {
                                             );
 
                                             ui.horizontal(|ui| {
+                                                ui.label(format!("Updates: {}", bridge.updates));
                                                 ui.label(
                                                     bridge
                                                         .last_data_at
                                                         .with_timezone(&Local)
-                                                        .format("Last data at: %H:%M:%S")
+                                                        .format("(Last: %H:%M:%S)")
                                                         .to_string(),
                                                 );
 
-                                                let mut active = bridge.output_universe.is_some();
-                                                if ui.checkbox(&mut active, "Enable").changed() {
-                                                    if active {
-                                                        bridge.output_universe = Some(*universe);
-                                                    } else {
-                                                        bridge.output_universe.take();
-                                                    }
-                                                }
-                                                if let Some(universe) =
-                                                    bridge.output_universe.as_mut()
+                                                bridge.output_routing.device.change_button(ui);
+
+                                                if let Some(device) = bridge
+                                                    .output_routing
+                                                    .device
+                                                    .and_then(Asset::get)
                                                 {
-                                                    ui.label("Output universe:");
-                                                    ui.add(Slider::new(universe, 0..=32768));
+                                                    let device_universes = device.data.universes();
+                                                    if !device_universes.is_empty() {
+                                                        ComboBox::new(
+                                                            format!("{universe}_universe"),
+                                                            "",
+                                                        )
+                                                        .selected_text(
+                                                            match bridge.output_routing.universe {
+                                                                None => WidgetText::from(
+                                                                    "No universe selected",
+                                                                ),
+                                                                Some(universe) => WidgetText::from(
+                                                                    universe.to_string(),
+                                                                ),
+                                                            },
+                                                        )
+                                                        .width(150.0)
+                                                        .show_ui(ui, |ui| {
+                                                            for device_universe in device_universes
+                                                            {
+                                                                let res = ui.selectable_value(
+                                                                    &mut bridge
+                                                                        .output_routing
+                                                                        .universe,
+                                                                    Some(*device_universe),
+                                                                    device_universe.to_string(),
+                                                                );
+                                                                if res.hovered() {
+                                                                    hovered_output_routing =
+                                                                        Some(OutputRouting {
+                                                                            device: Some(device.id),
+                                                                            universe: Some(
+                                                                                *device_universe,
+                                                                            ),
+                                                                        });
+                                                                }
+                                                            }
+                                                        });
+                                                    }
+
+                                                    ComboBox::new(format!("{universe}_merge"), "")
+                                                        .selected_text(match bridge.htp {
+                                                            true => "HTP",
+                                                            false => "LTP",
+                                                        })
+                                                        .width(50.0)
+                                                        .show_ui(ui, |ui| {
+                                                            ui.selectable_value(
+                                                                &mut bridge.htp,
+                                                                true,
+                                                                "HTP",
+                                                            );
+                                                            ui.selectable_value(
+                                                                &mut bridge.htp,
+                                                                false,
+                                                                "LTP",
+                                                            );
+                                                        });
+
+                                                    if ui.add(Button::new(icons::X)).clicked() {
+                                                        bridge.output_routing =
+                                                            OutputRouting::default();
+                                                    }
                                                 }
                                             });
                                         }
+
+                                        *HOVERED_OUTPUT_ROUTING.lock() = hovered_output_routing;
                                     },
                                 );
                             });

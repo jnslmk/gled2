@@ -55,7 +55,7 @@ pub struct SceneInstance {
     pub palette_overwrite: Option<Option<AssetId<Palette>>>,
     #[serde(
         default,
-        deserialize_with = "crate::storage::serde::deserialize_index_btreemap"
+        deserialize_with = "crate::storage::serde::deserialize_usize_index_btreemap"
     )]
     pub effect_overwrites: BTreeMap<usize, Effect>,
 

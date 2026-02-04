@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap};
 use crate::{
     storage::{
-        asset::{output_device::OutputDevice, Asset},
+        asset::{Asset, output_device::{OutputDevice, routing::OutputRouting}},
         asset_id::AssetId,
     },
-    ui::{window_common::{default_viewport_builder, gled_window_frame}, windows::channel_overwrites, ChangeButton},
+    ui::{ChangeButton, window_common::{default_viewport_builder, gled_window_frame}, windows::channel_overwrites},
 };
 use egui::{
     mutex::Mutex, scroll_area::ScrollBarVisibility::AlwaysVisible, Color32, ComboBox, Context, Id, RichText, Vec2, ViewportId
@@ -182,12 +182,12 @@ impl ChannelOverwrites {
         });
     }
 
-    pub fn other_universes(self) -> Vec<(AssetId<OutputDevice>, Option<u16>, [u8; 512])> {
-        let mut other_universes = BTreeMap::new();
+    pub fn overwritten_universes(self) -> Vec<(OutputRouting, [u8; 512])> {
+        let mut overwritten_universes = BTreeMap::new();
         for (channel_identifier, value) in self.0.into_iter() {
-            other_universes.entry((channel_identifier.device, channel_identifier.universe)).or_insert([0; 512])[channel_identifier.channel as usize - 1] = value;
+            overwritten_universes.entry(OutputRouting { device: Some(channel_identifier.device), universe: channel_identifier.universe}).or_insert([0; 512])[channel_identifier.channel as usize - 1] = value;
         }
-        other_universes.into_iter().map(|((device, universe), data)| (device, universe, data)).collect()
+        overwritten_universes.into_iter().collect()
     }
 }
 

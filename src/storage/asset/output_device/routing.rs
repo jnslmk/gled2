@@ -1,7 +1,11 @@
-use crate::storage::{AssetId, OutputDevice};
+use crate::{
+    pipeline::output_sender::Recipient,
+    storage::{AssetId, OutputDevice, asset::Asset},
+};
 use egui::ahash::HashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+use std::net::ToSocketAddrs;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct OutputRoutings {
@@ -47,10 +51,38 @@ impl OutputRoutings {
         }
         used_multiple_times
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.routings.is_empty()
+    }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OutputRouting {
     pub device: Option<AssetId<OutputDevice>>,
     pub universe: Option<u16>,
+}
+
+impl OutputRouting {
+    pub fn recipient(&self) -> Option<Recipient> {
+        let device = self.device.and_then(Asset::get)?;
+
+        match &device.data {
+            OutputDevice::Artnet { ip, universes, .. } => {
+                let universe = self.universe?;
+                if !universes.contains(&universe) {
+                    log::warn!("Universe which is not configured: {universe}");
+                    return None;
+                }
+                (*ip, 6454)
+                    .to_socket_addrs()
+                    .ok()
+                    .and_then(|mut addrs| addrs.next())
+                    .map(|addr| Recipient::Artnet { addr, universe })
+            }
+            OutputDevice::EnttecDmxUsbPro { serial_number } => Some(Recipient::EnttecDmxUsbPro {
+                serial_number: serial_number.clone(),
+            }),
+        }
+    }
 }
