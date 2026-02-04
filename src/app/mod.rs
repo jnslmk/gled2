@@ -11,26 +11,27 @@ pub mod svg;
 pub mod timing;
 
 use crate::storage::asset::scene::grid::GridLocation;
-use crate::{
-    input::Input,
-    midi::state::MidiState,
-    pipeline::renderer_callback::RendererCallback,
-    storage::{
-        asset::{Asset, palette::Palette, project::Project},
-        asset_id::AssetId,
-        loading,
-    },
-    ui::{
-        action::UiAction, asset_tree::AssetTree, window_common::default_viewport_builder,
-        windows::Windows,
-    },
-};
+use crate::{input::Input, midi::state::MidiState, pipeline::renderer_callback::RendererCallback, storage::{
+    asset::{Asset, palette::Palette, project::Project},
+    asset_id::AssetId,
+    loading,
+}, ui::{
+    action::UiAction, asset_tree::AssetTree, window_common::default_viewport_builder,
+    windows::Windows,
+}, wgpu_render_state};
 use eframe::egui_wgpu::Callback;
 use egui::{CentralPanel, Id, Rect, UiBuilder, ViewportId, ahash::HashSet};
 use persistant_state::PersistantState;
 use std::{sync::mpsc::Receiver, time::Instant};
+use rand::seq::IndexedMutRandom;
+use wgpu::CommandEncoderDescriptor;
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
+use crate::pipeline::extract_output::ExtractOutput;
+use crate::pipeline::output_clear::OutputClear;
+use crate::pipeline::preview::Preview;
+use crate::pipeline::preview_indices::PreviewIndices;
+use crate::pipeline::transition::{Transition, TransitionGoal};
 
 pub struct App {
     pub startup: bool,
@@ -93,21 +94,7 @@ impl eframe::App for App {
             self.last_title = title;
         }
 
-        if let Some(project) = &mut self.project {
-            project.render(
-                &self.timing,
-                self.blackout || self.blackout_hold,
-                if PersistantState::effects_always_render() && {
-                    self.last_always_render_fps_frame.elapsed().as_secs_f32() > 1.0 / 30.0
-                } {
-                    self.last_always_render_fps_frame = Instant::now();
-                    true
-                } else {
-                    false
-                },
-                self.timing.fade_duration(),
-            );
-        }
+        self.render();
 
         if self.midi_output_active {
             MidiState {
@@ -266,6 +253,131 @@ impl App {
         };
 
         Some(app)
+    }
+
+    fn render(&mut self) {
+        if let Some(project) = &mut self.project {
+            let timing = &self.timing;
+            let blackout = self.blackout || self.blackout_hold;
+            let always_render = if PersistantState::effects_always_render() && {
+                self.last_always_render_fps_frame.elapsed().as_secs_f32() > 1.0 / 30.0
+            } {
+                self.last_always_render_fps_frame = Instant::now();
+                true
+            } else {
+                false
+            };
+            let fade_duration = self.timing.fade_duration();
+            let wgpu_render_state = wgpu_render_state();
+            let device = wgpu_render_state.device;
+            let queue = &wgpu_render_state.queue;
+            if project.auto_mode_active {
+                if project
+                    .auto_mode_last_change
+                    .get_or_insert_with(Instant::now)
+                    .elapsed()
+                    .as_secs()
+                    > project.auto_mode_seconds
+                {
+                    let auto_mode_max_scenes = project.auto_mode_max_scenes;
+                    let mut prev = std::collections::HashSet::new();
+                    {
+                        let mut indices = project
+                            .scenes_instances_grid
+                            .iter()
+                            .filter(|(_index, scene)| scene.active)
+                            .map(|(location, _scene)| *location)
+                            .collect::<Vec<_>>();
+
+                        let mut disable_count =
+                            (indices.len() + 1).saturating_sub(auto_mode_max_scenes);
+                        while disable_count > 0 {
+                            if let Some(location) = indices.choose_mut(&mut rand::rng()).copied()
+                                && prev.insert(location)
+                            {
+                                disable_count -= 1;
+                                if let Some(scene) = project.scenes_instances_grid.get_mut(&location) {
+                                    scene.set_transition(Transition::new(
+                                        TransitionGoal::TurnOff,
+                                        fade_duration,
+                                    ));
+                                }
+                            }
+                        }
+                    }
+
+                    let mut scenes = project
+                        .scenes_instances_grid
+                        .iter_mut()
+                        .filter(|(location, _scene)| !prev.contains(location))
+                        .collect::<Vec<_>>();
+                    if let Some((_index, scene)) = scenes.choose_mut(&mut rand::rng()) {
+                        scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
+                    }
+
+                    project.auto_mode_last_change.take();
+                }
+            } else {
+                project.auto_mode_last_change.take();
+            }
+
+            let palette = project.palette.and_then(Asset::get);
+            let deck_groups = project.groups.clone();
+            let main_dimmer = project.main_dimmer;
+            for scene_instance in project.scenes_instances_grid.values_mut() {
+                scene_instance.prepare(
+                    queue,
+                    always_render,
+                    palette.clone(),
+                    &deck_groups,
+                    timing,
+                    main_dimmer,
+                );
+            }
+
+            PreviewIndices::get().prepare(queue);
+
+            #[allow(unused_mut)]
+            let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("Render animations"),
+            });
+
+            #[cfg(feature = "profiling")]
+            {
+                let mut wgpu_profiler = crate::WGPU_PROFILER.lock();
+                OutputClear::get().run(&mut wgpu_profiler.scope("OutputClear", &mut encoder));
+                for scene_instance in project.scenes_instances_grid.values_mut() {
+                    scene_instance.render(
+                        &mut wgpu_profiler.scope(
+                            format!(
+                                "Render scene \"{}\"",
+                                Asset::get(scene_instance.scene).unwrap_or_default().name()
+                            ),
+                            &mut encoder,
+                        ),
+                        blackout,
+                        always_render,
+                    );
+                }
+                ExtractOutput::get().run(&mut wgpu_profiler.scope("ExtractOutput", &mut encoder));
+                PreviewIndices::get().run(&mut wgpu_profiler.scope("PreviewIndices", &mut encoder));
+                Preview::run(&mut wgpu_profiler.scope("Preview", &mut encoder));
+                wgpu_profiler.resolve_queries(&mut encoder);
+            }
+
+            #[cfg(not(feature = "profiling"))]
+            {
+                OutputClear::get().run(&mut encoder);
+                for scene_instance in project.scenes_instances_grid.values_mut() {
+                    scene_instance.render(&mut encoder, blackout, always_render);
+                }
+                ExtractOutput::get().run(&mut encoder);
+                PreviewIndices::get().run(&mut encoder);
+                Preview::run(&mut encoder);
+            }
+
+            RendererCallback::add(encoder.finish());
+        }
     }
 }
 
