@@ -4,6 +4,8 @@ use crate::storage::asset_id::AssetId;
 use artnet_protocol::PaddedData;
 use crossbeam_channel::Receiver;
 use std::array;
+use std::str::FromStr;
+use uuid::Uuid;
 use zerocopy::*;
 
 const ARTNET_CONTROL_SLOTS: usize = 10;
@@ -45,6 +47,13 @@ impl ExternalControlState{
     }
 
     pub fn process_events(&mut self) {
+        let scene_id = AssetId::from_uuid(Uuid::from_str("a3890ca5-4572-4f21-b05f-382922e961ed").unwrap());
+        let mut scene_instance = SceneInstance::from(scene_id);
+        scene_instance.init_states();
+        scene_instance.set_output_mix_buffers();
+        scene_instance.input_dimmer = 1.0;
+        scene_instance.active = true;
+        self.scene_slots[0] = scene_instance;
         loop {
             if let Ok(dmx_data) = self.artnet_control_receiver.try_recv() {
                 let dmx_data = dmx_data.as_ref();
@@ -66,11 +75,5 @@ impl ExternalControlState{
             }
             else{break;}
         }
-    }
-}
-
-impl ExternalControlState{
-    pub fn render(self, encoder: &mut wgpu::CommandEncoder) { // TODO
-
     }
 }
