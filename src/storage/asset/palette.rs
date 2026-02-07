@@ -5,6 +5,7 @@ use egui::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use zerocopy::{FromBytes, Immutable};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
@@ -162,7 +163,7 @@ impl Palette {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, FromBytes, Immutable)]
 pub struct Color {
     rgb: [f32; 3],
 }

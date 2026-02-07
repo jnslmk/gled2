@@ -85,6 +85,7 @@ profiling = { version = "1", features = [
 puffin = { version = "0.19", optional = true }
 puffin_http = { version = "0.16", optional = true }
 wgpu-profiler = { version = "0.25", optional = true, features = ["puffin"] }
+zerocopy = "*"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }

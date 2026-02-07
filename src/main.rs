@@ -25,6 +25,7 @@ use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallbac
 use std::sync::{Arc, OnceLock};
 use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
+use crate::input::artnet;
 
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
 pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
@@ -80,6 +81,8 @@ fn main() {
     audio::start_fft_thread();
     network_stats::start_thread();
     let output_package_sender = output_sender::start().expect("Could not start output sender");
+    let (artnet_bridge_receiver, artnet_control_receiver)
+        = artnet::start_thread(output_package_sender);
 
     #[cfg(not(debug_assertions))]
     ui::update_check::Update::start_thread();
@@ -161,7 +164,7 @@ fn main() {
                 style.visuals.panel_fill = Color32::from_gray(5);
             });
             install_image_loaders(&cc.egui_ctx);
-            Input::init(&cc.egui_ctx, output_package_sender);
+            Input::init(&cc.egui_ctx, artnet_bridge_receiver);
 
             WGPU_RENDER_STATE
                 .set(
@@ -172,7 +175,7 @@ fn main() {
                 .map_err(|_err| ())
                 .expect("Could not set wgpu render state");
             Ok(Box::new(
-                App::new(ui_action_receiver).expect("Could not create new App"),
+                App::new(ui_action_receiver, artnet_control_receiver).expect("Could not create new App"),
             ))
         }),
     )

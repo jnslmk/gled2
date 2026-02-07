@@ -1,4 +1,4 @@
-use artnet_protocol::{ArtCommand, PollReply, PortAddress};
+use artnet_protocol::{ArtCommand, PaddedData, PollReply, PortAddress};
 use chrono::{DateTime, Utc};
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use egui::mutex::Mutex;
@@ -65,12 +65,14 @@ impl ArtnetConfig {
 }
 
 //TODO: Artnet Proxy
-pub fn start_thread(_output_package_sender: Sender<OutputPackage>) -> Receiver<ArtnetEvent> {
-    let (sender, receiver) = unbounded();
+pub fn start_thread(_output_package_sender: Sender<OutputPackage>) -> (Receiver<ArtnetEvent>, Receiver<PaddedData>) {
+    let (bridge_sender, bridge_receiver) = unbounded();
+    let (control_sender, control_receiver) = unbounded();
 
     trace!("Opening udp sockets on artnet port");
 
-    let sender = sender.clone();
+    let bridge_sender = bridge_sender.clone();
+    let control_sender = control_sender.clone();
     thread::Builder::new()
         .name("gled:artnet:rx".to_string())
         .spawn(move || {
@@ -181,28 +183,35 @@ pub fn start_thread(_output_package_sender: Sender<OutputPackage>) -> Receiver<A
                     trace!("parsed artnet");
 
                     let mut config = ARTNET_CONFIG.lock();
-                    if output.port_address == config.port_address() {
-                        trace!("artnet data on input universe");
-                        let data = output.data.as_ref();
-                        for i in 0..config.channels as usize {
-                            let channel = config.start as usize + i - 1;
-                            sender
-                                .send(ArtnetEvent {
-                                    channel: i as u8,
-                                    value: data[channel],
-                                })
-                                .expect("Could not send event");
+                    match output.port_address {
+                        x if x == config.port_address() => {
+                            trace!("artnet data on input universe");
+                            let data = output.data.as_ref();
+                            for i in 0..config.channels as usize {
+                                let channel = config.start as usize + i - 1;
+                                bridge_sender
+                                    .send(ArtnetEvent {
+                                        channel: i as u8, // TODO use u16 here to accommodate the full 512 channels?
+                                        value: data[channel],
+                                    })
+                                    .expect("Could not send event");
+                            }
                         }
-                    } else {
-                        trace!("artnet data on another universe");
+                        x if x == 1337.try_into().unwrap() => { // TODO make the control universe configurable
+                            trace!("artnet data on control universe");
+                            control_sender.send(output.data).expect("Could not send event");
+                        }
+                        _ => {
+                            trace!("artnet data on another universe");
 
-                        let bridge = config.bridge.entry(output.port_address.into()).or_default();
-                        bridge.last_data_at = Utc::now();
+                            let bridge = config.bridge.entry(output.port_address.into()).or_default();
+                            bridge.last_data_at = Utc::now();
+                        }
                     }
                 }
             }
         })
         .expect("Could not spawn artnet receive thread for {addr}");
 
-    receiver
+    (bridge_receiver, control_receiver)
 }

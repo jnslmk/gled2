@@ -10,28 +10,30 @@ pub mod storage;
 pub mod svg;
 pub mod timing;
 
+use crate::input::external_control::ExternalControlState;
+use crate::pipeline::extract_output::ExtractOutput;
+use crate::pipeline::output_clear::OutputClear;
+use crate::pipeline::preview::Preview;
+use crate::pipeline::preview_indices::PreviewIndices;
+use crate::pipeline::transition::{Transition, TransitionGoal};
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::{input::Input, midi::state::MidiState, pipeline::renderer_callback::RendererCallback, storage::{
-    asset::{Asset, palette::Palette, project::Project},
+    asset::{palette::Palette, project::Project, Asset},
     asset_id::AssetId,
     loading,
 }, ui::{
     action::UiAction, asset_tree::AssetTree, window_common::default_viewport_builder,
     windows::Windows,
 }, wgpu_render_state};
+use artnet_protocol::PaddedData;
 use eframe::egui_wgpu::Callback;
-use egui::{CentralPanel, Id, Rect, UiBuilder, ViewportId, ahash::HashSet};
+use egui::{ahash::HashSet, CentralPanel, Id, Rect, UiBuilder, ViewportId};
 use persistant_state::PersistantState;
-use std::{sync::mpsc::Receiver, time::Instant};
 use rand::seq::IndexedMutRandom;
-use wgpu::CommandEncoderDescriptor;
+use std::{sync::mpsc::Receiver, time::Instant};
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
-use crate::pipeline::extract_output::ExtractOutput;
-use crate::pipeline::output_clear::OutputClear;
-use crate::pipeline::preview::Preview;
-use crate::pipeline::preview_indices::PreviewIndices;
-use crate::pipeline::transition::{Transition, TransitionGoal};
+use wgpu::CommandEncoderDescriptor;
 
 pub struct App {
     pub startup: bool,
@@ -50,7 +52,9 @@ pub struct App {
     pub midi_output_active: bool,
     pub palette_asset_tree: AssetTree<Palette>,
     pub palette_asset_tree_id: Option<Id>,
+    pub external_control_state: ExternalControlState,
 }
+
 
 impl eframe::App for App {
     #[cfg_attr(feature = "profiling", profiling::function)]
@@ -93,6 +97,8 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
             self.last_title = title;
         }
+
+        self.external_control_state.process_events();
 
         self.render();
 
@@ -229,7 +235,7 @@ impl App {
             }
         });
     }
-    pub fn new(ui_action_receiver: Receiver<UiAction>) -> Option<Self> {
+    pub fn new(ui_action_receiver: Receiver<UiAction>, artnet_control_receiver: crossbeam_channel::Receiver<PaddedData>) -> Option<Self> {
         let app = Self {
             startup: true,
             timing: Default::default(),
@@ -250,6 +256,7 @@ impl App {
                 ..Default::default()
             },
             palette_asset_tree_id: None,
+            external_control_state: ExternalControlState::new(artnet_control_receiver),
         };
 
         Some(app)

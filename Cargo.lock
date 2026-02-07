@@ -1675,6 +1675,7 @@ dependencies = [
  "wgpu-profiler",
  "whoami",
  "winresource",
+ "zerocopy",
 ]
 
 [[package]]

@@ -1,5 +1,6 @@
 pub mod artnet;
 pub mod event;
+pub mod external_control;
 
 use crate::pipeline::output_sender::OutputPackage;
 use crossbeam_channel::{Receiver, Sender};
@@ -11,6 +12,7 @@ use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, OnceLock},
 };
+use crate::input::artnet::ArtnetEvent;
 
 static INPUT: OnceLock<Arc<Mutex<Input>>> = OnceLock::new();
 
@@ -26,16 +28,15 @@ pub struct Input {
 }
 
 impl Input {
-    pub fn init(ctx: &Context, output_package_sender: Sender<OutputPackage>) {
+    pub fn init(ctx: &Context, artnet_bridge_receiver: Receiver<ArtnetEvent>) {
         let gilrs = Gilrs::new().expect("Could not initialize gilrs");
-        let artnet_receiver = artnet::start_thread(output_package_sender);
         let ctx = ctx.clone();
 
         INPUT
             .set(Arc::new(Mutex::new(Self {
                 gilrs,
                 ctx,
-                artnet_receiver,
+                artnet_receiver: artnet_bridge_receiver,
                 events: HashMap::new(),
                 new_artnet_events: HashSet::new(),
                 new_events: HashSet::new(),
