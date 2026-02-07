@@ -16,6 +16,7 @@ chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 cpal = "0.17"
 crossbeam-channel = "0.5"
+deku = "*"
 directories = "6"
 eframe = { version = "0.33", features = [
     "wgpu",
@@ -85,7 +86,6 @@ profiling = { version = "1", features = [
 puffin = { version = "0.19", optional = true }
 puffin_http = { version = "0.16", optional = true }
 wgpu-profiler = { version = "0.25", optional = true, features = ["puffin"] }
-zerocopy = "*"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }

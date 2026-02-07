@@ -1,0 +1,7 @@
+[project]
+name = "gled_test_scripts"
+version = "0.1.0"
+requires-python = "==3.12.*"
+dependencies = [
+    "stupidartnet>=1.6.0",
+]
