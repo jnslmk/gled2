@@ -17,6 +17,7 @@ use crate::pipeline::preview::Preview;
 use crate::pipeline::preview_indices::PreviewIndices;
 use crate::pipeline::transition::{Transition, TransitionGoal};
 use crate::storage::asset::scene::grid::GridLocation;
+use crate::storage::asset::scene::instance::SceneInstance;
 use crate::{input::Input, midi::state::MidiState, pipeline::renderer_callback::RendererCallback, storage::{
     asset::{palette::Palette, project::Project, Asset},
     asset_id::AssetId,
@@ -30,10 +31,12 @@ use eframe::egui_wgpu::Callback;
 use egui::{ahash::HashSet, CentralPanel, Id, Rect, UiBuilder, ViewportId};
 use persistant_state::PersistantState;
 use rand::seq::IndexedMutRandom;
+use std::collections::hash_map::ValuesMut;
+use std::time::Duration;
 use std::{sync::mpsc::Receiver, time::Instant};
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
-use wgpu::CommandEncoderDescriptor;
+use wgpu::{CommandEncoderDescriptor, Queue};
 
 pub struct App {
     pub startup: bool,
@@ -262,6 +265,8 @@ impl App {
         Some(app)
     }
 
+
+    /// Iterate all scene instances of a projects grid and render them
     fn render(&mut self) {
         if let Some(project) = &mut self.project {
             let timing = &self.timing;
@@ -278,69 +283,20 @@ impl App {
             let wgpu_render_state = wgpu_render_state();
             let device = wgpu_render_state.device;
             let queue = &wgpu_render_state.queue;
-            if project.auto_mode_active {
-                if project
-                    .auto_mode_last_change
-                    .get_or_insert_with(Instant::now)
-                    .elapsed()
-                    .as_secs()
-                    > project.auto_mode_seconds
-                {
-                    let auto_mode_max_scenes = project.auto_mode_max_scenes;
-                    let mut prev = std::collections::HashSet::new();
-                    {
-                        let mut indices = project
-                            .scenes_instances_grid
-                            .iter()
-                            .filter(|(_index, scene)| scene.active)
-                            .map(|(location, _scene)| *location)
-                            .collect::<Vec<_>>();
 
-                        let mut disable_count =
-                            (indices.len() + 1).saturating_sub(auto_mode_max_scenes);
-                        while disable_count > 0 {
-                            if let Some(location) = indices.choose_mut(&mut rand::rng()).copied()
-                                && prev.insert(location)
-                            {
-                                disable_count -= 1;
-                                if let Some(scene) = project.scenes_instances_grid.get_mut(&location) {
-                                    scene.set_transition(Transition::new(
-                                        TransitionGoal::TurnOff,
-                                        fade_duration,
-                                    ));
-                                }
-                            }
-                        }
-                    }
+            let external_instances = render_external_scenes(
+                &mut self.external_control_state,
+                project,
+                queue,
+                timing);
+            let project_instances = render_project(
+                project,
+                fade_duration,
+                queue,
+                always_render,
+                timing);
 
-                    let mut scenes = project
-                        .scenes_instances_grid
-                        .iter_mut()
-                        .filter(|(location, _scene)| !prev.contains(location))
-                        .collect::<Vec<_>>();
-                    if let Some((_index, scene)) = scenes.choose_mut(&mut rand::rng()) {
-                        scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
-                    }
-
-                    project.auto_mode_last_change.take();
-                }
-            } else {
-                project.auto_mode_last_change.take();
-            }
-
-            let palette = project.palette.and_then(Asset::get);
-            let deck_groups = project.groups.clone();
-            let main_dimmer = project.main_dimmer;
-            for scene_instance in project.scenes_instances_grid.values_mut() {
-                scene_instance.prepare(
-                    queue,
-                    always_render,
-                    palette.clone(),
-                    &deck_groups,
-                    timing,
-                    main_dimmer,
-                );
-            }
+            let render_instances = project_instances.chain(external_instances);
 
             PreviewIndices::get().prepare(queue);
 
@@ -353,7 +309,7 @@ impl App {
             {
                 let mut wgpu_profiler = crate::WGPU_PROFILER.lock();
                 OutputClear::get().run(&mut wgpu_profiler.scope("OutputClear", &mut encoder));
-                for scene_instance in project.scenes_instances_grid.values_mut() {
+                for scene_instance in render_instances {
                     scene_instance.render(
                         &mut wgpu_profiler.scope(
                             format!(
@@ -375,7 +331,7 @@ impl App {
             #[cfg(not(feature = "profiling"))]
             {
                 OutputClear::get().run(&mut encoder);
-                for scene_instance in project.scenes_instances_grid.values_mut() {
+                for scene_instance in render_instances {
                     scene_instance.render(&mut encoder, blackout, always_render);
                 }
                 ExtractOutput::get().run(&mut encoder);
@@ -386,6 +342,95 @@ impl App {
             RendererCallback::add(encoder.finish());
         }
     }
+}
+
+fn render_external_scenes<'a>(
+    external_control_state: &'a mut ExternalControlState,
+    project: &mut Project,
+    queue: &Queue,
+    timing: &Timing) -> std::slice::IterMut<'a, SceneInstance> {
+    let deck_groups = project.groups.clone();
+    let main_dimmer = project.main_dimmer;
+    let palette = project.palette.and_then(Asset::get);
+    for scene_instance in &mut external_control_state.scene_slots {
+        scene_instance.prepare(
+            queue,
+            false,
+            palette.clone(),
+            &deck_groups,
+            timing,
+            main_dimmer,
+        );
+    }
+    external_control_state.scene_slots.iter_mut()
+}
+
+fn render_project<'a>(project: &'a mut Project, fade_duration: Duration, queue: &wgpu::Queue, always_render: bool, timing: &Timing)
+                      -> ValuesMut<'a, GridLocation, SceneInstance> {
+    if project.auto_mode_active {
+        if project
+            .auto_mode_last_change
+            .get_or_insert_with(Instant::now)
+            .elapsed()
+            .as_secs()
+            > project.auto_mode_seconds
+        {
+            let auto_mode_max_scenes = project.auto_mode_max_scenes;
+            let mut prev = std::collections::HashSet::new();
+            {
+                let mut indices = project
+                    .scenes_instances_grid
+                    .iter()
+                    .filter(|(_index, scene)| scene.active)
+                    .map(|(location, _scene)| *location)
+                    .collect::<Vec<_>>();
+
+                let mut disable_count =
+                    (indices.len() + 1).saturating_sub(auto_mode_max_scenes);
+                while disable_count > 0 {
+                    if let Some(location) = indices.choose_mut(&mut rand::rng()).copied()
+                        && prev.insert(location)
+                    {
+                        disable_count -= 1;
+                        if let Some(scene) = project.scenes_instances_grid.get_mut(&location) {
+                            scene.set_transition(Transition::new(
+                                TransitionGoal::TurnOff,
+                                fade_duration,
+                            ));
+                        }
+                    }
+                }
+            }
+
+            let mut scenes = project
+                .scenes_instances_grid
+                .iter_mut()
+                .filter(|(location, _scene)| !prev.contains(location))
+                .collect::<Vec<_>>();
+            if let Some((_index, scene)) = scenes.choose_mut(&mut rand::rng()) {
+                scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
+            }
+
+            project.auto_mode_last_change.take();
+        }
+    } else {
+        project.auto_mode_last_change.take();
+    }
+
+    let palette = project.palette.and_then(Asset::get);
+    let deck_groups = project.groups.clone();
+    let main_dimmer = project.main_dimmer;
+    for scene_instance in project.scenes_instances_grid.values_mut() {
+        scene_instance.prepare(
+            queue,
+            always_render,
+            palette.clone(),
+            &deck_groups,
+            timing,
+            main_dimmer,
+        );
+    }
+    project.scenes_instances_grid.values_mut()
 }
 
 pub struct GitUiState {
