@@ -43,4 +43,4 @@ if __name__ == "__main__":
     a.show()							# send data
 
     # OR USE STUPIDARTNET FUNCTIONS
-    # a.blackout()						# send single packet with all channels at 255
+    #a.flash_all()						# send single packet with all channels at 255

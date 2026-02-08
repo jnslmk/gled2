@@ -6,6 +6,8 @@ use deku::prelude::*;
 use std::str::FromStr;
 use std::{array, mem};
 use uuid::Uuid;
+use crate::pipeline::preview::Preview;
+use crate::storage::asset::Asset;
 
 const ARTNET_CONTROL_SLOTS: usize = 1;
 const SCENE_SPECIFIC_PARAMETERS: usize = 10;
@@ -42,12 +44,15 @@ impl ExternalControlState{
     }
 
     pub fn process_events(&mut self) {
-        if self.scene_slots[0].active == false {
-            let scene_id = AssetId::from_uuid(Uuid::from_str("a3890ca5-4572-4f21-b05f-382922e961ed").unwrap());
+        let scene_id = AssetId::from_uuid(Uuid::from_str("a3890ca5-4572-4f21-b05f-382922e961ed").unwrap());
+        // this loop will run before Assets are loaded into gled, so we will have to wait before scenes can be initialized
+        if self.scene_slots[0].active == false && Asset::get(scene_id).is_some() {
             let mut scene_instance = SceneInstance::from(scene_id);
             scene_instance.init_states();
             scene_instance.set_output_mix_buffers();
+            Preview::set_buffers();
             scene_instance.active = true;
+            scene_instance.input_dimmer = 1.0;
             self.scene_slots[0] = scene_instance;
         }
         loop {
