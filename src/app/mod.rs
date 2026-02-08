@@ -36,7 +36,7 @@ use std::time::Duration;
 use std::{sync::mpsc::Receiver, time::Instant};
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
-use wgpu::{CommandEncoderDescriptor, Queue};
+use wgpu::CommandEncoderDescriptor;
 
 pub struct App {
     pub startup: bool,
@@ -101,7 +101,7 @@ impl eframe::App for App {
             self.last_title = title;
         }
 
-        self.external_control_state.process_events();
+        self.external_control_state.process_events(&mut self.project);
 
         self.render();
 
@@ -284,19 +284,12 @@ impl App {
             let device = wgpu_render_state.device;
             let queue = &wgpu_render_state.queue;
 
-            let external_instances = render_external_scenes(
-                &mut self.external_control_state,
-                project,
-                queue,
-                timing);
             let project_instances = render_project(
                 project,
                 fade_duration,
                 queue,
                 always_render,
                 timing);
-
-            let render_instances = project_instances.chain(external_instances);
 
             PreviewIndices::get().prepare(queue);
 
@@ -309,7 +302,7 @@ impl App {
             {
                 let mut wgpu_profiler = crate::WGPU_PROFILER.lock();
                 OutputClear::get().run(&mut wgpu_profiler.scope("OutputClear", &mut encoder));
-                for scene_instance in render_instances {
+                for scene_instance in project_instances {
                     scene_instance.render(
                         &mut wgpu_profiler.scope(
                             format!(
@@ -331,7 +324,7 @@ impl App {
             #[cfg(not(feature = "profiling"))]
             {
                 OutputClear::get().run(&mut encoder);
-                for scene_instance in render_instances {
+                for scene_instance in project_instances {
                     scene_instance.render(&mut encoder, blackout, always_render);
                 }
                 ExtractOutput::get().run(&mut encoder);
@@ -342,27 +335,6 @@ impl App {
             RendererCallback::add(encoder.finish());
         }
     }
-}
-
-fn render_external_scenes<'a>(
-    external_control_state: &'a mut ExternalControlState,
-    project: &mut Project,
-    queue: &Queue,
-    timing: &Timing) -> std::slice::IterMut<'a, SceneInstance> {
-    let deck_groups = project.groups.clone();
-    let main_dimmer = project.main_dimmer;
-    let palette = project.palette.and_then(Asset::get);
-    for scene_instance in &mut external_control_state.scene_slots {
-        scene_instance.prepare(
-            queue,
-            false,
-            palette.clone(),
-            &deck_groups,
-            timing,
-            main_dimmer,
-        );
-    }
-    external_control_state.scene_slots.iter_mut()
 }
 
 fn render_project<'a>(project: &'a mut Project, fade_duration: Duration, queue: &wgpu::Queue, always_render: bool, timing: &Timing)

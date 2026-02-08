@@ -253,3 +253,10 @@ impl AssetTrait for Project {
     const NAME: &'static str = "Project";
     const SHOW_NAME_IF_SELECTED: bool = true;
 }
+
+pub fn grid_location_from_continuous_index(index: usize, start: &GridLocation) -> GridLocation {
+    let index = index + start.col + start.row * GRID_WIDTH;
+    let row = index / GRID_HEIGHT;
+    let col = index % GRID_WIDTH;
+    GridLocation { row, col }
+}

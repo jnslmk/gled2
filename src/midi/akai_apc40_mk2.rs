@@ -7,11 +7,10 @@ use crate::{storage::asset::scene::color::SceneInstanceColor, ui::action::UiActi
 use crossbeam_channel::Receiver;
 use midir::MidiOutputConnection;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use crate::storage::asset::project::grid_location_from_continuous_index;
 
 fn location_from_peripheral_id(index: usize) -> GridLocation {
-    let col = index % GRID_WIDTH;
-    let row = index / GRID_WIDTH;
-    GridLocation { col, row }
+    grid_location_from_continuous_index(index, &GridLocation { row: 0, col: 0 })
 }
 pub fn handle_input(_stamp: u64, message: &[u8]) {
     if message.len() != 3 {
