@@ -1,5 +1,3 @@
-import time
-
 from stupidArtnet import StupidArtnet
 
 if __name__ == "__main__":
@@ -32,7 +30,16 @@ if __name__ == "__main__":
 
     a.blackout()
 
-    time.sleep(5)
+    # YOU CAN CREATE YOUR OWN BYTE ARRAY OF PACKET_SIZE
+    packet = bytearray(packet_size)		# create packet for Artnet
+    for i in range(packet_size):			# fill packet with sequential values
+        packet[i] = (i % 256)
 
-    # OR USE STUPIDARTNET FUNCTIONS
-    a.flash_all()						# send single packet with all channels at 255
+    # ... AND SET IT TO STUPID ARTNET
+    a.set(packet)						# only on changes
+
+    # ALL PACKETS ARE SAVED IN THE CLASS, YOU CAN CHANGE SINGLE VALUES
+    a.set_single_value(1, 255)			# set channel 1 to 255
+
+    # ... AND SEND
+    a.show()							# send data

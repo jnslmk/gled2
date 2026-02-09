@@ -71,6 +71,13 @@ impl<T: AssetTrait> Asset<T> {
             .cloned()
     }
 
+    pub fn get_asset_from_index(index: usize) -> Option<Arc<Self>> {
+        match index {
+            0 => None,
+            index => Self::all().get(index-1).cloned()
+        }
+    }
+
     pub fn all() -> Vec<Arc<Asset<T>>> {
         let get_assets = || {
             Some(
