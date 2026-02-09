@@ -122,7 +122,7 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) {
         }
     });
     ui.separator();
-    
+
 
     SidePanel::left("artnet_bridge_input_config")
         .exact_width(ui.available_width() / 3.0)
@@ -236,7 +236,10 @@ impl <'a, S> Widget for SettingsMenu<'a, S> {
         debug_assert!(self.submenus.len() > 0);
         SidePanel::left("artnet_input_config")
             .resizable(true)
+            .width_range(100.0..=200.0)
+            .default_width(150.0)
             .show_inside(ui, |ui| {
+                ui.take_available_space();
                 self.submenus.keys().for_each(|key| {
                     ui.selectable_value(self.selected_submenu, key.clone(), key);
                 });
