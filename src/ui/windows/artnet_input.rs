@@ -50,9 +50,9 @@ impl ArtnetInputWindow {
             default_viewport_builder()
                 .with_inner_size(Vec2::new(800.0, 400.0))
                 .with_min_inner_size(Vec2::new(800.0, 400.0))
-                .with_resizable(false)
+                .with_resizable(true)
                 .with_minimize_button(false)
-                .with_maximize_button(false),
+                .with_maximize_button(true),
             |ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {
@@ -84,8 +84,10 @@ impl ArtnetInputWindow {
     }
 }
 
-fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) -> Response {
+fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) {
     let mut config = ARTNET_CONFIG.lock();
+    ui.heading("Artnet Bridge");
+    ui.add_space(3.0);
 
     ui.horizontal(|ui| {
 
@@ -119,6 +121,8 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) -> Response 
             config.bind_ip = *addr;
         }
     });
+    ui.separator();
+    
 
     SidePanel::left("artnet_bridge_input_config")
         .exact_width(ui.available_width() / 3.0)
@@ -200,17 +204,17 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) -> Response 
                 );
             });
     });
-    ui.response()
 }
 
-fn artnet_control_input_settings(ui: &mut Ui, edit_state: &mut EditSate) -> Response{
-    ui.label("Artnet Control")
+fn artnet_control_input_settings(ui: &mut Ui, edit_state: &mut EditSate){
+    ui.heading("Artnet Control");
+    ui.add_space(3.0);
 }
 
 struct SettingsMenu<'a, S>{
     selected_submenu: &'a mut String,
     edit_state: &'a mut S,
-    submenus: BTreeMap<String, Box<dyn Fn(&mut Ui, &mut S) -> Response + 'a>>,
+    submenus: BTreeMap<String, Box<dyn Fn(&mut Ui, &mut S) + 'a>>,
 }
 
 impl<'a, S> SettingsMenu<'a, S> {
@@ -221,7 +225,7 @@ impl<'a, S> SettingsMenu<'a, S> {
             submenus: BTreeMap::default(),
         }
     }
-    fn add_submenu(mut self, submenu: String, ui_callback: impl Fn(&mut Ui, &mut S) -> Response + 'a) -> Self {
+    fn add_submenu(mut self, submenu: String, ui_callback: impl Fn(&mut Ui, &mut S) + 'a) -> Self {
         self.submenus.insert(submenu, Box::new(ui_callback));
         self
     }
@@ -244,6 +248,6 @@ impl <'a, S> Widget for SettingsMenu<'a, S> {
         let submenu = self.submenus.get(self.selected_submenu).unwrap();
         CentralPanel::default().show_inside(ui, |ui| {
             submenu(ui, self.edit_state)
-        }).inner
+        }).response
     }
 }
