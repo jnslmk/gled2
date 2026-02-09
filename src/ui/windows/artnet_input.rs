@@ -6,10 +6,8 @@ use crate::{
     ui::window_common::{default_viewport_builder, gled_window_frame},
 };
 use chrono::Local;
-use egui::{CentralPanel, Context, Frame, Id, Layout, Response, RichText, SidePanel, Slider, TextEdit, Ui, UiBuilder, Vec2, ViewportId, Widget};
-use egui::ahash::HashMap;
+use egui::{CentralPanel, Context, Id, Layout, Response, RichText, SidePanel, Slider, TextEdit, Ui, Vec2, ViewportId, Widget};
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
-use crate::ui::scoped_frame;
 
 #[derive(Default)]
 pub struct ArtnetInputWindow {
@@ -122,12 +120,10 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) -> Response 
         }
     });
 
-    let mut rect = ui.available_rect_before_wrap();
-    rect.set_width(rect.width() / 3.0);
-    scoped_frame(ui, UiBuilder::default().max_rect(rect),
-                 Frame::default(),
-                 |ui| {
-            ui.take_available_height();
+    SidePanel::left("artnet_bridge_input_config")
+        .exact_width(ui.available_width() / 3.0)
+        .resizable(false)
+        .show_inside(ui, |ui| {
             ui.heading("Input Config");
             ui.add_space(3.0);
             ui.label("Universe");
@@ -152,7 +148,7 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) -> Response 
             }
         });
 
-    Frame::new().show(ui, |ui| {
+    CentralPanel::default().show_inside(ui, |ui| {
         ui.heading("Artnet Bridge");
         ui.add_space(3.0);
 
