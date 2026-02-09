@@ -1,4 +1,29 @@
+from functools import reduce
+
 from stupidArtnet import StupidArtnet
+from dataclasses import dataclass, fields
+import struct
+
+@dataclass
+class ArtnetSceneControlState:
+    scene_index: int = 0
+    group_index: int = 0
+    opacity: int = 0
+    offset: int = 0
+    speed_multiplier: int = 127
+    color_mode: int = 0
+    pallet_override: int = 0
+
+    def __post_init__(self):
+        for f in fields(self):
+            v = getattr(self, f.name)
+            if not (0 <= v <= 255):
+                raise ValueError(f"{f.name} must be 0-255")
+
+    def __bytes__(self):
+        # AUTO-generates 'BBBBBBB' from field count
+        fmt = f'{len(fields(self))}B'
+        return struct.pack(fmt, *[getattr(self, f.name) for f in fields(self)])
 
 if __name__ == "__main__":
     # THESE ARE MOST LIKELY THE VALUES YOU WILL BE NEEDING
@@ -28,18 +53,15 @@ if __name__ == "__main__":
     # CHECK INIT
     print(a)
 
-    a.blackout()
+    states = [ArtnetSceneControlState() for i in range(10)]
 
-    # YOU CAN CREATE YOUR OWN BYTE ARRAY OF PACKET_SIZE
-    packet = bytearray(packet_size)		# create packet for Artnet
-    for i in range(packet_size):			# fill packet with sequential values
-        packet[i] = (i % 256)
+    states[0] = ArtnetSceneControlState(scene_index=1, opacity=255)
+    states[1] = ArtnetSceneControlState(scene_index=0)
+    states[3] = ArtnetSceneControlState(scene_index=3, offset=128, speed_multiplier=129)
 
-    # ... AND SET IT TO STUPID ARTNET
-    a.set(packet)						# only on changes
+    packet = reduce(lambda x, y: x + bytes(y), states, bytearray())
+    packet.extend(b'\x00' * (packet_size - len(packet)))
+    print(packet)
 
-    # ALL PACKETS ARE SAVED IN THE CLASS, YOU CAN CHANGE SINGLE VALUES
-    a.set_single_value(1, 255)			# set channel 1 to 255
-
-    # ... AND SEND
-    a.show()							# send data
+    a.set(packet)
+    a.show()
