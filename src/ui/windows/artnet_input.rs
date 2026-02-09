@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::net::Ipv4Addr;
 
 use crate::{
@@ -5,13 +6,20 @@ use crate::{
     ui::window_common::{default_viewport_builder, gled_window_frame},
 };
 use chrono::Local;
-use egui::{CentralPanel, Context, Id, Layout, Response, RichText, SidePanel, Slider, TextEdit, Ui, Vec2, ViewportId, Widget};
+use egui::{CentralPanel, Context, Frame, Id, Layout, Response, RichText, SidePanel, Slider, TextEdit, Ui, UiBuilder, Vec2, ViewportId, Widget};
 use egui::ahash::HashMap;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
+use crate::ui::scoped_frame;
 
 #[derive(Default)]
 pub struct ArtnetInputWindow {
     open: bool,
+    selected_submenu: String,
+    edit_state: EditSate,
+}
+
+#[derive(Default)]
+struct EditSate {
     start: Option<String>,
     channels: Option<String>,
     addresses: Vec<Ipv4Addr>,
@@ -24,7 +32,7 @@ impl ArtnetInputWindow {
             return;
         }
 
-        self.addresses = NetworkInterface::show()
+        self.edit_state.addresses = NetworkInterface::show()
             .expect("Could not find network interfaces")
             .into_iter()
             .flat_map(|interface| {
@@ -37,7 +45,7 @@ impl ArtnetInputWindow {
                     })
             })
             .collect::<Vec<_>>();
-        self.addresses.sort();
+        self.edit_state.addresses.sort();
 
         ctx.show_viewport_immediate(
             ViewportId(Id::new("artnet inputs window")),
@@ -55,9 +63,14 @@ impl ArtnetInputWindow {
                 });
 
                 gled_window_frame(ctx, "Artnet Inputs/Bridge", |ui| {
-                    let settings_menu = SettingsMenu::new(self)
+                    let settings_menu =
+                        SettingsMenu::new(&mut self.edit_state, &mut self.selected_submenu)
                         .add_submenu("Artnet Bridge".into(), |ui, edit_state|
-                            artnet_bridge_settings(ui, edit_state));
+                            artnet_bridge_settings(ui, edit_state)
+                        )
+                        .add_submenu("Artnet Control".into(), |ui, edit_state|
+                            artnet_control_input_settings(ui, edit_state)
+                        );
                     ui.add(settings_menu);
                 });
             },
@@ -73,10 +86,11 @@ impl ArtnetInputWindow {
     }
 }
 
-fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut ArtnetInputWindow, ) -> Response {
+fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) -> Response {
     let mut config = ARTNET_CONFIG.lock();
 
     ui.horizontal(|ui| {
+
         ui.label("Active");
         ui.checkbox(&mut config.active, "");
 
@@ -108,10 +122,12 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut ArtnetInputWindow, ) -> 
         }
     });
 
-    SidePanel::left("artnet_input_config")
-        .exact_width(ui.available_width() / 3.0)
-        .resizable(false)
-        .show_inside(ui, |ui| {
+    let mut rect = ui.available_rect_before_wrap();
+    rect.set_width(rect.width() / 3.0);
+    scoped_frame(ui, UiBuilder::default().max_rect(rect),
+                 Frame::default(),
+                 |ui| {
+            ui.take_available_height();
             ui.heading("Input Config");
             ui.add_space(3.0);
             ui.label("Universe");
@@ -136,7 +152,7 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut ArtnetInputWindow, ) -> 
             }
         });
 
-    CentralPanel::default().show_inside(ui, |ui| {
+    Frame::new().show(ui, |ui| {
         ui.heading("Artnet Bridge");
         ui.add_space(3.0);
 
@@ -191,20 +207,22 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut ArtnetInputWindow, ) -> 
     ui.response()
 }
 
-fn artnet_input_settings(edit_state: &mut ArtnetInputWindow, ui: &mut Ui){
-
+fn artnet_control_input_settings(ui: &mut Ui, edit_state: &mut EditSate) -> Response{
+    ui.label("Artnet Control")
 }
 
 struct SettingsMenu<'a, S>{
+    selected_submenu: &'a mut String,
     edit_state: &'a mut S,
-    submenus: HashMap<String, Box<dyn Fn(&mut Ui, &mut S) -> Response + 'a>>,
+    submenus: BTreeMap<String, Box<dyn Fn(&mut Ui, &mut S) -> Response + 'a>>,
 }
 
 impl<'a, S> SettingsMenu<'a, S> {
-    fn new(edit_state: &'a mut S,) -> Self{
+    fn new(edit_state: &'a mut S, selected_submenu: &'a mut String) -> Self{
         Self{
+            selected_submenu,
             edit_state,
-            submenus: HashMap::default(),
+            submenus: BTreeMap::default(),
         }
     }
     fn add_submenu(mut self, submenu: String, ui_callback: impl Fn(&mut Ui, &mut S) -> Response + 'a) -> Self {
@@ -214,15 +232,22 @@ impl<'a, S> SettingsMenu<'a, S> {
 }
 
 impl <'a, S> Widget for SettingsMenu<'a, S> {
-    fn ui(self, ui: &mut Ui) -> Response {
+    fn ui(mut self, ui: &mut Ui) -> Response {
         debug_assert!(self.submenus.len() > 0);
-        let mut selected = self.submenus.keys().next().unwrap().to_string();
-        self.submenus.keys().for_each(|key| {
-            ui.selectable_value(&mut selected, key.to_string(), key);
-        });
-        ui.separator();
-        let submenu = self.submenus.get(&selected)
-            .expect(format!("Submenu {} could not be found", selected).as_str());
-        submenu(ui, self.edit_state)
+        SidePanel::left("artnet_input_config")
+            .resizable(true)
+            .show_inside(ui, |ui| {
+                self.submenus.keys().for_each(|key| {
+                    ui.selectable_value(self.selected_submenu, key.clone(), key);
+                });
+            });
+        if !self.submenus.contains_key(self.selected_submenu) {
+            *self.selected_submenu = self.submenus.keys().next().unwrap().clone();
+        }
+
+        let submenu = self.submenus.get(self.selected_submenu).unwrap();
+        CentralPanel::default().show_inside(ui, |ui| {
+            submenu(ui, self.edit_state)
+        }).inner
     }
 }
