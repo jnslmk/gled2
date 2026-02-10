@@ -1,15 +1,15 @@
+use crate::audio::fft::{fft_data_u8, get_fft_bin_index_by_frequency, FREQ_BINS, MAX_FREQ};
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
-use crate::audio::state::{MAX_FREQ, fft_data_u8};
-use crate::audio::{REACTIVE_SIGNAL_THREAD, ReactiveSignalHandle};
+use crate::audio::{ReactiveSignalHandle, REACTIVE_SIGNAL_THREAD};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
 use crate::ui::scoped_frame;
-use crate::{WGPU_RENDER_STATE, wgpu_render_state};
+use crate::{wgpu_render_state, WGPU_RENDER_STATE};
 use egui::load::SizedTexture;
-use egui::{Color32, Frame, Image, Layout, Ui, UiBuilder};
+use egui::{Color32, Frame, Image, Label, Layout, RichText, Ui, UiBuilder};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
-use emath::{Align, Pos2, Rect, Vec2, pos2, remap_clamp, vec2};
+use emath::{pos2, remap, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
 use epaint::{PathShape, PathStroke, Stroke};
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
@@ -243,24 +243,25 @@ impl ADSR {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::show");
         Frame::new().inner_margin(5.).show(ui, |ui| {
-            let signal = self
+            if let Some(signal) = self
                 .reactive_signal_handle
                 .update_params_and_fetch_signal()
-                .unwrap_or_default();
-            let spectrum = signal.spectrum.clone();
-            let impulse = signal.impulse.clamp(0.0, 1.0);
-            let output_level = signal.current_level;
+                {
+                let spectrum = signal.spectrum.clone();
+                let impulse = signal.impulse.clamp(0.0, 1.0);
+                let output_level = signal.current_level;
 
-            if self.preview_shader.is_none() {
-                self.preview_shader = PreviewShader::try_init();
-            }
-            if let Some(preview_shader) = &self.preview_shader {
-                preview_shader.draw_spectrum_texture(spectrum);
-            }
+                if self.preview_shader.is_none() {
+                    self.preview_shader = PreviewShader::try_init();
+                }
+                if let Some(preview_shader) = &self.preview_shader {
+                    preview_shader.draw_spectrum_texture(spectrum);
+                }
 
-            self.draw_spectrum(ui);
-            ui.separator();
-            self.draw_adsr(ui, impulse, output_level);
+                self.draw_spectrum(ui);
+                ui.separator();
+                self.draw_adsr(ui, impulse, output_level);
+            }
         });
     }
 
@@ -468,7 +469,31 @@ impl ADSR {
         spectrum_rect.max.x = upper_x;
 
         ui.painter()
-            .rect_filled(spectrum_rect, 0., Color32::from_white_alpha(150));
+            .rect_filled(
+            spectrum_rect,
+            0.,
+            Color32::from_white_alpha(100));
+
+        Frame::new().show(ui, |ui| {
+            ui.take_available_width();
+            ui.set_height(20.);
+            let rect = ui.available_rect_before_wrap();
+            // draw spectrum frequency indicators
+            let length = size.x;
+            for i in 0..=9 {
+                let freq = (i as f32).exp2() * 110.;
+                let bin = get_fft_bin_index_by_frequency(freq);
+                let x = remap(bin as f32, 0f32..=(FREQ_BINS as f32), ui_position_range.clone());
+                if x > length {
+                    break;
+                }
+                ui.painter().vline(x, rect.top()..=rect.bottom()-10.0, Stroke{width: 1.0, color: Color32::WHITE});
+                ui.place(
+                    Rect::from_min_max(pos2(x-10.0, rect.bottom()-10.0), pos2(x+10.0, rect.bottom())),
+                    Label::new(RichText::new(format!("{}", freq)).monospace().size(10.0)),
+                );
+            }
+        });
 
         scoped_frame(
             ui,
@@ -548,7 +573,7 @@ impl ADSR {
 
 fn knob_default(knob: Knob) -> Knob {
     knob.with_font_size(12.0)
-        .with_colors(egui::Color32::GRAY, Color32::WHITE, Color32::WHITE)
+        .with_colors(Color32::GRAY, Color32::WHITE, Color32::WHITE)
         .with_stroke_width(3.0)
         .with_logarithmic_scaling()
 }

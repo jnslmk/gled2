@@ -1,7 +1,5 @@
 use crate::storage::asset::scene::grid::GridLocation;
-use egui::{
-    Button, Color32, Frame, InnerResponse, KeyboardShortcut, Response, Stroke, Ui, UiBuilder,
-};
+use egui::{Button, Color32, Frame, InnerResponse, KeyboardShortcut, Response, Stroke, Ui, UiBuilder};
 
 pub mod action;
 pub mod asset;

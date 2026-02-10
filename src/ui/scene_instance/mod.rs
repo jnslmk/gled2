@@ -1,15 +1,16 @@
 pub mod dnd;
 pub mod widget;
 
-use super::{ChangeButton, action::UiAction};
+use super::{action::UiAction, ChangeButton};
 use crate::{
     app::timing::Timing,
     pipeline::group::Groups,
-    storage::asset::{Asset, scene::instance::SceneInstance},
+    storage::asset::{scene::instance::SceneInstance, Asset},
     ui::effect::widget::EffectWidget,
 };
 use egui::{
-    Checkbox, Color32, Margin, ScrollArea, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible,
+    scroll_area::ScrollBarVisibility::AlwaysVisible, Checkbox, Color32, Margin, ScrollArea,
+    Vec2,
 };
 use egui_modal::Modal;
 use std::sync::Arc;
