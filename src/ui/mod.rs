@@ -1,5 +1,7 @@
 use crate::storage::asset::scene::grid::GridLocation;
-use egui::{Button, Color32, Frame, InnerResponse, KeyboardShortcut, Response, Stroke, Ui, UiBuilder};
+use egui::{
+    Button, Color32, Frame, InnerResponse, KeyboardShortcut, Response, Stroke, Ui, UiBuilder,
+};
 
 pub mod action;
 pub mod asset;
@@ -81,36 +83,43 @@ pub fn scoped_frame<T>(
     })
 }
 
+pub struct ContextMenuAction {
+    pub keyboard_shortcut: KeyboardShortcut,
+    pub description: String,
+    pub ctx_action: fn(GridLocation),
+    pub key_action: fn(),
+}
+
 #[derive(Default)]
-pub struct ContextMenuBuilder{
-    actions: Vec<(KeyboardShortcut, String , fn(GridLocation), fn())>
+pub struct ContextMenuBuilder {
+    actions: Vec<ContextMenuAction>,
 }
 
 impl ContextMenuBuilder {
-    pub fn add_action(mut self, description: &str, keyboard_shortcut: KeyboardShortcut, ctx_action: fn(GridLocation), key_action: fn()) -> Self {
-        self.actions.push((keyboard_shortcut, description.to_string(), ctx_action, key_action));
+    pub fn add_action(mut self, action: ContextMenuAction) -> Self {
+        self.actions.push(action);
         self
     }
     pub fn show(self, response: &mut Response, location: GridLocation) {
         response.context_menu(|ctx_menu_ui| {
-            for ((keyboard_shortcut, description, ctx_action, _)) in &self.actions {
-                let context_button =
-                    Button::new(format!(
-                        "{}\t{}",
-                        description,
-                        ctx_menu_ui.ctx().format_shortcut(&keyboard_shortcut)
-                    ));
+            for action in &self.actions {
+                let context_button = Button::new(format!(
+                    "{}\t{}",
+                    action.description,
+                    ctx_menu_ui.ctx().format_shortcut(&action.keyboard_shortcut)
+                ));
                 if ctx_menu_ui.add(context_button).clicked() {
-                    ctx_action(location);
+                    (action.ctx_action)(location);
                     return;
                 }
             }
         });
-        for (keyboard_shortcut, _, _, key_action) in &self.actions {
-            if response.ctx.input_mut(|i| {
-                i.consume_shortcut(&keyboard_shortcut)
-            }) {
-                key_action();
+        for action in &self.actions {
+            if response
+                .ctx
+                .input_mut(|i| i.consume_shortcut(&action.keyboard_shortcut))
+            {
+                (action.key_action)();
             }
         }
     }

@@ -17,7 +17,7 @@ use crate::{
         constants::{UNIVERSE_BUFFER_SIZE, UNIVERSES},
         extract_output::ExtractOutput,
     },
-    storage::asset::{Asset, output_device::enttec_usb_pro},
+    storage::asset::output_device::enttec_usb_pro,
     svg::universe_color_channels::UniverseColorChannels,
     ui::windows::{channel_overwrites::ChannelOverwrites, output_routings::HOVERED_OUTPUT_ROUTING},
 };
@@ -67,13 +67,13 @@ pub fn start() -> Result<Sender<OutputPackage>> {
                             if Some(&*routing) == hovered_output_routing.as_ref() {
                                 continue;
                             }
-                            let Some(device) = routing.device.and_then(Asset::get) else {
+                            let Some(device_id) = routing.device else {
                                 continue;
                             };
                             UniverseColorChannels::correct(*universe, values);
-                            channel_overwrites.overwrite_data(device.id, routing.universe, values);
+                            channel_overwrites.overwrite_data(device_id, routing.universe, values);
 
-                            if let Some(recipient) = device.data.get_recipient(routing.universe) {
+                            if let Some(recipient) = routing.recipient() {
                                 let mut data = [0u8; UNIVERSE_BUFFER_SIZE as usize];
                                 data.copy_from_slice(values);
                                 sender.send(OutputPackage::Gled { recipient, data }).ok();
@@ -81,16 +81,13 @@ pub fn start() -> Result<Sender<OutputPackage>> {
                         }
 
                         if let Some(routing) = hovered_output_routing
-                            && let Some(device) = routing.device.and_then(Asset::get)
-                            && let Some(recipient) = device.data.get_recipient(routing.universe)
+                            && let Some(recipient) = routing.recipient()
                         {
                             sender.send(OutputPackage::Hovered { recipient }).ok();
                         }
 
-                        for (device, universe, data) in channel_overwrites.other_universes() {
-                            if let Some(device) = Asset::get(device)
-                                && let Some(recipient) = device.data.get_recipient(universe)
-                            {
+                        for (routing, data) in channel_overwrites.overwritten_universes() {
+                            if let Some(recipient) = routing.recipient() {
                                 sender.send(OutputPackage::Gled { recipient, data }).ok();
                             }
                         }
@@ -113,7 +110,7 @@ pub enum OutputPackage {
     ArtnetInput {
         recipient: Recipient,
         data: [u8; UNIVERSE_BUFFER_SIZE as usize],
-        merge: bool,
+        htp: bool,
     },
     Gled {
         recipient: Recipient,
@@ -147,9 +144,9 @@ fn merge_and_send_thread(receiver: Receiver<OutputPackage>) {
             OutputPackage::ArtnetInput {
                 recipient,
                 data,
-                merge,
+                htp,
             } => {
-                artnet_input_cache.insert(recipient.clone(), (now, (data, merge)));
+                artnet_input_cache.insert(recipient.clone(), (now, (data, htp)));
                 (recipient, false)
             }
             OutputPackage::Gled { recipient, data } => {
@@ -194,11 +191,11 @@ fn merge_and_send_thread(receiver: Receiver<OutputPackage>) {
             (None, Some((_last_data, _last_update, data)), false) => Cow::Borrowed(data),
             (Some((_last_data, (data, _merge))), None, false) => Cow::Borrowed(data),
             (
-                Some((artnet_last_data, (artnet_data, merge))),
+                Some((artnet_last_data, (artnet_data, htp))),
                 Some((_gled_last_data, gled_last_update, gled_data)),
                 false,
             ) => {
-                if *merge {
+                if *htp {
                     let mut data = [0u8; UNIVERSE_BUFFER_SIZE as usize];
                     for i in 0..UNIVERSE_BUFFER_SIZE as usize {
                         data[i] = gled_data[i].max(artnet_data[i]);

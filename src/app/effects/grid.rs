@@ -5,15 +5,19 @@ use super::App;
 use crate::app::PersistantState;
 use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 use crate::storage::asset::scene::grid::GridLocation;
+use crate::ui::ContextMenuAction;
+use crate::ui::ContextMenuBuilder;
 use crate::ui::action::UiAction;
 use crate::ui::scene_instance::dnd::{dnd_drag_source, dnd_drop_zone};
 use crate::ui::scene_instance::widget::EmptyGridSpot;
 use crate::ui::scene_instance::widget::SceneInstanceWidget;
-use crate::ui::ContextMenuBuilder;
-use egui::{scroll_area::ScrollBarVisibility::AlwaysVisible, Color32, Frame, Id, KeyboardShortcut, Modifiers, TextureHandle, Ui, UiBuilder, Vec2};
+use egui::{
+    Color32, Frame, Id, KeyboardShortcut, Modifiers, TextureHandle, Ui, UiBuilder, Vec2,
+    scroll_area::ScrollBarVisibility::AlwaysVisible,
+};
 use egui::{DragAndDrop, Label, LayerId, Order, Response, Sense, Widget};
 use egui_phosphor_icons::icons;
-use emath::{vec2, Rect};
+use emath::{Rect, vec2};
 use epaint::{Stroke, StrokeKind};
 
 impl App {
@@ -102,31 +106,49 @@ impl App {
 
                                                 // setup context actions
                                                 ContextMenuBuilder::default()
-                                                    .add_action(
-                                                        "Duplicate Scene",
-                                                        KeyboardShortcut::new(
+                                                    .add_action(ContextMenuAction {
+                                                        description: "Duplicate Scene".to_string(),
+                                                        keyboard_shortcut: KeyboardShortcut::new(
                                                             Modifiers::COMMAND,
                                                             egui::Key::D,
                                                         ),
-                                                        |location|{ UiAction::CloneSceneInstance(location).enqueue(); },
-                                                        ||{ UiAction::CloneSelectedSceneInstance.enqueue(); }
-                                                    )
-                                                    .add_action(
-                                                        "Delete Scene",
-                                                        KeyboardShortcut::new(
+                                                        ctx_action: |location| {
+                                                            UiAction::CloneSceneInstance(location)
+                                                                .enqueue();
+                                                        },
+                                                        key_action: || {
+                                                            UiAction::CloneSelectedSceneInstance
+                                                                .enqueue();
+                                                        },
+                                                    })
+                                                    .add_action(ContextMenuAction {
+                                                        description: "Delete Scene".to_string(),
+                                                        keyboard_shortcut: KeyboardShortcut::new(
                                                             Modifiers::default(),
-                                                            egui::Key::Delete),
-                                                        |location|{ UiAction::DeleteSceneInstance { location }.enqueue(); },
-                                                        ||{ UiAction::DeleteSelectedSceneInstance.enqueue(); }
-                                                    )
+                                                            egui::Key::Delete,
+                                                        ),
+                                                        ctx_action: |location| {
+                                                            UiAction::DeleteSceneInstance {
+                                                                location,
+                                                            }
+                                                            .enqueue();
+                                                        },
+                                                        key_action: || {
+                                                            UiAction::DeleteSelectedSceneInstance
+                                                                .enqueue();
+                                                        },
+                                                    })
                                                     .show(&mut widget_response, location);
 
                                                 // also handle backspace as delete action for MacOS
                                                 if ui.ctx().input_mut(|i| {
-                                                    i.consume_key(Modifiers::default(), egui::Key::Backspace) }) {
+                                                    i.consume_key(
+                                                        Modifiers::default(),
+                                                        egui::Key::Backspace,
+                                                    )
+                                                }) {
                                                     UiAction::DeleteSelectedSceneInstance.enqueue();
                                                 }
-
 
                                                 if ui.ctx().is_being_dragged(item_id) {
                                                     ui.painter().rect_filled(

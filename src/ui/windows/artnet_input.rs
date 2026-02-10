@@ -3,10 +3,16 @@ use std::net::Ipv4Addr;
 
 use crate::{
     input::artnet::ARTNET_CONFIG,
-    ui::window_common::{default_viewport_builder, gled_window_frame},
+    storage::asset::{Asset, output_device::routing::OutputRouting},
+    ui::{
+        ChangeButton,
+        window_common::{default_viewport_builder, gled_window_frame},
+        windows::output_routings::HOVERED_OUTPUT_ROUTING,
+    },
 };
 use chrono::Local;
-use egui::{CentralPanel, Context, Id, Layout, Response, RichText, SidePanel, Slider, TextEdit, Ui, Vec2, ViewportId, Widget};
+use egui::{Button, CentralPanel, ComboBox, Context, Id, Layout, Response, RichText, SidePanel, Slider, TextEdit, Ui, Vec2, ViewportId, Widget, WidgetText};
+use egui_phosphor_icons::icons;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
 #[derive(Default)]
@@ -48,9 +54,9 @@ impl ArtnetInputWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("artnet inputs window")),
             default_viewport_builder()
-                .with_inner_size(Vec2::new(800.0, 400.0))
-                .with_min_inner_size(Vec2::new(800.0, 400.0))
-                .with_resizable(true)
+                .with_inner_size(Vec2::new(800.0, 500.0))
+                .with_min_inner_size(Vec2::new(800.0, 500.0))
+                .with_resizable(false)
                 .with_minimize_button(false)
                 .with_maximize_button(true),
             |ctx, _viewport_class| {
@@ -63,12 +69,12 @@ impl ArtnetInputWindow {
                 gled_window_frame(ctx, "Artnet Inputs/Bridge", |ui| {
                     let settings_menu =
                         SettingsMenu::new(&mut self.edit_state, &mut self.selected_submenu)
-                        .add_submenu("Artnet Bridge".into(), |ui, edit_state|
-                            artnet_bridge_settings(ui, edit_state)
-                        )
-                        .add_submenu("Artnet Control".into(), |ui, edit_state|
-                            artnet_control_input_settings(ui, edit_state)
-                        );
+                            .add_submenu("Artnet Bridge".into(), |ui, edit_state|
+                                artnet_bridge_settings(ui, edit_state),
+                            )
+                            .add_submenu("Artnet Control".into(), |ui, edit_state|
+                                artnet_control_input_settings(ui, edit_state),
+                            );
                     ui.add(settings_menu);
                 });
             },
@@ -84,13 +90,16 @@ impl ArtnetInputWindow {
     }
 }
 
-fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) {
+fn artnet_control_input_settings(ui: &mut Ui, edit_sate: &mut EditSate) {
+    ui.heading("Artnet Control");
+}
+
+fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate) {
     let mut config = ARTNET_CONFIG.lock();
     ui.heading("Artnet Bridge");
     ui.add_space(3.0);
 
     ui.horizontal(|ui| {
-
         ui.label("Active");
         ui.checkbox(&mut config.active, "");
 
@@ -125,7 +134,7 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) {
 
 
     SidePanel::left("artnet_bridge_input_config")
-        .exact_width(ui.available_width() / 3.0)
+        .exact_width(ui.available_width() / 5.0)
         .resizable(false)
         .show_inside(ui, |ui| {
             ui.heading("Input Config");
@@ -169,6 +178,8 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) {
                 ui.with_layout(
                     Layout::top_down_justified(egui::Align::Min),
                     |ui| {
+                        let mut hovered_output_routing = None;
+
                         for (universe, bridge) in config.bridge.iter_mut() {
                             ui.label(
                                 RichText::new(format!("Universe: {universe}"))
@@ -176,50 +187,105 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate, ) {
                             );
 
                             ui.horizontal(|ui| {
+                                ui.label(format!("Updates: {}", bridge.updates));
                                 ui.label(
                                     bridge
                                         .last_data_at
                                         .with_timezone(&Local)
-                                        .format("Last data at: %H:%M:%S")
+                                        .format("(Last: %H:%M:%S)")
                                         .to_string(),
                                 );
 
-                                let mut active = bridge.output_universe.is_some();
-                                if ui.checkbox(&mut active, "Enable").changed() {
-                                    if active {
-                                        bridge.output_universe = Some(*universe);
-                                    } else {
-                                        bridge.output_universe.take();
-                                    }
-                                }
-                                if let Some(universe) =
-                                    bridge.output_universe.as_mut()
+                                bridge.output_routing.device.change_button(ui);
+
+                                if let Some(device) = bridge
+                                    .output_routing
+                                    .device
+                                    .and_then(Asset::get)
                                 {
-                                    ui.label("Output universe:");
-                                    ui.add(Slider::new(universe, 0..=32768));
+                                    let device_universes = device.data.universes();
+                                    if !device_universes.is_empty() {
+                                        ComboBox::new(
+                                            format!("{universe}_universe"),
+                                            "",
+                                        )
+                                            .selected_text(
+                                                match bridge.output_routing.universe {
+                                                    None => WidgetText::from(
+                                                        "No universe selected",
+                                                    ),
+                                                    Some(universe) => WidgetText::from(
+                                                        universe.to_string(),
+                                                    ),
+                                                },
+                                            )
+                                            .width(150.0)
+                                            .show_ui(ui, |ui| {
+                                                for device_universe in device_universes
+                                                {
+                                                    let res = ui.selectable_value(
+                                                        &mut bridge
+                                                            .output_routing
+                                                            .universe,
+                                                        Some(*device_universe),
+                                                        device_universe.to_string(),
+                                                    );
+                                                    if res.hovered() {
+                                                        hovered_output_routing =
+                                                            Some(OutputRouting {
+                                                                device: Some(device.id),
+                                                                universe: Some(
+                                                                    *device_universe,
+                                                                ),
+                                                            });
+                                                    }
+                                                }
+                                            });
+                                    }
+
+                                    ComboBox::new(format!("{universe}_merge"), "")
+                                        .selected_text(match bridge.htp {
+                                            true => "HTP",
+                                            false => "LTP",
+                                        })
+                                        .width(50.0)
+                                        .show_ui(ui, |ui| {
+                                            ui.selectable_value(
+                                                &mut bridge.htp,
+                                                true,
+                                                "HTP",
+                                            );
+                                            ui.selectable_value(
+                                                &mut bridge.htp,
+                                                false,
+                                                "LTP",
+                                            );
+                                        });
+
+                                    if ui.add(Button::new(icons::X)).clicked() {
+                                        bridge.output_routing =
+                                            OutputRouting::default();
+                                    }
                                 }
                             });
                         }
+
+                        *HOVERED_OUTPUT_ROUTING.lock() = hovered_output_routing;
                     },
                 );
             });
     });
 }
 
-fn artnet_control_input_settings(ui: &mut Ui, edit_state: &mut EditSate){
-    ui.heading("Artnet Control");
-    ui.add_space(3.0);
-}
-
-struct SettingsMenu<'a, S>{
+struct SettingsMenu<'a, S> {
     selected_submenu: &'a mut String,
     edit_state: &'a mut S,
     submenus: BTreeMap<String, Box<dyn Fn(&mut Ui, &mut S) + 'a>>,
 }
 
 impl<'a, S> SettingsMenu<'a, S> {
-    fn new(edit_state: &'a mut S, selected_submenu: &'a mut String) -> Self{
-        Self{
+    fn new(edit_state: &'a mut S, selected_submenu: &'a mut String) -> Self {
+        Self {
             selected_submenu,
             edit_state,
             submenus: BTreeMap::default(),
@@ -231,7 +297,7 @@ impl<'a, S> SettingsMenu<'a, S> {
     }
 }
 
-impl <'a, S> Widget for SettingsMenu<'a, S> {
+impl<'a, S> Widget for SettingsMenu<'a, S> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         debug_assert!(self.submenus.len() > 0);
         SidePanel::left("artnet_input_config")

@@ -44,6 +44,11 @@ impl OutputRoutingsWindow {
                 gled_window_frame(ctx, "Output Routings", |ui| {
                     let extract_output = ExtractOutput::get();
                     let mut routings = extract_output.routings.lock();
+
+                    if !routings.is_empty() && ui.button("Clear Output Routings").clicked() {
+                        *routings = Default::default();
+                    }
+
                     let used_multiple_times = routings.output_universes_which_are_used_multiple_times();
                     if !used_multiple_times.is_empty() {
                         ui.colored_label(

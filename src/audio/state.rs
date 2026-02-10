@@ -1,5 +1,5 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Device, SampleFormat, SampleRate, StreamConfig};
+use cpal::{Device, SampleFormat, StreamConfig};
 use egui::mutex::Mutex;
 use once_cell::sync::Lazy;
 use rustfft::{FftPlanner, num_complex::Complex};
@@ -22,20 +22,6 @@ pub fn fft_data() -> Vec<f32> {
 pub fn get_fft_bin_index_by_frequency(frequency: f32) -> Option<usize> {
     let k = frequency / (SAMPLE_RATE * FFT_SIZE as f32);
     Some(k.floor() as usize)
-}
-
-fn get_sample_rate_() -> Option<SampleRate> {
-    // the frequency of every bin is k as f32 * input_sample_rate / FFT_SIZE as f32
-    let device = get_audio_config()?;
-    let config = match device.default_input_config() {
-        Ok(config) => config,
-        Err(err) => {
-            log::error!("Failed to get default input config: {}", err);
-            return None;
-        }
-    };
-    let sample_rate = config.sample_rate();
-    Some(sample_rate)
 }
 
 pub fn max_frequency() -> f32 {

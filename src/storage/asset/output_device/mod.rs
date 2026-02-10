@@ -1,11 +1,9 @@
 pub mod enttec_usb_pro;
 pub mod routing;
 
-use crate::pipeline::output_sender::Recipient;
-
 use super::AssetTrait;
 use serde::{Deserialize, Serialize};
-use std::net::{IpAddr, ToSocketAddrs};
+use std::net::IpAddr;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub enum OutputDevice {
@@ -52,26 +50,6 @@ impl OutputDevice {
     pub fn set_univeres(&mut self, universes: Vec<u16>) {
         if let OutputDevice::Artnet { universes: u, .. } = self {
             *u = universes
-        }
-    }
-
-    pub fn get_recipient(&self, universe: Option<u16>) -> Option<Recipient> {
-        match self {
-            OutputDevice::Artnet { ip, universes, .. } => {
-                let universe = universe?;
-                if !universes.contains(&universe) {
-                    log::warn!("Universe which is not configured: {universe}");
-                    return None;
-                }
-                (*ip, 6454)
-                    .to_socket_addrs()
-                    .ok()
-                    .and_then(|mut addrs| addrs.next())
-                    .map(|addr| Recipient::Artnet { addr, universe })
-            }
-            OutputDevice::EnttecDmxUsbPro { serial_number } => Some(Recipient::EnttecDmxUsbPro {
-                serial_number: serial_number.clone(),
-            }),
         }
     }
 }

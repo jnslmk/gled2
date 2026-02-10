@@ -17,7 +17,11 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct MultipliedCurve<R: Range> {
-    #[serde(alias = "Static", deserialize_with = "deserialize_static", default)]
+    #[serde(
+        alias = "Static",
+        deserialize_with = "deserialize_static",
+        default = "default_multiplier"
+    )]
     pub multiplier: f32,
     #[serde(alias = "Curve", deserialize_with = "deserialize_curve", default)]
     curve: Option<AssetId<Curve>>,
@@ -25,6 +29,10 @@ pub struct MultipliedCurve<R: Range> {
     adsr: Option<ADSR>,
     #[serde(skip)]
     _phantom: PhantomData<R>,
+}
+
+fn default_multiplier() -> f32 {
+    1.0
 }
 
 /// Support for old format, can be remove when everything has been migrated
@@ -126,7 +134,7 @@ impl Range for RangeDegrees {
 
 impl<R: Range> Default for MultipliedCurve<R> {
     fn default() -> Self {
-        Self::new_multiplier(1.0)
+        Self::new_multiplier(default_multiplier())
     }
 }
 

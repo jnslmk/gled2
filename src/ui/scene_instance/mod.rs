@@ -9,8 +9,7 @@ use crate::{
     ui::effect::widget::EffectWidget,
 };
 use egui::{
-    Button, Checkbox, Color32, Frame, Margin, ScrollArea, TopBottomPanel, Vec2,
-    scroll_area::ScrollBarVisibility::AlwaysVisible,
+    Checkbox, Color32, Margin, ScrollArea, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
 use egui_modal::Modal;
 use std::sync::Arc;
