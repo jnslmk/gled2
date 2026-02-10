@@ -312,27 +312,6 @@ impl App {
                     {
                         persistant_state.save();
                     }
-
-                    ui.separator();
-                    ui.label("Audio input device");
-                    let mut selected = FFT_THREAD.lock().unwrap().selected_device.clone();
-                    let old_selected = selected.clone();
-
-                    let devices = AUDIO_DEVICES.lock().unwrap().clone();
-                    ui.selectable_value(&mut selected, None, "None");
-                    for (id, desc) in devices {
-                        ui.selectable_value(&mut selected, Some(id), desc.name());
-                    }
-
-                    if selected != old_selected {
-                        log::info!("Audio input device changed to {:?}", selected);
-                        {
-                            let mut fft_thread = FFT_THREAD.lock().unwrap();
-                            fft_thread.selected_device = selected.clone();
-                            fft_thread.restart_fft();
-                        }
-                    }
-
                 });
 
                 let mut open_new_window = ui

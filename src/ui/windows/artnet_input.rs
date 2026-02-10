@@ -14,6 +14,7 @@ use chrono::Local;
 use egui::{Button, CentralPanel, ComboBox, Context, Id, Layout, Response, RichText, SidePanel, Slider, TextEdit, Ui, Vec2, ViewportId, Widget, WidgetText};
 use egui_phosphor_icons::icons;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
+use crate::audio::{AUDIO_DEVICES, FFT_THREAD};
 
 #[derive(Default)]
 pub struct ArtnetInputWindow {
@@ -70,10 +71,13 @@ impl ArtnetInputWindow {
                     let settings_menu =
                         SettingsMenu::new(&mut self.edit_state, &mut self.selected_submenu)
                             .add_submenu("Artnet Bridge".into(), |ui, edit_state|
-                                artnet_bridge_settings(ui, edit_state),
+                                artnet_bridge_settings(ui, edit_state)
                             )
                             .add_submenu("Artnet Control".into(), |ui, edit_state|
-                                artnet_control_input_settings(ui, edit_state),
+                                artnet_control_input_settings(ui, edit_state)
+                            )
+                            .add_submenu("Audio Input".into(), |ui, edit_state|
+                                audio_input_settings(ui, edit_state)
                             );
                     ui.add(settings_menu);
                 });
@@ -87,6 +91,28 @@ impl ArtnetInputWindow {
 
     pub fn close(&mut self) {
         self.open = false;
+    }
+}
+
+fn audio_input_settings(ui: &mut Ui, edit_state: &mut EditSate) {
+    ui.separator();
+    ui.label("Audio input device");
+    let mut selected = FFT_THREAD.lock().unwrap().selected_device.clone();
+    let old_selected = selected.clone();
+
+    let devices = AUDIO_DEVICES.lock().unwrap().clone();
+    ui.selectable_value(&mut selected, None, "None");
+    for (id, desc) in devices {
+        ui.selectable_value(&mut selected, Some(id), desc.name());
+    }
+
+    if selected != old_selected {
+        log::info!("Audio input device changed to {:?}", selected);
+        {
+            let mut fft_thread = FFT_THREAD.lock().unwrap();
+            fft_thread.selected_device = selected.clone();
+            fft_thread.restart_fft();
+        }
     }
 }
 
