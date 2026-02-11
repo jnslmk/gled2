@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     states = [ArtnetSceneControlState() for i in range(10)]
 
-    states[0] = ArtnetSceneControlState(scene_index=1, opacity=255)
+    states[0] = ArtnetSceneControlState(scene_index=1, opacity=128)
     states[1] = ArtnetSceneControlState(scene_index=0)
     states[3] = ArtnetSceneControlState(scene_index=3, offset=128, speed_multiplier=129)
 

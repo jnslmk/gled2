@@ -23,9 +23,9 @@ pub struct ArtnetSceneControlState {
     pub color_mode: u8, // GledDefault = 0..=84, ColorOverride = 85..=170, PalletOverride = 171..
     pub pallet_override: u8,
     //pub color_override_primary: Color,
-    //pub color_override_secondary: Color,
-
-    //pub scene_specific_parameters: [u8; SCENE_SPECIFIC_PARAMETERS],
+    // pub color_override_secondary: Color,
+    pub dummy: [u8; 6],
+    pub scene_specific_parameters: [u8; SCENE_SPECIFIC_PARAMETERS],
 }
 
 pub struct ExternalControlState {
