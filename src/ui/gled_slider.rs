@@ -4,12 +4,43 @@ use epaint::RectShape;
 use crate::ui::FRAME_STROKE;
 
 pub struct GledSlider<'a> {
-    pub value: &'a mut f32,
-    pub real_value: f32,
-    pub max_value: f32,
-    pub size: f32,
-    pub show_label: bool,
-    pub horizontal: bool,
+    value: &'a mut f32,
+    preview_value: Option<f32>,
+    max_value: f32,
+    size: f32,
+    show_label: bool,
+    horizontal: bool,
+}
+
+impl<'a> GledSlider<'a> {
+    pub fn new(value: &'a mut f32, max_value: f32) -> Self {
+        Self {
+            value,
+            preview_value: None,
+            max_value,
+            size: 50.0,
+            show_label: false,
+            horizontal: false,
+        }
+    }
+    
+    pub fn preview_value(mut self, preview_value: f32) -> Self {
+        self.preview_value = Some(preview_value);
+        self
+    }
+    
+    pub fn size(mut self, size: f32) -> Self {
+        self.size = size;
+        self
+    }
+    pub fn show_label(mut self) -> Self {
+        self.show_label = true;
+        self
+    }
+    pub fn horizontal(mut self) -> Self {
+        self.horizontal = true;
+        self
+    }
 }
 
 impl Widget for GledSlider<'_> {
@@ -18,6 +49,8 @@ impl Widget for GledSlider<'_> {
         const HANDLE_COLOR: Color32 = Color32::from_rgb(59, 255, 0);
         const BOTTOM_COLOR: Color32 = Color32::from_rgb(255, 176, 100);
 
+        let preview_value = self.preview_value.unwrap_or(*self.value);
+        
         if self.horizontal {
             let height: f32 = self.size;
             let mut width = ui.available_width();
@@ -29,7 +62,7 @@ impl Widget for GledSlider<'_> {
                 let corner_radius = 5;
                 let (rect, mut response) = ui
                     .allocate_exact_size(egui::vec2(width, height), egui::Sense::click_and_drag());
-                let (left, right) = rect.split_left_right_at_fraction(self.real_value);
+                let (left, right) = rect.split_left_right_at_fraction(preview_value);
                 let handle_rect = {
                     let rect = rect.shrink2(Vec2::new(corner_radius as f32, 0.0));
                     let (left, _right) = rect.split_left_right_at_fraction(*self.value);
@@ -81,7 +114,7 @@ impl Widget for GledSlider<'_> {
                 let corner_radius = 5;
                 let (rect, mut response) = ui
                     .allocate_exact_size(egui::vec2(width, height), egui::Sense::click_and_drag());
-                let (top, bottom) = rect.split_top_bottom_at_fraction(1.0 - self.real_value);
+                let (top, bottom) = rect.split_top_bottom_at_fraction(1.0 - preview_value);
                 let handle_rect = {
                     let rect = rect.shrink2(Vec2::new(0.0, corner_radius as f32));
                     let (top, _bottom) = rect.split_top_bottom_at_fraction(1.0 - *self.value);

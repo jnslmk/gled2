@@ -200,18 +200,17 @@ impl SceneInstanceWidget<'_> {
                             .opacity
                             .value(self.timing.beat_progression());
 
-                    ui.add(GledSlider {
-                        real_value: if self.scene_instance.active {
-                            dimmer
-                        } else {
-                            0.0
-                        },
-                        size: 20.0,
-                        max_value: 100.0,
-                        value: &mut self.scene_instance.opacity.multiplier,
-                        show_label: false,
-                        horizontal: false,
-                    });
+                    ui.add(
+                        GledSlider::new(&mut self.scene_instance.opacity.multiplier, 100.0)
+                            .preview_value(
+                                if self.scene_instance.active {
+                                    dimmer
+                                } else {
+                                    0.0
+                                }
+                            )
+                            .size(20.0)
+                    );
                 });
             });
         });

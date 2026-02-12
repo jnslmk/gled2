@@ -87,16 +87,13 @@ impl App {
                 *rect.left_mut() = rect.right() - 56.0;
                 *rect.bottom_mut() -= 16.0;
 
+                let preview_value = project.main_dimmer;
                 ui.put(
                     rect,
-                    GledSlider {
-                        real_value: project.main_dimmer,
-                        value: &mut project.main_dimmer,
-                        size: 40.0,
-                        show_label: true,
-                        horizontal: false,
-                        max_value: 100.0,
-                    },
+                    GledSlider::new(&mut project.main_dimmer, 100.0)
+                        .size(40.0)
+                        .show_label()
+                        .preview_value(preview_value)
                 );
             }
         });

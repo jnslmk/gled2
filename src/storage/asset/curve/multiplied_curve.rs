@@ -148,23 +148,21 @@ impl<R: Range> MultipliedCurve<R> {
         rect.set_height(20.0);
         let (left, right) = rect.split_left_right_at_fraction(0.5);
         ui.horizontal(|ui| {
+            let preview_value = self
+                .curve
+                .and_then(Asset::get)
+                .map(|curve| curve.data.value(beat_progression % 4.0))
+                .unwrap_or(1.0)
+                * self.multiplier
+                * self.adsr_value();
             changed |= ui
                 .put(
                     left,
-                    GledSlider {
-                        real_value: self
-                            .curve
-                            .and_then(Asset::get)
-                            .map(|curve| curve.data.value(beat_progression % 4.0))
-                            .unwrap_or(1.0)
-                            * self.multiplier
-                            * self.adsr_value(),
-                        value: &mut self.multiplier,
-                        size: left.height(),
-                        horizontal: true,
-                        show_label: false,
-                        max_value: R::MAX,
-                    },
+                    GledSlider::new(&mut self.multiplier, R::MAX)
+                        .horizontal()
+                        .preview_value(preview_value)
+                        .size(left.height())
+                    
                 )
                 .changed();
 
