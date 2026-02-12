@@ -31,6 +31,8 @@ use std::{
     collections::BTreeSet,
     time::Instant,
 };
+use cpal::DeviceId;
+use cpal::traits::{DeviceTrait, HostTrait};
 
 pub fn deserialize_scene_instances<'de, D>(
     deserializer: D,
@@ -84,10 +86,26 @@ pub struct Project {
     pub half_input_events: BTreeSet<InputEvent>,
     pub double_input_events: BTreeSet<InputEvent>,
     pub main_dimmer: f32,
+    #[serde(skip)]
+    pub audio_input_device: Option<DeviceId>,
 }
 
 impl Default for Project {
     fn default() -> Self {
+        #[cfg(feature = "profiling")]
+        puffin::profile_function!("Project::default");
+        let audio_host = cpal::default_host();
+        let default_audio_device = audio_host.default_input_device();
+        let mut audio_input_device = None;
+        // if let Some(default_device) = default_audio_device {
+        //     {
+        //         log::info!("Using audio input device: {:?}", default_device.description());
+        //         audio_input_device = default_device.id().ok();
+        //     }
+        // }
+        // else {
+        //     log::warn!("No audio input device found, audio analysis disabled");
+        // }
         Self {
             palette: None,
             auto_mode_active: false,
@@ -110,6 +128,7 @@ impl Default for Project {
             half_input_events: std::iter::once(InputEvent::Key(egui::Key::Minus)).collect(),
             double_input_events: std::iter::once(InputEvent::Key(egui::Key::Plus)).collect(),
             main_dimmer: 1.0,
+            audio_input_device,
         }
     }
 }

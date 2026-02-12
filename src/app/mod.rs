@@ -10,6 +10,7 @@ pub mod storage;
 pub mod svg;
 pub mod timing;
 
+use crate::audio::AudioPool;
 use crate::input::external_control::ExternalControlState;
 use crate::pipeline::extract_output::ExtractOutput;
 use crate::pipeline::output_clear::OutputClear;
@@ -56,6 +57,7 @@ pub struct App {
     pub palette_asset_tree: AssetTree<Palette>,
     pub palette_asset_tree_id: Option<Id>,
     pub external_control_state: ExternalControlState,
+    pub audio_pool: AudioPool
 }
 
 
@@ -191,7 +193,7 @@ impl eframe::App for App {
         }
 
         self.windows
-            .update(ctx, &self.timing, self.project.as_mut());
+            .update(ctx, &self.timing, &mut self.project);
 
         ctx.request_repaint();
     }
@@ -238,7 +240,11 @@ impl App {
             }
         });
     }
-    pub fn new(ui_action_receiver: Receiver<UiAction>, artnet_control_receiver: crossbeam_channel::Receiver<PaddedData>) -> Option<Self> {
+    pub fn new(
+        ui_action_receiver: Receiver<UiAction>,
+        artnet_control_receiver: crossbeam_channel::Receiver<PaddedData>,
+        audio_pool: AudioPool
+    ) -> Option<Self> {
         let app = Self {
             startup: true,
             timing: Default::default(),
@@ -260,8 +266,8 @@ impl App {
             },
             palette_asset_tree_id: None,
             external_control_state: ExternalControlState::new(artnet_control_receiver),
+            audio_pool,
         };
-
         Some(app)
     }
 

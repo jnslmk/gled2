@@ -14,7 +14,9 @@ use chrono::Local;
 use egui::{Button, CentralPanel, ComboBox, Context, Id, Layout, Response, RichText, SidePanel, Slider, TextEdit, Ui, Vec2, ViewportId, Widget, WidgetText};
 use egui_phosphor_icons::icons;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
-use crate::audio::{AUDIO_DEVICES, FFT_THREAD};
+use crate::audio::AUDIO_DEVICES;
+use crate::storage::asset::project::Project;
+use crate::ui::action::UiAction;
 
 #[derive(Default)]
 pub struct ArtnetInputWindow {
@@ -32,10 +34,12 @@ struct EditSate {
 
 impl ArtnetInputWindow {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context) {
+    pub fn update(&mut self, ctx: &Context, project: &mut Option<Project>) {
         if !self.open {
             return;
         }
+        let mut project = if let Some(project) = project
+        {project} else {return};
 
         self.edit_state.addresses = NetworkInterface::show()
             .expect("Could not find network interfaces")
@@ -68,16 +72,17 @@ impl ArtnetInputWindow {
                 });
 
                 gled_window_frame(ctx, "Artnet Inputs/Bridge", |ui| {
+                    let mut state = (&mut project, &mut self.edit_state);
                     let settings_menu =
-                        SettingsMenu::new(&mut self.edit_state, &mut self.selected_submenu)
-                            .add_submenu("Artnet Bridge".into(), |ui, edit_state|
-                                artnet_bridge_settings(ui, edit_state)
+                        SettingsMenu::new(&mut state, &mut self.selected_submenu)
+                            .add_submenu("Artnet Bridge".into(), |ui, (project, edit_state)|
+                                artnet_bridge_settings(ui, (**project, edit_state))
                             )
-                            .add_submenu("Artnet Control".into(), |ui, edit_state|
-                                artnet_control_input_settings(ui, edit_state)
+                            .add_submenu("Artnet Control".into(), |ui, (project, edit_state)|
+                                artnet_control_input_settings(ui, (**project, edit_state))
                             )
-                            .add_submenu("Audio Input".into(), |ui, edit_state|
-                                audio_input_settings(ui, edit_state)
+                            .add_submenu("Audio Input".into(), |ui, (project, edit_state)|
+                                audio_input_settings(ui, (**project, edit_state))
                             );
                     ui.add(settings_menu);
                 });
@@ -94,10 +99,11 @@ impl ArtnetInputWindow {
     }
 }
 
-fn audio_input_settings(ui: &mut Ui, edit_state: &mut EditSate) {
+fn audio_input_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
+    let (project, _edit_state) = state;
     ui.separator();
     ui.label("Audio input device");
-    let mut selected = FFT_THREAD.lock().unwrap().selected_device.clone();
+    let mut selected = project.audio_input_device.clone();
     let old_selected = selected.clone();
 
     let devices = AUDIO_DEVICES.lock().unwrap().clone();
@@ -109,18 +115,18 @@ fn audio_input_settings(ui: &mut Ui, edit_state: &mut EditSate) {
     if selected != old_selected {
         log::info!("Audio input device changed to {:?}", selected);
         {
-            let mut fft_thread = FFT_THREAD.lock().unwrap();
-            fft_thread.selected_device = selected.clone();
-            fft_thread.restart_fft();
+            UiAction::SetAudioDevice(selected).enqueue();
         }
     }
 }
 
-fn artnet_control_input_settings(ui: &mut Ui, edit_sate: &mut EditSate) {
+fn artnet_control_input_settings(ui: &mut Ui, _state: (&mut Project, &mut EditSate)) {
+    //let (project, edit_state) = state;
     ui.heading("Artnet Control");
 }
 
-fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate) {
+fn artnet_bridge_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
+    let (_project, edit_state) = state;
     let mut config = ARTNET_CONFIG.lock();
     ui.heading("Artnet Bridge");
     ui.add_space(3.0);
@@ -306,7 +312,7 @@ fn artnet_bridge_settings(ui: &mut Ui, edit_state: &mut EditSate) {
 struct SettingsMenu<'a, S> {
     selected_submenu: &'a mut String,
     edit_state: &'a mut S,
-    submenus: BTreeMap<String, Box<dyn Fn(&mut Ui, &mut S) + 'a>>,
+    submenus: BTreeMap<String, Box<dyn FnOnce(&mut Ui, &mut S) + 'a>>,
 }
 
 impl<'a, S> SettingsMenu<'a, S> {
@@ -317,7 +323,7 @@ impl<'a, S> SettingsMenu<'a, S> {
             submenus: BTreeMap::default(),
         }
     }
-    fn add_submenu(mut self, submenu: String, ui_callback: impl Fn(&mut Ui, &mut S) + 'a) -> Self {
+    fn add_submenu(mut self, submenu: String, ui_callback: impl FnOnce(&mut Ui, &mut S) + 'a) -> Self {
         self.submenus.insert(submenu, Box::new(ui_callback));
         self
     }
@@ -340,7 +346,7 @@ impl<'a, S> Widget for SettingsMenu<'a, S> {
             *self.selected_submenu = self.submenus.keys().next().unwrap().clone();
         }
 
-        let submenu = self.submenus.get(self.selected_submenu).unwrap();
+        let submenu = self.submenus.remove(self.selected_submenu).unwrap();
         CentralPanel::default().show_inside(ui, |ui| {
             submenu(ui, self.edit_state)
         }).response

@@ -25,6 +25,7 @@ use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallbac
 use std::sync::{Arc, OnceLock};
 use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
+use crate::audio::AudioPool;
 use crate::input::artnet;
 
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
@@ -78,7 +79,6 @@ fn main() {
     storage::start_thread();
     ui::temperature::start_thread();
     midi::start_thread();
-    audio::start_fft_thread();
     network_stats::start_thread();
     let output_package_sender = output_sender::start().expect("Could not start output sender");
     let (artnet_bridge_receiver, artnet_control_receiver)
@@ -174,8 +174,13 @@ fn main() {
                 )
                 .map_err(|_err| ())
                 .expect("Could not set wgpu render state");
+            let audio_pool = AudioPool::init();
             Ok(Box::new(
-                App::new(ui_action_receiver, artnet_control_receiver).expect("Could not create new App"),
+                App::new(
+                    ui_action_receiver,
+                    artnet_control_receiver,
+                    audio_pool,
+                ).expect("Could not create new App"),
             ))
         }),
     )

@@ -34,14 +34,14 @@ pub struct Windows {
 
 impl Windows {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context, timing: &Timing, project: Option<&mut Project>) {
+    pub fn update(&mut self, ctx: &Context, timing: &Timing, project: &mut Option<Project>) {
         self.about.update(ctx);
         self.animations.update(ctx, timing);
         self.channel_overwrites.update(ctx);
         self.curves.update(ctx);
         self.errors.update(ctx);
         self.git_config.update(ctx);
-        self.artnet_input.update(ctx);
+        self.artnet_input.update(ctx, project);
         self.output_devices.update(ctx);
         self.output_routings.update(ctx);
         self.palettes.update(ctx);

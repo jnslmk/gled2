@@ -163,7 +163,7 @@ fn process_audio_samples(
     fft_tx: &Sender<RootSample>,
 ) {
     #[cfg(feature = "profiling")]
-    puffin::profile_function!(format!("audio:process_audio_samples from {}", device_id));
+    puffin::profile_function!("audio:process_audio_samples");
     // Convert interleaved samples to mono by averaging channels
     for chunk in data.chunks(channels) {
         let mono_sample = if channels > 1 {

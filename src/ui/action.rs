@@ -1,17 +1,12 @@
 use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
 use crate::storage::asset::scene::Scene;
 use crate::storage::asset::scene::grid::GridLocation;
-use crate::{
-    app::{App, persistant_state::PersistantState, svg::Svg},
-    input::artnet::ARTNET_CONFIG,
-    pipeline::extract_output::ExtractOutput,
-    storage::{
-        asset::{
-            Asset, animation::Animation, curve::multiplied_curve::MultipliedCurve, project::Project,
-        },
-        asset_id::AssetId,
+use crate::{app::{App, persistant_state::PersistantState, svg::Svg}, audio, input::artnet::ARTNET_CONFIG, pipeline::extract_output::ExtractOutput, storage::{
+    asset::{
+        Asset, animation::Animation, curve::multiplied_curve::MultipliedCurve, project::Project,
     },
-};
+    asset_id::AssetId,
+}};
 use egui::ViewportId;
 use notify_rust::Notification;
 use once_cell::sync::OnceCell;
@@ -19,6 +14,8 @@ use std::sync::{
     Arc,
     mpsc::{Receiver, Sender},
 };
+use cpal::DeviceId;
+use uuid::Uuid;
 
 static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 
@@ -54,6 +51,7 @@ pub enum UiAction {
     SetMainDimmer(f32),
     MidiOutputActive(bool),
     Error(String),
+    SetAudioDevice(Option<DeviceId>),
 }
 
 impl App {
@@ -157,6 +155,11 @@ impl App {
                         self.selected_scene_instance = location;
                     }
                 }
+                (Some(project), UiAction::SetAudioDevice(device_id)) => {
+                    project.audio_input_device = device_id.clone();
+                    self.audio_pool.selected_device = device_id;
+                    self.audio_pool.restart_fft();
+                }
                 (_, UiAction::Tap) => {
                     self.timing.tap();
                 }
@@ -185,6 +188,8 @@ impl App {
                         *ExtractOutput::get().routings.lock() = project.output_routings.clone();
                         *ARTNET_CONFIG.lock() = project.artnet_config.clone();
                         project.channel_overwrites.clone().set();
+                        self.audio_pool.selected_device = project.audio_input_device.clone();
+                        self.audio_pool.restart_fft();
                         self.project = Some(project);
                     } else {
                         self.windows.artnet_input.close();
@@ -205,6 +210,7 @@ impl App {
                 (_, UiAction::MidiOutputActive(active)) => {
                     self.midi_output_active = active;
                 }
+                
                 (_, UiAction::Error(error)) => {
                     log::error!("{error}");
 

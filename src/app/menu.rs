@@ -19,7 +19,7 @@ use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
 };
-use crate::audio::{AUDIO_DEVICES, FFT_THREAD};
+use crate::audio::AUDIO_DEVICES;
 
 impl App {
     pub fn menu(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
