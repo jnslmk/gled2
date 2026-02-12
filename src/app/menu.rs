@@ -19,7 +19,6 @@ use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
 };
-use crate::audio::AUDIO_DEVICES;
 
 impl App {
     pub fn menu(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
@@ -120,7 +119,7 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.project.is_some(), Button::new("Artnet Inputs/Bridge"))
+                        .add_enabled(self.project.is_some(), Button::new("External Devices"))
                         .clicked()
                     {
                         self.windows.artnet_input.open();

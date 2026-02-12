@@ -55,7 +55,7 @@ impl ExternalControlState {
 
     fn process_dmx(&mut self, project: &mut Option<Project>, dmx_data: &&Vec<u8>) {
         let mut remaining = (&dmx_data[..], 0);
-        let mut scene_state = ArtnetSceneControlState::default();
+        let mut scene_state: ArtnetSceneControlState;
 
         for i in 0..ARTNET_CONTROL_SLOTS {
             (remaining, scene_state) = match ArtnetSceneControlState::from_bytes(remaining) {

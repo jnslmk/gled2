@@ -1,21 +1,20 @@
 use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
-use crate::storage::asset::scene::Scene;
 use crate::storage::asset::scene::grid::GridLocation;
-use crate::{app::{App, persistant_state::PersistantState, svg::Svg}, audio, input::artnet::ARTNET_CONFIG, pipeline::extract_output::ExtractOutput, storage::{
+use crate::storage::asset::scene::Scene;
+use crate::{app::{persistant_state::PersistantState, svg::Svg, App}, input::artnet::ARTNET_CONFIG, pipeline::extract_output::ExtractOutput, storage::{
     asset::{
-        Asset, animation::Animation, curve::multiplied_curve::MultipliedCurve, project::Project,
+        animation::Animation, curve::multiplied_curve::MultipliedCurve, project::Project, Asset,
     },
     asset_id::AssetId,
 }};
+use cpal::DeviceId;
 use egui::ViewportId;
 use notify_rust::Notification;
 use once_cell::sync::OnceCell;
 use std::sync::{
-    Arc,
     mpsc::{Receiver, Sender},
+    Arc,
 };
-use cpal::DeviceId;
-use uuid::Uuid;
 
 static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 

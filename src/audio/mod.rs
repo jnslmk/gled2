@@ -174,7 +174,7 @@ pub async fn start_reactive_sound_thread(rx: Receiver<RootSample>) {
             puffin::profile_scope!("ReactiveSignalThread::waitForSignal");
             let root_sample = match rx.try_recv() {
                 Ok(root_sample) => root_sample,
-                Err(error) => {
+                Err(_) => {
                     tokio::time::sleep(Duration::from_millis(10)).await;
                     continue;
                 }

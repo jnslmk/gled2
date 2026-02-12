@@ -24,7 +24,6 @@ use crate::{
     ui::windows::channel_overwrites::ChannelOverwrites
     ,
 };
-use rand::seq::IndexedMutRandom;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::{
@@ -32,7 +31,6 @@ use std::{
     time::Instant,
 };
 use cpal::DeviceId;
-use cpal::traits::{DeviceTrait, HostTrait};
 
 pub fn deserialize_scene_instances<'de, D>(
     deserializer: D,
@@ -94,9 +92,9 @@ impl Default for Project {
     fn default() -> Self {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("Project::default");
-        let audio_host = cpal::default_host();
-        let default_audio_device = audio_host.default_input_device();
-        let mut audio_input_device = None;
+        // let audio_host = cpal::default_host();
+        // let default_audio_device = audio_host.default_input_device();
+        let audio_input_device = None;
         // if let Some(default_device) = default_audio_device {
         //     {
         //         log::info!("Using audio input device: {:?}", default_device.description());
