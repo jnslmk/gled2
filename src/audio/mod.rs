@@ -1,6 +1,7 @@
 pub mod adsr_editor;
 pub mod reactive_signal;
 pub mod fft;
+pub mod device_id_serde;
 
 use crate::audio::fft::RootSample;
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};

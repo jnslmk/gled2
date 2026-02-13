@@ -84,7 +84,8 @@ pub struct Project {
     pub half_input_events: BTreeSet<InputEvent>,
     pub double_input_events: BTreeSet<InputEvent>,
     pub main_dimmer: f32,
-    #[serde(skip)]
+    #[serde(serialize_with = "crate::audio::device_id_serde::serialize_device_id",
+        deserialize_with = "crate::audio::device_id_serde::deserialize_scene_instances")]
     pub audio_input_device: Option<DeviceId>,
 }
 

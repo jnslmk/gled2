@@ -247,9 +247,6 @@ fn artnet_trigger_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
         }
     });
     ui.separator();
-
-    ui.heading("Input Config");
-    ui.add_space(3.0);
     ui.label("Universe");
     ui.add(Slider::new(&mut config.universe, 0..=32768));
 

@@ -102,10 +102,9 @@ impl ContextMenuBuilder {
         response.context_menu(|ctx_menu_ui| {
             for action in &self.actions {
                 let context_button = Button::new(format!(
-                    "{}\t{}",
+                    "{}",
                     action.description,
-                    ctx_menu_ui.ctx().format_shortcut(&action.keyboard_shortcut)
-                ));
+                )).shortcut_text(ctx_menu_ui.ctx().format_shortcut(&action.keyboard_shortcut));
                 if ctx_menu_ui.add(context_button).clicked() {
                     (action.ctx_action)(location);
                     return;
