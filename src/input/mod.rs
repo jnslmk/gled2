@@ -2,9 +2,9 @@ pub mod artnet;
 pub mod event;
 pub mod external_control;
 
-use crate::pipeline::output_sender::OutputPackage;
-use crossbeam_channel::{Receiver, Sender};
-use egui::{Context, mutex::Mutex};
+use crate::input::artnet::ArtnetEvent;
+use crossbeam_channel::Receiver;
+use egui::{mutex::Mutex, Context};
 use event::{GamepadEvent, InputEvent};
 use gilrs::{Axis, Button, Event, Gilrs};
 use log::debug;
@@ -12,7 +12,6 @@ use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, OnceLock},
 };
-use crate::input::artnet::ArtnetEvent;
 
 static INPUT: OnceLock<Arc<Mutex<Input>>> = OnceLock::new();
 

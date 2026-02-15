@@ -9,17 +9,13 @@ use crate::{
         windows::channel_overwrites::ChannelOverwrites,
     },
 };
-use egui::{
-    Button, Color32, Id, Image, Key, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2,
-    ViewportId, text::LayoutJob,
-};
+use egui::{Button, Color32, Id, Image, Key, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2, ViewportId, text::LayoutJob, KeyboardShortcut};
 use log::debug;
 use rand::Rng;
 use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
 };
-use crate::audio::AUDIO_DEVICES;
 
 impl App {
     pub fn menu(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
@@ -39,16 +35,16 @@ impl App {
 
                 let mut open_project = ui
                     .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::CTRL, Key::O));
+                    .input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::O));
                 let mut save_project = ui
                     .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::CTRL, Key::S));
+                    .input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::S));
                 let mut open_svg_file = ui
                     .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::O));
+                    .input_mut(|i| i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::O));
                 let mut save_svg_file = ui
                     .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::S));
+                    .input_mut(|i| i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::S));
 
                 ui.menu_button("Project", |ui| {
                     ui.set_min_width(300.0);
@@ -62,7 +58,9 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add(Button::new("Load project").shortcut_text("Ctrl+O"))
+                        .add(Button::new("Load project").shortcut_text(
+                            ui.ctx().format_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::O))
+                        ))
                         .clicked()
                     {
                         open_project = true;
@@ -72,7 +70,9 @@ impl App {
                     if ui
                         .add_enabled(
                             self.project.is_some(),
-                            Button::new("Save project").shortcut_text("Ctrl+S"),
+                            Button::new("Save project").shortcut_text(
+                                ui.ctx().format_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::S))
+                            ),
                         )
                         .clicked()
                     {
@@ -93,7 +93,9 @@ impl App {
                     if ui
                         .add_enabled(
                             self.project.is_some(),
-                            Button::new("Open SVG file").shortcut_text("Ctrl+Shift+O"),
+                            Button::new("Open SVG file").shortcut_text(
+                                ui.ctx().format_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, Key::O))
+                            ),
                         )
                         .clicked()
                     {
@@ -104,7 +106,9 @@ impl App {
                     if ui
                         .add_enabled(
                             self.svg().is_some(),
-                            Button::new("Save SVG file").shortcut_text("Ctrl+Shift+S"),
+                            Button::new("Save SVG file").shortcut_text(
+                                ui.ctx().format_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, Key::S))
+                            ),
                         )
                         .clicked()
                     {
@@ -120,7 +124,7 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.project.is_some(), Button::new("Artnet Inputs/Bridge"))
+                        .add_enabled(self.project.is_some(), Button::new("External Devices"))
                         .clicked()
                     {
                         self.windows.artnet_input.open();
@@ -316,12 +320,14 @@ impl App {
 
                 let mut open_new_window = ui
                     .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::CTRL.plus(Modifiers::SHIFT), Key::N));
+                    .input_mut(|i| i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::N));
                 ui.menu_button("Window", |ui| {
                     ui.set_min_width(300.0);
 
                     if ui
-                        .add(Button::new("Open new window").shortcut_text("Ctrl+Shift+N"))
+                        .add(Button::new("Open new window").shortcut_text(
+                            ui.ctx().format_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::N))
+                        ))
                         .clicked()
                     {
                         open_new_window = true;

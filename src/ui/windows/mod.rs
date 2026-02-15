@@ -3,7 +3,7 @@ use egui::Context;
 
 pub mod about;
 pub mod animation;
-pub mod artnet_input;
+pub mod external_devices;
 pub mod channel_overwrites;
 pub mod curves;
 pub mod errors;
@@ -19,7 +19,7 @@ pub mod shortcuts;
 pub struct Windows {
     pub about: about::AboutWindow,
     pub animations: animation::AnimationWindow,
-    pub artnet_input: artnet_input::ArtnetInputWindow,
+    pub artnet_input: external_devices::ExternalDeviceSettings,
     pub channel_overwrites: channel_overwrites::ChannelOverwritesWindow,
     pub curves: curves::CurvesWindow,
     pub errors: errors::ErrorsWindow,
