@@ -45,7 +45,7 @@ impl AudioPool {
             .build().expect("Failed to create audio thread pool");
 
         let selected_device = None;
-        let (fft_tx, receiver) = crossbeam_channel::bounded(10);
+        let (fft_tx, receiver) = crossbeam_channel::bounded(3);
 
         runtime.spawn(start_reactive_sound_thread(receiver));
         runtime.spawn(audio_device_info_loop());
