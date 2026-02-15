@@ -146,7 +146,7 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>) {
             log::info!("Audio stream started successfully");
             // Keep the thread alive
             loop {
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             }
         }
         Err(err) => {

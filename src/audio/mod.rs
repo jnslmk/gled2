@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
 use futures::future::{join_all, JoinAll};
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
@@ -44,7 +44,7 @@ impl AudioPool {
             .build().expect("Failed to create audio thread pool");
 
         let selected_device = None;
-        let (fft_tx, receiver) = crossbeam_channel::bounded(4);
+        let (fft_tx, receiver) = crossbeam_channel::bounded(10);
 
         runtime.spawn(start_reactive_sound_thread(receiver));
         runtime.spawn(audio_device_info_loop());
@@ -172,12 +172,15 @@ pub async fn start_reactive_sound_thread(rx: Receiver<RootSample>) {
         {
             #[cfg(feature = "profiling")]
             puffin::profile_scope!("ReactiveSignalThread::waitForSignal");
-            let root_sample = match rx.try_recv() {
+            // give tokio the opportunity to break the reactive sound thread loop
+            tokio::task::yield_now().await;
+            let root_sample = match rx.recv_timeout(Duration::from_millis(10)) {
                 Ok(root_sample) => root_sample,
-                Err(error) => {
-                    tokio::time::sleep(Duration::from_millis(10)).await;
-                    continue;
-                }
+                Err(RecvTimeoutError::Timeout) => continue,
+                Err(RecvTimeoutError::Disconnected) => {
+                    log::error!("Audio receiver disconnected, shutting down reactive sound thread");
+                    break
+                },
             };
                 tokio::spawn(REACTIVE_SIGNAL_THREAD.write().unwrap().tick(root_sample));
         }
