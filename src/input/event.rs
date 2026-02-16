@@ -7,7 +7,7 @@ use strum::Display;
 pub enum InputEvent {
     Key(Key),
     Gamepad(GamepadEvent),
-    Artnet(u8),
+    Artnet(u16),
 }
 
 impl InputEvent {

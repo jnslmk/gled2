@@ -25,7 +25,7 @@ pub static ARTNET_SOCKET: Lazy<Arc<UdpSocket>> = Lazy::new(|| {
 
 #[derive(Debug)]
 pub struct ArtnetEvent {
-    pub channel: u8,
+    pub channel: u16,
     pub value: u8,
 }
 
@@ -36,8 +36,6 @@ pub static ARTNET_CONFIG: Lazy<Mutex<ArtnetConfig>> = Lazy::new(|| Mutex::new(De
 pub struct ArtnetConfig {
     pub active: bool,
     pub universe: u16,
-    pub start: u16,
-    pub channels: u16,
     pub bind_ip: Ipv4Addr,
     #[serde(deserialize_with = "crate::storage::serde::deserialize_u16_index_btreemap")]
     pub bridge: BTreeMap<u16, Bridge>,
@@ -56,8 +54,6 @@ impl Default for ArtnetConfig {
         Self {
             active: false,
             universe: 18,
-            start: 1,
-            channels: 100,
             bind_ip: Ipv4Addr::LOCALHOST,
             bridge: Default::default(),
         }
@@ -194,15 +190,14 @@ pub fn start_thread(
                         x if x == config.port_address() => {
                             trace!("artnet data on input universe");
                             let data = output.data.as_ref();
-                            for i in 0..config.channels as usize {
-                                let channel = config.start as usize + i - 1;
+                            data.iter().enumerate().for_each(|(channel, value)|
                                 bridge_sender
-                                    .send(ArtnetEvent {
-                                        channel: i as u8, // TODO use u16 here to accommodate the full 512 channels?
-                                        value: data[channel],
-                                    })
-                                    .expect("Could not send event");
-                            }
+                                .send(ArtnetEvent {
+                                    channel: channel as u16,
+                                    value: *value,
+                                })
+                                .expect("Could not send event")
+                            );
                         }
                         x if x == 1337.try_into().unwrap() => {
                             // TODO make the control universe configurable

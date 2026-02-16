@@ -31,6 +31,7 @@ use std::{
     time::Instant,
 };
 use cpal::DeviceId;
+use crate::input::external_control::ArtnetControlConfig;
 
 pub fn deserialize_scene_instances<'de, D>(
     deserializer: D,
@@ -87,6 +88,7 @@ pub struct Project {
     #[serde(serialize_with = "crate::audio::device_id_serde::serialize_device_id",
         deserialize_with = "crate::audio::device_id_serde::deserialize_scene_instances")]
     pub audio_input_device: Option<DeviceId>,
+    pub artnet_control_config: ArtnetControlConfig,
 }
 
 impl Default for Project {
@@ -128,6 +130,7 @@ impl Default for Project {
             double_input_events: std::iter::once(InputEvent::Key(egui::Key::Plus)).collect(),
             main_dimmer: 1.0,
             audio_input_device,
+            artnet_control_config: ArtnetControlConfig::default(),
         }
     }
 }

@@ -8,9 +8,22 @@ use crate::storage::asset_id::AssetId;
 use artnet_protocol::PaddedData;
 use crossbeam_channel::Receiver;
 use deku::prelude::*;
+use serde::{Deserialize, Serialize};
 
 const ARTNET_CONTROL_SLOTS: usize = 10;
 const SCENE_SPECIFIC_PARAMETERS: usize = 10;
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+pub struct ArtnetControlConfig{
+    pub active: bool,
+    pub universe: u16,
+}
+
+impl Default for ArtnetControlConfig {
+    fn default() -> Self {
+        Self { active: false, universe: 1000 }
+    }
+}
 
 #[derive(Debug, DekuRead, Default, Copy, Clone)]
 pub struct ArtnetSceneControlState {

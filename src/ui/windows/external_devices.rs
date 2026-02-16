@@ -14,10 +14,8 @@ use crate::{
     },
 };
 use chrono::Local;
-use egui::{
-    Button, CentralPanel, ComboBox, Context, Id, Layout, Response, RichText, SidePanel, Slider,
-    TextEdit, Ui, Vec2, ViewportId, Widget, WidgetText,
-};
+use egui::{Button, CentralPanel, ComboBox, Context, DragValue, Id, Layout, Response, RichText, SidePanel, Slider, TextEdit, Ui, Vec2, ViewportId, Widget, WidgetText};
+use egui::cache::FrameCache;
 use egui_phosphor_icons::icons;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
@@ -30,8 +28,6 @@ pub struct ExternalDeviceSettings {
 
 #[derive(Default)]
 struct EditSate {
-    start: Option<String>,
-    channels: Option<String>,
     addresses: Vec<Ipv4Addr>,
 }
 
@@ -70,7 +66,7 @@ impl ExternalDeviceSettings {
                 .with_resizable(false)
                 .with_minimize_button(false)
                 .with_maximize_button(true),
-            |ctx, _viewport_class| {
+            |mut ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {
                         self.open = false;
@@ -127,9 +123,12 @@ fn audio_input_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
     }
 }
 
-fn artnet_control_input_settings(ui: &mut Ui, _state: (&mut Project, &mut EditSate)) {
-    //let (project, edit_state) = state;
+fn artnet_control_input_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
+    let (project, _) = state;
+    let config = &mut project.artnet_control_config;
     ui.heading("Artnet Control");
+    ui.checkbox(&mut config.active, "Active");
+    ui.add(DragValue::new(&mut config.universe).range(0..=32767));
 }
 
 fn artnet_bridge_settings(ui: &mut Ui, _state: (&mut Project, &mut EditSate)) {
@@ -249,26 +248,6 @@ fn artnet_trigger_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
     ui.separator();
     ui.label("Universe");
     ui.add(Slider::new(&mut config.universe, 0..=32768));
-
-    ui.label("Start channel");
-    let start = edit_state
-        .start
-        .get_or_insert_with(|| config.start.to_string());
-    if ui.add(TextEdit::singleline(start)).changed()
-        && let Ok(start) = start.parse::<u16>()
-    {
-        config.start = start;
-    }
-
-    ui.label("Channels");
-    let channels = edit_state
-        .channels
-        .get_or_insert_with(|| config.channels.to_string());
-    if ui.add(TextEdit::singleline(channels)).changed()
-        && let Ok(channels) = channels.parse::<u16>()
-    {
-        config.channels = channels;
-    }
 }
 
 struct SettingsMenu<'a, S> {
