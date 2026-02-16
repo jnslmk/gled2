@@ -1,7 +1,5 @@
 use crate::{
-    pipeline::group::Groups,
-    storage::asset::scene::{effect::Effect, effect_state::EffectState},
-    ui::pills::show_pills,
+    pipeline::group::Groups, storage::asset::scene::effect::Effect, ui::pills::show_pills,
 };
 use egui::{
     Button, Color32, CornerRadius, Image, Margin, Rect, Response, Sense, Shape, TextureHandle, Ui,
@@ -13,7 +11,6 @@ pub struct EffectWidget<'a> {
     pub selectable: Option<(&'a mut usize, usize)>,
     pub show_group: bool,
     pub effect: &'a Effect,
-    pub effect_state: &'a EffectState,
     pub svg: Option<TextureHandle>,
     pub groups: Option<&'a Groups>,
     pub groups_show_index: bool,
@@ -58,12 +55,18 @@ impl Widget for EffectWidget<'_> {
                     CornerRadius::default(),
                     Color32::BLACK,
                 )));
-                ui.painter().add(Shape::Rect(
-                    RectShape::filled(rect, CornerRadius::default(), Color32::WHITE).with_texture(
-                        self.effect_state.texture_id(),
-                        Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-                    ),
-                ));
+
+                ui.painter().add(Shape::Rect({
+                    let mut shape =
+                        RectShape::filled(rect, CornerRadius::default(), Color32::WHITE);
+                    if let Some(texture_id) = self.effect.state.texture_id() {
+                        shape = shape.with_texture(
+                            texture_id,
+                            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                        );
+                    }
+                    shape
+                }));
                 if let Some(svg_texture_handle) = self.svg {
                     ui.put(rect, {
                         Image::new(SizedTexture::new(svg_texture_handle.id(), size))

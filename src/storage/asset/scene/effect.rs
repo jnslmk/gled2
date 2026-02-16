@@ -1,5 +1,4 @@
 use crate::{
-    OUTPUT_BUFFER,
     app::svg::Svg,
     pipeline::group::Groups,
     storage::{
@@ -14,7 +13,7 @@ use wgpu::{CommandEncoder, Queue};
 
 use super::effect_state::EffectState;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct Effect {
     pub color_shift: MultipliedCurve<RangeDegrees>,
@@ -30,6 +29,28 @@ pub struct Effect {
     /// Overwrite the animation with this one, must be only used in the code editor/preview
     #[serde(skip)]
     pub animation_overwrite: Option<Arc<Asset<Animation>>>,
+
+    #[serde(skip)]
+    pub state: EffectState,
+}
+
+impl Eq for Effect {}
+
+impl Clone for Effect {
+    fn clone(&self) -> Self {
+        Self {
+            color_shift: self.color_shift.clone(),
+            opacity: self.opacity.clone(),
+            beat_progression: self.beat_progression.clone(),
+            beat_progression_offset: self.beat_progression_offset.clone(),
+            speed_exponent: self.speed_exponent,
+            group_index: self.group_index,
+            animation: self.animation,
+            animation_config: self.animation_config.clone(),
+            animation_overwrite: self.animation_overwrite.clone(),
+            state: EffectState::default(),
+        }
+    }
 }
 
 impl Default for Effect {
@@ -47,74 +68,60 @@ impl Default for Effect {
             animation: Default::default(),
             animation_config: Default::default(),
             animation_overwrite: Default::default(),
+            state: Default::default(),
         }
     }
 }
 
 impl Effect {
+    fn default_shader_code_complete() -> String {
+        format!(
+            "{}\n\n{}",
+            include_str!("../../../shaders/common.wgsl"),
+            include_str!("../../../shaders/red.wgsl")
+        )
+    }
+
     pub fn shader_code_complete(&self) -> String {
         self.animation_overwrite
             .clone()
             .or_else(|| self.animation.and_then(Asset::get))
             .map(|animation| animation.data.shader_code_complete())
-            .unwrap_or_else(|| {
-                format!(
-                    "{}\n\n{}",
-                    include_str!("../../../shaders/common.wgsl"),
-                    include_str!("../../../shaders/red.wgsl")
-                )
-            })
-    }
-
-    pub fn set_output_mix_buffers(&self, state: &mut EffectState) {
-        let other = state.texture_to_output.output_buffer();
-        state
-            .output_mix
-            .set_output_mix_buffers(&OUTPUT_BUFFER, other);
+            .unwrap_or_else(Self::default_shader_code_complete)
     }
 
     pub fn prepare(
-        &self,
-        effect_state: &mut EffectState,
+        &mut self,
         queue: &Queue,
         palette: Option<Arc<Asset<Palette>>>,
         groups: &Groups,
         main_opacity: f32,
     ) {
-        let beat_progression = effect_state.beat_progression
+        let beat_progression = self.state.beat_progression
             + self
                 .beat_progression_offset
-                .value(effect_state.beat_progression);
-        effect_state.beat_progression = self.beat_progression.value(beat_progression);
-        effect_state.opacity = self.opacity.value(beat_progression) * main_opacity;
-        effect_state.color_shift = self.color_shift.value(beat_progression);
-        effect_state.speed_exponent = self.speed_exponent;
-        effect_state.animation_config = self.animation_config.clone();
+                .value(self.state.beat_progression);
+        self.state.beat_progression = self.beat_progression.value(beat_progression);
+        self.state.opacity = self.opacity.value(beat_progression) * main_opacity;
+        self.state.color_shift = self.color_shift.value(beat_progression);
+        self.state.speed_exponent = self.speed_exponent;
+        self.state.animation_config = self.animation_config.clone();
 
         let group = groups.get(self.group_index);
-        if effect_state.sent_group.as_ref() != group {
+        if self.state.sent_group.as_ref() != group {
             let positions = group.map(Svg::positions);
-            effect_state
-                .texture_to_output
-                .set_positions(queue, positions.unwrap_or_default());
-            effect_state.sent_group = group.cloned();
+            if let Some(texture_to_output) = self.state.texture_to_output() {
+                texture_to_output.set_positions(queue, positions.unwrap_or_default());
+            }
+            self.state.sent_group = group.cloned();
         }
 
-        effect_state
-            .renderer
-            .set_buffers(queue, effect_state, beat_progression, palette);
+        if let Some(renderer) = self.state.renderer() {
+            renderer.set_buffers(queue, &self.state, beat_progression, palette);
+        }
     }
 
-    pub fn render(
-        &self,
-        effect_state: &mut EffectState,
-        encoder: &mut CommandEncoder,
-        send_output: bool,
-    ) {
-        effect_state.renderer.render(encoder);
-        if send_output {
-            effect_state.texture_to_output.run(encoder);
-            effect_state.output_mix.run(encoder);
-        }
+    pub fn render(&self, encoder: &mut CommandEncoder, send_output: bool) {
+        self.state.render(encoder, send_output);
     }
 }

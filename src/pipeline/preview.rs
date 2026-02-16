@@ -1,4 +1,5 @@
 //! Render preview circles.
+use super::preview_indices::PreviewIndices;
 use crate::{
     OUTPUT_BUFFER,
     pipeline::constants::{OUTPUT_BUFFER_SIZE, PREVIEW_INDICES_BUFFER_SIZE, PREVIEW_TEXTURE_SIZE},
@@ -6,10 +7,16 @@ use crate::{
 };
 use egui::TextureId;
 use once_cell::unsync::OnceCell;
-use std::{cell::RefCell, num::NonZeroU64};
-use wgpu::*;
-
-use super::preview_indices::PreviewIndices;
+use std::num::NonZeroU64;
+use wgpu::{
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingType, BufferBindingType, CommandEncoder, Extent3d, FragmentState,
+    LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PrimitiveState,
+    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
+    ShaderModuleDescriptor, ShaderSource, ShaderStages, StoreOp, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor,
+    VertexState,
+};
 
 thread_local! {
     static PREVIEW: OnceCell<Preview> = const { OnceCell::new() };
@@ -18,8 +25,7 @@ thread_local! {
 #[derive(Debug)]
 pub struct Preview {
     pipeline: RenderPipeline,
-    bind_group_layout: BindGroupLayout,
-    bind_group: RefCell<Option<BindGroup>>,
+    bind_group: BindGroup,
     view: TextureView,
     texture_id: TextureId,
 }
@@ -119,67 +125,56 @@ impl Preview {
             wgpu::FilterMode::Nearest,
         );
 
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Preview bind group"),
+            layout: &bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: PreviewIndices::get().indices().as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: OUTPUT_BUFFER.as_entire_binding(),
+                },
+            ],
+        });
+
         Self {
             pipeline,
-            bind_group_layout,
-            bind_group: RefCell::new(None),
+            bind_group,
             view,
             texture_id,
         }
-    }
-
-    pub fn set_buffers() {
-        PREVIEW.with(|preview| {
-            let preview = preview.get_or_init(Self::init);
-            let device = wgpu_render_state().device;
-            preview
-                .bind_group
-                .replace(Some(device.create_bind_group(&BindGroupDescriptor {
-                    label: Some("Preview bind group"),
-                    layout: &preview.bind_group_layout,
-                    entries: &[
-                        BindGroupEntry {
-                            binding: 0,
-                            resource: PreviewIndices::get().indices().as_entire_binding(),
-                        },
-                        BindGroupEntry {
-                            binding: 1,
-                            resource: OUTPUT_BUFFER.as_entire_binding(),
-                        },
-                    ],
-                })));
-        });
     }
 
     pub fn run(encoder: &mut CommandEncoder) {
         PREVIEW.with(|preview| {
             let preview = preview.get_or_init(Self::init);
 
-            if let Some(bind_group) = &*preview.bind_group.borrow() {
-                let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                    label: Some("Renderer Pass"),
-                    color_attachments: &[Some(RenderPassColorAttachment {
-                        view: &preview.view,
-                        resolve_target: None,
-                        depth_slice: None,
-                        ops: Operations {
-                            load: LoadOp::Clear(wgpu::Color {
-                                r: 0.0,
-                                g: 0.0,
-                                b: 0.0,
-                                a: 1.0,
-                            }),
-                            store: StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    timestamp_writes: None,
-                    occlusion_query_set: None,
-                });
-                render_pass.set_pipeline(&preview.pipeline);
-                render_pass.set_bind_group(0, bind_group, &[]);
-                render_pass.draw(0..3, 0..1);
-            }
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("Renderer Pass"),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &preview.view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: Operations {
+                        load: LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 1.0,
+                        }),
+                        store: StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            render_pass.set_pipeline(&preview.pipeline);
+            render_pass.set_bind_group(0, &preview.bind_group, &[]);
+            render_pass.draw(0..3, 0..1);
         });
     }
 

@@ -1,23 +1,21 @@
 //! Combine two output buffers into one output buffer.
-use crate::{pipeline::constants::OUTPUT_BUFFER_SIZE, wgpu_render_state};
+use crate::{OUTPUT_BUFFER, pipeline::constants::OUTPUT_BUFFER_SIZE, wgpu_render_state};
 use std::num::NonZeroU64;
-use wgpu::*;
+use wgpu::{
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, CommandEncoder,
+    ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, PipelineLayoutDescriptor,
+    ShaderModuleDescriptor, ShaderSource, ShaderStages,
+};
 
 #[derive(Debug, PartialEq)]
 pub struct OutputMix {
     pipeline: ComputePipeline,
-    bind_group_layout: BindGroupLayout,
-    bind_group: Option<BindGroup>,
-}
-
-impl Default for OutputMix {
-    fn default() -> Self {
-        Self::new()
-    }
+    bind_group: BindGroup,
 }
 
 impl OutputMix {
-    pub fn new() -> Self {
+    pub fn new(buffer: &Buffer) -> Self {
         let device = wgpu_render_state().device;
 
         let module = device.create_shader_module(ShaderModuleDescriptor {
@@ -66,39 +64,34 @@ impl OutputMix {
             compilation_options: Default::default(),
         });
 
-        Self {
-            pipeline,
-            bind_group_layout,
-            bind_group: None,
-        }
-    }
-
-    pub fn set_output_mix_buffers(&mut self, main: &Buffer, other: &Buffer) {
-        let device = wgpu_render_state().device;
-        self.bind_group = Some(device.create_bind_group(&BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("OutputMix bind group"),
-            layout: &self.bind_group_layout,
+            layout: &bind_group_layout,
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: main.as_entire_binding(),
+                    resource: OUTPUT_BUFFER.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: other.as_entire_binding(),
+                    resource: buffer.as_entire_binding(),
                 },
             ],
-        }));
-    }
-    pub fn run(&self, encoder: &mut CommandEncoder) {
-        if let Some(bind_group) = self.bind_group.as_ref() {
-            let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("OutputMix compute pass"),
-                timestamp_writes: None,
-            });
-            compute_pass.set_pipeline(&self.pipeline);
-            compute_pass.set_bind_group(0, bind_group, &[]);
-            compute_pass.dispatch_workgroups(OUTPUT_BUFFER_SIZE as u32 / 4, 1, 1);
+        });
+
+        Self {
+            pipeline,
+            bind_group,
         }
+    }
+
+    pub fn run(&self, encoder: &mut CommandEncoder) {
+        let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: Some("OutputMix compute pass"),
+            timestamp_writes: None,
+        });
+        compute_pass.set_pipeline(&self.pipeline);
+        compute_pass.set_bind_group(0, &self.bind_group, &[]);
+        compute_pass.dispatch_workgroups(OUTPUT_BUFFER_SIZE as u32 / 4, 1, 1);
     }
 }

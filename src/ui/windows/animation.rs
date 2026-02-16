@@ -1,11 +1,7 @@
 use crate::{
     app::{persistant_state::PersistantState, timing::Timing},
     pipeline::renderer_callback::RendererCallback,
-    storage::asset::{
-        Asset,
-        animation::Animation,
-        scene::{effect::Effect, effect_state::EffectState},
-    },
+    storage::asset::{Asset, animation::Animation, scene::effect::Effect},
     ui::{
         ChangeButton,
         action::UiAction,
@@ -32,7 +28,6 @@ pub struct AnimationWindow {
     dirty: bool,
     tree: AssetTree<Animation>,
     effect: Option<Effect>,
-    effect_state: Option<EffectState>,
     error: Option<String>,
     preview: bool,
     copy_rendered_image_to_clipboard: bool,
@@ -53,11 +48,7 @@ impl AnimationWindow {
                         .map_err(|err| err.emit_to_string(&effect.shader_code_complete()))
                 }) {
                 Ok(_) => {
-                    if let Some(effect_state) = self.effect_state.as_mut() {
-                        effect_state.update(effect);
-                    } else {
-                        self.effect_state = Some(EffectState::new(effect));
-                    }
+                    effect.state.set_shader_code(&effect.shader_code_complete());
                     self.error.take();
                 }
                 Err(err) => {
@@ -76,25 +67,21 @@ impl AnimationWindow {
 
         let mut validate = false;
 
-        if let TreeSelection::Asset(..) = &self.tree.selected() {
-            if self.effect.is_none() {
-                self.effect = Some(Default::default());
-                validate = true;
-            }
-            if self.effect_state.is_none() {
-                validate = true;
-            }
+        if let TreeSelection::Asset(..) = &self.tree.selected()
+            && self.effect.is_none()
+        {
+            self.effect = Some(Default::default());
+            validate = true;
         }
 
-        if let (Some(effect), Some(effect_state)) = (&mut self.effect, &mut self.effect_state) {
-            effect_state.beat_progression = timing.beat_progression();
-            effect_state.beats_per_minute = timing.beats_per_minute();
-            effect_state.framerate = timing.framerate().unwrap_or_default();
+        if let Some(effect) = &mut self.effect {
+            effect.state.beat_progression = timing.beat_progression();
+            effect.state.beats_per_minute = timing.beats_per_minute();
+            effect.state.framerate = timing.framerate().unwrap_or_default();
             let wgpu_render_state = wgpu_render_state();
             let device = wgpu_render_state.device;
             let queue = &wgpu_render_state.queue;
             effect.prepare(
-                effect_state,
                 queue,
                 PersistantState::get().preview_palette.and_then(Asset::get),
                 &Default::default(),
@@ -103,10 +90,10 @@ impl AnimationWindow {
             let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("Render animations for animation editor"),
             });
-            effect.render(effect_state, &mut encoder, false);
+            effect.render(&mut encoder, false);
             if self.copy_rendered_image_to_clipboard {
                 self.copy_rendered_image_to_clipboard = false;
-                effect_state.copy_rendered_image_to_clipboard();
+                effect.state.copy_rendered_image_to_clipboard();
             }
 
             RendererCallback::add(encoder.finish());
@@ -136,7 +123,6 @@ impl AnimationWindow {
                             if self.tree.show(ui, ui.make_persistent_id("animations_tree")) {
                                 self.dirty = false;
                                 validate = true;
-                                self.effect_state.take();
                             }
                         });
 
@@ -163,10 +149,9 @@ impl AnimationWindow {
 
                     egui::CentralPanel::default().show_inside(ui, |ui| {
                         if self.tree.common_settings(ui, &mut self.dirty) {
-                            self.effect_state.take();
                             validate = true;
                             if let TreeSelection::Asset(animation) = &self.tree.selected() {
-                                UiAction::ReloadShaderCode(animation.id).enqueue();
+                                UiAction::ReloadShaderCode(Some(animation.id)).enqueue();
                             }
                         }
 
@@ -230,9 +215,7 @@ impl AnimationWindow {
                 });
 
                 gled_window_frame(ctx, "Animation Preview", |ui| {
-                    if let (Some(effect), Some(effect_state)) =
-                        (&mut self.effect, &mut self.effect_state)
-                    {
+                    if let Some(effect) = &mut self.effect {
                         egui::SidePanel::right("animation preview right side")
                             .exact_width(300.0)
                             .resizable(false)
@@ -240,9 +223,7 @@ impl AnimationWindow {
                                 ScrollArea::vertical()
                                     .scroll_bar_visibility(AlwaysVisible)
                                     .max_height(ui.available_height())
-                                    .show(ui, |ui| {
-                                        effect.config_ui(effect_state, ui, false, None, 1.0)
-                                    });
+                                    .show(ui, |ui| effect.config_ui(ui, false, None, 1.0));
                             });
                     }
 
@@ -262,9 +243,7 @@ impl AnimationWindow {
 
                         ui.add_space(4.0);
 
-                        if let (Some(effect), Some(effect_state)) =
-                            (&mut self.effect, &mut self.effect_state)
-                        {
+                        if let Some(effect) = &mut self.effect {
                             egui::Frame::default()
                                 .outer_margin(Margin::same(4))
                                 .show(ui, |ui| {
@@ -274,7 +253,6 @@ impl AnimationWindow {
                                             show_group: false,
                                             selectable: None,
                                             effect,
-                                            effect_state,
                                             svg: None,
                                             groups: None,
                                             groups_show_index: false,

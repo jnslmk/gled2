@@ -34,36 +34,6 @@ use std::{
 };
 use wgpu::CommandEncoderDescriptor;
 
-pub fn deserialize_scene_instances<'de, D>(
-    deserializer: D,
-) -> Result<HashMap<GridLocation, SceneInstance>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Variants {
-        V1(Vec<SceneInstance>),
-        Current(HashMap<GridLocation, SceneInstance>),
-    }
-
-    match Variants::deserialize(deserializer)? {
-        Variants::V1(instances) => Ok(instances
-            .into_iter()
-            .enumerate()
-            .map(|(idx, instance)| {
-                (
-                    GridLocation {
-                        row: idx / GRID_HEIGHT,
-                        col: idx % GRID_WIDTH,
-                    },
-                    instance,
-                )
-            })
-            .collect()),
-        Variants::Current(instances) => Ok(instances),
-    }
-}
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Project {
@@ -72,7 +42,6 @@ pub struct Project {
     pub auto_mode_seconds: u64,
     pub auto_mode_max_scenes: usize,
     pub groups: Groups,
-    #[serde(deserialize_with = "deserialize_scene_instances")]
     pub scenes_instances_grid: HashMap<GridLocation, SceneInstance>,
     #[serde(skip)]
     pub auto_mode_last_change: Option<Instant>,
@@ -168,7 +137,9 @@ impl Project {
             .filter(|(location, _)| location.row == GRID_HEIGHT - 1)
     }
 
-    pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
+    /// Reload shader code for all effects using the given animation, should be called after an animation is edited
+    /// If the given animation is None, reloads all effects
+    pub fn reload_shader_code(&mut self, animation: Option<AssetId<Animation>>) {
         self.scenes_instances_grid
             .values_mut()
             .for_each(|scene_instance| {
@@ -182,24 +153,6 @@ impl Project {
             .for_each(|scene_instance| {
                 scene_instance.send_positions();
             });
-    }
-
-    pub fn init_gpu(&mut self) {
-        self.scenes_instances_grid
-            .values_mut()
-            .for_each(|scene_instance| {
-                scene_instance.init_states();
-            });
-        self.set_buffers();
-    }
-
-    pub fn set_buffers(&mut self) {
-        self.scenes_instances_grid
-            .values_mut()
-            .for_each(|scene_instance| {
-                scene_instance.set_output_mix_buffers();
-            });
-        Preview::set_buffers();
     }
 
     /// Remove scene instance at path and update path to the next scene instance
@@ -296,10 +249,7 @@ impl Project {
             for scene_instance in self.scenes_instances_grid.values_mut() {
                 scene_instance.render(
                     &mut wgpu_profiler.scope(
-                        format!(
-                            "Render scene \"{}\"",
-                            Asset::get(scene_instance.scene).unwrap_or_default().name()
-                        ),
+                        format!("Render scene \"{}\"", scene_instance.name),
                         &mut encoder,
                     ),
                     blackout,
@@ -350,9 +300,8 @@ impl Project {
         self.double_input_events.iter().any(|event| event.is_new())
     }
 
-    pub fn add_scene(&mut self, pos: GridLocation, scene: AssetId<Scene>) {
-        let mut scene_instance: SceneInstance = scene.into();
-        scene_instance.init_states();
+    pub fn add_scene(&mut self, pos: GridLocation, scene_id: AssetId<Scene>) {
+        let scene_instance: SceneInstance = scene_id.into();
         self.add_scene_instance(pos, scene_instance);
     }
 

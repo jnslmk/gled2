@@ -133,6 +133,7 @@ pub fn start_thread() {
             StorageAction::LoadBranches.enqueue();
             StorageAction::CountStagedFiles.enqueue();
             StorageAction::LoadAssets.enqueue();
+            StorageAction::LoadAssets.enqueue();
 
             while let Ok(action) = actions.recv() {
                 WORKING.store(true, Relaxed);

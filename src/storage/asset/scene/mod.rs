@@ -1,8 +1,8 @@
 pub mod color;
 pub mod effect;
 pub mod effect_state;
-pub mod instance;
 pub(crate) mod grid;
+pub mod instance;
 
 use super::{Asset, AssetTrait, animation::Animation, palette::Palette};
 use crate::{
@@ -11,10 +11,9 @@ use crate::{
     ui::pills::show_pills,
 };
 use effect::Effect;
-use effect_state::EffectState;
 use egui::{Color32, Vec2};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 use wgpu::{CommandEncoder, Queue};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
@@ -30,12 +29,6 @@ impl Scene {
             .collect()
     }
 
-    pub fn set_output_mix_buffers(&self, effect_states: &mut [EffectState]) {
-        for (effect, effect_state) in self.effects.iter().zip(effect_states.iter_mut()) {
-            effect.set_output_mix_buffers(effect_state);
-        }
-    }
-
     pub fn effect(&mut self, index: usize) -> Option<&mut Effect> {
         self.effects.get_mut(index)
     }
@@ -44,95 +37,51 @@ impl Scene {
         &self.effects
     }
 
-    pub fn add_effect(&mut self, effect_states: &mut Vec<EffectState>, effect: Effect) -> usize {
-        effect_states.push(EffectState::new(&effect));
+    pub fn add_effect(&mut self, effect: Effect) -> usize {
         self.effects.push(effect);
 
         self.effects.len() - 1
     }
 
-    pub fn remove_effect(
-        &mut self,
-        effect_states: &mut Vec<EffectState>,
-        index: usize,
-    ) -> Option<Effect> {
+    pub fn remove_effect(&mut self, index: usize) -> Option<Effect> {
         let mut effect = None;
 
         if self.effects.len() > index {
             effect = Some(self.effects.remove(index));
-            effect_states.remove(index);
         }
 
         effect
     }
 
-    pub fn init_states(&self, effect_states: &mut Vec<EffectState>) {
-        if effect_states.len() != self.effects.len() {
-            if effect_states.len() > self.effects.len() {
-                effect_states.truncate(self.effects.len());
-            } else {
-                let previous_len = effect_states.len();
-                effect_states.extend(self.effects.iter().skip(previous_len).map(EffectState::new));
-                for (effect, state) in self
-                    .effects
-                    .iter()
-                    .zip(effect_states.iter_mut())
-                    .skip(previous_len)
-                {
-                    state.update(effect);
-                }
+    /// Reload shader code for all effects using the given animation, should be called after an animation is edited
+    /// If the given animation is None, reloads all effects
+    pub fn reload_shader_code(&mut self, animation: Option<AssetId<Animation>>) {
+        for effect in self.effects.iter_mut() {
+            if let Some(animation) = animation
+                && effect.animation == Some(animation)
+            {
+                continue;
             }
-        }
-    }
 
-    pub fn reload_shader_code(
-        &self,
-        effect_states: &mut [EffectState],
-        animation: AssetId<Animation>,
-    ) {
-        for (effect, state) in self.effects.iter().zip(effect_states.iter_mut()) {
-            if effect.animation == Some(animation) {
-                state.update(effect);
-            }
+            effect.state.set_shader_code(&effect.shader_code_complete());
         }
     }
 
     pub fn prepare(
-        &self,
-        effect_overwrites: Option<&BTreeMap<usize, Effect>>,
-        effect_states: &mut [EffectState],
+        &mut self,
         queue: &Queue,
         palette: Option<Arc<Asset<Palette>>>,
         groups: &Groups,
         main_opacity: f32,
     ) {
-        debug_assert_eq!(effect_states.len(), self.effects.len());
-
-        for (effect, state) in self
-            .effects
-            .iter()
-            .enumerate()
-            .map(|(index, effect)| {
-                effect_overwrites
-                    .and_then(|effect_overwrites| effect_overwrites.get(&index))
-                    .unwrap_or(effect)
-            })
-            .zip(effect_states.iter_mut())
-        {
-            effect.prepare(state, queue, palette.clone(), groups, main_opacity);
+        for effect in self.effects.iter_mut() {
+            effect.prepare(queue, palette.clone(), groups, main_opacity);
         }
     }
 
-    pub fn render(
-        &self,
-        effect_states: &mut [EffectState],
-        encoder: &mut CommandEncoder,
-        send_output: bool,
-    ) {
-        debug_assert_eq!(effect_states.len(), self.effects.len());
-
-        for (effect, state) in self.effects.iter().zip(effect_states.iter_mut()) {
-            effect.render(state, encoder, send_output);
+    pub fn render(&mut self, encoder: &mut CommandEncoder, send_output: bool) {
+        for effect in self.effects.iter_mut() {
+            effect.render(encoder, send_output);
         }
     }
 }
