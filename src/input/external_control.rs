@@ -43,11 +43,11 @@ pub struct ArtnetSceneControlState {
 
 pub struct ExternalControlState {
     prev_values: [ArtnetSceneControlState; ARTNET_CONTROL_SLOTS],
-    artnet_control_receiver: Receiver<PaddedData>,
+    artnet_control_receiver: Receiver<Vec<u8>>,
 }
 
 impl ExternalControlState {
-    pub fn new(artnet_control_receiver: Receiver<PaddedData>) -> Self {
+    pub fn new(artnet_control_receiver: Receiver<Vec<u8>>) -> Self {
         Self {
             prev_values: [ArtnetSceneControlState::default(); ARTNET_CONTROL_SLOTS],
             artnet_control_receiver,

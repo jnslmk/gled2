@@ -27,7 +27,6 @@ use crate::{input::Input, midi::state::MidiState, pipeline::renderer_callback::R
     action::UiAction, asset_tree::AssetTree, window_common::default_viewport_builder,
     windows::Windows,
 }, wgpu_render_state};
-use artnet_protocol::PaddedData;
 use eframe::egui_wgpu::Callback;
 use egui::{ahash::HashSet, CentralPanel, Id, Rect, UiBuilder, ViewportId};
 use persistant_state::PersistantState;
@@ -242,7 +241,7 @@ impl App {
     }
     pub fn new(
         ui_action_receiver: Receiver<UiAction>,
-        artnet_control_receiver: crossbeam_channel::Receiver<PaddedData>,
+        artnet_control_receiver: crossbeam_channel::Receiver<Vec<u8>>,
         audio_pool: AudioPool
     ) -> Option<Self> {
         let app = Self {

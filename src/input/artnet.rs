@@ -71,7 +71,7 @@ impl ArtnetConfig {
 
 pub fn start_thread(
     output_package_sender: Sender<OutputPackage>,
-) -> (Receiver<ArtnetEvent>, Receiver<PaddedData>) {
+) -> (Receiver<ArtnetEvent>, Receiver<Vec<u8>>) {
     let (bridge_sender, bridge_receiver) = unbounded();
     let (control_sender, control_receiver) = unbounded();
 
@@ -189,49 +189,45 @@ pub fn start_thread(
                     trace!("parsed artnet");
 
                     let mut config = ARTNET_CONFIG.lock();
+                    // dispatch trigger packages
+                    if output.port_address == config.port_address(){
+                        trace!("artnet data on input universe");
+                        let data = output.data.as_ref();
+                        data.iter().enumerate().for_each(|(channel, value)|
+                            bridge_sender
+                            .send(ArtnetEvent {
+                                channel: channel as u16,
+                                value: *value,
+                            })
+                            .expect("Could not send event")
+                        );
+                    }
+                    // dispatch control packages
+                    if output.port_address == config.artnet_control_config.universe.try_into().unwrap() {
+                        trace!("artnet data on control universe");
+                        control_sender
+                            .send(output.data.as_ref().to_vec())
+                            .expect("Could not send event");
+                    }
+                    // dispatch all artnet data to the bridge
+                    let bridge =
+                        config.bridge.entry(output.port_address.into()).or_default();
+                    bridge.last_data_at = Utc::now();
+                    bridge.updates += 1;
 
-                    match output.port_address {
-                        x if x == config.port_address() => {
-                            trace!("artnet data on input universe");
-                            let data = output.data.as_ref();
-                            data.iter().enumerate().for_each(|(channel, value)|
-                                bridge_sender
-                                .send(ArtnetEvent {
-                                    channel: channel as u16,
-                                    value: *value,
-                                })
-                                .expect("Could not send event")
-                            );
-                        }
-                        x if x == config.artnet_control_config.universe.try_into().unwrap() => {
-                            trace!("artnet data on control universe");
-                            control_sender
-                                .send(output.data)
-                                .expect("Could not send event");
-                        }
-                        _ => {
-                            trace!("artnet data on another universe");
+                    if let Some(recipient) = bridge.output_routing.recipient() {
+                        trace!("artnet bridge has output routing");
 
-                            let bridge =
-                                config.bridge.entry(output.port_address.into()).or_default();
-                            bridge.last_data_at = Utc::now();
-                            bridge.updates += 1;
+                        let mut data = [0u8; UNIVERSE_BUFFER_SIZE as usize];
+                        data.copy_from_slice(output.data.as_ref());
 
-                            if let Some(recipient) = bridge.output_routing.recipient() {
-                                trace!("artnet bridge has output routing");
-
-                                let mut data = [0u8; UNIVERSE_BUFFER_SIZE as usize];
-                                data.copy_from_slice(output.data.as_ref());
-
-                                output_package_sender
-                                    .send(OutputPackage::ArtnetInput {
-                                        recipient,
-                                        data,
-                                        htp: bridge.htp,
-                                    })
-                                    .ok();
-                            }
-                        }
+                        output_package_sender
+                            .send(OutputPackage::ArtnetInput {
+                                recipient,
+                                data,
+                                htp: bridge.htp,
+                            })
+                            .ok();
                     }
                 }
             }
