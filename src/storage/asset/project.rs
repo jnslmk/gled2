@@ -31,6 +31,8 @@ use std::{
     time::Instant,
 };
 use cpal::DeviceId;
+use ndarray::AssignElem;
+use crate::input::artnet::ARTNET_CONTROL_CONFIG;
 use crate::input::external_control::ArtnetControlConfig;
 
 pub fn deserialize_scene_instances<'de, D>(
@@ -88,25 +90,13 @@ pub struct Project {
     #[serde(serialize_with = "crate::audio::device_id_serde::serialize_device_id",
         deserialize_with = "crate::audio::device_id_serde::deserialize_scene_instances")]
     pub audio_input_device: Option<DeviceId>,
-    pub artnet_control_config: ArtnetControlConfig,
+    artnet_control_config: ArtnetControlConfig,
 }
 
 impl Default for Project {
     fn default() -> Self {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("Project::default");
-        // let audio_host = cpal::default_host();
-        // let default_audio_device = audio_host.default_input_device();
-        let audio_input_device = None;
-        // if let Some(default_device) = default_audio_device {
-        //     {
-        //         log::info!("Using audio input device: {:?}", default_device.description());
-        //         audio_input_device = default_device.id().ok();
-        //     }
-        // }
-        // else {
-        //     log::warn!("No audio input device found, audio analysis disabled");
-        // }
         Self {
             palette: None,
             auto_mode_active: false,
@@ -129,7 +119,7 @@ impl Default for Project {
             half_input_events: std::iter::once(InputEvent::Key(egui::Key::Minus)).collect(),
             double_input_events: std::iter::once(InputEvent::Key(egui::Key::Plus)).collect(),
             main_dimmer: 1.0,
-            audio_input_device,
+            audio_input_device: None,
             artnet_control_config: ArtnetControlConfig::default(),
         }
     }
@@ -266,6 +256,11 @@ impl Project {
         for scene_instance in self.scenes_instances_grid.values_mut() {
             scene_instance.remove_nonexistant_groups();
         }
+    }
+
+    pub fn artnet_control_config(&mut self, apply: impl FnOnce(&mut ArtnetControlConfig)) {
+        apply(&mut self.artnet_control_config);
+        *ARTNET_CONTROL_CONFIG.lock() = self.artnet_control_config.clone();
     }
 }
 

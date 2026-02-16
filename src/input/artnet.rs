@@ -17,6 +17,9 @@ use crate::{
     pipeline::{constants::UNIVERSE_BUFFER_SIZE, output_sender::OutputPackage},
     storage::asset::output_device::routing::OutputRouting,
 };
+use crate::input::external_control::ArtnetControlConfig;
+
+pub static ARTNET_CONTROL_CONFIG: Lazy<Mutex<ArtnetControlConfig>> = Lazy::new(|| Mutex::new(ArtnetControlConfig::default()));
 
 static ARTNET_PORT: u16 = 6454;
 pub static ARTNET_SOCKET: Lazy<Arc<UdpSocket>> = Lazy::new(|| {
@@ -185,6 +188,8 @@ pub fn start_thread(
                     };
                     trace!("parsed artnet");
 
+                    let artnet_control_config = ARTNET_CONTROL_CONFIG.lock().clone();
+
                     let mut config = ARTNET_CONFIG.lock();
                     match output.port_address {
                         x if x == config.port_address() => {
@@ -199,7 +204,7 @@ pub fn start_thread(
                                 .expect("Could not send event")
                             );
                         }
-                        x if x == 1337.try_into().unwrap() => {
+                        x if x == artnet_control_config.universe.try_into().unwrap() => {
                             // TODO make the control universe configurable
                             trace!("artnet data on control universe");
                             control_sender

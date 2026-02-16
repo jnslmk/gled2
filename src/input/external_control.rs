@@ -21,7 +21,7 @@ pub struct ArtnetControlConfig{
 
 impl Default for ArtnetControlConfig {
     fn default() -> Self {
-        Self { active: false, universe: 1000 }
+        Self { active: false, universe: 1337 }
     }
 }
 

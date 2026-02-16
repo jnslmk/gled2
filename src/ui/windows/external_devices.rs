@@ -125,10 +125,11 @@ fn audio_input_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
 
 fn artnet_control_input_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
     let (project, _) = state;
-    let config = &mut project.artnet_control_config;
-    ui.heading("Artnet Control");
-    ui.checkbox(&mut config.active, "Active");
-    ui.add(DragValue::new(&mut config.universe).range(0..=32767));
+    project.artnet_control_config(|config| {
+        ui.heading("Artnet Control");
+        ui.checkbox(&mut config.active, "Active");
+        ui.add(DragValue::new(&mut config.universe).range(0..=32767));
+    });
 }
 
 fn artnet_bridge_settings(ui: &mut Ui, _state: (&mut Project, &mut EditSate)) {
