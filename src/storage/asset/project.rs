@@ -32,7 +32,7 @@ use std::{
 };
 use cpal::DeviceId;
 use ndarray::AssignElem;
-use crate::input::artnet::ARTNET_CONTROL_CONFIG;
+use crate::input::artnet::{ARTNET_CONFIG};
 use crate::input::external_control::ArtnetControlConfig;
 
 pub fn deserialize_scene_instances<'de, D>(
@@ -260,7 +260,7 @@ impl Project {
 
     pub fn artnet_control_config(&mut self, apply: impl FnOnce(&mut ArtnetControlConfig)) {
         apply(&mut self.artnet_control_config);
-        *ARTNET_CONTROL_CONFIG.lock() = self.artnet_control_config.clone();
+        ARTNET_CONFIG.lock().artnet_control_config = self.artnet_control_config.clone();
     }
 }
 

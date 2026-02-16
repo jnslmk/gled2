@@ -19,8 +19,6 @@ use crate::{
 };
 use crate::input::external_control::ArtnetControlConfig;
 
-pub static ARTNET_CONTROL_CONFIG: Lazy<Mutex<ArtnetControlConfig>> = Lazy::new(|| Mutex::new(ArtnetControlConfig::default()));
-
 static ARTNET_PORT: u16 = 6454;
 pub static ARTNET_SOCKET: Lazy<Arc<UdpSocket>> = Lazy::new(|| {
     Arc::new(UdpSocket::bind(("0.0.0.0", ARTNET_PORT)).expect("Could not bind on artnet port"))
@@ -42,6 +40,7 @@ pub struct ArtnetConfig {
     pub bind_ip: Ipv4Addr,
     #[serde(deserialize_with = "crate::storage::serde::deserialize_u16_index_btreemap")]
     pub bridge: BTreeMap<u16, Bridge>,
+    pub artnet_control_config: ArtnetControlConfig,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
@@ -59,6 +58,7 @@ impl Default for ArtnetConfig {
             universe: 18,
             bind_ip: Ipv4Addr::LOCALHOST,
             bridge: Default::default(),
+            artnet_control_config: ArtnetControlConfig::default(),
         }
     }
 }
@@ -188,9 +188,8 @@ pub fn start_thread(
                     };
                     trace!("parsed artnet");
 
-                    let artnet_control_config = ARTNET_CONTROL_CONFIG.lock().clone();
-
                     let mut config = ARTNET_CONFIG.lock();
+
                     match output.port_address {
                         x if x == config.port_address() => {
                             trace!("artnet data on input universe");
@@ -204,8 +203,7 @@ pub fn start_thread(
                                 .expect("Could not send event")
                             );
                         }
-                        x if x == artnet_control_config.universe.try_into().unwrap() => {
-                            // TODO make the control universe configurable
+                        x if x == config.artnet_control_config.universe.try_into().unwrap() => {
                             trace!("artnet data on control universe");
                             control_sender
                                 .send(output.data)

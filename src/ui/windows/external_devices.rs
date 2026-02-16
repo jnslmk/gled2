@@ -15,9 +15,10 @@ use crate::{
 };
 use chrono::Local;
 use egui::{Button, CentralPanel, ComboBox, Context, DragValue, Id, Layout, Response, RichText, SidePanel, Slider, TextEdit, Ui, Vec2, ViewportId, Widget, WidgetText};
-use egui::cache::FrameCache;
 use egui_phosphor_icons::icons;
+use epaint::mutex::MutexGuard;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
+use crate::input::artnet::ArtnetConfig;
 
 #[derive(Default)]
 pub struct ExternalDeviceSettings {
@@ -132,8 +133,11 @@ fn artnet_control_input_settings(ui: &mut Ui, state: (&mut Project, &mut EditSat
     });
 }
 
-fn artnet_bridge_settings(ui: &mut Ui, _state: (&mut Project, &mut EditSate)) {
+fn artnet_bridge_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
     let mut config = ARTNET_CONFIG.lock();
+    let (_project, edit_state) = state;
+
+    bind_adress_settings(edit_state, &mut config, ui);
     ui.heading("Artnet Bridge");
     ui.add_space(3.0);
 
@@ -222,33 +226,37 @@ fn artnet_trigger_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
         ui.label("Active");
         ui.checkbox(&mut config.active, "");
 
-        ui.label("Bind address");
-        let mut selected_index = edit_state
-            .addresses
-            .iter()
-            .position(|addr| addr == &config.bind_ip)
-            .unwrap_or(0);
-        egui::ComboBox::new("artnet_bind_address_combo", "")
-            .selected_text(
-                edit_state
-                    .addresses
-                    .get(selected_index)
-                    .map(|addr| addr.to_string())
-                    .unwrap_or_else(|| "Unknown".to_string()),
-            )
-            .width(275.0)
-            .show_ui(ui, |ui| {
-                for (index, addr) in edit_state.addresses.iter().enumerate() {
-                    ui.selectable_value(&mut selected_index, index, addr.to_string());
-                }
-            });
-        if let Some(addr) = edit_state.addresses.get(selected_index) {
-            config.bind_ip = *addr;
-        }
+        bind_adress_settings(edit_state, &mut config, ui);
     });
     ui.separator();
     ui.label("Universe");
     ui.add(Slider::new(&mut config.universe, 0..=32768));
+}
+
+fn bind_adress_settings(edit_state: &mut EditSate, mut config: &mut MutexGuard<ArtnetConfig>, ui: &mut Ui) {
+    ui.label("Bind address");
+    let mut selected_index = edit_state
+        .addresses
+        .iter()
+        .position(|addr| addr == &config.bind_ip)
+        .unwrap_or(0);
+    ComboBox::new("artnet_bind_address_combo", "")
+        .selected_text(
+            edit_state
+                .addresses
+                .get(selected_index)
+                .map(|addr| addr.to_string())
+                .unwrap_or_else(|| "Unknown".to_string()),
+        )
+        .width(275.0)
+        .show_ui(ui, |ui| {
+            for (index, addr) in edit_state.addresses.iter().enumerate() {
+                ui.selectable_value(&mut selected_index, index, addr.to_string());
+            }
+        });
+    if let Some(addr) = edit_state.addresses.get(selected_index) {
+        config.bind_ip = *addr;
+    }
 }
 
 struct SettingsMenu<'a, S> {
