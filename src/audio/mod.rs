@@ -19,6 +19,7 @@ use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
 use tokio::time::interval;
 use tokio::{runtime};
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 pub static REACTIVE_SIGNAL_THREAD: Lazy<RwLock<ReactiveSignalThread>> =
@@ -30,7 +31,7 @@ pub static AUDIO_DEVICES: Lazy<Mutex<Vec<(DeviceId, DeviceDescription)>>> = Lazy
 pub struct AudioPool {
     runtime: Runtime,
     fft_tx: Sender<RootSample>,
-    fft_abort: Option<JoinHandle<()>>,
+    fft_cancel: Option<CancellationToken>,
     pub selected_device: Option<DeviceId>,
 }
 
@@ -49,24 +50,25 @@ impl AudioPool {
 
         runtime.spawn(start_reactive_sound_thread(receiver));
         runtime.spawn(audio_device_info_loop());
-        let mut ret = Self{runtime, fft_abort: None, selected_device, fft_tx};
+        let mut ret = Self{runtime, fft_cancel: None, selected_device, fft_tx};
         ret.restart_fft();
         ret
     }
 
     pub fn restart_fft(&mut self){
-        if let Some(fft_abort_sender) = self.fft_abort.take() {
+        if let Some(fft_cancel) = self.fft_cancel.take() {
             // wait for the thread to stop
-            fft_abort_sender.abort();
+            fft_cancel.cancel();
         }
 
         if let Some(device_id) = self.selected_device.clone() {
-            let handle = self.runtime.spawn(fft::start(device_id, self.fft_tx.clone()));
-            self.fft_abort = Some(handle);
+            let cancel_token = CancellationToken::new();
+            self.runtime.spawn(fft::start(device_id, self.fft_tx.clone(), cancel_token.clone()));
+            self.fft_cancel = Some(cancel_token);
         }
         else {
             log::info!("No audio input device selected, audio analysis disabled");
-            self.fft_abort = None;
+            self.fft_cancel = None;
             REACTIVE_SIGNAL_THREAD.write().unwrap().reset();
         }
     }
@@ -171,10 +173,10 @@ impl ReactiveSignalThread {
 pub async fn start_reactive_sound_thread(rx: Receiver<RootSample>) {
     loop {
         {
-            #[cfg(feature = "profiling")]
-            puffin::profile_scope!("ReactiveSignalThread::waitForSignal");
             // give tokio the opportunity to break the reactive sound thread loop
             tokio::task::yield_now().await;
+            #[cfg(feature = "profiling")]
+            puffin::profile_scope!("ReactiveSignalThread::waitForSignal");
             let root_sample = match rx.recv_timeout(Duration::from_millis(10)) {
                 Ok(root_sample) => root_sample,
                 Err(RecvTimeoutError::Timeout) => continue,

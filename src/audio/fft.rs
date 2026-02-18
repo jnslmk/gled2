@@ -7,6 +7,8 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 use crossbeam_channel::Sender;
+use rtrb::{Consumer, Producer, RingBuffer};
+use tokio_util::sync::CancellationToken;
 
 pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
@@ -42,7 +44,7 @@ pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
     fft_data_u8
 }
 
-pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>) {
+pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>, cancel_token: CancellationToken) {
     log::info!("Starting audio capture thread");
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio:capture");
@@ -78,15 +80,18 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>) {
     };
 
     log::info!("Audio input config: {:?}", config);
+    let channels = config.channels() as usize;
 
-    let mut processor = FFTProcessor::new(&config, fft_tx);
+
+    let (mut producer, mut consumer) = RingBuffer::<f32>::new(48_0000);
+    let mut processor = FFTProcessor::new(consumer, fft_tx, );
 
     let stream = match config.sample_format() {
         SampleFormat::F32 => {
             device.build_input_stream(
                 &StreamConfig::from(config),
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                    processor.process_audio_samples(data);
+                    push_sample(Vec::from(data), channels, &mut producer);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -99,7 +104,7 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>) {
                 &StreamConfig::from(config),
                 move |data: &[i16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
-                    processor.process_audio_samples(&f32_data);
+                    push_sample(f32_data, channels, &mut producer);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -113,7 +118,7 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>) {
                 move |data: &[u16], _: &cpal::InputCallbackInfo| {
                     let f32_data: Vec<f32> =
                         data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
-                    processor.process_audio_samples(&f32_data);
+                    push_sample(f32_data, channels, &mut producer);
                 },
                 |err| {
                     log::error!("Audio stream error: {}", err);
@@ -134,8 +139,22 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>) {
                 return;
             }
             log::info!("Audio stream started successfully");
-            // Keep the thread alive
+            let cancel_processing_token = cancel_token.clone();
+            tokio::spawn(async move {
+                loop {
+                    if cancel_processing_token.is_cancelled() {
+                        log::info!("Audio capture thread cancelled");
+                        break;
+                    }
+                    processor.process_audio_samples();
+                    tokio::task::yield_now().await;
+                }
+            });
             loop {
+                if cancel_token.is_cancelled() {
+                    log::info!("FFT thread cancelled");
+                    break;
+                }
                 tokio::task::yield_now().await;
             }
         }
@@ -145,51 +164,57 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>) {
     }
 }
 
+pub fn push_sample(data: Vec<f32>, channels: usize, producer: &mut Producer<f32>) {
+    // Convert interleaved samples to mono by averaging channels
+    #[cfg(feature = "profiling")]
+    puffin::profile_function!("audio:push_sample");
+    for chunk in data.chunks(channels) {
+        let mono_sample = if channels > 1 {
+            chunk.iter().sum::<f32>() / channels as f32
+        } else {
+            chunk[0]
+        };
+        producer.push(mono_sample).unwrap_or_else(|_|
+            log::error!("Audio input buffer full, dropping sample"))
+    }
+}
+
 struct FFTProcessor{
-    channels: usize,
-    sample_buffer: Vec<f32>,
+    consumer: Consumer<f32>,
     fft: Arc<dyn rustfft::Fft<f32>>,
     fft_tx: Sender<RootSample>,
 }
 
 impl FFTProcessor {
 
-    pub fn new(config: &SupportedStreamConfig, fft_tx: Sender<RootSample>) -> Self {
-        let channels = config.channels() as usize;
-
-        // Create a buffer to accumulate samples (wrapped in Arc<Mutex> for thread safety)
-        let mut sample_buffer = Vec::with_capacity(WINDOW_SIZE * channels);
-
+    pub fn new(
+        consumer: Consumer<f32>,
+        fft_tx: Sender<RootSample>,
+    ) -> Self {
         // Create FFT planner
         let mut planner = FftPlanner::new();
         let fft = planner.plan_fft_forward(WINDOW_SIZE);
         Self{
-            channels,
+            consumer,
             fft,
-            sample_buffer,
             fft_tx,
         }
     }
+
     pub fn process_audio_samples(
         &mut self,
-        data: &[f32],
     ) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("audio:process_audio_samples");
-        // Convert interleaved samples to mono by averaging channels
-        for chunk in data.chunks(self.channels) {
-            let mono_sample = if self.channels > 1 {
-                chunk.iter().sum::<f32>() / self.channels as f32
-            } else {
-                chunk[0]
-            };
-            self.sample_buffer.push(mono_sample);
-        }
-
         // When we have enough samples, perform FFT
-        if self.sample_buffer.len() >= WINDOW_SIZE {
-            // Take the last FFT_SIZE samples
-            let samples: Vec<f32> = self.sample_buffer[self.sample_buffer.len() - WINDOW_SIZE..].to_vec();
+        if let Ok(chunk) = self.consumer.read_chunk(WINDOW_SIZE) {
+            // move out of buffer
+            let mut samples = [0f32; WINDOW_SIZE];
+            let (h, t) = chunk.as_slices();
+            samples[..h.len()].copy_from_slice(h);
+            samples[h.len()..].copy_from_slice(t);
+            // only consume a fraction of the buffer for overlap
+            chunk.commit(WINDOW_SIZE / 4);
 
             // Convert to complex numbers (imaginary part is 0 for real input)
             let mut complex_samples: Vec<Complex<f32>> =
@@ -246,12 +271,6 @@ impl FFTProcessor {
             //        // Update max_magnitude with the scaled value
             //    }
             //}
-
-            // Keep only the last FFT_SIZE samples for overlap
-            let buffer_len = self.sample_buffer.len();
-            if buffer_len > WINDOW_SIZE {
-                self.sample_buffer.drain(0..buffer_len - WINDOW_SIZE);
-            }
 
             let mut current_index = RMS_INDEX.load(Relaxed);
             current_index = (current_index + 1) % RMS_BUFFER_SIZE;

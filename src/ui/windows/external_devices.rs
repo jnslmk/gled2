@@ -233,7 +233,7 @@ fn artnet_trigger_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
     ui.add(Slider::new(&mut config.universe, 0..=32768));
 }
 
-fn bind_adress_settings(edit_state: &mut EditSate, mut config: &mut MutexGuard<ArtnetConfig>, ui: &mut Ui) {
+fn bind_adress_settings(edit_state: &mut EditSate, config: &mut MutexGuard<ArtnetConfig>, ui: &mut Ui) {
     ui.label("Bind address");
     let mut selected_index = edit_state
         .addresses

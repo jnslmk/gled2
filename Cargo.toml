@@ -54,6 +54,7 @@ network-interface = "2"
 notify-rust = { version = "4", default-features = false, features = ["d"] }
 once_cell = "1"
 open = "5"
+rtrb = "0.3.2"
 polyfit-residuals = "0.6"
 rand = "0.9"
 rayon = "1.10"
@@ -73,6 +74,7 @@ strum = { version = "0.27", features = ["derive"] }
 svgdom = "0.18"
 sysinfo = "0.37"
 tokio = { version = "1.49.0", features = ["rt-multi-thread", "time"] }
+tokio-util = "*"
 tiny-skia = { version = "0.11", default-features = false, features = [
     "simd",
     "std",

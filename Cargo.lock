@@ -1813,6 +1813,7 @@ dependencies = [
  "reqwest",
  "resvg",
  "rfd",
+ "rtrb",
  "rubato",
  "rustfft",
  "rusty_link",
@@ -1827,6 +1828,7 @@ dependencies = [
  "sysinfo",
  "tiny-skia",
  "tokio",
+ "tokio-util",
  "typemap",
  "usvg",
  "uuid",
@@ -4266,6 +4268,12 @@ checksum = "f1964b10c76125c36f8afe190065a4bf9a87bf324842c05701330bba9f1cacbb"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "rtrb"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad8388ea1a9e0ea807e442e8263a699e7edcb320ecbcd21b4fa8ff859acce3ba"
 
 [[package]]
 name = "rubato"
