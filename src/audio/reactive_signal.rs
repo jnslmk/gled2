@@ -5,7 +5,7 @@ use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
 use std::ops::Mul;
 
-const MAX_RMS_LENGTH: usize = 100;
+const MAX_RMS_LENGTH: usize = 1000;
 
 #[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct AdsrParams {
@@ -43,7 +43,7 @@ impl AdsrParams {
             sensitivity,
             gate_activation_threshold: gate_threshold,
             gate_deactivation_threshold: gate_threshold * 0.8,
-            rms_length: 10,
+            rms_length: 100,
         };
         ret.set_filter_tune(f_center, f_radius);
         ret
@@ -234,10 +234,15 @@ impl ReactiveSignal {
     #[inline(always)]
     pub fn rms(&mut self, current_rms_sample: [f32; FREQ_BINS]) -> Array1<f32> {
         let current_rms_sample = Array1::from_vec(current_rms_sample.to_vec());
-        self.rms_buffer.progress(current_rms_sample.clone());
+
+        // remove the oldest sample from the buffer
         let remove = self.rms_buffer.get_from_offset(-(self.params.rms_length as i32));
-        self.running_square_sum = &self.running_square_sum + &current_rms_sample;
         self.running_square_sum = &self.running_square_sum - &remove;
+        // add the new sample to the buffer
+        self.rms_buffer.progress(current_rms_sample.clone());
+        self.running_square_sum = &self.running_square_sum + &current_rms_sample;
+        // use a small decay here to counter the accumulation of errors
+        self.running_square_sum = &self.running_square_sum * 0.99999999999;
 
         self.running_square_sum.map(|x| x.sqrt())
     }

@@ -14,9 +14,7 @@ use std::hash::{DefaultHasher, Hash};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
-use futures::future::{join_all, JoinAll};
 use tokio::runtime::Runtime;
-use tokio::task::JoinHandle;
 use tokio::time::interval;
 use tokio::{runtime};
 use tokio_util::sync::CancellationToken;
@@ -146,18 +144,17 @@ impl ReactiveSignalThread {
         }
     }
 
-    fn tick(&mut self, root_sample: [f32; FREQ_BINS]) -> JoinAll<JoinHandle<()>> {
-        let handles: Vec<JoinHandle<()>> = self.signals
+    fn tick(&mut self, root_sample: [f32; FREQ_BINS]) {
+        #[cfg(feature = "profiling")]
+        puffin::profile_scope!("tick_reactive_signals");
+        self.signals
             .values_mut()
-            .map(move |signal| {
+            .for_each(move |signal| {
                 let signal = Arc::clone(signal);
                 let sample_copy = root_sample.clone();
-                tokio::spawn(async move {
-                    let mut signal_guard = signal.lock().unwrap();
-                    signal_guard.tick(sample_copy)
-                })
-            }).collect();
-        join_all(handles)
+                let mut signal_guard = signal.lock().unwrap();
+                signal_guard.tick(sample_copy);
+            });
     }
 
     fn reset(&mut self) {
@@ -185,7 +182,7 @@ pub async fn start_reactive_sound_thread(rx: Receiver<[f32; FREQ_BINS]>) {
                     break
                 },
             };
-                tokio::spawn(REACTIVE_SIGNAL_THREAD.write().unwrap().tick(root_sample));
+            REACTIVE_SIGNAL_THREAD.write().unwrap().tick(root_sample);
         }
     }
 }
