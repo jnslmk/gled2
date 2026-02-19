@@ -3,7 +3,7 @@ use cpal::{DeviceId, SampleFormat, StreamConfig, SupportedStreamConfig};
 use rustfft::num_traits::Pow;
 use rustfft::{num_complex::Complex, FftPlanner};
 use std::clone::Clone;
-use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 use crossbeam_channel::Sender;
@@ -14,11 +14,13 @@ pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
 
 // FFT size - power of 2 for efficient FFT
-const WINDOW_SIZE: usize = 4096;
+const WINDOW_SIZE: usize = 256;
 pub const FREQ_BINS: usize = 256;
 
 pub const RMS_BUFFER_SIZE: usize = 100;
 static RMS_INDEX: AtomicUsize = AtomicUsize::new(0);
+
+static DROPPED_SAMPLES: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone)]
 pub struct RootSample {
@@ -143,7 +145,7 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>, cancel_token
             tokio::spawn(async move {
                 loop {
                     if cancel_processing_token.is_cancelled() {
-                        log::info!("Audio capture thread cancelled");
+                        log::info!("FFT thread cancelled");
                         break;
                     }
                     processor.process_audio_samples();
@@ -152,7 +154,7 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>, cancel_token
             });
             loop {
                 if cancel_token.is_cancelled() {
-                    log::info!("FFT thread cancelled");
+                    log::info!("Audio capture cancelled");
                     break;
                 }
                 tokio::task::yield_now().await;
@@ -174,8 +176,7 @@ pub fn push_sample(data: Vec<f32>, channels: usize, producer: &mut Producer<f32>
         } else {
             chunk[0]
         };
-        producer.push(mono_sample).unwrap_or_else(|_|
-            log::error!("Audio input buffer full, dropping sample"))
+        producer.push(mono_sample).unwrap_or_else(|_| {DROPPED_SAMPLES.fetch_add(1, Ordering::Relaxed);})
     }
 }
 
@@ -204,10 +205,10 @@ impl FFTProcessor {
     pub fn process_audio_samples(
         &mut self,
     ) {
-        #[cfg(feature = "profiling")]
-        puffin::profile_function!("audio:process_audio_samples");
         // When we have enough samples, perform FFT
         if let Ok(chunk) = self.consumer.read_chunk(WINDOW_SIZE) {
+            #[cfg(feature = "profiling")]
+            puffin::profile_scope!("audio:process_audio_samples");
             // move out of buffer
             let mut samples = [0f32; WINDOW_SIZE];
             let (h, t) = chunk.as_slices();

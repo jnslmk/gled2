@@ -41,7 +41,7 @@ impl AdsrParams {
             sensitivity,
             gate_activation_threshold: gate_threshold,
             gate_deactivation_threshold: gate_threshold * 0.8,
-            rms_length: 6,
+            rms_length: 2,
         };
         ret.set_filter_tune(f_center, f_radius);
         ret

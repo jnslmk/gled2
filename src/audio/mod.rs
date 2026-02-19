@@ -40,7 +40,7 @@ impl AudioPool {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("AudioPool::init");
         let runtime = runtime::Builder::new_multi_thread()
-            .worker_threads(4)
+            .worker_threads(1)
             .thread_name("gled_audio_pool")
             .enable_time()
             .build().expect("Failed to create audio thread pool");
