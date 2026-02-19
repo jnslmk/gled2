@@ -1,4 +1,4 @@
-use artnet_protocol::{ArtCommand, PaddedData, PollReply, PortAddress};
+use artnet_protocol::{ArtCommand, PollReply, PortAddress};
 use chrono::{DateTime, Utc};
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use egui::mutex::Mutex;

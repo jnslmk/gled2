@@ -14,7 +14,7 @@ use crate::{
     },
 };
 use chrono::Local;
-use egui::{Button, CentralPanel, ComboBox, Context, DragValue, Id, Layout, Response, RichText, SidePanel, Slider, TextEdit, Ui, Vec2, ViewportId, Widget, WidgetText};
+use egui::{Button, CentralPanel, ComboBox, Context, DragValue, Id, Layout, Response, RichText, SidePanel, Slider, Ui, Vec2, ViewportId, Widget, WidgetText};
 use egui_phosphor_icons::icons;
 use epaint::mutex::MutexGuard;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
@@ -67,7 +67,7 @@ impl ExternalDeviceSettings {
                 .with_resizable(false)
                 .with_minimize_button(false)
                 .with_maximize_button(true),
-            |mut ctx, _viewport_class| {
+            |ctx, _viewport_class| {
                 ctx.input(|input| {
                     if input.viewport().close_requested() {
                         self.open = false;

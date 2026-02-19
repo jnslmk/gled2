@@ -31,7 +31,6 @@ use std::{
     time::Instant,
 };
 use cpal::DeviceId;
-use ndarray::AssignElem;
 use crate::input::artnet::{ARTNET_CONFIG};
 use crate::input::external_control::ArtnetControlConfig;
 

@@ -5,7 +5,6 @@ use crate::storage::asset::scene::Scene;
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::storage::asset::scene::instance::SceneInstance;
 use crate::storage::asset_id::AssetId;
-use artnet_protocol::PaddedData;
 use crossbeam_channel::Receiver;
 use deku::prelude::*;
 use serde::{Deserialize, Serialize};

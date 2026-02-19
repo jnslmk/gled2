@@ -1,10 +1,9 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{DeviceId, SampleFormat, StreamConfig, SupportedStreamConfig};
+use cpal::{DeviceId, SampleFormat, StreamConfig};
 use rustfft::num_traits::Pow;
 use rustfft::{num_complex::Complex, FftPlanner};
 use std::clone::Clone;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use crossbeam_channel::Sender;
 use rtrb::{Consumer, Producer, RingBuffer};
@@ -17,16 +16,7 @@ pub const MAX_FREQ: f32 = 24_000.0;
 const WINDOW_SIZE: usize = 256;
 pub const FREQ_BINS: usize = 256;
 
-pub const RMS_BUFFER_SIZE: usize = 100;
-static RMS_INDEX: AtomicUsize = AtomicUsize::new(0);
-
 static DROPPED_SAMPLES: AtomicU64 = AtomicU64::new(0);
-
-#[derive(Clone)]
-pub struct RootSample {
-    pub data: [f32; FREQ_BINS],
-    pub index: usize,
-}
 
 pub fn get_fft_bin_index_by_frequency(frequency: f32) -> usize {
     let k = WINDOW_SIZE as f32 * frequency / SAMPLE_RATE;
@@ -46,11 +36,10 @@ pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
     fft_data_u8
 }
 
-pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>, cancel_token: CancellationToken) {
+pub async fn start(device_id: DeviceId, fft_tx: Sender<[f32; FREQ_BINS]>, cancel_token: CancellationToken) {
     log::info!("Starting audio capture thread");
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio:capture");
-    RMS_INDEX.store(0, Relaxed);
     log::info!("Starting FFT thread");
 
     let host = cpal::default_host();
@@ -85,7 +74,7 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<RootSample>, cancel_token
     let channels = config.channels() as usize;
 
 
-    let (mut producer, mut consumer) = RingBuffer::<f32>::new(48_0000);
+    let (mut producer, consumer) = RingBuffer::<f32>::new(48_0000);
     let mut processor = FFTProcessor::new(consumer, fft_tx, );
 
     let stream = match config.sample_format() {
@@ -183,14 +172,14 @@ pub fn push_sample(data: Vec<f32>, channels: usize, producer: &mut Producer<f32>
 struct FFTProcessor{
     consumer: Consumer<f32>,
     fft: Arc<dyn rustfft::Fft<f32>>,
-    fft_tx: Sender<RootSample>,
+    fft_tx: Sender<[f32; FREQ_BINS]>,
 }
 
 impl FFTProcessor {
 
     pub fn new(
         consumer: Consumer<f32>,
-        fft_tx: Sender<RootSample>,
+        fft_tx: Sender<[f32; FREQ_BINS]>,
     ) -> Self {
         // Create FFT planner
         let mut planner = FftPlanner::new();
@@ -273,13 +262,7 @@ impl FFTProcessor {
             //    }
             //}
 
-            let mut current_index = RMS_INDEX.load(Relaxed);
-            current_index = (current_index + 1) % RMS_BUFFER_SIZE;
-            RMS_INDEX.store(current_index,Relaxed);
-            let sample = RootSample {
-                data: linear_magnitudes.try_into().unwrap(),
-                index: current_index,
-            };
+            let sample = linear_magnitudes.try_into().unwrap();
             let _ = self.fft_tx.send(sample);
         }
     }

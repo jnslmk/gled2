@@ -3,7 +3,7 @@ pub mod reactive_signal;
 pub mod fft;
 pub mod device_id_serde;
 
-use crate::audio::fft::RootSample;
+use crate::audio::fft::FREQ_BINS;
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{DeviceDescription, DeviceId};
@@ -30,7 +30,7 @@ pub static AUDIO_DEVICES: Lazy<Mutex<Vec<(DeviceId, DeviceDescription)>>> = Lazy
 #[derive(Debug)]
 pub struct AudioPool {
     runtime: Runtime,
-    fft_tx: Sender<RootSample>,
+    fft_tx: Sender<[f32; FREQ_BINS]>,
     fft_cancel: Option<CancellationToken>,
     pub selected_device: Option<DeviceId>,
 }
@@ -146,7 +146,7 @@ impl ReactiveSignalThread {
         }
     }
 
-    fn tick(&mut self, root_sample: RootSample) -> JoinAll<JoinHandle<()>> {
+    fn tick(&mut self, root_sample: [f32; FREQ_BINS]) -> JoinAll<JoinHandle<()>> {
         let handles: Vec<JoinHandle<()>> = self.signals
             .values_mut()
             .map(move |signal| {
@@ -170,7 +170,7 @@ impl ReactiveSignalThread {
             });
     }
 }
-pub async fn start_reactive_sound_thread(rx: Receiver<RootSample>) {
+pub async fn start_reactive_sound_thread(rx: Receiver<[f32; FREQ_BINS]>) {
     loop {
         {
             // give tokio the opportunity to break the reactive sound thread loop
