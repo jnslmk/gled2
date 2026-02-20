@@ -226,7 +226,7 @@ impl FFTProcessor {
 
             for sample in complex_samples.iter().take(FREQ_BINS) {
                 // Calculate magnitude (norm of complex number)
-                let magnitude = sample.norm().pow(2);
+                let magnitude = sample.norm();
                 linear_magnitudes.push(magnitude);
             }
 

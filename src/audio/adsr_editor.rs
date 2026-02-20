@@ -184,6 +184,7 @@ pub struct ADSR {
     f_center: f32,
     f_radius: f32,
     preview_shader: Option<PreviewShader>,
+    averaging_time: f32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -191,6 +192,7 @@ struct AdsrEditorShell {
     params: AdsrParams,
     f_center: f32,
     f_radius: f32,
+    averaging_time: f32,
 }
 
 impl From<AdsrEditorShell> for ADSR {
@@ -204,6 +206,7 @@ impl From<AdsrEditorShell> for ADSR {
             f_center: shell.f_center,
             f_radius: shell.f_radius,
             preview_shader: None,
+            averaging_time: shell.averaging_time,
         }
     }
 }
@@ -214,17 +217,18 @@ impl From<ADSR> for AdsrEditorShell {
             params,
             f_center: editor.f_center,
             f_radius: editor.f_radius,
+            averaging_time: editor.averaging_time,
         }
     }
 }
 
 impl Default for ADSR {
     fn default() -> Self {
-        Self::new(AdsrParams::default(), 8200., 990.)
+        Self::new(AdsrParams::default(), 8200., 990., 0.1)
     }
 }
 impl ADSR {
-    fn new(adsr_params: AdsrParams, f_center: f32, f_radius: f32) -> Self {
+    fn new(adsr_params: AdsrParams, f_center: f32, f_radius: f32, averaging_time: f32) -> Self {
         let reactive_signal_handle = REACTIVE_SIGNAL_THREAD
             .write()
             .unwrap()
@@ -233,6 +237,7 @@ impl ADSR {
             reactive_signal_handle,
             f_center,
             f_radius,
+            averaging_time,
             preview_shader: None,
         }
     }
@@ -530,8 +535,18 @@ impl ADSR {
                     .with_size(50.0)
                     .with_label("Sensitivity", LabelPosition::Bottom),
                 );
+                ui.add(
+                    knob_default(Knob::new(
+                        &mut self.averaging_time,
+                        0.0,
+                        1.0,
+                        KnobStyle::Wiper,
+                    ))
+                        .with_size(50.0)
+                        .with_label("Smooth", LabelPosition::Bottom),
+                );
                 self.lock_params()
-                    .set_filter_tune(self.f_center, self.f_radius);
+                    .set_filter_tune(self.f_center, self.f_radius, self.averaging_time);
             },
         );
     }

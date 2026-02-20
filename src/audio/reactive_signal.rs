@@ -19,7 +19,7 @@ pub struct AdsrParams {
     pub sensitivity: f32,
     pub gate_activation_threshold: f32,
     pub gate_deactivation_threshold: f32,
-    pub rms_length: usize,
+    pub averaging_samples: usize,
 }
 impl AdsrParams {
     #[allow(clippy::too_many_arguments)]
@@ -32,6 +32,7 @@ impl AdsrParams {
         release_duration: f32,
         sensitivity: f32,
         gate_threshold: f32,
+        averaging_length: f32,
     ) -> Self {
         let mut ret = Self {
             center_bin: 0,
@@ -43,24 +44,35 @@ impl AdsrParams {
             sensitivity,
             gate_activation_threshold: gate_threshold,
             gate_deactivation_threshold: gate_threshold * 0.8,
-            rms_length: 100,
+            averaging_samples: 100,
         };
-        ret.set_filter_tune(f_center, f_radius);
+        ret.set_filter_tune(f_center, f_radius, averaging_length);
         ret
     }
-    pub fn set_filter_tune(&mut self, f_center: f32, f_radius: f32) {
+    pub fn set_filter_tune(&mut self, f_center: f32, f_radius: f32, averaging_time: f32) {
         let f_per_bin = MAX_FREQ / FREQ_BINS as f32;
         let center_bin = ((f_center / f_per_bin).round() as usize).min(FREQ_BINS - 1);
         let bin_radius = (f_radius / f_per_bin).round() as usize;
         self.center_bin = center_bin;
         self.bin_radius = bin_radius;
         self.gate_deactivation_threshold = self.gate_activation_threshold * 0.9;
+        self.averaging_samples = (MAX_RMS_LENGTH as f32).mul(averaging_time) as usize;
     }
 }
 
 impl Default for AdsrParams {
     fn default() -> Self {
-        AdsrParams::new(8520., 990., 0.1, 0.2, 0.5, 1., 1., 0.5)
+        AdsrParams::new(
+            8520.,
+            990.,
+            0.1,
+            0.2,
+            0.5,
+            1.,
+            1.,
+            0.5,
+            0.1,
+        )
     }
 }
 
@@ -83,8 +95,8 @@ pub struct ReactiveSignal {
     pub delta_time: f32,
     pub spectrum: Array1<f32>,
     pub current_level: f32,
-    rms_buffer: PrimitiveRingBuffer<Array1<f32>>,
-    running_square_sum: Array1<f32>,
+    sample_buffer: PrimitiveRingBuffer<Array1<f32>>,
+    running_sum: Array1<f32>,
 }
 
 impl Default for ReactiveSignal {
@@ -106,8 +118,8 @@ impl ReactiveSignal {
             params,
             current_level: 0.0,
             impulse: 0.0,
-            rms_buffer: PrimitiveRingBuffer::new(Array1::zeros(FREQ_BINS), MAX_RMS_LENGTH),
-            running_square_sum: Array1::zeros(FREQ_BINS),
+            sample_buffer: PrimitiveRingBuffer::new(Array1::zeros(FREQ_BINS), MAX_RMS_LENGTH),
+            running_sum: Array1::zeros(FREQ_BINS),
         }
     }
 
@@ -116,16 +128,16 @@ impl ReactiveSignal {
         self.gate_active = false;
         self.current_level = 0.0;
         self.impulse = 0.0;
-        self.rms_buffer = PrimitiveRingBuffer::new(Array1::zeros(FREQ_BINS), MAX_RMS_LENGTH);
-        self.running_square_sum = Array1::zeros(FREQ_BINS);
+        self.sample_buffer = PrimitiveRingBuffer::new(Array1::zeros(FREQ_BINS), MAX_RMS_LENGTH);
+        self.running_sum = Array1::zeros(FREQ_BINS);
         self.spectrum = Array1::zeros(FREQ_BINS);
     }
 
     pub fn tick(&mut self, root_sample: [f32; FREQ_BINS]) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ReactiveSignal::tick");
-        let rms = self.rms(root_sample).sqrt();
-        self.spectrum = rms.map(|x|{ 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.log10() });
+        let rms = self.compute_running_average(root_sample);
+        self.spectrum = rms.map(|x|{ 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.mul(5.0).log10() });
         self.spectrum.map_inplace(|x|{ *x = x.mul(self.delta_time * 10.0).clamp(0.0, f32::infinity());});
 
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
@@ -231,20 +243,18 @@ impl ReactiveSignal {
         self.current_level
     }
 
-    #[inline(always)]
-    pub fn rms(&mut self, current_rms_sample: [f32; FREQ_BINS]) -> Array1<f32> {
+    pub fn compute_running_average(&mut self, current_rms_sample: [f32; FREQ_BINS]) -> Array1<f32> {
         let current_rms_sample = Array1::from_vec(current_rms_sample.to_vec());
-
-        // remove the oldest sample from the buffer
-        let remove = self.rms_buffer.get_from_offset(-(self.params.rms_length as i32));
-        self.running_square_sum = &self.running_square_sum - &remove;
         // add the new sample to the buffer
-        self.rms_buffer.progress(current_rms_sample.clone());
-        self.running_square_sum = &self.running_square_sum + &current_rms_sample;
+        self.sample_buffer.progress(current_rms_sample.clone());
+        self.running_sum = &self.running_sum + &current_rms_sample;
+        // remove the oldest sample from the buffer
+        let remove = self.sample_buffer.get_from_offset(-(self.params.averaging_samples as i32));
+        self.running_sum = &self.running_sum - &remove;
         // use a small decay here to counter the accumulation of errors
-        self.running_square_sum = &self.running_square_sum * 0.99999999999;
+        //self.running_sum = &self.running_sum * 0.98;
 
-        self.running_square_sum.map(|x| x.sqrt())
+        &self.running_sum / self.params.averaging_samples as f32
     }
 }
 
@@ -282,7 +292,7 @@ mod tests {
 
     fn run_for_with_impulse_at(run_for: usize, at: usize, impulse: f32) -> ReactiveSignal {
         let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
-        signal.params.rms_length = 2;
+        signal.params.averaging_samples = 2;
         for i in 0..run_for {
             let data = if i == at {[impulse; FREQ_BINS]} else {[0f32; FREQ_BINS]};
             signal.tick(data);
@@ -295,19 +305,19 @@ mod tests {
     #[test]
     fn test_running_sum_removal(){
         let signal = run_for_with_impulse_at(4, 1, 1.0);
-        assert_eq!(signal.running_square_sum, Array1::from_vec(vec![0f32; FREQ_BINS]));
+        assert_eq!(signal.running_sum, Array1::from_vec(vec![0f32; FREQ_BINS]));
     }
 
     #[test]
     fn test_wraparound(){
             let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
-            signal.params.rms_length = 2;
+            signal.params.averaging_samples = 2;
             for i in 0..110 {
                 signal.tick([1f32; FREQ_BINS]);
-                eprintln!("running_rms_sum = {:?}", signal.running_square_sum);
+                eprintln!("running_rms_sum = {:?}", signal.running_sum);
                 eprintln!("--------------");
                 if i >= 2 {
-                    assert_eq!(signal.running_square_sum, Array1::from_vec(vec![2f32; FREQ_BINS]))
+                    assert_eq!(signal.running_sum, Array1::from_vec(vec![2f32; FREQ_BINS]))
                 }
             }
         }
