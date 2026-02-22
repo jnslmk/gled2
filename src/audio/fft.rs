@@ -174,6 +174,7 @@ struct FFTProcessor{
     consumer: Consumer<f32>,
     fft: Arc<dyn rustfft::Fft<f32>>,
     fft_tx: Sender<[f32; FREQ_BINS]>,
+    current_max_level: f32,
 }
 
 impl FFTProcessor {
@@ -189,6 +190,8 @@ impl FFTProcessor {
             consumer,
             fft,
             fft_tx,
+            // Initialize current_max_level to a small value to avoid division by zero
+            current_max_level: 0.0001,
         }
     }
 
@@ -206,6 +209,8 @@ impl FFTProcessor {
             samples[h.len()..].copy_from_slice(t);
             // only consume a fraction of the buffer for overlap
             chunk.commit(WINDOW_SIZE / 4);
+
+            self.normalize(&mut samples);
 
             // Convert to complex numbers (imaginary part is 0 for real input)
             let mut complex_samples: Vec<Complex<f32>> =
@@ -266,5 +271,15 @@ impl FFTProcessor {
             let sample = magnitudes.try_into().unwrap();
             self.fft_tx.try_send(sample).unwrap_or_else(|error| {debug!("{}", error)});
         }
+    }
+
+    fn normalize(&mut self, samples: &mut [f32]) {
+        #[cfg(feature = "profiling")]
+        puffin::profile_scope!("audio:normalize");
+        // TODO: use SIMD here for better performance?
+        self.current_max_level = samples.iter().fold(self.current_max_level, |x, y| f32::max(x, *y));
+        samples.iter_mut().for_each(|mut x| {
+            *x = *x / &self.current_max_level;
+        });
     }
 }
