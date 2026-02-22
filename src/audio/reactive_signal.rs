@@ -5,7 +5,7 @@ use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Mul};
 
-const MAX_RMS_LENGTH: usize = 100;
+const MAX_BUFFER_LENGTH: usize = 1000;
 
 #[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct AdsrParams {
@@ -20,6 +20,7 @@ pub struct AdsrParams {
     pub gate_activation_threshold: f32,
     pub gate_deactivation_threshold: f32,
     pub averaging_samples: usize,
+    echo_samples: usize,
 }
 impl AdsrParams {
     #[allow(clippy::too_many_arguments)]
@@ -45,6 +46,7 @@ impl AdsrParams {
             gate_activation_threshold: gate_threshold,
             gate_deactivation_threshold: gate_threshold * 0.8,
             averaging_samples: 100,
+            echo_samples: 10,
         };
         ret.set_filter_tune(f_center, f_radius, averaging_length);
         ret
@@ -56,7 +58,7 @@ impl AdsrParams {
         self.center_bin = center_bin;
         self.bin_radius = bin_radius;
         self.gate_deactivation_threshold = self.gate_activation_threshold * 0.9;
-        self.averaging_samples = ((MAX_RMS_LENGTH as f32).mul(averaging_time) as usize);
+        self.averaging_samples = (100f32.mul(averaging_time) as usize);
     }
 }
 
@@ -100,6 +102,8 @@ pub struct ReactiveSignal {
     running_sum: Array1<f32>,
     prev_averaging_samples: usize,
     max_impulse: f32,
+    echo_buffer: PrimitiveRingBuffer<f32>,
+    running_impulse_sum: f32,
 }
 
 impl Default for ReactiveSignal {
@@ -122,10 +126,12 @@ impl ReactiveSignal {
             prev_params: params,
             current_level: 0.0,
             impulse: 0.0,
-            sample_buffer: PrimitiveRingBuffer::new(Array1::zeros(FREQ_BINS), MAX_RMS_LENGTH),
+            sample_buffer: PrimitiveRingBuffer::new(Array1::zeros(FREQ_BINS), MAX_BUFFER_LENGTH),
             running_sum: Array1::zeros(FREQ_BINS),
             prev_averaging_samples: params.averaging_samples,
             max_impulse: 0.00001,
+            echo_buffer: PrimitiveRingBuffer::new(0.0, MAX_BUFFER_LENGTH),
+            running_impulse_sum: 0.0,
         }
     }
 
@@ -134,7 +140,7 @@ impl ReactiveSignal {
         self.gate_active = false;
         self.current_level = 0.0;
         self.impulse = 0.0;
-        self.sample_buffer = PrimitiveRingBuffer::new(Array1::zeros(FREQ_BINS), MAX_RMS_LENGTH);
+        self.sample_buffer = PrimitiveRingBuffer::new(Array1::zeros(FREQ_BINS), MAX_BUFFER_LENGTH);
         self.running_sum = Array1::zeros(FREQ_BINS);
         self.spectrum = Array1::zeros(FREQ_BINS);
     }
@@ -160,6 +166,8 @@ impl ReactiveSignal {
             / (2. * self.params.bin_radius as f32))
             .sqrt()
             .mul(4.0);
+
+        self.impulse = self.highpass(self.impulse);
         self.impulse =self.normalize(self.impulse);
         self.tick_adsr(self.impulse);
     }
@@ -310,6 +318,19 @@ impl ReactiveSignal {
         self.max_impulse = self.max_impulse.max(sample);
         self.impulse / self.max_impulse
     }
+
+
+    fn highpass(&mut self, x: f32) -> f32 {
+        let remove = self.echo_buffer.get_from_offset(-(self.params.echo_samples as i32));
+        self.running_impulse_sum = &self.running_impulse_sum - &remove;
+        // advance the buffer
+        self.echo_buffer.progress();
+        // add the new sample to the buffer
+        self.echo_buffer.insert(x);
+        self.running_impulse_sum = &self.running_impulse_sum + &x;
+        let y = &self.running_impulse_sum / (2.0*self.params.echo_samples as f32);
+        x - y
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -324,7 +345,7 @@ impl<T> PrimitiveRingBuffer<T> where T: Clone {
         Self{
             inner: Vec::from_iter(std::iter::repeat(default_elem).take(capacity)),
             capacity,
-            front: capacity - 1,
+            front: capacity.saturating_sub(1),
         }
     }
     pub fn get_from_offset(&self, offset: i32) -> T {
@@ -369,7 +390,7 @@ mod tests {
     fn test_wraparound(){
             let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
             signal.params.averaging_samples = 1;
-            for i in 0..(MAX_RMS_LENGTH+10) {
+            for i in 0..(MAX_BUFFER_LENGTH +10) {
                 signal.tick([1f32; FREQ_BINS]);
                 eprintln!("running_rms_sum = {:?}", signal.running_sum);
                 eprintln!("--------------");
