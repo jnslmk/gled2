@@ -485,6 +485,7 @@ impl ADSR {
             let rect = ui.available_rect_before_wrap();
             // draw spectrum frequency indicators
             let length = size.x;
+            // TODO: take into account the the logarithmic pre-scaling here
             for i in 0..=9 {
                 let freq = (i as f32).exp2() * 110.;
                 let bin = get_fft_bin_index_by_frequency(freq);

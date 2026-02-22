@@ -3,9 +3,9 @@ use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
 use ndarray::{s, Array1};
 use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
-use std::ops::Mul;
+use std::ops::{Add, Mul};
 
-const MAX_RMS_LENGTH: usize = 1000;
+const MAX_RMS_LENGTH: usize = 100;
 
 #[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct AdsrParams {
@@ -56,7 +56,7 @@ impl AdsrParams {
         self.center_bin = center_bin;
         self.bin_radius = bin_radius;
         self.gate_deactivation_threshold = self.gate_activation_threshold * 0.9;
-        self.averaging_samples = (MAX_RMS_LENGTH as f32).mul(averaging_time) as usize;
+        self.averaging_samples = ((MAX_RMS_LENGTH as f32).mul(averaging_time) as usize);
     }
 }
 
@@ -97,6 +97,7 @@ pub struct ReactiveSignal {
     pub current_level: f32,
     sample_buffer: PrimitiveRingBuffer<Array1<f32>>,
     running_sum: Array1<f32>,
+    prev_averaging_samples: usize,
 }
 
 impl Default for ReactiveSignal {
@@ -120,6 +121,7 @@ impl ReactiveSignal {
             impulse: 0.0,
             sample_buffer: PrimitiveRingBuffer::new(Array1::zeros(FREQ_BINS), MAX_RMS_LENGTH),
             running_sum: Array1::zeros(FREQ_BINS),
+            prev_averaging_samples: params.averaging_samples,
         }
     }
 
@@ -136,9 +138,9 @@ impl ReactiveSignal {
     pub fn tick(&mut self, root_sample: [f32; FREQ_BINS]) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ReactiveSignal::tick");
-        let rms = self.compute_running_average(root_sample);
-        self.spectrum = rms.map(|x|{ 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.mul(5.0).log10() });
-        self.spectrum.map_inplace(|x|{ *x = x.mul(self.delta_time * 10.0).clamp(0.0, f32::infinity());});
+        self.spectrum = self.compute_running_average(root_sample);
+        //self.spectrum = self.spectrum.map(|x|{ 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.mul(5.0).log10() });
+        self.spectrum.map_inplace(|x|{ *x = x.mul(self.delta_time * 4.0).clamp(0.0, f32::infinity());});
 
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
         self.impulse = (self
@@ -243,17 +245,50 @@ impl ReactiveSignal {
         self.current_level
     }
 
-    pub fn compute_running_average(&mut self, current_rms_sample: [f32; FREQ_BINS]) -> Array1<f32> {
-        let current_rms_sample = Array1::from_vec(current_rms_sample.to_vec());
-        // add the new sample to the buffer
-        self.sample_buffer.progress(current_rms_sample.clone());
-        self.running_sum = &self.running_sum + &current_rms_sample;
+    pub fn compute_running_average(&mut self, current_sample: [f32; FREQ_BINS]) -> Array1<f32> {
+        // idea of the running sum:
+        // the following condition shall always hold:
+        // running_sum == (current_buffer_index-averaging_samples..=current_buffer_index).folding_sum(|i| buffer[i])
+        if self.prev_averaging_samples != self.params.averaging_samples {
+            // dynamically adapt the running sample to the new length
+            // let delta = self.params.averaging_samples as i32 - self.prev_averaging_samples as i32;
+            // if delta > 0 {
+            //     // the new buffer is longer:
+            //     // add the samples from the *new* last index until the *old* last index to the running sum
+            //     // including the new last index, excluding the old last index
+            //     (self.prev_averaging_samples+1..self.params.averaging_samples+1).for_each(|i|
+            //         self.running_sum += &self.sample_buffer.get_from_offset(-(i as i32))
+            //     );
+            // } else {
+            //     // the new buffer is shorter:
+            //     // remove the samples from the *old* last index until the *new* last index from the running sum
+            //     // including the old last index, excluding the new last index
+            //     (self.params.averaging_samples..self.prev_averaging_samples).for_each(|i|
+            //         self.running_sum -= &self.sample_buffer.get_from_offset(-(i as i32))
+            //     );
+            // }
+
+            // the non-dynamic variant of this:
+             self.running_sum = (0..=self.params.averaging_samples).map(|i|{
+                 self.sample_buffer.get_from_offset(i as i32)
+             }).fold(Array1::zeros(FREQ_BINS), |acc, x| acc + x);
+
+            self.prev_averaging_samples = self.params.averaging_samples;
+        }
+
+        let current_rms_sample = Array1::from_vec(current_sample.to_vec());
+
         // remove the oldest sample from the buffer
         let remove = self.sample_buffer.get_from_offset(-(self.params.averaging_samples as i32));
         self.running_sum = &self.running_sum - &remove;
+        // advance the buffer
+        self.sample_buffer.progress();
+        // add the new sample to the buffer
+        self.sample_buffer.insert(current_rms_sample.clone());
+        self.running_sum = &self.running_sum + &current_rms_sample;
+
         // use a small decay here to counter the accumulation of errors
         //self.running_sum = &self.running_sum * 0.98;
-
         &self.running_sum / self.params.averaging_samples as f32
     }
 }
@@ -279,9 +314,12 @@ impl<T> PrimitiveRingBuffer<T> where T: Clone {
                 .rem_euclid(self.capacity as i32) as usize
             ].clone()
     }
-    pub fn progress(&mut self, insert: T) {
+    pub fn insert(&mut self, elem: T) {
+        self.inner[self.front] = elem;
+    }
+
+    pub fn progress(&mut self) {
         self.front = (self.front + 1) % self.capacity;
-        self.inner[self.front] = insert;
     }
 }
 
@@ -292,11 +330,11 @@ mod tests {
 
     fn run_for_with_impulse_at(run_for: usize, at: usize, impulse: f32) -> ReactiveSignal {
         let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
-        signal.params.averaging_samples = 2;
+        signal.params.averaging_samples = 1;
         for i in 0..run_for {
             let data = if i == at {[impulse; FREQ_BINS]} else {[0f32; FREQ_BINS]};
             signal.tick(data);
-            eprintln!("{:?}", signal.spectrum);
+            eprintln!("{:?}", signal.running_sum);
             eprintln!("--------------")
         }
         signal
@@ -311,8 +349,8 @@ mod tests {
     #[test]
     fn test_wraparound(){
             let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
-            signal.params.averaging_samples = 2;
-            for i in 0..110 {
+            signal.params.averaging_samples = 1;
+            for i in 0..(MAX_RMS_LENGTH+10) {
                 signal.tick([1f32; FREQ_BINS]);
                 eprintln!("running_rms_sum = {:?}", signal.running_sum);
                 eprintln!("--------------");

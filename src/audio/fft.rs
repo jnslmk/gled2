@@ -6,6 +6,7 @@ use std::clone::Clone;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use crossbeam_channel::Sender;
+use log::debug;
 use rtrb::{Consumer, Producer, RingBuffer};
 use tokio_util::sync::CancellationToken;
 
@@ -13,7 +14,7 @@ pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
 
 // FFT size - power of 2 for efficient FFT
-const WINDOW_SIZE: usize = 256;
+const WINDOW_SIZE: usize = 4096;
 pub const FREQ_BINS: usize = 256;
 
 static DROPPED_SAMPLES: AtomicU64 = AtomicU64::new(0);
@@ -74,7 +75,7 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<[f32; FREQ_BINS]>, cancel
     let channels = config.channels() as usize;
 
 
-    let (mut producer, consumer) = RingBuffer::<f32>::new(48_0000);
+    let (mut producer, consumer) = RingBuffer::<f32>::new(WINDOW_SIZE * 2);
     let mut processor = FFTProcessor::new(consumer, fft_tx, );
 
     let stream = match config.sample_format() {
@@ -232,38 +233,38 @@ impl FFTProcessor {
 
             //// Apply logarithmic frequency scaling
             //// Map linear FFT bins to logarithmic frequency bins
-            //let mut magnitudes = vec![0.0f32; FREQ_BINS];
-            //for (output_bin, magnitude_slot) in magnitudes.iter_mut().enumerate() {
-            //    // Map output bin to logarithmic frequency scale
-            //    // Use logarithmic mapping: log(freq) = log(min) + (log(max) - log(min)) * (bin / total_bins)
-            //    let min_freq = 1.0f32;
-            //    let max_freq = FREQ_BINS as f32;
-            //    let log_min = min_freq.ln();
-            //    let log_max = max_freq.ln();
-            //    let log_freq = log_min + (log_max - log_min) * (output_bin as f32 / FREQ_BINS as f32);
-            //    let linear_freq = log_freq.exp();
-            //
-            //    // Find the corresponding linear bin(s) and interpolate
-            //    let linear_bin = linear_freq - 1.0;
-            //    let lower_bin = linear_bin.floor() as usize;
-            //    let upper_bin = (linear_bin.ceil() as usize).min(FREQ_BINS - 1);
-            //    let fraction = linear_bin - lower_bin as f32;
-            //
-            //    if lower_bin < FREQ_BINS {
-            //        let lower_mag = linear_magnitudes[lower_bin];
-            //        let upper_mag = if upper_bin < FREQ_BINS && upper_bin != lower_bin {
-            //            linear_magnitudes[upper_bin]
-            //        } else {
-            //            lower_mag
-            //        };
-            //        let scaled_mag = lower_mag * (1.0 - fraction) + upper_mag * fraction;
-            //        *magnitude_slot = scaled_mag;
-            //        // Update max_magnitude with the scaled value
-            //    }
-            //}
+            let mut magnitudes = vec![0.0f32; FREQ_BINS];
+            for (output_bin, magnitude_slot) in magnitudes.iter_mut().enumerate() {
+                // Map output bin to logarithmic frequency scale
+                // Use logarithmic mapping: log(freq) = log(min) + (log(max) - log(min)) * (bin / total_bins)
+                let min_freq = 1.0f32;
+                let max_freq = FREQ_BINS as f32;
+                let log_min = min_freq.ln();
+                let log_max = max_freq.ln();
+                let log_freq = log_min + (log_max - log_min) * (output_bin as f32 / FREQ_BINS as f32);
+                let linear_freq = log_freq.exp();
 
-            let sample = linear_magnitudes.try_into().unwrap();
-            let _ = self.fft_tx.send(sample);
+                // Find the corresponding linear bin(s) and interpolate
+                let linear_bin = linear_freq - 1.0;
+                let lower_bin = linear_bin.floor() as usize;
+                let upper_bin = (linear_bin.ceil() as usize).min(FREQ_BINS - 1);
+                let fraction = linear_bin - lower_bin as f32;
+
+                if lower_bin < FREQ_BINS {
+                    let lower_mag = linear_magnitudes[lower_bin];
+                    let upper_mag = if upper_bin < FREQ_BINS && upper_bin != lower_bin {
+                        linear_magnitudes[upper_bin]
+                    } else {
+                        lower_mag
+                    };
+                    let scaled_mag = lower_mag * (1.0 - fraction) + upper_mag * fraction;
+                    *magnitude_slot = scaled_mag;
+                    // Update max_magnitude with the scaled value
+                }
+            }
+
+            let sample = magnitudes.try_into().unwrap();
+            self.fft_tx.try_send(sample).unwrap_or_else(|error| {debug!("{}", error)});
         }
     }
 }
