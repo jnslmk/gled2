@@ -252,20 +252,23 @@ impl ADSR {
                 .reactive_signal_handle
                 .update_params_and_fetch_signal()
                 {
-                let spectrum = signal.spectrum.clone();
-                let impulse = signal.impulse.clamp(0.0, 1.0);
-                let output_level = signal.current_level;
+                    let mut spectrum = signal.spectrum.clone();
+                    spectrum.map_inplace(|x| {
+                        *x = ((*x*10.0 + 10.0).log10() - 1.0);
+                    });
+                    let impulse = signal.impulse.clamp(0.0, 1.0);
+                    let output_level = signal.current_level;
 
-                if self.preview_shader.is_none() {
-                    self.preview_shader = PreviewShader::try_init();
-                }
-                if let Some(preview_shader) = &self.preview_shader {
-                    preview_shader.draw_spectrum_texture(spectrum);
-                }
+                    if self.preview_shader.is_none() {
+                        self.preview_shader = PreviewShader::try_init();
+                    }
+                    if let Some(preview_shader) = &self.preview_shader {
+                        preview_shader.draw_spectrum_texture(spectrum);
+                    }
 
-                self.draw_spectrum(ui);
-                ui.separator();
-                self.draw_adsr(ui, impulse, output_level);
+                    self.draw_spectrum(ui);
+                    ui.separator();
+                    self.draw_adsr(ui, impulse, output_level);
             }
         });
     }
@@ -535,16 +538,6 @@ impl ADSR {
                     ))
                     .with_size(50.0)
                     .with_label("Sensitivity", LabelPosition::Bottom),
-                );
-                ui.add(
-                    knob_default(Knob::new(
-                        &mut self.averaging_time,
-                        0.0,
-                        1.0,
-                        KnobStyle::Wiper,
-                    ))
-                        .with_size(50.0)
-                        .with_label("Smooth", LabelPosition::Bottom),
                 );
                 self.lock_params()
                     .set_filter_tune(self.f_center, self.f_radius, self.averaging_time);

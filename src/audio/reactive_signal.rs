@@ -91,6 +91,7 @@ pub struct ReactiveSignal {
     pub phase: AdsrPhase,
     pub gate_active: bool,
     pub params: AdsrParams,
+    prev_params: AdsrParams,
     pub impulse: f32,
     pub delta_time: f32,
     pub spectrum: Array1<f32>,
@@ -98,6 +99,7 @@ pub struct ReactiveSignal {
     sample_buffer: PrimitiveRingBuffer<Array1<f32>>,
     running_sum: Array1<f32>,
     prev_averaging_samples: usize,
+    max_impulse: f32,
 }
 
 impl Default for ReactiveSignal {
@@ -117,11 +119,13 @@ impl ReactiveSignal {
             spectrum: Array1::zeros(FREQ_BINS),
             phase: AdsrPhase::Idle,
             params,
+            prev_params: params,
             current_level: 0.0,
             impulse: 0.0,
             sample_buffer: PrimitiveRingBuffer::new(Array1::zeros(FREQ_BINS), MAX_RMS_LENGTH),
             running_sum: Array1::zeros(FREQ_BINS),
             prev_averaging_samples: params.averaging_samples,
+            max_impulse: 0.00001,
         }
     }
 
@@ -140,7 +144,7 @@ impl ReactiveSignal {
         puffin::profile_function!("ReactiveSignal::tick");
         self.spectrum = self.compute_running_average(root_sample);
         //self.spectrum = self.spectrum.map(|x|{ 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.mul(5.0).log10() });
-        self.spectrum.map_inplace(|x|{ *x = x.mul(self.delta_time * 4.0).clamp(0.0, f32::infinity());});
+        self.spectrum.map_inplace(|x|{ *x = x.mul(self.delta_time).clamp(0.0, f32::infinity());});
 
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
         self.impulse = (self
@@ -156,6 +160,7 @@ impl ReactiveSignal {
             / (2. * self.params.bin_radius as f32))
             .sqrt()
             .mul(4.0);
+        self.impulse =self.normalize(self.impulse);
         self.tick_adsr(self.impulse);
     }
 
@@ -290,6 +295,20 @@ impl ReactiveSignal {
         // use a small decay here to counter the accumulation of errors
         //self.running_sum = &self.running_sum * 0.98;
         &self.running_sum / self.params.averaging_samples as f32
+    }
+
+    fn normalize(&mut self, sample: f32) -> f32{
+        // reset on change
+        if self.params.bin_radius != self.prev_params.bin_radius
+            || self.params.center_bin != self.prev_params.center_bin
+            || self.params.averaging_samples != self.prev_params.averaging_samples
+            || self.prev_params.sensitivity != self.params.sensitivity
+        {
+            self.max_impulse = 0.00001;
+            self.prev_params = self.params;
+        }
+        self.max_impulse = self.max_impulse.max(sample);
+        self.impulse / self.max_impulse
     }
 }
 
