@@ -5,7 +5,7 @@ use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Mul};
 
-const MAX_BUFFER_LENGTH: usize = 1000;
+const MAX_BUFFER_LENGTH: usize = 1001;
 
 #[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct AdsrParams {
@@ -45,8 +45,8 @@ impl AdsrParams {
             sensitivity,
             gate_activation_threshold: gate_threshold,
             gate_deactivation_threshold: gate_threshold * 0.8,
-            averaging_samples: 100,
-            echo_samples: 10,
+            averaging_samples: 10,
+            echo_samples: 20,
         };
         ret.set_filter_tune(f_center, f_radius, averaging_length);
         ret
@@ -58,7 +58,7 @@ impl AdsrParams {
         self.center_bin = center_bin;
         self.bin_radius = bin_radius;
         self.gate_deactivation_threshold = self.gate_activation_threshold * 0.9;
-        self.averaging_samples = (100f32.mul(averaging_time) as usize);
+        //self.averaging_samples = (100f32.mul(averaging_time) as usize);
     }
 }
 
@@ -150,7 +150,7 @@ impl ReactiveSignal {
         puffin::profile_function!("ReactiveSignal::tick");
         self.spectrum = self.compute_running_average(root_sample);
         //self.spectrum = self.spectrum.map(|x|{ 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.mul(5.0).log10() });
-        self.spectrum.map_inplace(|x|{ *x = x.mul(self.delta_time).clamp(0.0, f32::infinity());});
+        self.spectrum.map_inplace(|x|{ *x = x.mul(self.delta_time * 3.0).clamp(0.0, f32::infinity());});
 
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
         self.impulse = (self

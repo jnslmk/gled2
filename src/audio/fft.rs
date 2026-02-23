@@ -14,7 +14,7 @@ pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
 
 // FFT size - power of 2 for efficient FFT
-const WINDOW_SIZE: usize = 4096;
+const WINDOW_SIZE: usize = 2048;
 pub const FREQ_BINS: usize = 256;
 
 static DROPPED_SAMPLES: AtomicU64 = AtomicU64::new(0);
@@ -242,12 +242,13 @@ impl FFTProcessor {
             for (output_bin, magnitude_slot) in magnitudes.iter_mut().enumerate() {
                 // Map output bin to logarithmic frequency scale
                 // Use logarithmic mapping: log(freq) = log(min) + (log(max) - log(min)) * (bin / total_bins)
-                let min_freq = 1.0f32;
-                let max_freq = FREQ_BINS as f32;
+                let min_freq = 0f32;
+                let max_freq: f32 = 400.0;
                 let log_min = min_freq.ln();
                 let log_max = max_freq.ln();
-                let log_freq = log_min + (log_max - log_min) * (output_bin as f32 / FREQ_BINS as f32);
-                let linear_freq = log_freq.exp();
+                //let log_freq = log_min + (log_max - log_min) * ;
+                let linear_freq = min_freq + (max_freq - min_freq)
+                    * curved_log(output_bin as f32 / FREQ_BINS as f32, -8.0);
 
                 // Find the corresponding linear bin(s) and interpolate
                 let linear_bin = linear_freq - 1.0;
@@ -282,4 +283,9 @@ impl FFTProcessor {
             *x = *x / &self.current_max_level;
         });
     }
+}
+
+fn curved_log(x: f32, k: f32) -> f32 {
+    if k == 0.0 {return x}
+    f32::ln(1.0 + (f32::exp(k)-1.0) * x) / k
 }
