@@ -254,7 +254,7 @@ impl ADSR {
                 {
                     let mut spectrum = signal.spectrum.clone();
                     spectrum.map_inplace(|x| {
-                        *x = ((*x*10.0 + 10.0).log10() - 1.0);
+                        *x = (*x*10.0 + 10.0).log10() - 1.0;
                     });
                     let impulse = signal.impulse.clamp(0.0, 1.0);
                     let output_level = signal.current_level;

@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 use std::net::Ipv4Addr;
-
-use crate::audio::AUDIO_DEVICES;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
+use std::thread;
+use std::thread::JoinHandle;
+use crate::audio::{audio_device_info_loop, AUDIO_DEVICES};
 use crate::storage::asset::project::Project;
 use crate::ui::action::UiAction;
 use crate::{
@@ -20,11 +23,14 @@ use epaint::mutex::MutexGuard;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use crate::input::artnet::ArtnetConfig;
 
+static REFRESH_DEVICES: AtomicBool = AtomicBool::new(false);
+
 #[derive(Default)]
 pub struct ExternalDeviceSettings {
     open: bool,
     selected_submenu: String,
     edit_state: EditSate,
+    handle: Option<JoinHandle<()>>,
 }
 
 #[derive(Default)]
@@ -35,6 +41,7 @@ struct EditSate {
 impl ExternalDeviceSettings {
     #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self, ctx: &Context, project: &mut Option<Project>) {
+        REFRESH_DEVICES.store(self.open && self.selected_submenu == "Audio Input", Relaxed);
         if !self.open {
             return;
         }
@@ -91,6 +98,12 @@ impl ExternalDeviceSettings {
                         });
                     ui.add(settings_menu);
                 });
+
+                let is_refreshing = self.handle.as_ref()
+                    .map_or_else(|| false, |x| !x.is_finished());
+                if !is_refreshing && REFRESH_DEVICES.load(Relaxed) {
+                    self.handle = Some(thread::spawn(|| audio_device_info_loop(&REFRESH_DEVICES)));
+                }
             },
         );
     }

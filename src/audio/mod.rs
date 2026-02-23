@@ -12,6 +12,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash};
 use std::sync::{Arc, Mutex, RwLock};
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
+use std::thread::{sleep, yield_now};
 use std::time::Duration;
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
 use tokio::runtime::Runtime;
@@ -47,7 +50,6 @@ impl AudioPool {
         let (fft_tx, receiver) = crossbeam_channel::bounded(3);
 
         runtime.spawn(start_reactive_sound_thread(receiver));
-        runtime.spawn(audio_device_info_loop());
         let mut ret = Self{runtime, fft_cancel: None, selected_device, fft_tx};
         ret.restart_fft();
         ret
@@ -188,25 +190,25 @@ pub async fn start_reactive_sound_thread(rx: Receiver<[f32; FREQ_BINS]>) {
 }
 
 // poll for audio device changes every second
-pub async fn audio_device_info_loop(){
+pub fn audio_device_info_loop(continue_scan: &AtomicBool){
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio_device_info_loop");
-    let mut interval = interval(Duration::from_secs(1));
-    loop {
-        {
-            #[cfg(feature = "profiling")]
-            puffin::profile_scope!("audio_device_info_loop");
+    log::info!("Started scanning for audio devices...");
+    while continue_scan.load(Relaxed)
+    {
+        #[cfg(feature = "profiling")]
+        puffin::profile_scope!("audio_device_info_loop");
 
-            let host = cpal::default_host();
-            let devices = host.input_devices().expect("Failed to get audio devices");
-            let mut device_map = Vec::from_iter(devices.map(|device| (
-                device.id().expect("Failed to get audio device id"),
-                device.description().expect("Failed to get audio device description"))));
-            let mut hasher = DefaultHasher::new();
-            device_map.sort_by(|a, b| a.0.hash(&mut hasher).cmp(&b.0.hash(&mut hasher)));
+        let host = cpal::default_host();
+        let devices = host.input_devices().expect("Failed to get audio devices");
+        let mut device_map = Vec::from_iter(devices.map(|device| (
+            device.id().expect("Failed to get audio device id"),
+            device.description().expect("Failed to get audio device description"))));
+        let mut hasher = DefaultHasher::new();
+        device_map.sort_by(|a, b| a.0.hash(&mut hasher).cmp(&b.0.hash(&mut hasher)));
 
-            *AUDIO_DEVICES.lock().unwrap() = device_map;
-        }
-        interval.tick().await;
+        *AUDIO_DEVICES.lock().unwrap() = device_map;
+        sleep(Duration::from_secs(1));
     }
+    log::info!("Audio devices scanning stopped.");
 }
