@@ -8,6 +8,7 @@ use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 use crate::pipeline::transition::{Transition, TransitionGoal};
 use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
 use crate::storage::asset::scene::grid::GridLocation;
+use crate::storage::collections::Collections;
 use crate::{
     app::{svg::Svg, timing::Timing},
     input::{
@@ -139,11 +140,15 @@ impl Project {
 
     /// Reload shader code for all effects using the given animation, should be called after an animation is edited
     /// If the given animation is None, reloads all effects
-    pub fn reload_shader_code(&mut self, animation: Option<AssetId<Animation>>) {
+    pub fn reload_shader_code(
+        &mut self,
+        animation: Option<AssetId<Animation>>,
+        collections: &Collections,
+    ) {
         self.scenes_instances_grid
             .values_mut()
             .for_each(|scene_instance| {
-                scene_instance.reload_shader_code(animation);
+                scene_instance.reload_shader_code(animation, collections);
             });
     }
 
@@ -167,6 +172,7 @@ impl Project {
         blackout: bool,
         always_render: bool,
         fade_duration: Duration,
+        collections: &Collections,
     ) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
@@ -221,7 +227,7 @@ impl Project {
             self.auto_mode_last_change.take();
         }
 
-        let palette = self.palette.and_then(Asset::get);
+        let palette = self.palette.and_then(|id| Asset::get(id, collections));
         let deck_groups = self.groups.clone();
         let main_dimmer = self.main_dimmer;
         for scene_instance in self.scenes_instances_grid.values_mut() {
@@ -232,6 +238,7 @@ impl Project {
                 &deck_groups,
                 timing,
                 main_dimmer,
+                collections,
             );
         }
 
@@ -300,8 +307,13 @@ impl Project {
         self.double_input_events.iter().any(|event| event.is_new())
     }
 
-    pub fn add_scene(&mut self, pos: GridLocation, scene_id: AssetId<Scene>) {
-        let scene_instance: SceneInstance = scene_id.into();
+    pub fn add_scene(
+        &mut self,
+        pos: GridLocation,
+        scene_id: AssetId<Scene>,
+        collections: &Collections,
+    ) {
+        let scene_instance = SceneInstance::from_scene_id(scene_id, collections);
         self.add_scene_instance(pos, scene_instance);
     }
 

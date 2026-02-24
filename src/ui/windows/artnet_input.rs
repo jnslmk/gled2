@@ -2,9 +2,12 @@ use std::net::Ipv4Addr;
 
 use crate::{
     input::artnet::ARTNET_CONFIG,
-    storage::asset::{Asset, output_device::routing::OutputRouting},
+    storage::{
+        asset::{Asset, output_device::routing::OutputRouting},
+        collections::Collections,
+    },
     ui::{
-        ChangeButton,
+        asset::CollectionsChangeButton,
         window_common::{default_viewport_builder, gled_window_frame},
         windows::output_routings::HOVERED_OUTPUT_ROUTING,
     },
@@ -27,7 +30,7 @@ pub struct ArtnetInputWindow {
 
 impl ArtnetInputWindow {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context) {
+    pub fn update(&mut self, ctx: &Context, collections: &mut Collections) {
         if !self.open {
             return;
         }
@@ -160,12 +163,15 @@ impl ArtnetInputWindow {
                                                         .to_string(),
                                                 );
 
-                                                bridge.output_routing.device.change_button(ui);
+                                                bridge
+                                                    .output_routing
+                                                    .device
+                                                    .collections_change_button(ui, collections);
 
                                                 if let Some(device) = bridge
                                                     .output_routing
                                                     .device
-                                                    .and_then(Asset::get)
+                                                    .and_then(|id| Asset::get(id, collections))
                                                 {
                                                     let device_universes = device.data.universes();
                                                     if !device_universes.is_empty() {

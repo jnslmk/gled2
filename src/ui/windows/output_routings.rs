@@ -1,9 +1,12 @@
 use crate::{
     app::svg::Svg,
     pipeline::extract_output::ExtractOutput,
-    storage::asset::{Asset, output_device::routing::OutputRouting},
+    storage::{
+        asset::{Asset, output_device::routing::OutputRouting},
+        collections::Collections,
+    },
     ui::{
-        ChangeButton,
+        asset::CollectionsChangeButton,
         window_common::{default_viewport_builder, gled_window_frame},
     },
 };
@@ -23,7 +26,7 @@ pub struct OutputRoutingsWindow {
 
 impl OutputRoutingsWindow {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context) {
+    pub fn update(&mut self, ctx: &Context, collections: &mut Collections) {
         if !self.open {
             return;
         }
@@ -88,12 +91,12 @@ impl OutputRoutingsWindow {
                                     ui.horizontal(|ui| {
                                         let output_routing =
                                             routings.universe_output_routing(universe);
-                                        if output_routing.device.change_button(ui) {
+                                        if output_routing.device.collections_change_button(ui, collections) {
                                             set_device = Some((universe, output_routing.device));
                                         }
 
                                         if let Some(device) =
-                                            output_routing.device.and_then(Asset::get)
+                                            output_routing.device.and_then(|id|Asset::get(id, collections))
                                         {
                                             let device_universes = device.data.universes();
                                             if !device_universes.is_empty() {
@@ -147,7 +150,7 @@ impl OutputRoutingsWindow {
                                         if first || output_routing.device.is_none() {
                                             output_routing.device = device;
 
-                                            if let Some(device) = device.and_then(Asset::get) {
+                                            if let Some(device) = device.and_then(|id|Asset::get(id, collections)) {
                                                 let device_universes = device.data.universes();
                                                 if device_universes.len() == 1 {
                                                     output_routing.universe =
@@ -172,7 +175,7 @@ impl OutputRoutingsWindow {
                                         let output_routing =
                                             routings.universe_output_routing(universe);
                                         let Some(device) =
-                                            output_routing.device.and_then(Asset::get)
+                                            output_routing.device.and_then(|id|Asset::get(id, collections))
                                         else {
                                             break;
                                         };

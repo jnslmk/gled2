@@ -3,7 +3,10 @@ use crate::{
         group::Group, output_mix::OutputMix, renderer_callback::RendererCallback,
         texture_to_output::TextureToOutput,
     },
-    storage::animation::{config::AnimationConfig, renderer::AnimationRenderer},
+    storage::{
+        animation::{config::AnimationConfig, renderer::AnimationRenderer},
+        collections::Collections,
+    },
     ui::action::UiAction,
     wgpu_render_state,
 };
@@ -80,7 +83,7 @@ impl EffectState {
         }
     }
 
-    pub fn write_data(&self, beat_progression: f32, data: &mut [u8]) {
+    pub fn write_data(&self, beat_progression: f32, data: &mut [u8], collections: &Collections) {
         data[0..4].copy_from_slice(&rand::rng().random::<f32>().to_le_bytes());
         data[4..8].copy_from_slice(&self.beat_progression.to_le_bytes());
         data[8..12].copy_from_slice(&self.beats_per_minute.to_le_bytes());
@@ -91,6 +94,7 @@ impl EffectState {
         self.animation_config.write_data(
             &mut data[28..28 + AnimationConfig::size()],
             beat_progression,
+            collections,
         );
 
         // Write FFT data (256 frequency bins = 1024 bytes)

@@ -17,7 +17,7 @@ use crate::{
         constants::{UNIVERSE_BUFFER_SIZE, UNIVERSES},
         extract_output::ExtractOutput,
     },
-    storage::asset::output_device::enttec_usb_pro,
+    storage::{asset::output_device::enttec_usb_pro, collections::Collections},
     svg::universe_color_channels::UniverseColorChannels,
     ui::windows::{channel_overwrites::ChannelOverwrites, output_routings::HOVERED_OUTPUT_ROUTING},
 };
@@ -44,12 +44,16 @@ pub fn start() -> Result<Sender<OutputPackage>> {
                 #[cfg(feature = "profiling")]
                 profiling::register_thread!("output:tx");
 
+                let mut collections = Collections::default();
+
                 let extract_output = ExtractOutput::get();
                 let output_receiver = extract_output
                     .take_output_receiver()
                     .expect("Could not take output receiver");
 
                 for mut output_data in output_receiver.iter() {
+                    collections.update();
+
                     trace!("Sending output data");
                     {
                         let mut routings = extract_output.routings.lock();
@@ -73,7 +77,7 @@ pub fn start() -> Result<Sender<OutputPackage>> {
                             UniverseColorChannels::correct(*universe, values);
                             channel_overwrites.overwrite_data(device_id, routing.universe, values);
 
-                            if let Some(recipient) = routing.recipient() {
+                            if let Some(recipient) = routing.recipient(&collections) {
                                 let mut data = [0u8; UNIVERSE_BUFFER_SIZE as usize];
                                 data.copy_from_slice(values);
                                 sender.send(OutputPackage::Gled { recipient, data }).ok();
@@ -81,13 +85,13 @@ pub fn start() -> Result<Sender<OutputPackage>> {
                         }
 
                         if let Some(routing) = hovered_output_routing
-                            && let Some(recipient) = routing.recipient()
+                            && let Some(recipient) = routing.recipient(&collections)
                         {
                             sender.send(OutputPackage::Hovered { recipient }).ok();
                         }
 
                         for (routing, data) in channel_overwrites.overwritten_universes() {
-                            if let Some(recipient) = routing.recipient() {
+                            if let Some(recipient) = routing.recipient(&collections) {
                                 sender.send(OutputPackage::Gled { recipient, data }).ok();
                             }
                         }

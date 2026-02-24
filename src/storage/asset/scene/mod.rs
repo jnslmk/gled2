@@ -7,7 +7,7 @@ pub mod instance;
 use super::{Asset, AssetTrait, animation::Animation, palette::Palette};
 use crate::{
     pipeline::group::{GroupIndices, Groups},
-    storage::AssetId,
+    storage::{AssetId, collections::Collections},
     ui::pills::show_pills,
 };
 use effect::Effect;
@@ -55,7 +55,11 @@ impl Scene {
 
     /// Reload shader code for all effects using the given animation, should be called after an animation is edited
     /// If the given animation is None, reloads all effects
-    pub fn reload_shader_code(&mut self, animation: Option<AssetId<Animation>>) {
+    pub fn reload_shader_code(
+        &mut self,
+        animation: Option<AssetId<Animation>>,
+        collections: &Collections,
+    ) {
         for effect in self.effects.iter_mut() {
             if let Some(animation) = animation
                 && effect.animation == Some(animation)
@@ -63,7 +67,9 @@ impl Scene {
                 continue;
             }
 
-            effect.state.set_shader_code(&effect.shader_code_complete());
+            effect
+                .state
+                .set_shader_code(&effect.shader_code_complete(collections));
         }
     }
 
@@ -73,9 +79,10 @@ impl Scene {
         palette: Option<Arc<Asset<Palette>>>,
         groups: &Groups,
         main_opacity: f32,
+        collections: &Collections,
     ) {
         for effect in self.effects.iter_mut() {
-            effect.prepare(queue, palette.clone(), groups, main_opacity);
+            effect.prepare(queue, palette.clone(), groups, main_opacity, collections);
         }
     }
 

@@ -55,6 +55,7 @@ impl App {
                         svg,
                         scene_instance.groups_overwrite.clone().unwrap_or(groups),
                         &self.timing,
+                        &mut self.collections,
                     ),
                     None => {
                         ui.label("There's no Effect to configure.");

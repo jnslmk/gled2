@@ -66,7 +66,7 @@ impl App {
 
             match (&mut self.project, action) {
                 (Some(project), UiAction::AddScene(pos, scene)) => {
-                    project.add_scene(pos, scene);
+                    project.add_scene(pos, scene, &self.collections);
                 }
                 (Some(project), UiAction::DeleteSceneInstance { location }) => {
                     project.remove_scene_instance(location);
@@ -83,6 +83,7 @@ impl App {
                         project.add_scene(
                             project.next_empty_grid_location(self.selected_scene_instance),
                             scene_id,
+                            &self.collections,
                         );
                     }
                 }
@@ -91,12 +92,18 @@ impl App {
                         .get_scenes_instance(&location)
                         .map(|scene_instance| scene_instance.scene_id)
                     {
-                        project.add_scene(project.next_empty_grid_location(location), scene_id);
+                        project.add_scene(
+                            project.next_empty_grid_location(location),
+                            scene_id,
+                            &self.collections,
+                        );
                     }
                 }
                 (Some(project), UiAction::ReloadShaderCode(animation)) => {
-                    project.reload_shader_code(animation);
-                    self.windows.scenes.reload_shader_code(animation);
+                    project.reload_shader_code(animation, &self.collections);
+                    self.windows
+                        .scenes
+                        .reload_shader_code(animation, &mut self.collections);
                 }
                 (Some(project), UiAction::SendPositions) => {
                     project.send_positions();
@@ -159,7 +166,7 @@ impl App {
                     self.blackout = blackout;
                 }
                 (_, UiAction::SetProject(project)) => {
-                    if let Some(project) = Asset::get(project) {
+                    if let Some(project) = Asset::get(project, &self.collections) {
                         let mut persistant_state = PersistantState::get();
                         persistant_state.last_project_id = Some(project.id);
                         persistant_state.save();

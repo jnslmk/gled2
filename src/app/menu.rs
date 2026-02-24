@@ -52,7 +52,10 @@ impl App {
                 ui.menu_button("Project", |ui| {
                     ui.set_min_width(300.0);
 
-                    if let Some(project) = self.project_id.and_then(Asset::get) {
+                    if let Some(project) = self
+                        .project_id
+                        .and_then(|id| Asset::get(id, &self.collections))
+                    {
                         ui.label(format!("Project: {}", project.name()));
                     } else {
                         ui.label("No project loaded");
@@ -155,7 +158,7 @@ impl App {
                     && let (Some(project), Some(mut asset)) = (
                         self.project.as_ref(),
                         self.project_id
-                            .and_then(Asset::get)
+                            .and_then(|id| Asset::get(id, &self.collections))
                             .map(Arc::unwrap_or_clone),
                     )
                 {
@@ -163,7 +166,7 @@ impl App {
                     asset.data.artnet_config = ARTNET_CONFIG.lock().clone();
                     asset.data.output_routings = ExtractOutput::get().routings.lock().clone();
                     asset.data.channel_overwrites = ChannelOverwrites::get();
-                    asset.save();
+                    asset.save(&mut self.collections);
                 }
 
                 if open_svg_file {

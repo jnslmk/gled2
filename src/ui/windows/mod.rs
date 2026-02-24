@@ -1,4 +1,7 @@
-use crate::{app::timing::Timing, storage::asset::project::Project};
+use crate::{
+    app::timing::Timing,
+    storage::{asset::project::Project, collections::Collections},
+};
 use egui::Context;
 
 pub mod about;
@@ -34,19 +37,25 @@ pub struct Windows {
 
 impl Windows {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context, timing: &Timing, project: Option<&mut Project>) {
+    pub fn update(
+        &mut self,
+        ctx: &Context,
+        timing: &Timing,
+        project: Option<&mut Project>,
+        collections: &mut Collections,
+    ) {
         self.about.update(ctx);
-        self.animations.update(ctx, timing);
-        self.channel_overwrites.update(ctx);
-        self.curves.update(ctx);
+        self.animations.update(ctx, timing, collections);
+        self.channel_overwrites.update(ctx, collections);
+        self.curves.update(ctx, collections);
         self.errors.update(ctx);
         self.git_config.update(ctx);
-        self.artnet_input.update(ctx);
-        self.output_devices.update(ctx);
-        self.output_routings.update(ctx);
-        self.palettes.update(ctx);
-        self.projects.update(ctx);
-        self.scenes.update(ctx, timing);
+        self.artnet_input.update(ctx, collections);
+        self.output_devices.update(ctx, collections);
+        self.output_routings.update(ctx, collections);
+        self.palettes.update(ctx, collections);
+        self.projects.update(ctx, collections);
+        self.scenes.update(ctx, timing, collections);
         self.shortcuts.update(ctx, project);
     }
 }

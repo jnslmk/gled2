@@ -1,5 +1,5 @@
 use crate::{
-    storage::asset::project::{Project},
+    storage::{asset::project::Project, collections::Collections},
     ui::{
         action::UiAction,
         asset_tree::{AssetTree, TreeSelection},
@@ -18,7 +18,7 @@ pub struct ProjectsWindow {
 
 impl ProjectsWindow {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &egui::Context) {
+    pub fn update(&mut self, ctx: &egui::Context, collections: &mut Collections) {
         if !self.open {
             return;
         }
@@ -40,13 +40,17 @@ impl ProjectsWindow {
                         .exact_width(200.0)
                         .resizable(false)
                         .show_inside(ui, |ui| {
-                            if self.tree.show(ui, ui.make_persistent_id("projects_tree")) {
+                            if self.tree.show(
+                                ui,
+                                ui.make_persistent_id("projects_tree"),
+                                collections,
+                            ) {
                                 self.dirty = false;
                             }
                         });
 
                     egui::CentralPanel::default().show_inside(ui, |ui| {
-                        self.tree.common_settings(ui, &mut self.dirty);
+                        self.tree.common_settings(ui, &mut self.dirty, collections);
                         if let TreeSelection::Asset(project) = self.tree.selected() {
                             ui.label(format!(
                                 "Scenes in Grid: {}",

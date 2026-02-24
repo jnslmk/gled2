@@ -1,7 +1,12 @@
 pub mod widget;
 
-use super::ChangeButton;
-use crate::storage::asset::{Asset, scene::effect::Effect};
+use crate::{
+    storage::{
+        asset::{Asset, scene::effect::Effect},
+        collections::Collections,
+    },
+    ui::asset::CollectionsChangeButton,
+};
 use egui::{DragValue, Slider};
 
 impl Effect {
@@ -11,41 +16,51 @@ impl Effect {
         allow_animation_change: bool,
         svg: Option<egui::TextureHandle>,
         beat_progression: f32,
+        collections: &mut Collections,
     ) -> bool {
         let mut changed = false;
 
         if allow_animation_change {
             ui.label("Animation");
             ui.vertical_centered_justified(|ui| {
-                if self.animation.change_button(ui) {
-                    self.state.set_shader_code(&self.shader_code_complete());
+                if self.animation.collections_change_button(ui, collections) {
+                    self.state
+                        .set_shader_code(&self.shader_code_complete(collections));
                 }
             });
         }
 
         ui.label("Progression");
         ui.vertical_centered_justified(|ui| {
-            changed |= self.beat_progression.change_button(ui, beat_progression);
+            changed |= self
+                .beat_progression
+                .change_button(ui, beat_progression, collections);
         });
 
         let mut beat_progression = beat_progression;
-        beat_progression += self.beat_progression_offset.value(beat_progression);
+        beat_progression += self
+            .beat_progression_offset
+            .value(beat_progression, collections);
 
         ui.label("Colorshift");
         ui.vertical_centered_justified(|ui| {
-            changed |= self.color_shift.change_button(ui, beat_progression);
+            changed |= self
+                .color_shift
+                .change_button(ui, beat_progression, collections);
         });
 
         ui.label("Opacity");
         ui.vertical_centered_justified(|ui| {
-            changed |= self.opacity.change_button(ui, beat_progression);
+            changed |= self
+                .opacity
+                .change_button(ui, beat_progression, collections);
         });
 
         ui.label("Beat offset");
         ui.vertical_centered_justified(|ui| {
-            changed |= self
-                .beat_progression_offset
-                .change_button(ui, beat_progression);
+            changed |=
+                self.beat_progression_offset
+                    .change_button(ui, beat_progression, collections);
         });
 
         ui.label("Speed");
@@ -87,7 +102,7 @@ impl Effect {
         if let Some(animation) = self
             .animation_overwrite
             .clone()
-            .or_else(|| self.animation.and_then(Asset::get))
+            .or_else(|| self.animation.and_then(|id| Asset::get(id, collections)))
             && let Some(rendered) = self.state.texture_id()
         {
             changed |= animation.data.config_ui(
@@ -96,6 +111,7 @@ impl Effect {
                 rendered,
                 svg,
                 beat_progression,
+                collections,
             );
         }
 

@@ -1,19 +1,21 @@
-use super::{ChangeButton, asset_tree::AssetTree};
-use crate::{
-    storage::{
-        asset::{Asset, AssetTrait},
-        asset_id::AssetId,
-    },
-    ui::OverwriteChangeButton,
+use super::asset_tree::AssetTree;
+use crate::storage::{
+    asset::{Asset, AssetTrait},
+    asset_id::AssetId,
+    collections::Collections,
 };
 use egui::{Ui, UiKind};
 use egui_ltreeview::TreeViewState;
 
-impl<T: AssetTrait> ChangeButton for Option<AssetId<T>> {
-    fn change_button(&mut self, ui: &mut Ui) -> bool {
+pub trait CollectionsChangeButton {
+    fn collections_change_button(&mut self, ui: &mut Ui, collections: &mut Collections) -> bool;
+}
+
+impl<T: AssetTrait> CollectionsChangeButton for Option<AssetId<T>> {
+    fn collections_change_button(&mut self, ui: &mut Ui, collections: &mut Collections) -> bool {
         let mut changed = false;
 
-        let asset = self.and_then(Asset::get);
+        let asset = self.and_then(|id| Asset::get(id, collections));
         let response = ui
             .menu_button(
                 if let Some(asset) = asset.as_ref() {
@@ -26,9 +28,11 @@ impl<T: AssetTrait> ChangeButton for Option<AssetId<T>> {
                     format!("📂 {}", T::NAME)
                 },
                 |ui| {
-                    if let Some(id) =
-                        AssetTree::show_asset_selection(ui, ui.make_persistent_id(T::NAME))
-                    {
+                    if let Some(id) = AssetTree::show_asset_selection(
+                        ui,
+                        ui.make_persistent_id(T::NAME),
+                        collections,
+                    ) {
                         *self = Some(id);
                         ui.data_mut(|d| {
                             d.remove::<TreeViewState<usize>>(ui.make_persistent_id(T::NAME))
@@ -47,6 +51,25 @@ impl<T: AssetTrait> ChangeButton for Option<AssetId<T>> {
     }
 }
 
-impl<T: AssetTrait> OverwriteChangeButton for Option<AssetId<T>> {
-    const NAME: &'static str = T::NAME;
+impl<T: AssetTrait> CollectionsChangeButton for Option<Option<AssetId<T>>> {
+    fn collections_change_button(&mut self, ui: &mut Ui, collections: &mut Collections) -> bool {
+        let mut changed = false;
+
+        let mut overwrite = self.is_some();
+        ui.checkbox(&mut overwrite, format!("Overwrite {}", T::NAME));
+        if self.is_none() && overwrite {
+            *self = Some(Some(Default::default()));
+            changed = true;
+        } else if self.is_some() && !overwrite {
+            *self = None;
+            changed = true;
+        }
+        if let Some(asset_id) = self {
+            ui.vertical_centered_justified(|ui| {
+                changed |= asset_id.collections_change_button(ui, collections);
+            });
+        }
+
+        changed
+    }
 }

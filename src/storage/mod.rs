@@ -2,11 +2,14 @@ pub mod action;
 pub mod asset;
 pub mod asset_id;
 pub mod collection;
+pub mod collections;
 pub mod git;
 pub mod serde;
 
 use self::{action::StorageAction, asset::*, asset_id::AssetId};
-use crate::{app::persistant_state::PersistantState, ui::action::UiAction};
+use crate::{
+    app::persistant_state::PersistantState, storage::collections::Collections, ui::action::UiAction,
+};
 use animation::Animation;
 use collection::Collection;
 use curve::Curve;
@@ -27,7 +30,6 @@ use std::{
     time::Duration,
 };
 use strum::Display;
-use typemap::ShareDebugMap;
 use uuid::Uuid;
 
 pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
@@ -40,7 +42,6 @@ static STORAGE_VERSION_FILE: Lazy<PathBuf> = Lazy::new(|| STORAGE_DIR.join("vers
 static WORKING: AtomicBool = AtomicBool::new(true);
 static ERROR: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
 static LOADING: Lazy<Mutex<Option<Loading>>> = Lazy::new(|| Mutex::new(None));
-static COLLECTIONS: Lazy<Mutex<Option<ShareDebugMap>>> = Lazy::new(|| Mutex::new(None));
 static BRANCHES: Lazy<Mutex<Option<Branches>>> = Lazy::new(|| Mutex::new(None));
 static STAGED_FILES: AtomicUsize = AtomicUsize::new(0);
 #[derive(Debug, Clone)]
@@ -105,6 +106,7 @@ pub fn branches() -> Option<Branches> {
 
 pub fn start_thread() {
     let actions = action::init();
+
     std::thread::spawn(move || {
         #[cfg(feature = "profiling")]
         profiling::register_thread!("storage");
@@ -257,29 +259,28 @@ pub fn start_thread() {
                             continue;
                         }
 
-                        let mut collections = ShareDebugMap::custom();
+                        let mut collections = Collections::default();
 
                         Loading::Animations.set();
-                        collections
-                            .insert::<Collection<Animation>>(Collection::<Animation>::load());
+                        collections.insert::<Animation>(Collection::<Animation>::load());
 
                         Loading::Curves.set();
-                        collections.insert::<Collection<Curve>>(Collection::<Curve>::load());
+                        collections.insert::<Curve>(Collection::<Curve>::load());
 
                         Loading::OutputDevices.set();
-                        collections
-                            .insert::<Collection<OutputDevice>>(Collection::<OutputDevice>::load());
+                        collections.insert::<OutputDevice>(Collection::<OutputDevice>::load());
 
                         Loading::Palettes.set();
-                        collections.insert::<Collection<Palette>>(Collection::<Palette>::load());
+                        collections.insert::<Palette>(Collection::<Palette>::load());
 
                         Loading::Projects.set();
-                        collections.insert::<Collection<Project>>(Collection::<Project>::load());
+                        collections.insert::<Project>(Collection::<Project>::load());
 
                         Loading::Scenes.set();
-                        collections.insert::<Collection<Scene>>(Collection::<Scene>::load());
+                        collections.insert::<Scene>(Collection::<Scene>::load());
 
-                        COLLECTIONS.lock().replace(collections);
+                        collections.save();
+
                         Loading::unset();
                     }
                     StorageAction::SwitchBranch(branch) => match git.switch_branch(&branch) {

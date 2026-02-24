@@ -2,6 +2,8 @@ pub mod argument;
 pub mod config;
 pub mod renderer;
 
+use crate::storage::collections::Collections;
+
 use super::AssetTrait;
 use argument::{Argument, variables::VariablesCount};
 use config::AnimationConfig;
@@ -139,12 +141,20 @@ impl Animation {
         rendered: TextureId,
         svg: Option<egui::TextureHandle>,
         beat_progression: f32,
+        collections: &mut Collections,
     ) -> bool {
         let mut changed = false;
         let mut count = VariablesCount::default();
         for argument in self.arguments.iter() {
-            changed |=
-                argument.config_ui(config, ui, count, rendered, svg.clone(), beat_progression);
+            changed |= argument.config_ui(
+                config,
+                ui,
+                count,
+                rendered,
+                svg.clone(),
+                beat_progression,
+                collections,
+            );
             count += argument.kind.variables().count();
         }
 

@@ -3,8 +3,10 @@ pub mod widget;
 
 use super::ChangeButton;
 use crate::{
-    app::timing::Timing, pipeline::group::Groups, storage::asset::scene::instance::SceneInstance,
-    ui::effect::widget::EffectWidget,
+    app::timing::Timing,
+    pipeline::group::Groups,
+    storage::{asset::scene::instance::SceneInstance, collections::Collections},
+    ui::{asset::CollectionsChangeButton, effect::widget::EffectWidget},
 };
 use egui::{Checkbox, Margin, ScrollArea, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible};
 use egui_modal::Modal;
@@ -16,9 +18,12 @@ impl SceneInstance {
         svg: Option<egui::TextureHandle>,
         groups: Groups,
         timing: &Timing,
+        collections: &mut Collections,
     ) {
         let mut beat_progression = timing.beat_progression();
-        beat_progression += self.beat_progression_offset.value(beat_progression);
+        beat_progression += self
+            .beat_progression_offset
+            .value(beat_progression, collections);
         let width = ui.available_width() - 20.0;
 
         ScrollArea::vertical()
@@ -64,7 +69,8 @@ impl SceneInstance {
 
                                 ui.label("Opacity");
                                 ui.vertical_centered_justified(|ui| {
-                                    self.opacity.change_button(ui, beat_progression);
+                                    self.opacity
+                                        .change_button(ui, beat_progression, collections);
                                 });
 
                                 ui.label("Ignore Main Dimmer");
@@ -72,8 +78,11 @@ impl SceneInstance {
 
                                 ui.label("Beat offset");
                                 ui.vertical_centered_justified(|ui| {
-                                    self.beat_progression_offset
-                                        .change_button(ui, timing.beat_progression());
+                                    self.beat_progression_offset.change_button(
+                                        ui,
+                                        timing.beat_progression(),
+                                        collections,
+                                    );
                                 });
                             });
                         });
@@ -90,7 +99,8 @@ impl SceneInstance {
                     .inner_margin(Margin::from(6.0))
                     .show(ui, |ui| {
                         ui.set_min_width(ui.available_width());
-                        self.palette_overwrite.change_button(ui);
+                        self.palette_overwrite
+                            .collections_change_button(ui, collections);
                     });
 
                 ui.separator();
@@ -110,6 +120,7 @@ impl SceneInstance {
                                 groups: Some(&groups),
                                 groups_show_index: false,
                                 beat_progression: Some(beat_progression),
+                                collections,
                             },
                         );
 
@@ -130,10 +141,17 @@ impl SceneInstance {
                                         groups: Some(&groups),
                                         groups_show_index: true,
                                         beat_progression: Some(beat_progression),
+                                        collections,
                                     },
                                 );
                                 ui.vertical(|ui| {
-                                    effect.config_ui(ui, false, svg.clone(), beat_progression);
+                                    effect.config_ui(
+                                        ui,
+                                        false,
+                                        svg.clone(),
+                                        beat_progression,
+                                        collections,
+                                    );
                                 });
                             });
                         });

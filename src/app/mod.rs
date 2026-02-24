@@ -11,6 +11,7 @@ pub mod svg;
 pub mod timing;
 
 use crate::storage::asset::scene::grid::GridLocation;
+use crate::storage::collections::Collections;
 use crate::{
     input::Input,
     midi::state::MidiState,
@@ -49,6 +50,7 @@ pub struct App {
     pub midi_output_active: bool,
     pub palette_asset_tree: AssetTree<Palette>,
     pub palette_asset_tree_id: Option<Id>,
+    pub collections: Collections,
 }
 
 impl eframe::App for App {
@@ -70,6 +72,8 @@ impl eframe::App for App {
             crate::PUFFIN_GPU_PROFILER.lock().new_frame();
         }
 
+        self.collections.update();
+
         if loading().is_none() && self.startup {
             self.startup = false;
             if let Some(project) = PersistantState::get().last_project_id {
@@ -83,7 +87,10 @@ impl eframe::App for App {
 
         let title = format!(
             "gled - {}",
-            match self.project_id.and_then(Asset::get) {
+            match self
+                .project_id
+                .and_then(|id| Asset::get(id, &self.collections))
+            {
                 None => "No project".to_string(),
                 Some(project) => project.name().to_string(),
             }
@@ -106,6 +113,7 @@ impl eframe::App for App {
                     false
                 },
                 self.timing.fade_duration(),
+                &self.collections,
             );
         }
 
@@ -162,8 +170,10 @@ impl eframe::App for App {
                                 .map(|scene_instance| {
                                     beat_progression += scene_instance
                                         .beat_progression_offset
-                                        .value(beat_progression);
-                                    scene_instance.opacity.value(beat_progression)
+                                        .value(beat_progression, &self.collections);
+                                    scene_instance
+                                        .opacity
+                                        .value(beat_progression, &self.collections)
                                 })
                         })
                         .unwrap_or(1.0)
@@ -194,8 +204,12 @@ impl eframe::App for App {
             );
         }
 
-        self.windows
-            .update(ctx, &self.timing, self.project.as_mut());
+        self.windows.update(
+            ctx,
+            &self.timing,
+            self.project.as_mut(),
+            &mut self.collections,
+        );
 
         ctx.request_repaint();
     }
@@ -263,6 +277,7 @@ impl App {
                 ..Default::default()
             },
             palette_asset_tree_id: None,
+            collections: Default::default(),
         };
 
         Some(app)

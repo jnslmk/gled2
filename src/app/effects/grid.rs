@@ -101,6 +101,7 @@ impl App {
                                                             size: Vec2::splat(effects_size),
                                                             groups: &groups,
                                                             timing: &self.timing,
+                                                            collections: &self.collections,
                                                         })
                                                     });
 
@@ -176,7 +177,10 @@ impl App {
                                                 }
                                             }
                                             None => {
-                                                ui.add(EmptyGridSpot { location });
+                                                ui.add(EmptyGridSpot {
+                                                    location,
+                                                    collections: &mut self.collections,
+                                                });
                                             }
                                         };
                                     },

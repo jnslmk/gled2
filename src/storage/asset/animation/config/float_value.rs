@@ -1,4 +1,7 @@
-use crate::storage::curve::multiplied_curve::{MultipliedCurve, RangeDegrees, RangePercentage};
+use crate::storage::{
+    collections::Collections,
+    curve::multiplied_curve::{MultipliedCurve, RangeDegrees, RangePercentage},
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -45,11 +48,11 @@ impl FloatValue {
         }
     }
 
-    pub fn value(&self, beat_progression: f32) -> f32 {
+    pub fn value(&self, beat_progression: f32, collection: &Collections) -> f32 {
         match self {
             Self::F32(value) => *value,
-            Self::Percentage(value) => value.value(beat_progression),
-            Self::Degrees(value) => value.value(beat_progression),
+            Self::Percentage(value) => value.value(beat_progression, collection),
+            Self::Degrees(value) => value.value(beat_progression, collection),
         }
     }
 }

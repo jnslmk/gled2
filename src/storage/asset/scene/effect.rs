@@ -1,17 +1,17 @@
+use super::effect_state::EffectState;
 use crate::{
     app::svg::Svg,
     pipeline::group::Groups,
     storage::{
         Animation, Asset, AssetId, Palette,
         animation::config::AnimationConfig,
+        collections::Collections,
         curve::multiplied_curve::{MultipliedCurve, RangeDegrees, RangePercentage},
     },
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use wgpu::{CommandEncoder, Queue};
-
-use super::effect_state::EffectState;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
@@ -82,10 +82,10 @@ impl Effect {
         )
     }
 
-    pub fn shader_code_complete(&self) -> String {
+    pub fn shader_code_complete(&self, collections: &Collections) -> String {
         self.animation_overwrite
             .clone()
-            .or_else(|| self.animation.and_then(Asset::get))
+            .or_else(|| self.animation.and_then(|id| Asset::get(id, collections)))
             .map(|animation| animation.data.shader_code_complete())
             .unwrap_or_else(Self::default_shader_code_complete)
     }
@@ -96,14 +96,15 @@ impl Effect {
         palette: Option<Arc<Asset<Palette>>>,
         groups: &Groups,
         main_opacity: f32,
+        collections: &Collections,
     ) {
         let beat_progression = self.state.beat_progression
             + self
                 .beat_progression_offset
-                .value(self.state.beat_progression);
-        self.state.beat_progression = self.beat_progression.value(beat_progression);
-        self.state.opacity = self.opacity.value(beat_progression) * main_opacity;
-        self.state.color_shift = self.color_shift.value(beat_progression);
+                .value(self.state.beat_progression, collections);
+        self.state.beat_progression = self.beat_progression.value(beat_progression, collections);
+        self.state.opacity = self.opacity.value(beat_progression, collections) * main_opacity;
+        self.state.color_shift = self.color_shift.value(beat_progression, collections);
         self.state.speed_exponent = self.speed_exponent;
         self.state.animation_config = self.animation_config.clone();
 
@@ -117,7 +118,7 @@ impl Effect {
         }
 
         if let Some(renderer) = self.state.renderer() {
-            renderer.set_buffers(queue, &self.state, beat_progression, palette);
+            renderer.set_buffers(queue, &self.state, beat_progression, palette, collections);
         }
     }
 

@@ -2,6 +2,7 @@ use crate::app::persistant_state::PersistantState;
 use crate::storage::asset::project::scene_instance_path::grid_scene_instance_index;
 use crate::storage::asset::scene::Scene;
 use crate::storage::asset::scene::grid::GridLocation;
+use crate::storage::collections::Collections;
 use crate::ui::action::UiAction;
 use crate::ui::asset_tree::AssetTree;
 use crate::{
@@ -24,6 +25,7 @@ pub struct SceneInstanceWidget<'a> {
     pub svg: Option<TextureHandle>,
     pub size: Vec2,
     pub timing: &'a Timing,
+    pub collections: &'a Collections,
 }
 
 const CORNER_RADIUS: u8 = 2;
@@ -41,7 +43,7 @@ impl Widget for SceneInstanceWidget<'_> {
             let (text_response, button_rect) = self.header_bar(name, ui);
             Frame::new().inner_margin(INNER_MARGIN).show(ui, |ui| {
                 self.preview(ui);
-                self.dimmer(ui);
+                self.dimmer(ui, self.collections);
             });
             if !self.scene_instance.active {
                 ui.painter()
@@ -187,7 +189,7 @@ impl SceneInstanceWidget<'_> {
         });
     }
 
-    fn dimmer(&mut self, ui: &mut Ui) {
+    fn dimmer(&mut self, ui: &mut Ui, collections: &Collections) {
         ui.scope_builder(UiBuilder::new(), |ui| {
             ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                 Frame::default().show(ui, |ui| {
@@ -198,7 +200,7 @@ impl SceneInstanceWidget<'_> {
                         * self
                             .scene_instance
                             .opacity
-                            .value(self.timing.beat_progression());
+                            .value(self.timing.beat_progression(), collections);
 
                     ui.add(GledSlider {
                         real_value: if self.scene_instance.active {
@@ -257,11 +259,12 @@ fn scoped_frame<T>(
     })
 }
 
-pub struct EmptyGridSpot {
+pub struct EmptyGridSpot<'a> {
     pub location: GridLocation,
+    pub collections: &'a mut Collections,
 }
 
-impl Widget for EmptyGridSpot {
+impl<'a> Widget for EmptyGridSpot<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
         let rect = Rect::from_min_size(
             ui.cursor().min,
@@ -288,6 +291,7 @@ impl Widget for EmptyGridSpot {
                         let scene = AssetTree::<Scene>::show_asset_selection(
                             ui,
                             ui.make_persistent_id(self.location),
+                            self.collections,
                         );
                         if let Some(scene) = scene {
                             UiAction::AddScene(self.location, scene).enqueue();

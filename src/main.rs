@@ -1,4 +1,5 @@
 #![windows_subsystem = "windows"]
+#![allow(clippy::too_many_arguments)]
 
 pub mod app;
 pub mod audio;

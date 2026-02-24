@@ -15,7 +15,7 @@ use std::{
 
 use crate::{
     pipeline::{constants::UNIVERSE_BUFFER_SIZE, output_sender::OutputPackage},
-    storage::asset::output_device::routing::OutputRouting,
+    storage::{asset::output_device::routing::OutputRouting, collections::Collections},
 };
 
 static ARTNET_PORT: u16 = 6454;
@@ -82,6 +82,8 @@ pub fn start_thread(output_package_sender: Sender<OutputPackage>) -> Receiver<Ar
             #[cfg(feature = "profiling")]
             profiling::register_thread!("artnet:rx");
 
+            let mut collections = Collections::default();
+
             loop {
                 if !ARTNET_CONFIG.lock().active {
                     thread::sleep(Duration::from_secs(1));
@@ -99,6 +101,8 @@ pub fn start_thread(output_package_sender: Sender<OutputPackage>) -> Receiver<Ar
                         trace!("Stopping artnet reaceiving");
                         break;
                     }
+
+                    collections.update();
 
                     trace!("Receiving artnet package");
                     let Ok((size, src)) = ARTNET_SOCKET.recv_from(&mut buf) else {
@@ -205,7 +209,7 @@ pub fn start_thread(output_package_sender: Sender<OutputPackage>) -> Receiver<Ar
                         bridge.last_data_at = Utc::now();
                         bridge.updates += 1;
 
-                        if let Some(recipient) = bridge.output_routing.recipient() {
+                        if let Some(recipient) = bridge.output_routing.recipient(&collections) {
                             trace!("artnet bridge has output routing");
 
                             let mut data = [0u8; UNIVERSE_BUFFER_SIZE as usize];
