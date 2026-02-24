@@ -1,4 +1,4 @@
-use super::{Scene, effect_state::EffectState};
+use super::Scene;
 use crate::{
     app::timing::Timing,
     input::event::InputEvent,
@@ -8,8 +8,7 @@ use crate::{
     },
     storage::{
         Asset, AssetId,
-        animation::Animation,
-        asset::scene::{color::SceneInstanceColor, effect::Effect},
+        asset::{animation::Animation, scene::color::SceneInstanceColor},
         curve::multiplied_curve::{MultipliedCurve, RangePercentage},
         palette::Palette,
     },
@@ -17,7 +16,7 @@ use crate::{
 use egui::TextureId;
 use egui_dnd::DragDropItem;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 use uuid::Uuid;
 use wgpu::{CommandEncoder, Queue};
 
@@ -48,19 +47,12 @@ pub struct SceneInstance {
     pub set_offset_on_flash: bool,
     #[serde(default)]
     pub dimmer_input: Option<InputEvent>,
-    pub scene: AssetId<Scene>,
+    pub scene_id: AssetId<Scene>,
+    pub scene: Scene,
     #[serde(default)]
     pub groups_overwrite: Option<Groups>,
     #[serde(default)]
     pub palette_overwrite: Option<Option<AssetId<Palette>>>,
-    #[serde(
-        default,
-        deserialize_with = "crate::storage::serde::deserialize_usize_index_btreemap"
-    )]
-    pub effect_overwrites: BTreeMap<usize, Effect>,
-
-    #[serde(skip)]
-    pub effect_states: Vec<EffectState>,
 
     #[serde(skip)]
     transition: Option<Transition>,
@@ -88,11 +80,10 @@ impl Clone for SceneInstance {
             flash_input: self.flash_input,
             set_offset_on_flash: self.set_offset_on_flash,
             dimmer_input: self.dimmer_input,
-            scene: self.scene,
+            scene_id: self.scene_id,
+            scene: self.scene.clone(),
             groups_overwrite: self.groups_overwrite.clone(),
             palette_overwrite: self.palette_overwrite,
-            effect_overwrites: self.effect_overwrites.clone(),
-            effect_states: Default::default(),
             transition: Default::default(),
             flash: Default::default(),
         }
@@ -106,11 +97,18 @@ impl DragDropItem for &mut SceneInstance {
 }
 
 impl From<AssetId<Scene>> for SceneInstance {
-    fn from(scene: AssetId<Scene>) -> Self {
+    fn from(scene_id: AssetId<Scene>) -> Self {
+        let asset = Asset::get(scene_id).unwrap_or_default();
+        let mut scene = asset.data.clone();
+        scene.reload_shader_code(None);
+
         Self {
+            scene_id,
             scene,
-            name: Asset::get(scene)
-                .and_then(|scene| scene.path.last().map(|s| s.to_string()))
+            name: asset
+                .path
+                .last()
+                .map(|s| s.to_string())
                 .unwrap_or_else(unnamed_scene),
             color: Default::default(),
             id: Uuid::new_v4(),
@@ -123,29 +121,19 @@ impl From<AssetId<Scene>> for SceneInstance {
             flash_input: Default::default(),
             set_offset_on_flash: Default::default(),
             dimmer_input: Default::default(),
-            effect_states: Default::default(),
             transition: Default::default(),
             flash: Default::default(),
             groups_overwrite: Default::default(),
             palette_overwrite: Default::default(),
-            effect_overwrites: Default::default(),
         }
     }
 }
 
 impl SceneInstance {
-    pub fn init_states(&mut self) {
-        if let Some(scene) = Asset::get(self.scene) {
-            scene.data.init_states(&mut self.effect_states);
-        }
-    }
-
-    pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
-        if let Some(scene) = Asset::get(self.scene) {
-            scene
-                .data
-                .reload_shader_code(&mut self.effect_states, animation);
-        }
+    /// Reload shader code for all effects using the given animation, should be called after an animation is edited
+    /// If the given animation is None, reloads all effects
+    pub fn reload_shader_code(&mut self, animation: Option<AssetId<Animation>>) {
+        self.scene.reload_shader_code(animation);
     }
 
     pub fn prepare(
@@ -170,10 +158,10 @@ impl SceneInstance {
 
         let mut beat_progression = timing.beat_progression();
         beat_progression += self.beat_progression_offset.value(beat_progression);
-        for effect_state in self.effect_states.iter_mut() {
-            effect_state.beat_progression = beat_progression;
-            effect_state.beats_per_minute = timing.beats_per_minute();
-            effect_state.framerate = timing.framerate().unwrap_or_default();
+        for effect in self.scene.effects.iter_mut() {
+            effect.state.beat_progression = beat_progression;
+            effect.state.beats_per_minute = timing.beats_per_minute();
+            effect.state.framerate = timing.framerate().unwrap_or_default();
         }
 
         let mut opacity_factor = 1.0;
@@ -202,16 +190,7 @@ impl SceneInstance {
             } * opacity_factor
                 * self.opacity.value(beat_progression)
                 * self.input_dimmer;
-            if let Some(scene) = Asset::get(self.scene) {
-                scene.data.prepare(
-                    Some(&self.effect_overwrites),
-                    &mut self.effect_states,
-                    queue,
-                    palette,
-                    groups,
-                    main_opacity,
-                );
-            }
+            self.scene.prepare(queue, palette, groups, main_opacity);
         }
     }
 
@@ -221,17 +200,7 @@ impl SceneInstance {
         }
 
         let send_output = !blackout && (self.active || self.flash);
-        if let Some(scene) = Asset::get(self.scene) {
-            scene
-                .data
-                .render(&mut self.effect_states, encoder, send_output);
-        }
-    }
-
-    pub fn set_output_mix_buffers(&mut self) {
-        if let Some(scene) = Asset::get(self.scene) {
-            scene.data.set_output_mix_buffers(&mut self.effect_states);
-        }
+        self.scene.render(encoder, send_output);
     }
 
     pub fn set_transition(&mut self, transition: Transition) {
@@ -251,22 +220,21 @@ impl SceneInstance {
     }
 
     pub fn send_positions(&mut self) {
-        for state in self.effect_states.iter_mut() {
-            state.send_positions();
+        for effect in self.scene.effects.iter_mut() {
+            effect.state.send_positions();
         }
     }
 
     pub fn texture_ids(&self) -> Vec<TextureId> {
-        self.effect_states
+        self.scene
+            .effects
             .iter()
-            .map(|state| state.texture_id())
+            .flat_map(|effect| effect.state.texture_id())
             .collect()
     }
 
     pub fn group_indices(&self) -> GroupIndices {
-        Asset::get(self.scene)
-            .map(|scene| scene.data.group_indices())
-            .unwrap_or_default()
+        self.scene.group_indices()
     }
 
     pub fn remove_nonexistant_groups(&mut self) {

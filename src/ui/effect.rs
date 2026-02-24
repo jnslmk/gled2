@@ -1,16 +1,12 @@
 pub mod widget;
 
 use super::ChangeButton;
-use crate::storage::asset::{
-    Asset,
-    scene::{effect::Effect, effect_state::EffectState},
-};
+use crate::storage::asset::{Asset, scene::effect::Effect};
 use egui::{DragValue, Slider};
 
 impl Effect {
     pub fn config_ui(
         &mut self,
-        state: &mut EffectState,
         ui: &mut egui::Ui,
         allow_animation_change: bool,
         svg: Option<egui::TextureHandle>,
@@ -22,7 +18,7 @@ impl Effect {
             ui.label("Animation");
             ui.vertical_centered_justified(|ui| {
                 if self.animation.change_button(ui) {
-                    state.update(self);
+                    self.state.set_shader_code(&self.shader_code_complete());
                 }
             });
         }
@@ -92,8 +88,8 @@ impl Effect {
             .animation_overwrite
             .clone()
             .or_else(|| self.animation.and_then(Asset::get))
+            && let Some(rendered) = self.state.texture_id()
         {
-            let rendered = state.texture_id();
             changed |= animation.data.config_ui(
                 &mut self.animation_config,
                 ui,

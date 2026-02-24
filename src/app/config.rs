@@ -1,6 +1,5 @@
-use crate::ui::{ChangeButton, action::UiAction};
-
 use super::{App, timing::FadeMode};
+use crate::ui::ChangeButton;
 use egui::{CentralPanel, Color32, Margin, RichText, TopBottomPanel};
 
 impl App {
@@ -32,9 +31,7 @@ impl App {
                     );
                 }
                 ui.horizontal(|ui| {
-                    if project.groups.change_button(ui) {
-                        UiAction::InitGPU.enqueue();
-                    }
+                    project.groups.change_button(ui);
                 });
 
                 ui.add_space(4.0);

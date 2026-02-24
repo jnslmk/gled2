@@ -1,9 +1,10 @@
+use crate::storage::asset::project::Project;
 use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::storage::asset::scene::Scene;
 use crate::{app::{persistant_state::PersistantState, svg::Svg, App}, input::artnet::ARTNET_CONFIG, pipeline::extract_output::ExtractOutput, storage::{
     asset::{
-        animation::Animation, curve::multiplied_curve::MultipliedCurve, project::Project, Asset,
+        animation::Animation, curve::multiplied_curve::MultipliedCurve, Asset,
     },
     asset_id::AssetId,
 }};
@@ -30,9 +31,8 @@ pub enum UiAction {
     DeleteSelectedSceneInstance,
     CloneSelectedSceneInstance,
     CloneSceneInstance(GridLocation),
-    InitGPU,
     SendPositions,
-    ReloadShaderCode(AssetId<Animation>),
+    ReloadShaderCode(Option<AssetId<Animation>>),
     CloseWindow(ViewportId),
     SetSvg(Option<Svg>),
     OpenGitConfigWindow,
@@ -68,39 +68,29 @@ impl App {
                 }
                 (Some(project), UiAction::DeleteSceneInstance { location }) => {
                     project.remove_scene_instance(location);
-                    UiAction::InitGPU.enqueue();
                 }
                 (Some(project), UiAction::DeleteSelectedSceneInstance) => {
                     project.remove_scene_instance(self.selected_scene_instance);
-                    UiAction::InitGPU.enqueue();
                 }
-                
+
                 (Some(project), UiAction::CloneSelectedSceneInstance) => {
-                    if let Some(scene) = project
+                    if let Some(scene_id) = project
                         .get_scenes_instance(&self.selected_scene_instance)
-                        .map(|scene_instance| scene_instance.scene)
+                        .map(|scene_instance| scene_instance.scene_id)
                     {
                         project.add_scene(
                             project.next_empty_grid_location(self.selected_scene_instance),
-                            scene,
+                            scene_id,
                         );
-                        UiAction::InitGPU.enqueue();
                     }
                 }
                 (Some(project), UiAction::CloneSceneInstance(location)) => {
-                    if let Some(scene) = project
+                    if let Some(scene_id) = project
                         .get_scenes_instance(&location)
-                        .map(|scene_instance| scene_instance.scene)
+                        .map(|scene_instance| scene_instance.scene_id)
                     {
-                        project.add_scene(
-                            project.next_empty_grid_location(location),
-                            scene,
-                        );
-                        UiAction::InitGPU.enqueue();
+                        project.add_scene(project.next_empty_grid_location(location), scene_id);
                     }
-                }
-                (Some(project), UiAction::InitGPU) => {
-                    project.init_gpu();
                 }
                 (Some(project), UiAction::ReloadShaderCode(animation)) => {
                     project.reload_shader_code(animation);
@@ -190,6 +180,7 @@ impl App {
                         self.audio_pool.selected_device = project.audio_input_device.clone();
                         self.audio_pool.restart_fft();
                         self.project = Some(project);
+                        UiAction::ReloadShaderCode(None).enqueue();
                     } else {
                         self.windows.artnet_input.close();
                         self.windows.output_routings.close();
@@ -197,7 +188,6 @@ impl App {
                         self.project.take();
                         self.project_id.take();
                     };
-                    UiAction::InitGPU.enqueue();
                     Svg::reset();
                 }
                 (_, UiAction::CloseWindow(viewport_id)) => {

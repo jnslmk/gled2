@@ -114,21 +114,18 @@ fn update_scene_instance(
     prev_state: &ArtnetSceneControlState,
 ) {
     if prev_state.scene_index != scene_state.scene_index {
-        scene_instance.scene = asset_id;
-        scene_instance.init_states();
-        scene_instance.set_output_mix_buffers();
-        Preview::set_buffers();
+        scene_instance.scene = Asset::get(asset_id).unwrap_or_default().data.clone();
     }
     scene_instance.active = scene_state.opacity != 0;
     scene_instance.opacity.multiplier = scene_state.opacity as f32 / 255.0;
     scene_instance.beat_progression_offset.multiplier = scene_state.speed_multiplier as f32 / 127.0;
-    scene_instance
-        .effect_states
-        .iter_mut()
-        .for_each(|effect_state| {
-            effect_state.speed_exponent = scene_state.speed_multiplier as i32;
-            // TODO color overwrite, scene specific parameters
-        })
+    // TODO rewrite
+    //scene_instance
+    //    .effect_states
+    //    .iter_mut()
+    //    .for_each(|effect_state| {
+    //        effect_state.speed_exponent = scene_state.speed_multiplier as i32;
+    //    })
 }
 
 fn location(i: usize) -> GridLocation {

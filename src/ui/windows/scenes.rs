@@ -5,7 +5,7 @@ use crate::{
         asset::{
             Asset,
             animation::Animation,
-            scene::{Scene, effect::Effect, effect_state::EffectState},
+            scene::{Scene, effect::Effect},
         },
         asset_id::AssetId,
     },
@@ -28,7 +28,6 @@ pub struct ScenesWindow {
     open: bool,
     dirty: bool,
     tree: AssetTree<Scene>,
-    effect_states: Vec<EffectState>,
     selected_effect: usize,
 }
 
@@ -59,10 +58,6 @@ impl ScenesWindow {
                             if self.tree.show(ui, ui.make_persistent_id("scenes_tree")) {
                                 self.dirty = false;
                                 self.selected_effect = 0;
-                                self.effect_states.clear();
-                                if let TreeSelection::Asset(scene) = self.tree.selected() {
-                                    scene.data.init_states(&mut self.effect_states);
-                                }
                             }
                         });
 
@@ -78,11 +73,8 @@ impl ScenesWindow {
                                 .id_salt("scene_editor_scroll")
                                 .scroll_bar_visibility(AlwaysVisible)
                                 .show(ui, |ui| {
-                                    if let (Some(effect), Some(state)) = (
-                                        scene.data.effect(self.selected_effect),
-                                        self.effect_states.get_mut(self.selected_effect),
-                                    ) {
-                                        self.dirty |= effect.config_ui(state, ui, true, None, 1.0);
+                                    if let Some(effect) = scene.data.effect(self.selected_effect) {
+                                        self.dirty |= effect.config_ui(ui, true, None, 1.0);
                                     }
 
                                     ui.separator();
@@ -90,46 +82,39 @@ impl ScenesWindow {
                                     ui.vertical_centered_justified(|ui| {
                                         if ui
                                             .add(
-                                                Button::new("+ Add Effect")
+                                                Button::new("+ Add Animation")
                                                     .fill(Color32::DARK_GREEN),
                                             )
                                             .clicked()
                                         {
-                                            self.selected_effect = scene.data.add_effect(
-                                                &mut self.effect_states,
-                                                Effect::default(),
-                                            );
+                                            self.selected_effect =
+                                                scene.data.add_effect(Effect::default());
                                             self.dirty = true;
                                         }
                                     });
                                     ui.vertical_centered_justified(|ui| {
                                         if ui
                                             .add(
-                                                Button::new("🗐 Duplicate Effect")
+                                                Button::new("🗐 Duplicate Animation")
                                                     .fill(Color32::DARK_BLUE),
                                             )
                                             .clicked()
                                             && let Some(effect) =
                                                 scene.data.effect(self.selected_effect).cloned()
                                         {
-                                            self.selected_effect = scene
-                                                .data
-                                                .add_effect(&mut self.effect_states, effect);
+                                            self.selected_effect = scene.data.add_effect(effect);
                                             self.dirty = true;
                                         }
                                     });
                                     ui.vertical_centered_justified(|ui| {
                                         if ui
                                             .add(
-                                                Button::new("🗑 Remove Effect")
+                                                Button::new("🗑 Remove Animation")
                                                     .fill(Color32::DARK_RED),
                                             )
                                             .clicked()
                                         {
-                                            scene.data.remove_effect(
-                                                &mut self.effect_states,
-                                                self.selected_effect,
-                                            );
+                                            scene.data.remove_effect(self.selected_effect);
                                             self.selected_effect =
                                                 self.selected_effect.saturating_sub(1);
                                             self.dirty = true;
@@ -143,15 +128,12 @@ impl ScenesWindow {
 
                         ui.add_space(4.0);
 
-                        if let TreeSelection::Asset(scene) = &mut self.tree.selected() {
-                            if asset_changed {
-                                crate::ui::action::UiAction::InitGPU.enqueue();
-                                if let (Some(effect), Some(state)) = (
-                                    scene.data.effect(self.selected_effect),
-                                    self.effect_states.get_mut(self.selected_effect),
-                                ) {
-                                    state.update(effect);
-                                }
+                        if let TreeSelection::Asset(asset) = &mut self.tree.selected() {
+                            let mut scene = asset.data.clone();
+                            if asset_changed
+                                && let Some(effect) = scene.effect(self.selected_effect)
+                            {
+                                effect.state.set_shader_code(&effect.shader_code_complete());
                             }
 
                             egui::Frame::NONE
@@ -170,18 +152,16 @@ impl ScenesWindow {
                             ui.add_space(4.0);
 
                             {
-                                for effect_state in self.effect_states.iter_mut() {
-                                    effect_state.beat_progression = timing.beat_progression();
-                                    effect_state.beats_per_minute = timing.beats_per_minute();
-                                    effect_state.framerate = timing.framerate().unwrap_or_default();
+                                for effect in scene.effects.iter_mut() {
+                                    effect.state.beat_progression = timing.beat_progression();
+                                    effect.state.beats_per_minute = timing.beats_per_minute();
+                                    effect.state.framerate = timing.framerate().unwrap_or_default();
                                 }
 
                                 let wgpu_render_state = wgpu_render_state();
                                 let device = wgpu_render_state.device;
                                 let queue = &wgpu_render_state.queue;
-                                scene.data.prepare(
-                                    None,
-                                    &mut self.effect_states,
+                                scene.prepare(
                                     queue,
                                     PersistantState::get().preview_palette.and_then(Asset::get),
                                     &Default::default(),
@@ -191,9 +171,7 @@ impl ScenesWindow {
                                     device.create_command_encoder(&CommandEncoderDescriptor {
                                         label: Some("Render animations for scene editor"),
                                     });
-                                scene
-                                    .data
-                                    .render(&mut self.effect_states, &mut encoder, false);
+                                scene.render(&mut encoder, false);
                                 RendererCallback::add(encoder.finish());
                             }
 
@@ -205,12 +183,8 @@ impl ScenesWindow {
                                     ui.set_max_width(ui.available_width() - 30.0);
                                     ui.horizontal_wrapped(|ui| {
                                         if let TreeSelection::Asset(scene) = self.tree.selected() {
-                                            for (index, (effect, effect_state)) in scene
-                                                .data
-                                                .effects()
-                                                .iter()
-                                                .zip(self.effect_states.iter_mut())
-                                                .enumerate()
+                                            for (index, effect) in
+                                                scene.data.effects().iter().enumerate()
                                             {
                                                 ui.add_sized(
                                                     Vec2::splat(100.0),
@@ -221,7 +195,6 @@ impl ScenesWindow {
                                                             index,
                                                         )),
                                                         effect,
-                                                        effect_state,
                                                         svg: None,
                                                         groups: None,
                                                         groups_show_index: false,
@@ -243,13 +216,11 @@ impl ScenesWindow {
         self.open = true;
     }
 
-    pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
+    pub fn reload_shader_code(&mut self, animation: Option<AssetId<Animation>>) {
         let TreeSelection::Asset(scene) = self.tree.selected() else {
             return;
         };
 
-        scene
-            .data
-            .reload_shader_code(&mut self.effect_states, animation);
+        scene.data.reload_shader_code(animation);
     }
 }

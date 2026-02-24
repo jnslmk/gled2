@@ -17,13 +17,8 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct MultipliedCurve<R: Range> {
-    #[serde(
-        alias = "Static",
-        deserialize_with = "deserialize_static",
-        default = "default_multiplier"
-    )]
+    #[serde(default = "default_multiplier")]
     pub multiplier: f32,
-    #[serde(alias = "Curve", deserialize_with = "deserialize_curve", default)]
     curve: Option<AssetId<Curve>>,
     #[serde(default)]
     adsr: Option<ADSR>,
@@ -33,41 +28,6 @@ pub struct MultipliedCurve<R: Range> {
 
 fn default_multiplier() -> f32 {
     1.0
-}
-
-/// Support for old format, can be remove when everything has been migrated
-pub fn deserialize_static<'de, D>(deserializer: D) -> Result<f32, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Variant {
-        Old(Vec<f32>),
-        New(f32),
-    }
-    let v = Variant::deserialize(deserializer)?;
-    Ok(match v {
-        Variant::Old(value) => value.into_iter().next().unwrap_or(1.0),
-        Variant::New(value) => value,
-    })
-}
-/// Support for old format, can be remove when everything has been migrated
-pub fn deserialize_curve<'de, D>(deserializer: D) -> Result<Option<AssetId<Curve>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Variant {
-        Old(Vec<AssetId<Curve>>),
-        New(Option<AssetId<Curve>>),
-    }
-    let v = Variant::deserialize(deserializer)?;
-    Ok(match v {
-        Variant::Old(value) => value.into_iter().next(),
-        Variant::New(value) => value,
-    })
 }
 
 impl<R: Range> MultipliedCurve<R> {

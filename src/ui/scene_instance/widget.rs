@@ -292,7 +292,6 @@ impl Widget for EmptyGridSpot {
                             UiAction::AddScene(self.location, scene).enqueue();
                             UiAction::SelectScene(grid_scene_instance_index(self.location))
                                 .enqueue();
-                            UiAction::InitGPU.enqueue();
 
                             ui.data_mut(|d| {
                                 d.remove::<TreeViewState<usize>>(

@@ -1,69 +1,38 @@
 pub mod scene_instance_path;
 
-use super::{
-    animation::Animation, output_device::routing::OutputRoutings, scene::instance::SceneInstance,
-    AssetTrait,
-};
+use super::{animation::Animation, output_device::routing::OutputRoutings, scene::instance::SceneInstance, Asset, AssetTrait};
 use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
 use crate::storage::asset::scene::grid::GridLocation;
-use crate::{
-    app::svg::Svg,
-    input::{
-        artnet::ArtnetConfig,
-        event::{GamepadEvent, InputEvent},
-    },
-    pipeline::{
-        group::Groups, preview::Preview
-        ,
-    },
-    storage::{
-        asset::{palette::Palette, scene::Scene},
-        asset_id::AssetId,
-    },
-    ui::windows::channel_overwrites::ChannelOverwrites
+use crate::{app::svg::Svg, input::{
+    artnet::ArtnetConfig,
+    event::{GamepadEvent, InputEvent},
+}, pipeline::{
+    group::Groups, preview::Preview
     ,
-};
+}, storage::{
+    asset::{palette::Palette, scene::Scene},
+    asset_id::AssetId,
+}, ui::windows::channel_overwrites::ChannelOverwrites, wgpu_render_state};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::{
     collections::BTreeSet,
     time::Instant,
 };
+use std::time::Duration;
 use cpal::DeviceId;
+use rand::prelude::IndexedMutRandom;
+use wgpu::CommandEncoderDescriptor;
+use crate::app::timing::Timing;
 use crate::input::artnet::{ARTNET_CONFIG};
 use crate::input::external_control::ArtnetControlConfig;
+use crate::pipeline::extract_output::ExtractOutput;
+use crate::pipeline::output_clear::OutputClear;
+use crate::pipeline::preview_indices::PreviewIndices;
+use crate::pipeline::renderer_callback::RendererCallback;
+use crate::pipeline::transition::{Transition, TransitionGoal};
 
-pub fn deserialize_scene_instances<'de, D>(
-    deserializer: D,
-) -> Result<HashMap<GridLocation, SceneInstance>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Variants {
-        V1(Vec<SceneInstance>),
-        Current(HashMap<GridLocation, SceneInstance>),
-    }
-
-    match Variants::deserialize(deserializer)? {
-        Variants::V1(instances) => Ok(instances
-            .into_iter()
-            .enumerate()
-            .map(|(idx, instance)| {
-                (
-                    GridLocation {
-                        row: idx / GRID_HEIGHT,
-                        col: idx % GRID_WIDTH,
-                    },
-                    instance,
-                )
-            })
-            .collect()),
-        Variants::Current(instances) => Ok(instances),
-    }
-}
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Project {
@@ -72,7 +41,6 @@ pub struct Project {
     pub auto_mode_seconds: u64,
     pub auto_mode_max_scenes: usize,
     pub groups: Groups,
-    #[serde(deserialize_with = "deserialize_scene_instances")]
     pub scenes_instances_grid: HashMap<GridLocation, SceneInstance>,
     #[serde(skip)]
     pub auto_mode_last_change: Option<Instant>,
@@ -176,7 +144,9 @@ impl Project {
             .filter(|(location, _)| location.row == GRID_HEIGHT - 1)
     }
 
-    pub fn reload_shader_code(&mut self, animation: AssetId<Animation>) {
+    /// Reload shader code for all effects using the given animation, should be called after an animation is edited
+    /// If the given animation is None, reloads all effects
+    pub fn reload_shader_code(&mut self, animation: Option<AssetId<Animation>>) {
         self.scenes_instances_grid
             .values_mut()
             .for_each(|scene_instance| {
@@ -192,27 +162,125 @@ impl Project {
             });
     }
 
-    pub fn init_gpu(&mut self) {
-        self.scenes_instances_grid
-            .values_mut()
-            .for_each(|scene_instance| {
-                scene_instance.init_states();
-            });
-        self.set_buffers();
-    }
-
-    pub fn set_buffers(&mut self) {
-        self.scenes_instances_grid
-            .values_mut()
-            .for_each(|scene_instance| {
-                scene_instance.set_output_mix_buffers();
-            });
-        Preview::set_buffers();
-    }
-
     /// Remove scene instance at path and update path to the next scene instance
     pub fn remove_scene_instance(&mut self, pos: GridLocation) -> Option<SceneInstance> {
         self.scenes_instances_grid.remove(&pos)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn render(
+        &mut self,
+        timing: &Timing,
+        blackout: bool,
+        always_render: bool,
+        fade_duration: Duration,
+    ) {
+        let wgpu_render_state = wgpu_render_state();
+        let device = wgpu_render_state.device;
+        let queue = &wgpu_render_state.queue;
+        if self.auto_mode_active {
+            if self
+                .auto_mode_last_change
+                .get_or_insert_with(Instant::now)
+                .elapsed()
+                .as_secs()
+                > self.auto_mode_seconds
+            {
+                let auto_mode_max_scenes = self.auto_mode_max_scenes;
+                let mut prev = HashSet::new();
+                {
+                    let mut indices = self
+                        .scenes_instances_grid
+                        .iter()
+                        .filter(|(_index, scene)| scene.active)
+                        .map(|(location, _scene)| *location)
+                        .collect::<Vec<_>>();
+
+                    let mut disable_count =
+                        (indices.len() + 1).saturating_sub(auto_mode_max_scenes);
+                    while disable_count > 0 {
+                        if let Some(location) = indices.choose_mut(&mut rand::rng()).copied()
+                            && prev.insert(location)
+                        {
+                            disable_count -= 1;
+                            if let Some(scene) = self.scenes_instances_grid.get_mut(&location) {
+                                scene.set_transition(Transition::new(
+                                    TransitionGoal::TurnOff,
+                                    fade_duration,
+                                ));
+                            }
+                        }
+                    }
+                }
+
+                let mut scenes = self
+                    .scenes_instances_grid
+                    .iter_mut()
+                    .filter(|(location, _scene)| !prev.contains(location))
+                    .collect::<Vec<_>>();
+                if let Some((_index, scene)) = scenes.choose_mut(&mut rand::rng()) {
+                    scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
+                }
+
+                self.auto_mode_last_change.take();
+            }
+        } else {
+            self.auto_mode_last_change.take();
+        }
+
+        let palette = self.palette.and_then(Asset::get);
+        let deck_groups = self.groups.clone();
+        let main_dimmer = self.main_dimmer;
+        for scene_instance in self.scenes_instances_grid.values_mut() {
+            scene_instance.prepare(
+                queue,
+                always_render,
+                palette.clone(),
+                &deck_groups,
+                timing,
+                main_dimmer,
+            );
+        }
+
+        PreviewIndices::get().prepare(queue);
+
+        #[allow(unused_mut)]
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("Render animations"),
+        });
+
+        #[cfg(feature = "profiling")]
+        {
+            let mut wgpu_profiler = crate::WGPU_PROFILER.lock();
+            OutputClear::get().run(&mut wgpu_profiler.scope("OutputClear", &mut encoder));
+            for scene_instance in self.scenes_instances_grid.values_mut() {
+                scene_instance.render(
+                    &mut wgpu_profiler.scope(
+                        format!("Render scene \"{}\"", scene_instance.name),
+                        &mut encoder,
+                    ),
+                    blackout,
+                    always_render,
+                );
+            }
+            ExtractOutput::get().run(&mut wgpu_profiler.scope("ExtractOutput", &mut encoder));
+            PreviewIndices::get().run(&mut wgpu_profiler.scope("PreviewIndices", &mut encoder));
+            Preview::run(&mut wgpu_profiler.scope("Preview", &mut encoder));
+            wgpu_profiler.resolve_queries(&mut encoder);
+        }
+
+        #[cfg(not(feature = "profiling"))]
+        {
+            OutputClear::get().run(&mut encoder);
+            for scene_instance in self.scenes_instances_grid.values_mut() {
+                scene_instance.render(&mut encoder, blackout, always_render);
+            }
+            ExtractOutput::get().run(&mut encoder);
+            PreviewIndices::get().run(&mut encoder);
+            Preview::run(&mut encoder);
+        }
+
+        RendererCallback::add(encoder.finish());
     }
 
     pub fn tap_input_is_new(&self) -> bool {
@@ -239,9 +307,8 @@ impl Project {
         self.double_input_events.iter().any(|event| event.is_new())
     }
 
-    pub fn add_scene(&mut self, pos: GridLocation, scene: AssetId<Scene>) {
-        let mut scene_instance: SceneInstance = scene.into();
-        scene_instance.init_states();
+    pub fn add_scene(&mut self, pos: GridLocation, scene_id: AssetId<Scene>) {
+        let scene_instance: SceneInstance = scene_id.into();
         self.add_scene_instance(pos, scene_instance);
     }
 

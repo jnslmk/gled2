@@ -1,4 +1,3 @@
-use super::Effect;
 use crate::{
     pipeline::{
         group::Group, output_mix::OutputMix, renderer_callback::RendererCallback,
@@ -11,9 +10,9 @@ use crate::{
 use arboard::{Clipboard, ImageData};
 use egui::TextureId;
 use rand::Rng;
-use wgpu::{MapMode, PollType};
+use wgpu::{CommandEncoder, MapMode, PollType};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub struct EffectState {
     /// Progress in current beat.
     pub beat_progression: f32,
@@ -29,42 +28,21 @@ pub struct EffectState {
     pub speed_exponent: i32,
 
     pub animation_config: AnimationConfig,
-
     pub sent_group: Option<Group>,
-    pub texture_to_output: TextureToOutput,
-    pub texture_id: OwnedTextureId,
-    pub output_mix: OutputMix,
-    pub renderer: AnimationRenderer,
+
+    output_mix: Option<OutputMix>,
+    texture_to_output: Option<TextureToOutput>,
+    texture_id: Option<OwnedTextureId>,
+    renderer: Option<AnimationRenderer>,
 }
 
 impl EffectState {
-    pub fn new(effect: &Effect) -> Self {
-        let (renderer, texture_to_output, texture_id) =
-            setup_pipeline(&effect.shader_code_complete());
-
-        let output_mix = OutputMix::new();
-        Self {
-            beat_progression: 0.0,
-            beats_per_minute: 0.0,
-            framerate: 0.0,
-            opacity: 0.0,
-            color_shift: 0.0,
-            speed_exponent: 0,
-            animation_config: Default::default(),
-            sent_group: None,
-            texture_to_output,
-            texture_id,
-            output_mix,
-            renderer,
-        }
-    }
-
-    pub fn update(&mut self, effect: &Effect) {
-        let (renderer, texture_to_output, texture_id) =
-            setup_pipeline(&effect.shader_code_complete());
-        self.renderer = renderer;
-        self.texture_to_output = texture_to_output;
-        self.texture_id = texture_id;
+    pub fn set_shader_code(&mut self, shader_code: &str) {
+        let (renderer, texture_to_output, texture_id) = setup_pipeline(shader_code);
+        self.output_mix = Some(OutputMix::new(texture_to_output.output_buffer()));
+        self.renderer = Some(renderer);
+        self.texture_to_output = Some(texture_to_output);
+        self.texture_id = Some(texture_id);
     }
 
     /// Resend positions to gpu
@@ -72,8 +50,34 @@ impl EffectState {
         self.sent_group.take();
     }
 
-    pub fn texture_id(&self) -> TextureId {
-        self.texture_id.0
+    pub fn texture_id(&self) -> Option<TextureId> {
+        self.texture_id.as_ref().map(|t| t.0)
+    }
+
+    pub fn texture_to_output(&self) -> Option<&TextureToOutput> {
+        self.texture_to_output.as_ref()
+    }
+
+    pub fn renderer(&self) -> Option<&AnimationRenderer> {
+        self.renderer.as_ref()
+    }
+
+    pub fn output_mix(&self) -> Option<&OutputMix> {
+        self.output_mix.as_ref()
+    }
+
+    pub fn render(&self, encoder: &mut CommandEncoder, send_output: bool) {
+        if let Some(renderer) = self.renderer.as_ref() {
+            renderer.render(encoder);
+        }
+        if send_output {
+            if let Some(texture_to_output) = self.texture_to_output.as_ref() {
+                texture_to_output.run(encoder);
+            }
+            if let Some(output_mix) = self.output_mix.as_ref() {
+                output_mix.run(encoder);
+            }
+        }
     }
 
     pub fn write_data(&self, beat_progression: f32, data: &mut [u8]) {
@@ -104,7 +108,11 @@ impl EffectState {
     }
 
     pub fn copy_rendered_image_to_clipboard(&self) {
-        let texture = self.renderer.texture();
+        let Some(renderer) = self.renderer.as_ref() else {
+            return;
+        };
+
+        let texture = renderer.texture();
         let texture_size = texture.size();
         let buffer_size = (texture_size.width * texture_size.height * 4) as wgpu::BufferAddress;
         let buffer = wgpu_render_state()
@@ -123,7 +131,7 @@ impl EffectState {
                 });
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
-                texture: self.renderer.texture(),
+                texture: renderer.texture(),
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,

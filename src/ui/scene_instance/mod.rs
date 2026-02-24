@@ -1,19 +1,13 @@
 pub mod dnd;
 pub mod widget;
 
-use super::{action::UiAction, ChangeButton};
+use super::ChangeButton;
 use crate::{
-    app::timing::Timing,
-    pipeline::group::Groups,
-    storage::asset::{scene::instance::SceneInstance, Asset},
+    app::timing::Timing, pipeline::group::Groups, storage::asset::scene::instance::SceneInstance,
     ui::effect::widget::EffectWidget,
 };
-use egui::{
-    scroll_area::ScrollBarVisibility::AlwaysVisible, Checkbox, Color32, Margin, ScrollArea,
-    Vec2,
-};
+use egui::{Checkbox, Margin, ScrollArea, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible};
 use egui_modal::Modal;
-use std::sync::Arc;
 
 impl SceneInstance {
     pub fn config_ui(
@@ -101,91 +95,24 @@ impl SceneInstance {
 
                 ui.separator();
 
-                ui.label("Animations / Click to overwrite (⚙)");
-
-                let Some(scene) = Asset::get(self.scene) else {
-                    ui.colored_label(Color32::RED, "Scene not found!");
-                    return;
-                };
-
-                if !self.effect_overwrites.is_empty() {
-                    ui.horizontal(|ui| {
-                        egui::Frame::NONE
-                            .inner_margin(Margin::from(3.0))
-                            .show(ui, |ui| {
-                                ui.set_max_width(width / 2.0);
-                                ui.vertical_centered_justified(|ui| {
-                                    if ui.button("Remove all overwrites (⚙)").clicked() {
-                                        self.effect_overwrites.clear();
-                                        UiAction::InitGPU.enqueue();
-                                    }
-                                });
-                            });
-                        egui::Frame::NONE
-                            .inner_margin(Margin::from(3.0))
-                            .show(ui, |ui| {
-                                ui.set_max_width(width / 2.0);
-                                ui.vertical_centered_justified(|ui| {
-                                    if ui.button("Save overwrites to scene").clicked() {
-                                        let mut scene = Arc::unwrap_or_clone(scene.clone());
-                                        scene.data.effects.iter_mut().enumerate().for_each(
-                                            |(index, effect)| {
-                                                if let Some(overwrite) =
-                                                    self.effect_overwrites.remove(&index)
-                                                {
-                                                    *effect = overwrite;
-                                                }
-                                            },
-                                        );
-                                        scene.save();
-                                        self.effect_overwrites.clear();
-                                        UiAction::InitGPU.enqueue();
-                                    }
-                                });
-                            });
-                    });
-                }
+                ui.label("Animations");
 
                 ui.horizontal_wrapped(|ui| {
-                    let mut set_overwritten_effect = None;
-                    for ((index, effect, overwritten), effect_state) in scene
-                        .data
-                        .effects()
-                        .iter()
-                        .enumerate()
-                        .map(|(index, effect)| {
-                            self.effect_overwrites
-                                .get(&index)
-                                .map(|effect| (index, effect, true))
-                                .unwrap_or((index, effect, false))
-                        })
-                        .zip(self.effect_states.iter_mut())
-                    {
+                    for (index, effect) in self.scene.effects.iter_mut().enumerate() {
                         let mut selected = 0;
-                        let rect = ui
-                            .add_sized(
-                                Vec2::splat(100.0),
-                                EffectWidget {
-                                    show_group: true,
-                                    selectable: Some((&mut selected, 1)),
-                                    effect,
-                                    effect_state,
-                                    svg: svg.clone(),
-                                    groups: Some(&groups),
-                                    groups_show_index: false,
-                                    beat_progression: Some(beat_progression),
-                                },
-                            )
-                            .rect;
-                        if overwritten {
-                            ui.painter().text(
-                                rect.left_bottom() + Vec2::new(12.0, -10.0),
-                                egui::Align2::LEFT_BOTTOM,
-                                "⚙",
-                                egui::TextStyle::Body.resolve(ui.style()),
-                                Color32::from_white_alpha(100),
-                            );
-                        }
+                        ui.add_sized(
+                            Vec2::splat(100.0),
+                            EffectWidget {
+                                show_group: true,
+                                selectable: Some((&mut selected, 1)),
+                                effect,
+                                svg: svg.clone(),
+                                groups: Some(&groups),
+                                groups_show_index: false,
+                                beat_progression: Some(beat_progression),
+                            },
+                        );
+
                         let modal = Modal::new(ui.ctx(), format!("effect settings {index}"))
                             .with_close_on_outside_click(true);
                         let svg = svg.clone();
@@ -199,7 +126,6 @@ impl SceneInstance {
                                         show_group: true,
                                         selectable: None,
                                         effect,
-                                        effect_state,
                                         svg: svg.clone(),
                                         groups: Some(&groups),
                                         groups_show_index: true,
@@ -207,36 +133,13 @@ impl SceneInstance {
                                     },
                                 );
                                 ui.vertical(|ui| {
-                                    let mut effect = effect.to_owned();
-                                    let changed = effect.config_ui(
-                                        effect_state,
-                                        ui,
-                                        false,
-                                        svg.clone(),
-                                        beat_progression,
-                                    );
-                                    if changed {
-                                        if Some(&effect) != scene.data.effects.get(index) {
-                                            set_overwritten_effect = Some((index, Some(effect)));
-                                        } else {
-                                            set_overwritten_effect = Some((index, None));
-                                        }
-                                    }
+                                    effect.config_ui(ui, false, svg.clone(), beat_progression);
                                 });
                             });
                         });
                         if selected == 1 {
                             modal.open();
                         }
-                    }
-
-                    if let Some((index, effect)) = set_overwritten_effect {
-                        if let Some(effect) = effect {
-                            self.effect_overwrites.insert(index, effect);
-                        } else {
-                            self.effect_overwrites.remove(&index);
-                        }
-                        UiAction::InitGPU.enqueue();
                     }
                 });
             });
