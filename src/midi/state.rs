@@ -6,10 +6,9 @@ use once_cell::sync::{Lazy, OnceCell};
 use std::collections::{HashMap, HashSet};
 
 static SENDER: OnceCell<Sender<MidiState>> = OnceCell::new();
-static PREVIOUS_STATE: OnceCell<Mutex<MidiState>> = OnceCell::new();
 static SENDERS: Lazy<Mutex<Vec<Sender<MidiState>>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct MidiState {
     pub blackout: bool,
     pub beat_flank: u8,
@@ -22,13 +21,6 @@ impl Eq for MidiState {}
 
 impl MidiState {
     pub fn enqueue(self) {
-        let mut previous = PREVIOUS_STATE
-            .get_or_init(|| Mutex::new(self.clone()))
-            .lock();
-        if *previous == self {
-            return;
-        }
-        *previous = self.clone();
         SENDER
             .get()
             .expect("Could not get sender")
@@ -44,8 +36,14 @@ pub fn start() {
     let (sender, receiver) = unbounded();
     SENDER.set(sender).expect("Could not set sender");
 
+    let mut previous = MidiState::default();
+
     loop {
         let state = receiver.recv().expect("Could not receive state");
+        if previous == state {
+            continue;
+        }
+        previous = state.clone();
         SENDERS
             .lock()
             .retain(|sender| sender.send(state.clone()).is_ok());
