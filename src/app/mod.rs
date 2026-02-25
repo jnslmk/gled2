@@ -10,15 +10,14 @@ pub mod storage;
 pub mod svg;
 pub mod timing;
 
-use crate::storage::asset::scene::grid::GridLocation;
-use crate::storage::collections::Collections;
 use crate::{
     input::Input,
     midi::state::MidiState,
     pipeline::renderer_callback::RendererCallback,
     storage::{
-        asset::{Asset, palette::Palette, project::Project},
+        asset::{Asset, palette::Palette, project::Project, scene::grid::GridLocation},
         asset_id::AssetId,
+        collections::Collections,
         loading,
     },
     ui::{
@@ -28,8 +27,9 @@ use crate::{
 };
 use eframe::egui_wgpu::Callback;
 use egui::{CentralPanel, Id, Rect, UiBuilder, ViewportId, ahash::HashSet};
+use kanal::Receiver;
 use persistant_state::PersistantState;
-use std::{sync::mpsc::Receiver, time::Instant};
+use std::time::Instant;
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
 
@@ -51,6 +51,8 @@ pub struct App {
     pub palette_asset_tree: AssetTree<Palette>,
     pub palette_asset_tree_id: Option<Id>,
     pub collections: Collections,
+    pub network_stats: (f64, f64),
+    pub network_stats_receiver: Receiver<(f64, f64)>,
 }
 
 impl eframe::App for App {
@@ -72,6 +74,9 @@ impl eframe::App for App {
             crate::PUFFIN_GPU_PROFILER.lock().new_frame();
         }
 
+        if let Ok(Some(network_stats)) = self.network_stats_receiver.try_recv() {
+            self.network_stats = network_stats;
+        }
         self.collections.update();
 
         if loading().is_none() && self.startup {
@@ -256,7 +261,10 @@ impl App {
             }
         });
     }
-    pub fn new(ui_action_receiver: Receiver<UiAction>) -> Option<Self> {
+    pub fn new(
+        ui_action_receiver: Receiver<UiAction>,
+        network_stats_receiver: Receiver<(f64, f64)>,
+    ) -> Option<Self> {
         let app = Self {
             startup: true,
             timing: Default::default(),
@@ -278,6 +286,8 @@ impl App {
             },
             palette_asset_tree_id: None,
             collections: Default::default(),
+            network_stats: Default::default(),
+            network_stats_receiver,
         };
 
         Some(app)

@@ -1,5 +1,5 @@
-use crossbeam_channel::{Receiver, Sender};
 use eframe::egui_wgpu::CallbackTrait;
+use kanal::{Receiver, Sender, bounded};
 use once_cell::sync::OnceCell;
 use wgpu::CommandBuffer;
 
@@ -11,7 +11,7 @@ pub struct RendererCallback;
 impl RendererCallback {
     #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn init() {
-        let (tx, rx) = crossbeam_channel::bounded(16);
+        let (tx, rx) = bounded(16);
         SENDER.set(tx).expect("Could not set SENDER");
         RECEIVER.set(rx).expect("Could not set RECEIVER");
     }
@@ -46,7 +46,7 @@ impl CallbackTrait for RendererCallback {
     ) -> Vec<wgpu::CommandBuffer> {
         let mut buffers = Vec::with_capacity(16);
 
-        while let Ok(buffer) = RECEIVER
+        while let Ok(Some(buffer)) = RECEIVER
             .get()
             .expect("RECEIVER is not yet initialized")
             .try_recv()

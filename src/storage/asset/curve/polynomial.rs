@@ -1,6 +1,6 @@
-use crossbeam_channel::Sender;
 use egui::{Color32, Pos2, Stroke, mutex::Mutex};
 use epaint::QuadraticBezierShape;
+use kanal::{Sender, unbounded};
 use ndarray::arr1;
 use once_cell::sync::Lazy;
 use polyfit_residuals::{PolyFit, poly::NewtonPolynomial, try_fit_poly_with_residual};
@@ -18,7 +18,7 @@ static POLYNOMIALS_FITTING: AtomicUsize = AtomicUsize::new(0);
 static POLYNOMIALS: Lazy<Mutex<HashMap<BezierCurve, Option<Polynomial>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 static POLYNOMIAL_QUEUE: Lazy<Sender<BezierCurve>> = Lazy::new(|| {
-    let (sender, receiver) = crossbeam_channel::unbounded::<BezierCurve>();
+    let (sender, receiver) = unbounded::<BezierCurve>();
     spawn(move || {
         #[cfg(feature = "profiling")]
         profiling::register_thread!("polynomial");

@@ -1,7 +1,7 @@
 use crate::storage::asset::scene::color::SceneInstanceColor;
 use crate::storage::asset::scene::grid::GridLocation;
-use crossbeam_channel::{unbounded, Receiver, Sender};
 use egui::mutex::Mutex;
+use kanal::{Receiver, Sender, unbounded};
 use once_cell::sync::{Lazy, OnceCell};
 use std::collections::{HashMap, HashSet};
 

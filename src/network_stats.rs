@@ -1,16 +1,17 @@
-use egui::mutex::Mutex;
-use once_cell::sync::Lazy;
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+
+use kanal::{Receiver, bounded};
 
 const UPDATE_SECONDS: u64 = 3;
 const COUNTED_BYTES_TO_MBIT: f64 = (UPDATE_SECONDS * 1024 * 1024 / 8) as f64;
 
-static STATS: Lazy<Mutex<Option<(f64, f64)>>> = Lazy::new(|| Mutex::new(None));
 static INCOMING_BYTES: AtomicUsize = AtomicUsize::new(0);
 static OUTGOING_BYTES: AtomicUsize = AtomicUsize::new(0);
 
-pub fn start_thread() {
-    std::thread::spawn(|| {
+pub fn start_thread() -> Receiver<(f64, f64)> {
+    let (tx, rx) = bounded(0);
+
+    std::thread::spawn(move || {
         log::info!("Starting network stats thread");
         #[cfg(feature = "profiling")]
         profiling::register_thread!("network:stats");
@@ -20,12 +21,15 @@ pub fn start_thread() {
 
             let incoming = INCOMING_BYTES.swap(0, Relaxed);
             let outgoing = OUTGOING_BYTES.swap(0, Relaxed);
-            *STATS.lock() = Some((
+            tx.send((
                 incoming as f64 / COUNTED_BYTES_TO_MBIT,
                 outgoing as f64 / COUNTED_BYTES_TO_MBIT,
-            ));
+            ))
+            .expect("Could not send network stats");
         }
     });
+
+    rx
 }
 
 pub fn add_incoming_bytes(bytes: usize) {
@@ -34,8 +38,4 @@ pub fn add_incoming_bytes(bytes: usize) {
 
 pub fn add_outgoing_bytes(bytes: usize) {
     OUTGOING_BYTES.fetch_add(bytes, Relaxed);
-}
-
-pub fn stats() -> Option<(f64, f64)> {
-    *STATS.lock()
 }

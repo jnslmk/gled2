@@ -1,7 +1,7 @@
 //! Send data to output devices.
 
 use anyhow::{Context, Result};
-use crossbeam_channel::{Receiver, Sender};
+use kanal::{Receiver, Sender, bounded};
 use log::{debug, trace, warn};
 use std::{
     borrow::Cow,
@@ -28,7 +28,7 @@ pub fn start() -> Result<Sender<OutputPackage>> {
 
     debug!("Spawning output thread");
 
-    let (sender, receiver) = crossbeam_channel::bounded(10);
+    let (sender, receiver) = bounded(16);
     thread::Builder::new()
         .name("gled:output:tx".to_owned())
         .spawn(move || {
@@ -37,24 +37,27 @@ pub fn start() -> Result<Sender<OutputPackage>> {
         .context("Could not spawn output merge and send thread")?;
 
     thread::Builder::new()
-        .name("gled:output:tx".to_owned())
+        .name("gled:output:prepare".to_owned())
         .spawn({
             let sender = sender.clone();
             move || {
                 #[cfg(feature = "profiling")]
                 profiling::register_thread!("output:tx");
 
-                let mut collections = Collections::default();
-
                 let extract_output = ExtractOutput::get();
                 let output_receiver = extract_output
                     .take_output_receiver()
                     .expect("Could not take output receiver");
 
-                for mut output_data in output_receiver.iter() {
+                // Wait for first output before getting collections to avoid blocking
+                let _ = output_receiver.recv();
+
+                let mut collections = Collections::default();
+
+                while let Ok(mut output_data) = output_receiver.recv() {
                     collections.update();
 
-                    trace!("Sending output data");
+                    trace!("Preparing output data");
                     {
                         let mut routings = extract_output.routings.lock();
                         let hovered_output_routing = HOVERED_OUTPUT_ROUTING.lock().clone();
@@ -80,19 +83,25 @@ pub fn start() -> Result<Sender<OutputPackage>> {
                             if let Some(recipient) = routing.recipient(&collections) {
                                 let mut data = [0u8; UNIVERSE_BUFFER_SIZE as usize];
                                 data.copy_from_slice(values);
-                                sender.send(OutputPackage::Gled { recipient, data }).ok();
+                                sender
+                                    .send(OutputPackage::Gled { recipient, data })
+                                    .expect("Could not send output package");
                             }
                         }
 
                         if let Some(routing) = hovered_output_routing
                             && let Some(recipient) = routing.recipient(&collections)
                         {
-                            sender.send(OutputPackage::Hovered { recipient }).ok();
+                            sender
+                                .send(OutputPackage::Hovered { recipient })
+                                .expect("Could not send hovered output package");
                         }
 
                         for (routing, data) in channel_overwrites.overwritten_universes() {
                             if let Some(recipient) = routing.recipient(&collections) {
-                                sender.send(OutputPackage::Gled { recipient, data }).ok();
+                                sender
+                                    .send(OutputPackage::Gled { recipient, data })
+                                    .expect("Could not send overwritten output package");
                             }
                         }
                     }
@@ -142,7 +151,15 @@ fn merge_and_send_thread(receiver: Receiver<OutputPackage>) {
     let mut gled_cache =
         HashMap::<Recipient, (Instant, Instant, [u8; UNIVERSE_BUFFER_SIZE as usize])>::new();
 
-    for package in receiver.iter() {
+    loop {
+        let package = match receiver.recv() {
+            Ok(package) => package,
+            Err(err) => {
+                warn!("Output package sender disconnected: {err}");
+                break;
+            }
+        };
+
         let now = Instant::now();
         let (recipient, hovered) = match package {
             OutputPackage::ArtnetInput {

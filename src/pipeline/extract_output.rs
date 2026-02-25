@@ -7,8 +7,8 @@ use crate::{
     svg::measurement_point::Universes,
     wgpu_render_state,
 };
-use crossbeam_channel::{Receiver, Sender, bounded};
 use egui::mutex::Mutex;
+use kanal::{Receiver, Sender, bounded};
 use std::{
     collections::BTreeSet,
     sync::{Arc, OnceLock},
@@ -27,7 +27,7 @@ impl ExtractOutput {
     pub fn get() -> &'static Self {
         static EXTRACT_OUTPUT: OnceLock<ExtractOutput> = OnceLock::new();
         EXTRACT_OUTPUT.get_or_init(|| {
-            let (output_sender, output_receiver) = bounded(1);
+            let (output_sender, output_receiver) = bounded(0);
 
             Self {
                 output_sender,

@@ -4,7 +4,7 @@ use crate::storage::asset::project::scene_instance_path::{
 };
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::{storage::asset::scene::color::SceneInstanceColor, ui::action::UiAction};
-use crossbeam_channel::Receiver;
+use kanal::Receiver;
 use midir::MidiOutputConnection;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 

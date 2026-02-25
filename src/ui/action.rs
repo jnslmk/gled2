@@ -13,12 +13,10 @@ use crate::{
     },
 };
 use egui::ViewportId;
+use kanal::{Receiver, Sender, unbounded};
 use notify_rust::Notification;
 use once_cell::sync::OnceCell;
-use std::sync::{
-    Arc,
-    mpsc::{Receiver, Sender},
-};
+use std::sync::Arc;
 
 static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 
@@ -59,7 +57,7 @@ impl App {
     #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn handle_ui_actions(&mut self) {
         loop {
-            let Some(action) = self.ui_action_receiver.try_recv().ok() else {
+            let Ok(Some(action)) = self.ui_action_receiver.try_recv() else {
                 return;
             };
             log::trace!("Handling ui action: {action:?}");
@@ -223,7 +221,7 @@ impl App {
 
 impl UiAction {
     pub fn init_queue() -> Receiver<UiAction> {
-        let (sender, receiver) = std::sync::mpsc::channel();
+        let (sender, receiver) = unbounded();
         ACTION_SENDER.set(sender).unwrap();
         receiver
     }

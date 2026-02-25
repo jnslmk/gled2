@@ -69,9 +69,6 @@ impl ArtnetInputWindow {
                     let mut config = ARTNET_CONFIG.lock();
 
                     ui.horizontal(|ui| {
-                        ui.label("Active");
-                        ui.checkbox(&mut config.active, "");
-
                         ui.label("Bind address");
                         let mut selected_index = self
                             .addresses

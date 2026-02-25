@@ -12,6 +12,7 @@ use crate::{
 };
 use arboard::{Clipboard, ImageData};
 use egui::TextureId;
+use kanal::bounded;
 use rand::Rng;
 use wgpu::{CommandEncoder, MapMode, PollType};
 
@@ -154,7 +155,7 @@ impl EffectState {
         RendererCallback::add(encoder.finish());
 
         let buffer_slice = buffer.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = bounded(0);
         buffer_slice.map_async(MapMode::Read, move |v| {
             tx.send(v).expect("Could not send on oneshot sender")
         });

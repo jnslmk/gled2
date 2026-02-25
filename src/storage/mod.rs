@@ -119,7 +119,7 @@ pub fn start_thread() {
             ERROR.lock().take();
 
             // Clear the queue
-            while actions.try_recv().is_ok() {}
+            while let Ok(Some(_)) = actions.try_recv() {}
 
             Loading::GitRepository.set();
             let mut git = match git::Git::open(PersistantState::git_url()) {

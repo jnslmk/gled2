@@ -79,7 +79,7 @@ fn main() {
     ui::temperature::start_thread();
     midi::start_thread();
     audio::start_fft_thread();
-    network_stats::start_thread();
+    let network_stats_receiver = network_stats::start_thread();
     let output_package_sender = output_sender::start().expect("Could not start output sender");
 
     #[cfg(not(debug_assertions))]
@@ -173,7 +173,8 @@ fn main() {
                 .map_err(|_err| ())
                 .expect("Could not set wgpu render state");
             Ok(Box::new(
-                App::new(ui_action_receiver).expect("Could not create new App"),
+                App::new(ui_action_receiver, network_stats_receiver)
+                    .expect("Could not create new App"),
             ))
         }),
     )

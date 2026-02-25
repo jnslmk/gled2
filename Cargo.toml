@@ -15,7 +15,6 @@ artnet_protocol = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 cpal = "0.17"
-crossbeam-channel = "0.5"
 directories = "6"
 eframe = { version = "0.33", features = [
     "wgpu",
@@ -37,6 +36,7 @@ gilrs = "0.11"
 git2 = "0.20"
 home = "0.5"
 image = { version = "0.25", default-features = false, features = ["png"] }
+kanal = "0.1"
 keyring = { version = "3", features = [
     "apple-native",
     "windows-native",
