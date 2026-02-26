@@ -482,28 +482,6 @@ impl ADSR {
             0.,
             Color32::from_white_alpha(100));
 
-        Frame::new().show(ui, |ui| {
-            ui.take_available_width();
-            ui.set_height(20.);
-            let rect = ui.available_rect_before_wrap();
-            // draw spectrum frequency indicators
-            let length = size.x;
-            // TODO: take into account the the logarithmic pre-scaling here
-            for i in 0..=9 {
-                let freq = (i as f32).exp2() * 110.;
-                let bin = get_fft_bin_index_by_frequency(freq);
-                let x = remap(bin as f32, 0f32..=(FREQ_BINS as f32), ui_position_range.clone());
-                if x > length {
-                    break;
-                }
-                ui.painter().vline(x, rect.top()..=rect.bottom()-10.0, Stroke{width: 1.0, color: Color32::WHITE});
-                ui.place(
-                    Rect::from_min_max(pos2(x-10.0, rect.bottom()-10.0), pos2(x+10.0, rect.bottom())),
-                    Label::new(RichText::new(format!("{}", freq)).monospace().size(10.0)),
-                );
-            }
-        });
-
         scoped_frame(
             ui,
             UiBuilder::new()
