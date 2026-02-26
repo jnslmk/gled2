@@ -34,7 +34,16 @@ pub struct ScenesWindow {
 
 impl ScenesWindow {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context, timing: &Timing, collections: &mut Collections) {
+    pub fn update(
+        &mut self,
+        ctx: &Context,
+        timing: &Timing,
+        collections: &mut Collections,
+        persistant_state: &mut PersistantState,
+    ) {
+        if !self.open {
+            return;
+        }
         if !self.open {
             return;
         }
@@ -150,9 +159,8 @@ impl ScenesWindow {
                                 .show(ui, |ui| {
                                     ui.label("Preview Palette");
                                     ui.vertical_centered_justified(|ui| {
-                                        let mut persistant_state = PersistantState::get();
                                         if persistant_state
-                                            .preview_palette
+                                            .preview_palette_mut()
                                             .collections_change_button(ui, collections)
                                         {
                                             persistant_state.save();
@@ -174,8 +182,8 @@ impl ScenesWindow {
                                 let queue = &wgpu_render_state.queue;
                                 scene.prepare(
                                     queue,
-                                    PersistantState::get()
-                                        .preview_palette
+                                    persistant_state
+                                        .preview_palette()
                                         .and_then(|id| Asset::get(id, collections)),
                                     &Default::default(),
                                     1.0,

@@ -89,7 +89,7 @@ fn main() {
     wgpu_options.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
-            power_preference: if PersistantState::prefer_discrete_gpu() {
+            power_preference: if PersistantState::default().prefer_discrete_gpu() {
                 PowerPreference::HighPerformance
             } else {
                 PowerPreference::LowPower

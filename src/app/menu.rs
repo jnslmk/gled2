@@ -1,4 +1,4 @@
-use super::{App, PersistantState, svg::Svg};
+use super::{App, svg::Svg};
 use crate::{
     app::timing::{CONNECTED_PEERS, LINK_ACTIVE_COLOR},
     input::artnet::ARTNET_CONFIG,
@@ -258,7 +258,7 @@ impl App {
                     ui.separator();
 
                     ui.label("GPU preference");
-                    let mut prefer_discrete_gpu = PersistantState::prefer_discrete_gpu();
+                    let mut prefer_discrete_gpu = self.persistant_state.prefer_discrete_gpu();
                     if ui
                         .checkbox(
                             &mut prefer_discrete_gpu,
@@ -267,12 +267,12 @@ impl App {
                         .on_hover_text("Needs restart of gled")
                         .changed()
                     {
-                        let mut persistant_state = PersistantState::get();
-                        persistant_state.prefer_discrete_gpu = prefer_discrete_gpu;
-                        persistant_state.save();
+                        self.persistant_state
+                            .set_prefer_discrete_gpu(prefer_discrete_gpu);
+                        self.persistant_state.save();
                     }
                     ui.label("Framerate Limiter");
-                    let mut fps_limit = PersistantState::fps_limit();
+                    let mut fps_limit = self.persistant_state.fps_limit();
                     ui.spacing_mut().slider_width = 290.0;
                     if ui
                         .add(
@@ -282,19 +282,17 @@ impl App {
                         )
                         .changed()
                     {
-                        let mut persistant_state = PersistantState::get();
-                        persistant_state.fps_limit = fps_limit;
-                        persistant_state.save();
+                        self.persistant_state.set_fps_limit(fps_limit);
+                        self.persistant_state.save();
                     }
-                    let mut persistant_state = PersistantState::get();
                     if ui
                         .checkbox(
-                            &mut persistant_state.effects_always_render,
+                            self.persistant_state.effects_always_render_mut(),
                             "Always render all scenes",
                         )
                         .changed()
                     {
-                        persistant_state.save();
+                        self.persistant_state.save();
                     };
 
                     ui.separator();
@@ -303,16 +301,15 @@ impl App {
 
                     ui.separator();
 
-                    let mut persistant_state = PersistantState::get();
                     ui.label("Size:");
                     if ui
                         .add(
-                            Slider::new(&mut persistant_state.effects_size, 50.0..=500.0)
+                            Slider::new(self.persistant_state.effects_size_mut(), 50.0..=500.0)
                                 .show_value(false),
                         )
                         .changed()
                     {
-                        persistant_state.save();
+                        self.persistant_state.save();
                     }
                 });
 

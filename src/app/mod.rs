@@ -53,6 +53,7 @@ pub struct App {
     pub collections: Collections,
     pub network_stats: (f64, f64),
     pub network_stats_receiver: Receiver<(f64, f64)>,
+    pub persistant_state: PersistantState,
 }
 
 impl eframe::App for App {
@@ -78,15 +79,16 @@ impl eframe::App for App {
             self.network_stats = network_stats;
         }
         self.collections.update();
+        self.persistant_state.update();
 
         if loading().is_none() && self.startup {
             self.startup = false;
-            if let Some(project) = PersistantState::get().last_project_id {
+            if let Some(project) = self.persistant_state.last_project_id() {
                 UiAction::SetProject(project).enqueue();
             }
         }
 
-        self.timing.tick();
+        self.timing.tick(self.persistant_state.fps_limit());
         Input::tick();
         self.handle_ui_actions();
 
@@ -109,7 +111,7 @@ impl eframe::App for App {
             project.render(
                 &self.timing,
                 self.blackout || self.blackout_hold,
-                if PersistantState::effects_always_render() && {
+                if self.persistant_state.effects_always_render() && {
                     self.last_always_render_fps_frame.elapsed().as_secs_f32() > 1.0 / 30.0
                 } {
                     self.last_always_render_fps_frame = Instant::now();
@@ -214,6 +216,7 @@ impl eframe::App for App {
             &self.timing,
             self.project.as_mut(),
             &mut self.collections,
+            &mut self.persistant_state,
         );
 
         ctx.request_repaint();
@@ -288,6 +291,7 @@ impl App {
             collections: Default::default(),
             network_stats: Default::default(),
             network_stats_receiver,
+            persistant_state: Default::default(),
         };
 
         Some(app)
@@ -302,11 +306,11 @@ pub struct GitUiState {
 
 impl Default for GitUiState {
     fn default() -> Self {
-        let persistant_state = PersistantState::get();
+        let persistant_state = PersistantState::default();
 
         Self {
-            url: persistant_state.git_url,
-            use_passphrase: persistant_state.git_credentials.use_passphrase(),
+            url: persistant_state.git_url(),
+            use_passphrase: persistant_state.git_credentials().use_passphrase(),
             passphrase: Default::default(),
         }
     }

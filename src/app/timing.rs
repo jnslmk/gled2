@@ -1,4 +1,3 @@
-use super::PersistantState;
 use egui::{Button, Color32, CornerRadius, Stroke, TextFormat, Ui, Vec2, text::LayoutJob};
 use log::debug;
 use rusty_link::{AblLink, SessionState};
@@ -70,8 +69,8 @@ impl Timing {
     }
 
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn tick(&mut self) {
-        self.limit_fps();
+    pub fn tick(&mut self, fps_limit: f32) {
+        self.limit_fps(fps_limit);
         self.set_link_values();
         self.get_link_values();
         self.calculate_avg_fps();
@@ -79,8 +78,7 @@ impl Timing {
     }
 
     #[cfg_attr(feature = "profiling", profiling::function)]
-    fn limit_fps(&mut self) {
-        let fps_limit = PersistantState::fps_limit();
+    fn limit_fps(&mut self, fps_limit: f32) {
         let target_frame_time_nanos = 1e+9f32 / fps_limit;
         while target_frame_time_nanos > (self.last_frame.elapsed().as_nanos() as f32) {
             std::thread::sleep(std::time::Duration::from_nanos(100));

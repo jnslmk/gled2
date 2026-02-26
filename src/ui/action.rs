@@ -2,7 +2,7 @@ use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
 use crate::storage::asset::scene::Scene;
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::{
-    app::{App, persistant_state::PersistantState, svg::Svg},
+    app::{App, svg::Svg},
     input::artnet::ARTNET_CONFIG,
     pipeline::extract_output::ExtractOutput,
     storage::{
@@ -165,9 +165,8 @@ impl App {
                 }
                 (_, UiAction::SetProject(project)) => {
                     if let Some(project) = Asset::get(project, &self.collections) {
-                        let mut persistant_state = PersistantState::get();
-                        persistant_state.last_project_id = Some(project.id);
-                        persistant_state.save();
+                        self.persistant_state.set_last_project_id(project.id);
+                        self.persistant_state.save();
 
                         self.project_id = Some(project.id);
                         let project = Arc::unwrap_or_clone(project).data;

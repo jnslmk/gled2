@@ -106,7 +106,7 @@ impl Git {
                 .map(|username| username.to_owned())
                 .unwrap_or(whoami::username().expect("Could not get username"));
 
-            let credentials = PersistantState::git_credentials();
+            let credentials = PersistantState::default().git_credentials();
             if let Some(private_key) = credentials
                 .private_key_path()
                 .and_then(|path| std::fs::read_to_string(path).ok())

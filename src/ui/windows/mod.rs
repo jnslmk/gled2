@@ -1,5 +1,5 @@
 use crate::{
-    app::timing::Timing,
+    app::{persistant_state::PersistantState, timing::Timing},
     storage::{asset::project::Project, collections::Collections},
 };
 use egui::Context;
@@ -43,19 +43,22 @@ impl Windows {
         timing: &Timing,
         project: Option<&mut Project>,
         collections: &mut Collections,
+        persistant_state: &mut PersistantState,
     ) {
         self.about.update(ctx);
-        self.animations.update(ctx, timing, collections);
+        self.animations
+            .update(ctx, timing, collections, persistant_state);
         self.channel_overwrites.update(ctx, collections);
         self.curves.update(ctx, collections);
         self.errors.update(ctx);
-        self.git_config.update(ctx);
+        self.git_config.update(ctx, persistant_state);
         self.artnet_input.update(ctx, collections);
         self.output_devices.update(ctx, collections);
         self.output_routings.update(ctx, collections);
         self.palettes.update(ctx, collections);
         self.projects.update(ctx, collections);
-        self.scenes.update(ctx, timing, collections);
+        self.scenes
+            .update(ctx, timing, collections, persistant_state);
         self.shortcuts.update(ctx, project);
     }
 }

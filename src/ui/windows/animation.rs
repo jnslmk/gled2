@@ -64,7 +64,13 @@ impl AnimationWindow {
     }
 
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context, timing: &Timing, collections: &mut Collections) {
+    pub fn update(
+        &mut self,
+        ctx: &Context,
+        timing: &Timing,
+        collections: &mut Collections,
+        persistant_state: &mut PersistantState,
+    ) {
         if !self.open {
             self.dirty = false;
             return;
@@ -88,8 +94,8 @@ impl AnimationWindow {
             let queue = &wgpu_render_state.queue;
             effect.prepare(
                 queue,
-                PersistantState::get()
-                    .preview_palette
+                persistant_state
+                    .preview_palette()
                     .and_then(|id| Asset::get(id, collections)),
                 &Default::default(),
                 1.0,
@@ -108,7 +114,7 @@ impl AnimationWindow {
         }
 
         if self.preview {
-            self.show_preview_window(ctx, collections);
+            self.show_preview_window(ctx, collections, persistant_state);
         }
 
         ctx.show_viewport_immediate(
@@ -213,7 +219,12 @@ impl AnimationWindow {
         self.open = true;
     }
 
-    pub fn show_preview_window(&mut self, ctx: &Context, collections: &mut Collections) {
+    pub fn show_preview_window(
+        &mut self,
+        ctx: &Context,
+        collections: &mut Collections,
+        persistant_state: &mut PersistantState,
+    ) {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("animation preview window")),
             default_viewport_builder()
@@ -248,9 +259,8 @@ impl AnimationWindow {
                             .show(ui, |ui| {
                                 ui.label("Preview Palette");
                                 ui.vertical_centered_justified(|ui| {
-                                    let mut persistant_state = PersistantState::get();
                                     if persistant_state
-                                        .preview_palette
+                                        .preview_palette_mut()
                                         .collections_change_button(ui, collections)
                                     {
                                         persistant_state.save();

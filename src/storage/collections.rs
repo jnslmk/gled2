@@ -67,7 +67,6 @@ impl Collections {
     }
 
     pub fn save(&self) {
-        // sends to myself, but we ignore that for now
         for (id, sender) in SENDERS.lock().iter() {
             if id == &self.id {
                 continue;

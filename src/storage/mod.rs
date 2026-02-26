@@ -122,7 +122,7 @@ pub fn start_thread() {
             while let Ok(Some(_)) = actions.try_recv() {}
 
             Loading::GitRepository.set();
-            let mut git = match git::Git::open(PersistantState::git_url()) {
+            let mut git = match git::Git::open(PersistantState::default().git_url()) {
                 Ok(git) => git,
                 Err(err) => {
                     let err: String = format!("Could not open git: {err}");
