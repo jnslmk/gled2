@@ -13,7 +13,7 @@ pub mod timing;
 use crate::{
     input::Input,
     midi::state::MidiState,
-    pipeline::renderer_callback::RendererCallback,
+    pipeline::{extract_output::ExtractOutput, renderer_callback::RendererCallback},
     storage::{
         asset::{Asset, palette::Palette, project::Project, scene::grid::GridLocation},
         asset_id::AssetId,
@@ -54,6 +54,7 @@ pub struct App {
     pub network_stats: (f64, f64),
     pub network_stats_receiver: Receiver<(f64, f64)>,
     pub persistant_state: PersistantState,
+    pub extract_output: ExtractOutput,
 }
 
 impl eframe::App for App {
@@ -121,6 +122,7 @@ impl eframe::App for App {
                 },
                 self.timing.fade_duration(),
                 &self.collections,
+                &self.extract_output,
             );
         }
 
@@ -217,6 +219,7 @@ impl eframe::App for App {
             self.project.as_mut(),
             &mut self.collections,
             &mut self.persistant_state,
+            &mut self.extract_output,
         );
 
         ctx.request_repaint();
@@ -267,6 +270,7 @@ impl App {
     pub fn new(
         ui_action_receiver: Receiver<UiAction>,
         network_stats_receiver: Receiver<(f64, f64)>,
+        extract_output: ExtractOutput,
     ) -> Option<Self> {
         let app = Self {
             startup: true,
@@ -292,6 +296,7 @@ impl App {
             network_stats: Default::default(),
             network_stats_receiver,
             persistant_state: Default::default(),
+            extract_output,
         };
 
         Some(app)

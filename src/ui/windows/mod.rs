@@ -1,5 +1,6 @@
 use crate::{
     app::{persistant_state::PersistantState, timing::Timing},
+    pipeline::extract_output::ExtractOutput,
     storage::{asset::project::Project, collections::Collections},
 };
 use egui::Context;
@@ -44,6 +45,7 @@ impl Windows {
         project: Option<&mut Project>,
         collections: &mut Collections,
         persistant_state: &mut PersistantState,
+        extract_output: &mut ExtractOutput,
     ) {
         self.about.update(ctx);
         self.animations
@@ -54,7 +56,8 @@ impl Windows {
         self.git_config.update(ctx, persistant_state);
         self.artnet_input.update(ctx, collections);
         self.output_devices.update(ctx, collections);
-        self.output_routings.update(ctx, collections);
+        self.output_routings
+            .update(ctx, collections, extract_output);
         self.palettes.update(ctx, collections);
         self.projects.update(ctx, collections);
         self.scenes

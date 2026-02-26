@@ -1,5 +1,5 @@
 #![windows_subsystem = "windows"]
-#![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 pub mod app;
 pub mod audio;
@@ -11,7 +11,7 @@ pub mod storage;
 pub mod svg;
 pub mod ui;
 
-use crate::pipeline::output_sender;
+use crate::pipeline::{extract_output, output_sender};
 use app::{App, persistant_state::PersistantState};
 use clap::Parser;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
@@ -80,7 +80,9 @@ fn main() {
     midi::start_thread();
     audio::start_fft_thread();
     let network_stats_receiver = network_stats::start_thread();
-    let output_package_sender = output_sender::start().expect("Could not start output sender");
+    let (extract_output, output_receiver) = extract_output::ExtractOutput::new();
+    let output_package_sender =
+        output_sender::start(output_receiver).expect("Could not start output sender");
 
     #[cfg(not(debug_assertions))]
     ui::update_check::Update::start_thread();
@@ -173,7 +175,7 @@ fn main() {
                 .map_err(|_err| ())
                 .expect("Could not set wgpu render state");
             Ok(Box::new(
-                App::new(ui_action_receiver, network_stats_receiver)
+                App::new(ui_action_receiver, network_stats_receiver, extract_output)
                     .expect("Could not create new App"),
             ))
         }),

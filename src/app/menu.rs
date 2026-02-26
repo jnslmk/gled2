@@ -2,7 +2,6 @@ use super::{App, svg::Svg};
 use crate::{
     app::timing::{CONNECTED_PEERS, LINK_ACTIVE_COLOR},
     input::artnet::ARTNET_CONFIG,
-    pipeline::extract_output::ExtractOutput,
     storage::{STORAGE_DIR, asset::Asset},
     ui::{
         action::UiAction, logo::logo_image, window_common::window_buttons,
@@ -164,7 +163,7 @@ impl App {
                 {
                     asset.data = project.to_owned();
                     asset.data.artnet_config = ARTNET_CONFIG.lock().clone();
-                    asset.data.output_routings = ExtractOutput::get().routings.lock().clone();
+                    asset.data.output_routings = self.extract_output.routings.clone();
                     asset.data.channel_overwrites = ChannelOverwrites::get();
                     asset.save(&mut self.collections);
                 }

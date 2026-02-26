@@ -40,15 +40,14 @@ impl App {
         let height = ui.available_height();
         ui.horizontal(|ui| {
             let size = Vec2::splat(height.min(ui.available_width()));
-            let res =
-                self.svg_mut()
-                    .and_then(|svg| svg.image(ui.ctx()))
-                    .map(|svg_texture_handle| {
-                        ui.add(
-                            Image::new(SizedTexture::new(svg_texture_handle.id(), size))
-                                .bg_fill(Color32::BLACK),
-                        )
-                    });
+
+            let svg_texture = self.svg_texture(ui.ctx());
+            let res = svg_texture.map(|svg_texture_handle| {
+                ui.add(
+                    Image::new(SizedTexture::new(svg_texture_handle.id(), size))
+                        .bg_fill(Color32::BLACK),
+                )
+            });
             let preview = Image::new(SizedTexture::new(Preview::texture_id(), size));
             match res {
                 Some(res) => {

@@ -27,6 +27,10 @@ where
 }
 
 impl OutputRoutings {
+    pub fn get(&self, universe: &u16) -> Option<&OutputRouting> {
+        self.routings.get(universe)
+    }
+
     pub fn universe_output_routing(&mut self, universe: u16) -> &mut OutputRouting {
         self.routings.entry(universe).or_default()
     }

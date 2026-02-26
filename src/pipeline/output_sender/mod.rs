@@ -7,23 +7,26 @@ use std::{
     borrow::Cow,
     collections::{HashMap, hash_map::Entry},
     net::SocketAddr,
+    sync::Arc,
     thread,
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
 use crate::{
     input::artnet::ARTNET_SOCKET,
-    pipeline::{
-        constants::{UNIVERSE_BUFFER_SIZE, UNIVERSES},
-        extract_output::ExtractOutput,
+    pipeline::constants::{UNIVERSE_BUFFER_SIZE, UNIVERSES},
+    storage::{
+        asset::output_device::{enttec_usb_pro, routing::OutputRoutings},
+        collections::Collections,
     },
-    storage::{asset::output_device::enttec_usb_pro, collections::Collections},
-    svg::universe_color_channels::UniverseColorChannels,
+    svg::{measurement_point::Universes, universe_color_channels::UniverseColorChannels},
     ui::windows::{channel_overwrites::ChannelOverwrites, output_routings::HOVERED_OUTPUT_ROUTING},
 };
 
 /// Start output thread.
-pub fn start() -> Result<Sender<OutputPackage>> {
+pub fn start(
+    output_receiver: Receiver<(Vec<u8>, Arc<Universes>, Arc<OutputRoutings>)>,
+) -> Result<Sender<OutputPackage>> {
     enttec_usb_pro::start();
 
     debug!("Spawning output thread");
@@ -44,34 +47,28 @@ pub fn start() -> Result<Sender<OutputPackage>> {
                 #[cfg(feature = "profiling")]
                 profiling::register_thread!("output:tx");
 
-                let extract_output = ExtractOutput::get();
-                let output_receiver = extract_output
-                    .take_output_receiver()
-                    .expect("Could not take output receiver");
-
                 // Wait for first output before getting collections to avoid blocking
                 let _ = output_receiver.recv();
 
                 let mut collections = Collections::default();
 
-                while let Ok(mut output_data) = output_receiver.recv() {
+                while let Ok((mut output_data, universes, routings)) = output_receiver.recv() {
                     collections.update();
 
                     trace!("Preparing output data");
                     {
-                        let mut routings = extract_output.routings.lock();
                         let hovered_output_routing = HOVERED_OUTPUT_ROUTING.lock().clone();
                         let mut channel_overwrites = ChannelOverwrites::get();
 
-                        for (universe, values) in extract_output
-                            .universes
-                            .lock()
+                        for (universe, values) in universes
                             .iter()
                             .take(UNIVERSES as usize)
                             .zip(output_data.chunks_exact_mut(UNIVERSE_BUFFER_SIZE as usize))
                         {
-                            let routing = routings.universe_output_routing(*universe);
-                            if Some(&*routing) == hovered_output_routing.as_ref() {
+                            let Some(routing) = routings.get(universe) else {
+                                continue;
+                            };
+                            if Some(routing) == hovered_output_routing.as_ref() {
                                 continue;
                             }
                             let Some(device_id) = routing.device else {

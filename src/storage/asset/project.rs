@@ -29,6 +29,7 @@ use crate::{
 use rand::seq::IndexedMutRandom;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use std::{
     collections::BTreeSet,
     time::{Duration, Instant},
@@ -48,7 +49,7 @@ pub struct Project {
     pub auto_mode_last_change: Option<Instant>,
     pub svg: Option<Svg>,
     pub channel_overwrites: ChannelOverwrites,
-    pub output_routings: OutputRoutings,
+    pub output_routings: Arc<OutputRoutings>,
     pub artnet_config: ArtnetConfig,
     pub tap_input_events: BTreeSet<InputEvent>,
     pub blackout_input_events: BTreeSet<InputEvent>,
@@ -174,6 +175,7 @@ impl Project {
         always_render: bool,
         fade_duration: Duration,
         collections: &Collections,
+        extract_output: &ExtractOutput,
     ) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
@@ -264,7 +266,7 @@ impl Project {
                     always_render,
                 );
             }
-            ExtractOutput::get().run(&mut wgpu_profiler.scope("ExtractOutput", &mut encoder));
+            extract_output.run(&mut wgpu_profiler.scope("ExtractOutput", &mut encoder));
             PreviewIndices::get().run(&mut wgpu_profiler.scope("PreviewIndices", &mut encoder));
             Preview::run(&mut wgpu_profiler.scope("Preview", &mut encoder));
             wgpu_profiler.resolve_queries(&mut encoder);
@@ -276,7 +278,7 @@ impl Project {
             for scene_instance in self.scenes_instances_grid.values_mut() {
                 scene_instance.render(&mut encoder, blackout, always_render);
             }
-            ExtractOutput::get().run(&mut encoder);
+            extract_output.run(&mut encoder);
             PreviewIndices::get().run(&mut encoder);
             Preview::run(&mut encoder);
         }

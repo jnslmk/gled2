@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     app::svg::Svg,
     pipeline::extract_output::ExtractOutput,
@@ -26,7 +28,12 @@ pub struct OutputRoutingsWindow {
 
 impl OutputRoutingsWindow {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context, collections: &mut Collections) {
+    pub fn update(
+        &mut self,
+        ctx: &Context,
+        collections: &mut Collections,
+        extract_output: &mut ExtractOutput,
+    ) {
         if !self.open {
             return;
         }
@@ -45,14 +52,11 @@ impl OutputRoutingsWindow {
                 });
 
                 gled_window_frame(ctx, "Output Routings", |ui| {
-                    let extract_output = ExtractOutput::get();
-                    let mut routings = extract_output.routings.lock();
-
-                    if !routings.is_empty() && ui.button("Clear Output Routings").clicked() {
-                        *routings = Default::default();
+                    if !extract_output.routings.is_empty() && ui.button("Clear Output Routings").clicked() {
+                        extract_output.routings = Default::default();
                     }
 
-                    let used_multiple_times = routings.output_universes_which_are_used_multiple_times();
+                    let used_multiple_times = extract_output.routings.output_universes_which_are_used_multiple_times();
                     if !used_multiple_times.is_empty() {
                         ui.colored_label(
                             Color32::RED,
@@ -61,20 +65,21 @@ impl OutputRoutingsWindow {
                         );
                     }
 
+                    let mut routings = Arc::unwrap_or_clone(extract_output.routings.clone());
+                    let mut universes = Arc::unwrap_or_clone(extract_output.universes.clone());
+
                     egui::ScrollArea::vertical()
                         .scroll_bar_visibility(AlwaysVisible)
                         .id_salt("output_scroll")
                         .show(ui, |ui| {
                             ui.with_layout(Layout::top_down_justified(egui::Align::Min), |ui| {
-                                let universes = Svg::universes();
-                                routings.remove_old(&universes);
+                                let svg_universes = Svg::universes();
+                                routings.remove_old(&svg_universes);
+                                
+                                universes
+                                .retain(|universe| svg_universes.contains(universe));
 
-                                extract_output
-                                    .universes
-                                    .lock()
-                                    .retain(|universe| universes.contains(universe));
-
-                                if universes.is_empty() {
+                                if svg_universes.is_empty() {
                                     ui.label(RichText::new(
                                     "No universes available. You need to load a svg file first!",
                                 ));
@@ -83,7 +88,7 @@ impl OutputRoutingsWindow {
                                 let mut set_routing = None;
                                 let mut set_device = None;
 
-                                for universe in universes.clone() {
+                                for universe in svg_universes.clone() {
                                     ui.label(
                                         RichText::new(format!("Universe: {universe}")).heading(),
                                     );
@@ -196,8 +201,12 @@ impl OutputRoutingsWindow {
                                         }
                                     }
                                 }
+
                             });
                         });
+
+                    extract_output.routings = Arc::new(routings);
+                    extract_output.universes = Arc::new(universes);
                 });
             },
         );
