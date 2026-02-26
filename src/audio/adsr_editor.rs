@@ -1,4 +1,4 @@
-use crate::audio::fft::{fft_data_u8, get_fft_bin_index_by_frequency, FREQ_BINS, MAX_FREQ};
+use crate::audio::fft::{fft_data_u8, MAX_FREQ};
 use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
 use crate::audio::{ReactiveSignalHandle, REACTIVE_SIGNAL_THREAD};
 use crate::pipeline::constants::TEXTURE_SIZE;
@@ -7,9 +7,9 @@ use crate::storage::asset::scene::effect_state::OwnedTextureId;
 use crate::ui::scoped_frame;
 use crate::{wgpu_render_state, WGPU_RENDER_STATE};
 use egui::load::SizedTexture;
-use egui::{Color32, Frame, Image, Label, Layout, RichText, Ui, UiBuilder};
+use egui::{Color32, Frame, Image, Layout, Ui, UiBuilder};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
-use emath::{pos2, remap, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
+use emath::{pos2, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
 use epaint::{PathShape, PathStroke, Stroke};
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
