@@ -1,6 +1,5 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{DeviceId, SampleFormat, StreamConfig};
-use rustfft::num_traits::Pow;
 use rustfft::{num_complex::Complex, FftPlanner};
 use std::clone::Clone;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -239,8 +238,8 @@ impl FFTProcessor {
                 // Use logarithmic mapping: log(freq) = log(min) + (log(max) - log(min)) * (bin / total_bins)
                 let min_freq = 0f32;
                 let max_freq: f32 = 400.0;
-                let log_min = min_freq.ln();
-                let log_max = max_freq.ln();
+                let _log_min = min_freq.ln();
+                let _log_max = max_freq.ln();
                 //let log_freq = log_min + (log_max - log_min) * ;
                 let linear_freq = min_freq + (max_freq - min_freq)
                     * curved_log(output_bin as f32 / FREQ_BINS as f32, -8.0);

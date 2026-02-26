@@ -3,7 +3,7 @@ use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
 use ndarray::{s, Array1};
 use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, Mul};
+use std::ops::Mul;
 
 const MAX_BUFFER_LENGTH: usize = 1001;
 
@@ -33,7 +33,6 @@ impl AdsrParams {
         release_duration: f32,
         sensitivity: f32,
         gate_threshold: f32,
-        averaging_length: f32,
     ) -> Self {
         let mut ret = Self {
             center_bin: 0,
@@ -48,10 +47,10 @@ impl AdsrParams {
             averaging_samples: 10,
             echo_samples: 20,
         };
-        ret.set_filter_tune(f_center, f_radius, averaging_length);
+        ret.set_filter_tune(f_center, f_radius);
         ret
     }
-    pub fn set_filter_tune(&mut self, f_center: f32, f_radius: f32, averaging_time: f32) {
+    pub fn set_filter_tune(&mut self, f_center: f32, f_radius: f32) {
         let f_per_bin = MAX_FREQ / FREQ_BINS as f32;
         let center_bin = ((f_center / f_per_bin).round() as usize).min(FREQ_BINS - 1);
         let bin_radius = (f_radius / f_per_bin).round() as usize;
@@ -73,7 +72,6 @@ impl Default for AdsrParams {
             1.,
             1.,
             0.5,
-            0.1,
         )
     }
 }

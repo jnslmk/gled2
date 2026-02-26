@@ -14,12 +14,11 @@ use std::hash::{DefaultHasher, Hash};
 use std::sync::{Arc, Mutex, RwLock};
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
-use std::thread::{sleep, yield_now};
+use std::thread::sleep;
 use std::time::Duration;
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
 use tokio::runtime::Runtime;
-use tokio::time::interval;
-use tokio::{runtime};
+use tokio::runtime;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 

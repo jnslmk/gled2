@@ -518,7 +518,7 @@ impl ADSR {
                     .with_label("Sensitivity", LabelPosition::Bottom),
                 );
                 self.lock_params()
-                    .set_filter_tune(self.f_center, self.f_radius, self.averaging_time);
+                    .set_filter_tune(self.f_center, self.f_radius);
             },
         );
     }

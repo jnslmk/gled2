@@ -1,4 +1,3 @@
-use crate::pipeline::preview::Preview;
 use crate::storage::asset::Asset;
 use crate::storage::asset::project::{Project, grid_location_from_continuous_index};
 use crate::storage::asset::scene::Scene;
