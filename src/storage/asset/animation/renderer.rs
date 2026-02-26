@@ -150,6 +150,7 @@ impl AnimationRenderer {
         }
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn render(&self, encoder: &mut CommandEncoder) {
         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Renderer Pass"),

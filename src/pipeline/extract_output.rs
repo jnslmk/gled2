@@ -42,6 +42,7 @@ impl ExtractOutput {
         self.output_receiver.lock().take()
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn run(&self, encoder: &mut CommandEncoder) {
         let active_len = (self.universes.lock().len() as u64).min(UNIVERSES) * UNIVERSE_BUFFER_SIZE;
         if active_len > 0 {

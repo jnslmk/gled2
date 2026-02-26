@@ -86,6 +86,7 @@ impl Scene {
         }
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn render(&mut self, encoder: &mut CommandEncoder, send_output: bool) {
         for effect in self.effects.iter_mut() {
             effect.render(encoder, send_output);

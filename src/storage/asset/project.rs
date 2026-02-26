@@ -166,6 +166,7 @@ impl Project {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn render(
         &mut self,
         timing: &Timing,

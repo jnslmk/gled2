@@ -1,5 +1,5 @@
 //! Clear output buffer.
-use crate::{pipeline::constants::OUTPUT_BUFFER_SIZE, wgpu_render_state, OUTPUT_BUFFER};
+use crate::{OUTPUT_BUFFER, pipeline::constants::OUTPUT_BUFFER_SIZE, wgpu_render_state};
 use std::{num::NonZeroU64, sync::OnceLock};
 use wgpu::*;
 
@@ -66,6 +66,7 @@ impl OutputClear {
         })
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn run(&self, encoder: &mut CommandEncoder) {
         let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
             label: Some("OutputClear compute pass"),

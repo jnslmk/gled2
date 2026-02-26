@@ -122,6 +122,7 @@ impl Effect {
         }
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn render(&self, encoder: &mut CommandEncoder, send_output: bool) {
         self.state.render(encoder, send_output);
     }

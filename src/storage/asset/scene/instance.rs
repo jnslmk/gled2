@@ -201,6 +201,7 @@ impl SceneInstance {
         }
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn render(&mut self, encoder: &mut CommandEncoder, blackout: bool, always_render: bool) {
         if !self.active && !self.flash && !always_render {
             return;

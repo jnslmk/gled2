@@ -70,6 +70,7 @@ impl EffectState {
         self.output_mix.as_ref()
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn render(&self, encoder: &mut CommandEncoder, send_output: bool) {
         if let Some(renderer) = self.renderer.as_ref() {
             renderer.render(encoder);
