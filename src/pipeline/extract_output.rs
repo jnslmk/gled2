@@ -22,7 +22,7 @@ impl ExtractOutput {
         Self,
         Receiver<(Vec<u8>, Arc<Universes>, Arc<OutputRoutings>)>,
     ) {
-        let (output_sender, output_receiver) = bounded(1);
+        let (output_sender, output_receiver) = bounded(0);
 
         (
             Self {
