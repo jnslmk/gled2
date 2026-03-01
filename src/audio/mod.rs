@@ -1,31 +1,32 @@
-pub mod sound_trigger_editor;
-pub mod sound_trigger;
-pub mod fft;
 pub mod device_id_serde;
+pub mod fft;
+pub mod sound_trigger;
+pub mod sound_trigger_editor;
 
 use crate::audio::fft::FREQ_BINS;
-use crate::audio::sound_trigger::{SoundTriggerParams, SoundTrigger};
+use crate::audio::sound_trigger::{SoundTrigger, SoundTriggerParams};
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{DeviceDescription, DeviceId};
+use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash};
-use std::sync::{Arc, Mutex, RwLock};
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread::sleep;
 use std::time::Duration;
-use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
-use tokio::runtime::Runtime;
 use tokio::runtime;
+use tokio::runtime::Runtime;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
-pub static SOUND_TRIGGER_THREAD: Lazy<RwLock<SoundTriggeThread>> =
-    Lazy::new(|| RwLock::new(SoundTriggeThread::new()));
+pub static SOUND_TRIGGER_THREAD_DATA: Lazy<RwLock<SoundTriggerThreadData>> =
+    Lazy::new(|| RwLock::new(SoundTriggerThreadData::new()));
 static SOUND_TRIGGER_SAMPLE_INTERVAL_MS: u64 = 10;
-pub static AUDIO_DEVICES: Lazy<Mutex<Vec<(DeviceId, DeviceDescription)>>> = Lazy::new(|| Mutex::new(Vec::new()));
+pub static AUDIO_DEVICES: Lazy<Mutex<Vec<(DeviceId, DeviceDescription)>>> =
+    Lazy::new(|| Mutex::new(Vec::new()));
 
 #[derive(Debug)]
 pub struct AudioPool {
@@ -43,18 +44,24 @@ impl AudioPool {
             .worker_threads(1)
             .thread_name("gled_audio_pool")
             .enable_time()
-            .build().expect("Failed to create audio thread pool");
+            .build()
+            .expect("Failed to create audio thread pool");
 
         let selected_device = None;
         let (fft_tx, receiver) = crossbeam_channel::bounded(3);
 
         runtime.spawn(start_sound_trigger_thread(receiver));
-        let mut ret = Self{runtime, fft_cancel: None, selected_device, fft_tx};
+        let mut ret = Self {
+            runtime,
+            fft_cancel: None,
+            selected_device,
+            fft_tx,
+        };
         ret.restart_fft();
         ret
     }
 
-    pub fn restart_fft(&mut self){
+    pub fn restart_fft(&mut self) {
         if let Some(fft_cancel) = self.fft_cancel.take() {
             // wait for the thread to stop
             fft_cancel.cancel();
@@ -62,26 +69,29 @@ impl AudioPool {
 
         if let Some(device_id) = self.selected_device.clone() {
             let cancel_token = CancellationToken::new();
-            self.runtime.spawn(fft::start(device_id, self.fft_tx.clone(), cancel_token.clone()));
+            self.runtime.spawn(fft::start(
+                device_id,
+                self.fft_tx.clone(),
+                cancel_token.clone(),
+            ));
             self.fft_cancel = Some(cancel_token);
-        }
-        else {
+        } else {
             log::info!("No audio input device selected, audio analysis disabled");
             self.fft_cancel = None;
-            SOUND_TRIGGER_THREAD.write().unwrap().reset();
+            SOUND_TRIGGER_THREAD_DATA.write().unwrap().reset();
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SoundTriggerHandle {
     uuid: Uuid,
-    params: Arc<Mutex<SoundTriggerParams>>,
+    params: Mutex<SoundTriggerParams>,
 }
 
 impl Drop for SoundTriggerHandle {
     fn drop(&mut self) {
-        SOUND_TRIGGER_THREAD
+        SOUND_TRIGGER_THREAD_DATA
             .write()
             .unwrap()
             .triggers
@@ -97,7 +107,7 @@ impl PartialEq for SoundTriggerHandle {
 
 impl SoundTriggerHandle {
     pub fn update_params_and_fetch_trigger(&self) -> Option<SoundTrigger> {
-        SOUND_TRIGGER_THREAD
+        SOUND_TRIGGER_THREAD_DATA
             .write()
             .unwrap()
             .triggers
@@ -109,7 +119,7 @@ impl SoundTriggerHandle {
             })
     }
     pub fn level(&self) -> f32 {
-        SOUND_TRIGGER_THREAD
+        SOUND_TRIGGER_THREAD_DATA
             .write()
             .unwrap()
             .triggers
@@ -125,47 +135,49 @@ impl Hash for SoundTriggerHandle {
     }
 }
 
-pub struct SoundTriggeThread {
-    triggers: HashMap<Uuid,Arc<Mutex<SoundTrigger>>>,
+pub struct SoundTriggerThreadData {
+    triggers: HashMap<Uuid, Arc<Mutex<SoundTrigger>>>,
 }
 
-impl SoundTriggeThread {
+impl SoundTriggerThreadData {
     fn new() -> Self {
         Self {
             triggers: HashMap::new(),
         }
     }
-    pub fn register_sound_trigger(&mut self, sound_trigger_params: SoundTriggerParams) -> SoundTriggerHandle {
+    pub fn register_sound_trigger(
+        &mut self,
+        sound_trigger_params: SoundTriggerParams,
+    ) -> Arc<SoundTriggerHandle> {
         let uuid = Uuid::new_v4();
-        let trigger = SoundTrigger::new(sound_trigger_params, SOUND_TRIGGER_SAMPLE_INTERVAL_MS as f32 / 1000.);
+        let trigger = SoundTrigger::new(
+            sound_trigger_params,
+            SOUND_TRIGGER_SAMPLE_INTERVAL_MS as f32 / 1000.,
+        );
         self.triggers.insert(uuid, Arc::new(Mutex::new(trigger)));
-        SoundTriggerHandle {
+        Arc::new(SoundTriggerHandle {
             uuid,
-            params: Arc::new(Mutex::new(sound_trigger_params)),
-        }
+            params: Mutex::new(sound_trigger_params),
+        })
     }
 
     fn tick(&mut self, root_sample: [f32; FREQ_BINS]) {
         #[cfg(feature = "profiling")]
         puffin::profile_scope!("tick_sound_triggers");
-        self.triggers
-            .values_mut()
-            .for_each(move |trigger| {
-                let trigger = Arc::clone(trigger);
-                let sample_copy = root_sample.clone();
-                let mut trigger_guard = trigger.lock().unwrap();
-                trigger_guard.tick(sample_copy);
-            });
+        self.triggers.values_mut().for_each(move |trigger| {
+            let trigger = Arc::clone(trigger);
+            let sample_copy = root_sample.clone();
+            let mut trigger_guard = trigger.lock().unwrap();
+            trigger_guard.tick(sample_copy);
+        });
     }
 
     fn reset(&mut self) {
-        self.triggers
-            .values_mut()
-            .for_each(move |trigger| {
-                let trigger = Arc::clone(trigger);
-                let mut trigger_guard = trigger.lock().unwrap();
-                trigger_guard.reset();
-            });
+        self.triggers.values_mut().for_each(move |trigger| {
+            let trigger = Arc::clone(trigger);
+            let mut trigger_guard = trigger.lock().unwrap();
+            trigger_guard.reset();
+        });
     }
 }
 pub async fn start_sound_trigger_thread(rx: Receiver<[f32; FREQ_BINS]>) {
@@ -180,29 +192,33 @@ pub async fn start_sound_trigger_thread(rx: Receiver<[f32; FREQ_BINS]>) {
                 Err(RecvTimeoutError::Timeout) => continue,
                 Err(RecvTimeoutError::Disconnected) => {
                     log::error!("Audio receiver disconnected, shutting down sound trigger thread");
-                    break
-                },
+                    break;
+                }
             };
-            SOUND_TRIGGER_THREAD.write().unwrap().tick(root_sample);
+            SOUND_TRIGGER_THREAD_DATA.write().unwrap().tick(root_sample);
         }
     }
 }
 
 // poll for audio device changes every second
-pub fn audio_device_info_loop(continue_scan: &AtomicBool){
+pub fn audio_device_info_loop(continue_scan: &AtomicBool) {
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio_device_info_loop");
     log::info!("Started scanning for audio devices...");
-    while continue_scan.load(Relaxed)
-    {
+    while continue_scan.load(Relaxed) {
         #[cfg(feature = "profiling")]
         puffin::profile_scope!("audio_device_info_loop");
 
         let host = cpal::default_host();
         let devices = host.input_devices().expect("Failed to get audio devices");
-        let mut device_map = Vec::from_iter(devices.map(|device| (
-            device.id().expect("Failed to get audio device id"),
-            device.description().expect("Failed to get audio device description"))));
+        let mut device_map = Vec::from_iter(devices.map(|device| {
+            (
+                device.id().expect("Failed to get audio device id"),
+                device
+                    .description()
+                    .expect("Failed to get audio device description"),
+            )
+        }));
         let mut hasher = DefaultHasher::new();
         device_map.sort_by(|a, b| a.0.hash(&mut hasher).cmp(&b.0.hash(&mut hasher)));
 

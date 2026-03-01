@@ -1,20 +1,20 @@
-use crate::audio::fft::{fft_data_u8, MAX_FREQ};
-use crate::audio::sound_trigger::{SoundTriggerParams, SoundTrigger};
-use crate::audio::{SoundTriggerHandle, SOUND_TRIGGER_THREAD};
+use crate::audio::fft::{MAX_FREQ, fft_data_u8};
+use crate::audio::sound_trigger::{SoundTrigger, SoundTriggerParams};
+use crate::audio::{SOUND_TRIGGER_THREAD_DATA, SoundTriggerHandle};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
 use crate::ui::scoped_frame;
-use crate::{wgpu_render_state, WGPU_RENDER_STATE};
+use crate::{WGPU_RENDER_STATE, wgpu_render_state};
 use egui::load::SizedTexture;
 use egui::{Color32, Frame, Image, Layout, Ui, UiBuilder};
 use egui_knob::{Knob, KnobStyle, LabelPosition};
-use emath::{pos2, remap_clamp, vec2, Align, Pos2, Rect, Vec2};
+use emath::{Align, Pos2, Rect, Vec2, pos2, remap_clamp, vec2};
 use epaint::{PathShape, PathStroke, Stroke};
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU64;
-use std::sync::MutexGuard;
+use std::sync::{Arc, MutexGuard};
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
@@ -180,7 +180,7 @@ impl PreviewShader {
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 #[serde(from = "SoundTriggerEditorShell", into = "SoundTriggerEditorShell")]
 pub struct SoundTriggerEditor {
-    pub sound_trigger_handle: SoundTriggerHandle,
+    pub sound_trigger_handle: Arc<SoundTriggerHandle>,
     f_center: f32,
     f_radius: f32,
     preview_shader: Option<PreviewShader>,
@@ -197,7 +197,7 @@ struct SoundTriggerEditorShell {
 
 impl From<SoundTriggerEditorShell> for SoundTriggerEditor {
     fn from(shell: SoundTriggerEditorShell) -> Self {
-        let sound_trigger_handle = SOUND_TRIGGER_THREAD
+        let sound_trigger_handle = SOUND_TRIGGER_THREAD_DATA
             .write()
             .unwrap()
             .register_sound_trigger(shell.params);
@@ -228,8 +228,13 @@ impl Default for SoundTriggerEditor {
     }
 }
 impl SoundTriggerEditor {
-    fn new(sound_trigger_params: SoundTriggerParams, f_center: f32, f_radius: f32, averaging_time: f32) -> Self {
-        let sound_trigger_handle = SOUND_TRIGGER_THREAD
+    fn new(
+        sound_trigger_params: SoundTriggerParams,
+        f_center: f32,
+        f_radius: f32,
+        averaging_time: f32,
+    ) -> Self {
+        let sound_trigger_handle = SOUND_TRIGGER_THREAD_DATA
             .write()
             .unwrap()
             .register_sound_trigger(sound_trigger_params);
@@ -248,27 +253,24 @@ impl SoundTriggerEditor {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("SoundTriggerEditor::show");
         Frame::new().inner_margin(5.).show(ui, |ui| {
-            if let Some(trigger) = self
-                .sound_trigger_handle
-                .update_params_and_fetch_trigger()
-                {
-                    let mut spectrum = trigger.spectrum.clone();
-                    spectrum.map_inplace(|x| {
-                        *x = (*x*10.0 + 10.0).log10() - 1.0;
-                    });
-                    let impulse = trigger.impulse.clamp(0.0, 1.0);
-                    let output_level = trigger.current_level;
+            if let Some(trigger) = self.sound_trigger_handle.update_params_and_fetch_trigger() {
+                let mut spectrum = trigger.spectrum.clone();
+                spectrum.map_inplace(|x| {
+                    *x = (*x * 10.0 + 10.0).log10() - 1.0;
+                });
+                let impulse = trigger.impulse.clamp(0.0, 1.0);
+                let output_level = trigger.current_level;
 
-                    if self.preview_shader.is_none() {
-                        self.preview_shader = PreviewShader::try_init();
-                    }
-                    if let Some(preview_shader) = &self.preview_shader {
-                        preview_shader.draw_spectrum_texture(spectrum);
-                    }
+                if self.preview_shader.is_none() {
+                    self.preview_shader = PreviewShader::try_init();
+                }
+                if let Some(preview_shader) = &self.preview_shader {
+                    preview_shader.draw_spectrum_texture(spectrum);
+                }
 
-                    self.draw_spectrum(ui);
-                    ui.separator();
-                    self.draw_adsr(ui, impulse, output_level);
+                self.draw_spectrum(ui);
+                ui.separator();
+                self.draw_adsr(ui, impulse, output_level);
             }
         });
     }
@@ -477,10 +479,7 @@ impl SoundTriggerEditor {
         spectrum_rect.max.x = upper_x;
 
         ui.painter()
-            .rect_filled(
-            spectrum_rect,
-            0.,
-            Color32::from_white_alpha(100));
+            .rect_filled(spectrum_rect, 0., Color32::from_white_alpha(100));
 
         scoped_frame(
             ui,
