@@ -18,7 +18,7 @@ use std::sync::{Arc, MutexGuard};
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Debug)]
 struct PreviewShader {
     spectrum_pipeline: RenderPipeline,
     spectrum_bind_group: BindGroup,
@@ -28,7 +28,7 @@ struct PreviewShader {
 }
 
 impl PreviewShader {
-    fn try_init() -> Option<Self> {
+    fn try_init() -> Option<Arc<Self>> {
         let texture_desc = TextureDescriptor {
             size: Extent3d {
                 width: TEXTURE_SIZE as u32,
@@ -126,13 +126,13 @@ impl PreviewShader {
                 wgpu::FilterMode::Nearest,
             ));
 
-        Some(Self {
+        Some(Arc::new(Self {
             spectrum_pipeline,
             spectrum_bind_group,
             spectrum_texture_buffer,
             spectrum_texture_view,
             spectrum_texture_id,
-        })
+        }))
     }
 
     fn draw_spectrum_texture(&self, input_level: Array1<f32>) {
@@ -183,7 +183,7 @@ pub struct SoundTriggerEditor {
     pub sound_trigger_handle: Arc<SoundTriggerHandle>,
     f_center: f32,
     f_radius: f32,
-    preview_shader: Option<PreviewShader>,
+    preview_shader: Option<Arc<PreviewShader>>,
     averaging_time: f32,
 }
 
