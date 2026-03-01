@@ -1,6 +1,6 @@
 use super::Curve;
 use crate::{
-    audio::sound_trigger_editor::SoundTriggerEditor,
+    audio::{sound_trigger_data::SoundTriggerData, sound_trigger_editor::SoundTriggerEditor},
     storage::{Asset, AssetId, AssetTrait, collections::Collections},
     ui::{asset_tree::AssetTree, gled_slider::GledSlider},
 };
@@ -56,20 +56,25 @@ pub trait Range: Eq {
 }
 
 impl<R: Range> MultipliedCurve<R> {
-    pub fn value(&self, beat_progression: f32, collections: &Collections) -> f32 {
+    pub fn value(
+        &self,
+        beat_progression: f32,
+        collections: &Collections,
+        sound_trigger_data: &SoundTriggerData,
+    ) -> f32 {
         self.curve
             .and_then(|id| Asset::get(id, collections))
             .map(|curve| curve.data.value(beat_progression % 4.0))
             .unwrap_or(1.0)
             * self.multiplier
             * R::MAX
-            * self.sound_trigger_value()
+            * self.sound_trigger_value(sound_trigger_data)
     }
 
-    pub fn sound_trigger_value(&self) -> f32 {
+    pub fn sound_trigger_value(&self, sound_trigger_data: &SoundTriggerData) -> f32 {
         self.sound_trigger
             .as_ref()
-            .map(|editor| editor.sound_trigger_handle.level())
+            .map(|editor| editor.sound_trigger_handle.level(sound_trigger_data))
             .unwrap_or(1.0)
     }
 }
@@ -106,6 +111,7 @@ impl<R: Range> MultipliedCurve<R> {
         ui: &mut egui::Ui,
         beat_progression: f32,
         collections: &mut Collections,
+        sound_trigger_data: &SoundTriggerData,
     ) -> bool {
         let mut changed = false;
 
@@ -119,7 +125,7 @@ impl<R: Range> MultipliedCurve<R> {
                 .map(|curve| curve.data.value(beat_progression % 4.0))
                 .unwrap_or(1.0)
                 * self.multiplier
-                * self.sound_trigger_value();
+                * self.sound_trigger_value(sound_trigger_data);
             changed |= ui
                 .put(
                     left,
@@ -226,13 +232,13 @@ impl<R: Range> MultipliedCurve<R> {
                     }
                     // show controls for the sound trigger
                     if let Some(editor) = &mut self.sound_trigger {
-                        editor.show(ui);
+                        editor.show(ui, sound_trigger_data);
                     }
                 })
                 .0
                 .rect;
                 if let Some(editor) = &mut self.sound_trigger {
-                    editor.show_minified(ui, rect);
+                    editor.show_minified(ui, rect, sound_trigger_data);
                 }
             });
         });

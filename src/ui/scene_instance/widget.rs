@@ -1,3 +1,4 @@
+use crate::audio::sound_trigger_data::SoundTriggerData;
 use crate::storage::asset::project::scene_instance_path::grid_scene_instance_index;
 use crate::storage::asset::scene::Scene;
 use crate::storage::asset::scene::grid::GridLocation;
@@ -26,6 +27,7 @@ pub struct SceneInstanceWidget<'a> {
     pub timing: &'a Timing,
     pub collections: &'a Collections,
     pub effects_size: f32,
+    pub sound_trigger_data: &'a SoundTriggerData,
 }
 
 const CORNER_RADIUS: u8 = 2;
@@ -40,7 +42,7 @@ impl Widget for SceneInstanceWidget<'_> {
             let (text_response, button_rect) = self.header_bar(name, ui);
             Frame::new().inner_margin(INNER_MARGIN).show(ui, |ui| {
                 self.preview(ui);
-                self.dimmer(ui, self.collections);
+                self.dimmer(ui, self.collections, self.sound_trigger_data);
             });
             if !self.scene_instance.active {
                 ui.painter()
@@ -186,7 +188,12 @@ impl SceneInstanceWidget<'_> {
         });
     }
 
-    fn dimmer(&mut self, ui: &mut Ui, collections: &Collections) {
+    fn dimmer(
+        &mut self,
+        ui: &mut Ui,
+        collections: &Collections,
+        sound_trigger_data: &SoundTriggerData,
+    ) {
         ui.scope_builder(UiBuilder::new(), |ui| {
             ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                 Frame::default().show(ui, |ui| {
@@ -194,21 +201,20 @@ impl SceneInstanceWidget<'_> {
                     ui.set_width(20.0);
 
                     let dimmer = self.scene_instance.input_dimmer
-                        * self
-                            .scene_instance
-                            .opacity
-                            .value(self.timing.beat_progression(), collections);
+                        * self.scene_instance.opacity.value(
+                            self.timing.beat_progression(),
+                            collections,
+                            sound_trigger_data,
+                        );
 
                     ui.add(
                         GledSlider::new(&mut self.scene_instance.opacity.multiplier, 100.0)
-                            .preview_value(
-                                if self.scene_instance.active {
-                                    dimmer
-                                } else {
-                                    0.0
-                                }
-                            )
-                            .size(20.0)
+                            .preview_value(if self.scene_instance.active {
+                                dimmer
+                            } else {
+                                0.0
+                            })
+                            .size(20.0),
                     );
                 });
             });

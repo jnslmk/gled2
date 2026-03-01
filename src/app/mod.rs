@@ -11,7 +11,7 @@ pub mod svg;
 pub mod timing;
 
 use crate::{
-    audio::AudioPool,
+    audio::{AudioPool, sound_trigger_data::SoundTriggerData},
     input::{Input, external_control::ExternalControlState},
     midi::state::MidiState,
     pipeline::{extract_output::ExtractOutput, renderer_callback::RendererCallback},
@@ -58,6 +58,7 @@ pub struct App {
     pub extract_output: ExtractOutput,
     pub external_control_state: ExternalControlState,
     pub audio_pool: AudioPool,
+    pub sound_trigger_data: SoundTriggerData,
 }
 
 impl eframe::App for App {
@@ -84,6 +85,7 @@ impl eframe::App for App {
         }
         self.collections.update();
         self.persistant_state.update();
+        self.sound_trigger_data.update();
 
         if loading().is_none() && self.startup {
             self.startup = false;
@@ -129,6 +131,7 @@ impl eframe::App for App {
                 self.timing.fade_duration(),
                 &self.collections,
                 &self.extract_output,
+                &self.sound_trigger_data,
             );
         }
 
@@ -183,12 +186,17 @@ impl eframe::App for App {
                             project
                                 .get_scenes_instance(&self.selected_scene_instance)
                                 .map(|scene_instance| {
-                                    beat_progression += scene_instance
-                                        .beat_progression_offset
-                                        .value(beat_progression, &self.collections);
-                                    scene_instance
-                                        .opacity
-                                        .value(beat_progression, &self.collections)
+                                    beat_progression +=
+                                        scene_instance.beat_progression_offset.value(
+                                            beat_progression,
+                                            &self.collections,
+                                            &self.sound_trigger_data,
+                                        );
+                                    scene_instance.opacity.value(
+                                        beat_progression,
+                                        &self.collections,
+                                        &self.sound_trigger_data,
+                                    )
                                 })
                         })
                         .unwrap_or(1.0)
@@ -226,6 +234,7 @@ impl eframe::App for App {
             &mut self.collections,
             &mut self.persistant_state,
             &mut self.extract_output,
+            &self.sound_trigger_data,
         );
 
         ctx.request_repaint();
@@ -307,6 +316,7 @@ impl App {
             extract_output,
             external_control_state: ExternalControlState::new(artnet_control_receiver),
             audio_pool,
+            sound_trigger_data: Default::default(),
         };
 
         Some(app)

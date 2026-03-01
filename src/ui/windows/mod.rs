@@ -1,5 +1,6 @@
 use crate::{
     app::{persistant_state::PersistantState, timing::Timing},
+    audio::sound_trigger_data::SoundTriggerData,
     pipeline::extract_output::ExtractOutput,
     storage::{asset::project::Project, collections::Collections},
 };
@@ -46,10 +47,16 @@ impl Windows {
         collections: &mut Collections,
         persistant_state: &mut PersistantState,
         extract_output: &mut ExtractOutput,
+        sound_trigger_data: &SoundTriggerData,
     ) {
         self.about.update(ctx);
-        self.animations
-            .update(ctx, timing, collections, persistant_state);
+        self.animations.update(
+            ctx,
+            timing,
+            collections,
+            persistant_state,
+            sound_trigger_data,
+        );
         self.channel_overwrites.update(ctx, collections);
         self.curves.update(ctx, collections);
         self.errors.update(ctx);
@@ -61,8 +68,13 @@ impl Windows {
             .update(ctx, collections, extract_output);
         self.palettes.update(ctx, collections);
         self.projects.update(ctx, collections);
-        self.scenes
-            .update(ctx, timing, collections, persistant_state);
+        self.scenes.update(
+            ctx,
+            timing,
+            collections,
+            persistant_state,
+            sound_trigger_data,
+        );
         self.shortcuts.update(ctx, project);
     }
 }

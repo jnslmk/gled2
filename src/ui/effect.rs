@@ -1,6 +1,7 @@
 pub mod widget;
 
 use crate::{
+    audio::sound_trigger_data::SoundTriggerData,
     storage::{
         asset::{Asset, scene::effect::Effect},
         collections::Collections,
@@ -17,6 +18,7 @@ impl Effect {
         svg: Option<egui::TextureHandle>,
         beat_progression: f32,
         collections: &mut Collections,
+        sound_trigger_data: &SoundTriggerData,
     ) -> bool {
         let mut changed = false;
 
@@ -32,35 +34,44 @@ impl Effect {
 
         ui.label("Progression");
         ui.vertical_centered_justified(|ui| {
-            changed |= self
-                .beat_progression
-                .change_button(ui, beat_progression, collections);
+            changed |= self.beat_progression.change_button(
+                ui,
+                beat_progression,
+                collections,
+                sound_trigger_data,
+            );
         });
 
         let mut beat_progression = beat_progression;
-        beat_progression += self
-            .beat_progression_offset
-            .value(beat_progression, collections);
+        beat_progression +=
+            self.beat_progression_offset
+                .value(beat_progression, collections, sound_trigger_data);
 
         ui.label("Colorshift");
         ui.vertical_centered_justified(|ui| {
-            changed |= self
-                .color_shift
-                .change_button(ui, beat_progression, collections);
+            changed |= self.color_shift.change_button(
+                ui,
+                beat_progression,
+                collections,
+                sound_trigger_data,
+            );
         });
 
         ui.label("Opacity");
         ui.vertical_centered_justified(|ui| {
-            changed |= self
-                .opacity
-                .change_button(ui, beat_progression, collections);
+            changed |=
+                self.opacity
+                    .change_button(ui, beat_progression, collections, sound_trigger_data);
         });
 
         ui.label("Beat offset");
         ui.vertical_centered_justified(|ui| {
-            changed |=
-                self.beat_progression_offset
-                    .change_button(ui, beat_progression, collections);
+            changed |= self.beat_progression_offset.change_button(
+                ui,
+                beat_progression,
+                collections,
+                sound_trigger_data,
+            );
         });
 
         ui.label("Speed");
@@ -112,6 +123,7 @@ impl Effect {
                 svg,
                 beat_progression,
                 collections,
+                sound_trigger_data,
             );
         }
 

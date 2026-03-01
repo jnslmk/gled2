@@ -1,6 +1,9 @@
-use crate::storage::{
-    collections::Collections,
-    curve::multiplied_curve::{MultipliedCurve, RangeDegrees, RangePercentage},
+use crate::{
+    audio::sound_trigger_data::SoundTriggerData,
+    storage::{
+        collections::Collections,
+        curve::multiplied_curve::{MultipliedCurve, RangeDegrees, RangePercentage},
+    },
 };
 use serde::{Deserialize, Serialize};
 
@@ -48,11 +51,18 @@ impl FloatValue {
         }
     }
 
-    pub fn value(&self, beat_progression: f32, collection: &Collections) -> f32 {
+    pub fn value(
+        &self,
+        beat_progression: f32,
+        collection: &Collections,
+        sound_trigger_data: &SoundTriggerData,
+    ) -> f32 {
         match self {
             Self::F32(value) => *value,
-            Self::Percentage(value) => value.value(beat_progression, collection),
-            Self::Degrees(value) => value.value(beat_progression, collection),
+            Self::Percentage(value) => {
+                value.value(beat_progression, collection, sound_trigger_data)
+            }
+            Self::Degrees(value) => value.value(beat_progression, collection, sound_trigger_data),
         }
     }
 }

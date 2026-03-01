@@ -1,5 +1,6 @@
 use crate::{
     app::{persistant_state::PersistantState, timing::Timing},
+    audio::sound_trigger_data::SoundTriggerData,
     pipeline::renderer_callback::RendererCallback,
     storage::{
         asset::{Asset, animation::Animation, scene::effect::Effect},
@@ -70,6 +71,7 @@ impl AnimationWindow {
         timing: &Timing,
         collections: &mut Collections,
         persistant_state: &mut PersistantState,
+        sound_trigger_data: &SoundTriggerData,
     ) {
         if !self.open {
             self.dirty = false;
@@ -100,6 +102,7 @@ impl AnimationWindow {
                 &Default::default(),
                 1.0,
                 collections,
+                sound_trigger_data,
             );
             let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("Render animations for animation editor"),
@@ -114,7 +117,7 @@ impl AnimationWindow {
         }
 
         if self.preview {
-            self.show_preview_window(ctx, collections, persistant_state);
+            self.show_preview_window(ctx, collections, persistant_state, sound_trigger_data);
         }
 
         ctx.show_viewport_immediate(
@@ -224,6 +227,7 @@ impl AnimationWindow {
         ctx: &Context,
         collections: &mut Collections,
         persistant_state: &mut PersistantState,
+        sound_trigger_data: &SoundTriggerData,
     ) {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("animation preview window")),
@@ -247,7 +251,14 @@ impl AnimationWindow {
                                     .scroll_bar_visibility(AlwaysVisible)
                                     .max_height(ui.available_height())
                                     .show(ui, |ui| {
-                                        effect.config_ui(ui, false, None, 1.0, collections)
+                                        effect.config_ui(
+                                            ui,
+                                            false,
+                                            None,
+                                            1.0,
+                                            collections,
+                                            sound_trigger_data,
+                                        )
                                     });
                             });
                     }
@@ -285,6 +296,7 @@ impl AnimationWindow {
                                             groups_show_index: false,
                                             beat_progression: None,
                                             collections,
+                                            sound_trigger_data,
                                         },
                                     );
                                     if ui

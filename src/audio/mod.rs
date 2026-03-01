@@ -1,11 +1,13 @@
 pub mod device_id_serde;
 pub mod fft;
 pub mod sound_trigger;
+pub mod sound_trigger_data;
 pub mod sound_trigger_editor;
 
 use crate::audio::{
     fft::{AudioSource, FREQ_BINS},
     sound_trigger::{SoundTrigger, SoundTriggerParams},
+    sound_trigger_data::SoundTriggerData,
 };
 use cpal::DeviceDirection::{Duplex, Input};
 use cpal::{
@@ -16,10 +18,9 @@ use kanal::Sender;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
     hash::Hash,
     sync::{
-        Arc, Mutex, RwLock,
+        Mutex,
         atomic::{AtomicBool, Ordering::Relaxed},
     },
     thread::sleep,
@@ -27,8 +28,6 @@ use std::{
 };
 use uuid::Uuid;
 
-pub static SOUND_TRIGGER_THREAD_DATA: Lazy<RwLock<SoundTriggerThreadData>> =
-    Lazy::new(|| RwLock::new(SoundTriggerThreadData::new()));
 static SOUND_TRIGGER_SAMPLE_INTERVAL_MS: u64 = 10;
 pub static AUDIO_DEVICES: Lazy<Mutex<Vec<(DeviceId, DeviceDescription)>>> =
     Lazy::new(|| Mutex::new(Vec::new()));
@@ -46,7 +45,9 @@ impl AudioPool {
             let fft_tx = start_sound_trigger_thread();
             AudioSource::start(device_id, fft_tx)
         });
-        SOUND_TRIGGER_THREAD_DATA.write().unwrap().reset();
+        let mut data = SoundTriggerData::default();
+        data.reset();
+        data.save();
     }
 }
 
@@ -58,11 +59,9 @@ pub struct SoundTriggerHandle {
 
 impl Drop for SoundTriggerHandle {
     fn drop(&mut self) {
-        SOUND_TRIGGER_THREAD_DATA
-            .write()
-            .unwrap()
-            .triggers
-            .remove(&self.uuid);
+        let mut data = SoundTriggerData::default();
+        data.remove(self.uuid);
+        data.save();
     }
 }
 
@@ -73,19 +72,12 @@ impl PartialEq for SoundTriggerHandle {
 }
 
 impl SoundTriggerHandle {
-    pub fn update_params_and_fetch_trigger(&self) -> Option<SoundTrigger> {
-        SOUND_TRIGGER_THREAD_DATA
-            .read()
-            .unwrap()
-            .triggers
-            .get(&self.uuid)
-            .cloned()
+    pub fn get_sound_trigger<'a>(&'a self, data: &'a SoundTriggerData) -> Option<&'a SoundTrigger> {
+        data.triggers.get(&self.uuid)
     }
-    pub fn level(&self) -> f32 {
-        SOUND_TRIGGER_THREAD_DATA
-            .read()
-            .unwrap()
-            .triggers
+
+    pub fn level(&self, data: &SoundTriggerData) -> f32 {
+        data.triggers
             .get(&self.uuid)
             .map(|trigger| trigger.current_level)
             .unwrap_or(0.0)
@@ -98,46 +90,6 @@ impl Hash for SoundTriggerHandle {
     }
 }
 
-pub struct SoundTriggerThreadData {
-    triggers: HashMap<Uuid, SoundTrigger>,
-}
-
-impl SoundTriggerThreadData {
-    fn new() -> Self {
-        Self {
-            triggers: HashMap::new(),
-        }
-    }
-    pub fn register_sound_trigger(
-        &mut self,
-        sound_trigger_params: SoundTriggerParams,
-    ) -> Arc<SoundTriggerHandle> {
-        let uuid = Uuid::new_v4();
-        let trigger = SoundTrigger::new(
-            sound_trigger_params,
-            SOUND_TRIGGER_SAMPLE_INTERVAL_MS as f32 / 1000.,
-        );
-        self.triggers.insert(uuid, trigger);
-        Arc::new(SoundTriggerHandle {
-            uuid,
-            params: Mutex::new(sound_trigger_params),
-        })
-    }
-
-    fn tick(&mut self, root_sample: [f32; FREQ_BINS]) {
-        #[cfg(feature = "profiling")]
-        puffin::profile_scope!("tick_sound_triggers");
-        self.triggers.values_mut().for_each(move |trigger| {
-            trigger.tick(root_sample);
-        });
-    }
-
-    fn reset(&mut self) {
-        self.triggers.values_mut().for_each(move |trigger| {
-            trigger.reset();
-        });
-    }
-}
 pub fn start_sound_trigger_thread() -> Sender<[f32; FREQ_BINS]> {
     let (tx, rx) = kanal::bounded(0);
 
@@ -145,8 +97,12 @@ pub fn start_sound_trigger_thread() -> Sender<[f32; FREQ_BINS]> {
         #[cfg(feature = "profiling")]
         profiling::register_thread!("SoundTriggerThread");
         log::info!("Sound trigger thread started");
+        let mut data = SoundTriggerData::default();
+
         while let Ok(root_sample) = rx.recv() {
-            SOUND_TRIGGER_THREAD_DATA.write().unwrap().tick(root_sample);
+            data.update();
+            data.tick(root_sample);
+            data.save();
         }
     });
 

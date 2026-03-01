@@ -1,4 +1,5 @@
 use crate::{
+    audio::sound_trigger_data::SoundTriggerData,
     pipeline::group::Groups,
     storage::{asset::scene::effect::Effect, collections::Collections},
     ui::pills::show_pills,
@@ -19,6 +20,7 @@ pub struct EffectWidget<'a> {
     /// used for showing the dimmer
     pub beat_progression: Option<f32>,
     pub collections: &'a Collections,
+    pub sound_trigger_data: &'a SoundTriggerData,
 }
 
 impl Widget for EffectWidget<'_> {
@@ -44,10 +46,11 @@ impl Widget for EffectWidget<'_> {
                 ui.painter()
                     .rect_filled(bg_rect, CornerRadius::ZERO, Color32::BLACK);
                 if let Some(beat_progression) = self.beat_progression {
-                    let dimmer = self
-                        .effect
-                        .opacity
-                        .value(beat_progression, self.collections);
+                    let dimmer = self.effect.opacity.value(
+                        beat_progression,
+                        self.collections,
+                        self.sound_trigger_data,
+                    );
                     bg_rect.min.y += (bg_rect.height() * (1.0 - dimmer)).round().max(0.0);
                     ui.painter()
                         .rect_filled(bg_rect, CornerRadius::ZERO, Color32::DARK_GREEN);

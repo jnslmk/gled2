@@ -4,6 +4,7 @@ pub mod widget;
 use super::ChangeButton;
 use crate::{
     app::timing::Timing,
+    audio::sound_trigger_data::SoundTriggerData,
     pipeline::group::Groups,
     storage::{asset::scene::instance::SceneInstance, collections::Collections},
     ui::{asset::CollectionsChangeButton, effect::widget::EffectWidget},
@@ -19,11 +20,12 @@ impl SceneInstance {
         groups: Groups,
         timing: &Timing,
         collections: &mut Collections,
+        sound_trigger_data: &SoundTriggerData,
     ) {
         let mut beat_progression = timing.beat_progression();
-        beat_progression += self
-            .beat_progression_offset
-            .value(beat_progression, collections);
+        beat_progression +=
+            self.beat_progression_offset
+                .value(beat_progression, collections, sound_trigger_data);
         let width = ui.available_width() - 20.0;
 
         ScrollArea::vertical()
@@ -69,8 +71,12 @@ impl SceneInstance {
 
                                 ui.label("Opacity");
                                 ui.vertical_centered_justified(|ui| {
-                                    self.opacity
-                                        .change_button(ui, beat_progression, collections);
+                                    self.opacity.change_button(
+                                        ui,
+                                        beat_progression,
+                                        collections,
+                                        sound_trigger_data,
+                                    );
                                 });
 
                                 ui.label("Ignore Main Dimmer");
@@ -82,6 +88,7 @@ impl SceneInstance {
                                         ui,
                                         timing.beat_progression(),
                                         collections,
+                                        sound_trigger_data,
                                     );
                                 });
                             });
@@ -121,6 +128,7 @@ impl SceneInstance {
                                 groups_show_index: false,
                                 beat_progression: Some(beat_progression),
                                 collections,
+                                sound_trigger_data,
                             },
                         );
 
@@ -142,6 +150,7 @@ impl SceneInstance {
                                         groups_show_index: true,
                                         beat_progression: Some(beat_progression),
                                         collections,
+                                        sound_trigger_data,
                                     },
                                 );
                                 ui.vertical(|ui| {
@@ -151,6 +160,7 @@ impl SceneInstance {
                                         svg.clone(),
                                         beat_progression,
                                         collections,
+                                        sound_trigger_data,
                                     );
                                 });
                             });

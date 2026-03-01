@@ -4,28 +4,32 @@ use super::{
     Asset, AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
     scene::instance::SceneInstance,
 };
-use crate::app::timing::Timing;
-use crate::input::artnet::ARTNET_CONFIG;
-use crate::input::external_control::ArtnetControlConfig;
-use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
-use crate::pipeline::extract_output::ExtractOutput;
-use crate::pipeline::output_clear::OutputClear;
-use crate::pipeline::preview_indices::PreviewIndices;
-use crate::pipeline::renderer_callback::RendererCallback;
-use crate::pipeline::transition::{Transition, TransitionGoal};
-use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
-use crate::storage::asset::scene::grid::GridLocation;
-use crate::storage::collections::Collections;
 use crate::{
-    app::svg::Svg,
+    app::{svg::Svg, timing::Timing},
+    audio::sound_trigger_data::SoundTriggerData,
     input::{
-        artnet::ArtnetConfig,
+        artnet::{ARTNET_CONFIG, ArtnetConfig},
         event::{GamepadEvent, InputEvent},
+        external_control::ArtnetControlConfig,
     },
-    pipeline::{group::Groups, preview::Preview},
+    midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH},
+    pipeline::{
+        extract_output::ExtractOutput,
+        group::Groups,
+        output_clear::OutputClear,
+        preview::Preview,
+        preview_indices::PreviewIndices,
+        renderer_callback::RendererCallback,
+        transition::{Transition, TransitionGoal},
+    },
     storage::{
-        asset::{palette::Palette, scene::Scene},
+        asset::{
+            palette::Palette,
+            project::scene_instance_path::SceneInstanceUnion,
+            scene::{Scene, grid::GridLocation},
+        },
         asset_id::AssetId,
+        collections::Collections,
     },
     ui::windows::channel_overwrites::ChannelOverwrites,
     wgpu_render_state,
@@ -33,10 +37,11 @@ use crate::{
 use cpal::DeviceId;
 use rand::prelude::IndexedMutRandom;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use std::time::Duration;
-use std::{collections::BTreeSet, time::Instant};
+use std::{
+    collections::{BTreeSet, HashMap, HashSet},
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use wgpu::CommandEncoderDescriptor;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -189,6 +194,7 @@ impl Project {
         fade_duration: Duration,
         collections: &Collections,
         extract_output: &ExtractOutput,
+        sound_trigger_data: &SoundTriggerData,
     ) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
@@ -255,6 +261,7 @@ impl Project {
                 timing,
                 main_dimmer,
                 collections,
+                sound_trigger_data,
             );
         }
 

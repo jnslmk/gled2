@@ -1,6 +1,7 @@
+use crate::audio::SoundTriggerHandle;
 use crate::audio::fft::{MAX_FREQ, fft_data_u8};
 use crate::audio::sound_trigger::{SoundTrigger, SoundTriggerParams};
-use crate::audio::{SOUND_TRIGGER_THREAD_DATA, SoundTriggerHandle};
+use crate::audio::sound_trigger_data::SoundTriggerData;
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
@@ -197,10 +198,10 @@ struct SoundTriggerEditorShell {
 
 impl From<SoundTriggerEditorShell> for SoundTriggerEditor {
     fn from(shell: SoundTriggerEditorShell) -> Self {
-        let sound_trigger_handle = SOUND_TRIGGER_THREAD_DATA
-            .write()
-            .unwrap()
-            .register_sound_trigger(shell.params);
+        let mut data = SoundTriggerData::default();
+        let sound_trigger_handle = data.register_sound_trigger(shell.params);
+        data.save();
+
         Self {
             sound_trigger_handle,
             f_center: shell.f_center,
@@ -227,6 +228,7 @@ impl Default for SoundTriggerEditor {
         Self::new(SoundTriggerParams::default(), 8200., 990., 0.1)
     }
 }
+
 impl SoundTriggerEditor {
     fn new(
         sound_trigger_params: SoundTriggerParams,
@@ -234,10 +236,10 @@ impl SoundTriggerEditor {
         f_radius: f32,
         averaging_time: f32,
     ) -> Self {
-        let sound_trigger_handle = SOUND_TRIGGER_THREAD_DATA
-            .write()
-            .unwrap()
-            .register_sound_trigger(sound_trigger_params);
+        let mut data = SoundTriggerData::default();
+        let sound_trigger_handle = data.register_sound_trigger(sound_trigger_params);
+        data.save();
+
         Self {
             sound_trigger_handle,
             f_center,
@@ -249,11 +251,11 @@ impl SoundTriggerEditor {
 }
 
 impl SoundTriggerEditor {
-    pub fn show(&mut self, ui: &mut Ui) {
+    pub fn show(&mut self, ui: &mut Ui, data: &SoundTriggerData) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("SoundTriggerEditor::show");
         Frame::new().inner_margin(5.).show(ui, |ui| {
-            if let Some(trigger) = self.sound_trigger_handle.update_params_and_fetch_trigger() {
+            if let Some(trigger) = self.sound_trigger_handle.get_sound_trigger(data) {
                 let mut spectrum = trigger.spectrum.clone();
                 spectrum.map_inplace(|x| {
                     *x = (*x * 10.0 + 10.0).log10() - 1.0;
@@ -275,10 +277,10 @@ impl SoundTriggerEditor {
         });
     }
 
-    pub fn show_minified(&mut self, ui: &mut Ui, rect: Rect) {
+    pub fn show_minified(&mut self, ui: &mut Ui, rect: Rect, data: &SoundTriggerData) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::show_minified");
-        let level = self.sound_trigger_handle.level();
+        let level = self.sound_trigger_handle.level(data);
         scoped_frame(
             ui,
             UiBuilder::new().max_rect(rect),

@@ -1,5 +1,6 @@
 use crate::{
     app::{persistant_state::PersistantState, timing::Timing},
+    audio::sound_trigger_data::SoundTriggerData,
     pipeline::renderer_callback::RendererCallback,
     storage::{
         asset::{
@@ -40,6 +41,7 @@ impl ScenesWindow {
         timing: &Timing,
         collections: &mut Collections,
         persistant_state: &mut PersistantState,
+        sound_trigger_data: &SoundTriggerData,
     ) {
         if !self.open {
             return;
@@ -87,8 +89,14 @@ impl ScenesWindow {
                                 .scroll_bar_visibility(AlwaysVisible)
                                 .show(ui, |ui| {
                                     if let Some(effect) = scene.data.effect(self.selected_effect) {
-                                        self.dirty |=
-                                            effect.config_ui(ui, true, None, 1.0, collections);
+                                        self.dirty |= effect.config_ui(
+                                            ui,
+                                            true,
+                                            None,
+                                            1.0,
+                                            collections,
+                                            sound_trigger_data,
+                                        );
                                     }
 
                                     ui.separator();
@@ -188,6 +196,7 @@ impl ScenesWindow {
                                     &Default::default(),
                                     1.0,
                                     collections,
+                                    sound_trigger_data,
                                 );
                                 let mut encoder =
                                     device.create_command_encoder(&CommandEncoderDescriptor {
@@ -222,6 +231,7 @@ impl ScenesWindow {
                                                         groups_show_index: false,
                                                         beat_progression: None,
                                                         collections,
+                                                        sound_trigger_data,
                                                     },
                                                 );
                                             }

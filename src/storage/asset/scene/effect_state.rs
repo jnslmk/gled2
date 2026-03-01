@@ -1,4 +1,5 @@
 use crate::{
+    audio::sound_trigger_data::SoundTriggerData,
     pipeline::{
         group::Group, output_mix::OutputMix, renderer_callback::RendererCallback,
         texture_to_output::TextureToOutput,
@@ -84,7 +85,13 @@ impl EffectState {
         }
     }
 
-    pub fn write_data(&self, beat_progression: f32, data: &mut [u8], collections: &Collections) {
+    pub fn write_data(
+        &self,
+        beat_progression: f32,
+        data: &mut [u8],
+        collections: &Collections,
+        sound_trigger_data: &SoundTriggerData,
+    ) {
         data[0..4].copy_from_slice(&rand::random::<f32>().to_le_bytes());
         data[4..8].copy_from_slice(&self.beat_progression.to_le_bytes());
         data[8..12].copy_from_slice(&self.beats_per_minute.to_le_bytes());
@@ -96,6 +103,7 @@ impl EffectState {
             &mut data[28..28 + AnimationConfig::size()],
             beat_progression,
             collections,
+            sound_trigger_data,
         );
 
         // Write FFT data (256 frequency bins = 1024 bytes)

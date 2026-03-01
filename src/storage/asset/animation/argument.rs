@@ -1,6 +1,6 @@
 pub mod variables;
 
-use crate::storage::collections::Collections;
+use crate::{audio::sound_trigger_data::SoundTriggerData, storage::collections::Collections};
 
 use super::{AnimationConfig, config::float_value::FloatValue};
 use egui::{
@@ -140,6 +140,7 @@ impl Argument {
         svg: Option<TextureHandle>,
         beat_progression: f32,
         collection: &mut Collections,
+        sound_trigger_data: &SoundTriggerData,
     ) -> bool {
         let mut changed = false;
         ui.label(&self.name);
@@ -199,9 +200,12 @@ impl Argument {
                 };
 
                 ui.vertical_centered_justified(|ui| {
-                    changed |= value
-                        .percentage()
-                        .change_button(ui, beat_progression, collection);
+                    changed |= value.percentage().change_button(
+                        ui,
+                        beat_progression,
+                        collection,
+                        sound_trigger_data,
+                    );
                 });
             }
             ArgumentKind::Degrees => {
@@ -210,9 +214,12 @@ impl Argument {
                 };
 
                 ui.vertical_centered_justified(|ui| {
-                    changed |= value
-                        .degrees()
-                        .change_button(ui, beat_progression, collection);
+                    changed |= value.degrees().change_button(
+                        ui,
+                        beat_progression,
+                        collection,
+                        sound_trigger_data,
+                    );
                 });
             }
             ArgumentKind::Slider { min, max } => {
