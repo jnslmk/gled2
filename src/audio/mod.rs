@@ -1,10 +1,10 @@
-pub mod adsr_editor;
-pub mod reactive_signal;
+pub mod sound_trigger_editor;
+pub mod sound_trigger;
 pub mod fft;
 pub mod device_id_serde;
 
 use crate::audio::fft::FREQ_BINS;
-use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
+use crate::audio::sound_trigger::{SoundTriggerParams, SoundTrigger};
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{DeviceDescription, DeviceId};
 use once_cell::sync::Lazy;
@@ -24,7 +24,7 @@ use uuid::Uuid;
 
 pub static REACTIVE_SIGNAL_THREAD: Lazy<RwLock<ReactiveSignalThread>> =
     Lazy::new(|| RwLock::new(ReactiveSignalThread::new()));
-static ADSR_SAMPLE_INTERVAL_MS: u64 = 10;
+static SOUND_TRIGGER_SAMPLE_INTERVAL_MS: u64 = 10;
 pub static AUDIO_DEVICES: Lazy<Mutex<Vec<(DeviceId, DeviceDescription)>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 #[derive(Debug)]
@@ -76,7 +76,7 @@ impl AudioPool {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReactiveSignalHandle {
     uuid: Uuid,
-    params: Arc<Mutex<AdsrParams>>,
+    params: Arc<Mutex<SoundTriggerParams>>,
 }
 
 impl Drop for ReactiveSignalHandle {
@@ -96,7 +96,7 @@ impl PartialEq for ReactiveSignalHandle {
 }
 
 impl ReactiveSignalHandle {
-    pub fn update_params_and_fetch_signal(&self) -> Option<ReactiveSignal> {
+    pub fn update_params_and_fetch_signal(&self) -> Option<SoundTrigger> {
         REACTIVE_SIGNAL_THREAD
             .write()
             .unwrap()
@@ -126,7 +126,7 @@ impl Hash for ReactiveSignalHandle {
 }
 
 pub struct ReactiveSignalThread {
-    signals: HashMap<Uuid,Arc<Mutex<ReactiveSignal>>>,
+    signals: HashMap<Uuid,Arc<Mutex<SoundTrigger>>>,
 }
 
 impl ReactiveSignalThread {
@@ -135,13 +135,13 @@ impl ReactiveSignalThread {
             signals: HashMap::new(),
         }
     }
-    pub fn register_reactive_signal(&mut self, adsr_params: AdsrParams) -> ReactiveSignalHandle {
+    pub fn register_reactive_signal(&mut self, sound_trigger_params: SoundTriggerParams) -> ReactiveSignalHandle {
         let uuid = Uuid::new_v4();
-        let signal = ReactiveSignal::new(adsr_params, ADSR_SAMPLE_INTERVAL_MS as f32 / 1000.);
+        let signal = SoundTrigger::new(sound_trigger_params, SOUND_TRIGGER_SAMPLE_INTERVAL_MS as f32 / 1000.);
         self.signals.insert(uuid, Arc::new(Mutex::new(signal)));
         ReactiveSignalHandle {
             uuid,
-            params: Arc::new(Mutex::new(adsr_params)),
+            params: Arc::new(Mutex::new(sound_trigger_params)),
         }
     }
 

@@ -1,5 +1,5 @@
 use super::Curve;
-use crate::audio::adsr_editor::ADSR;
+use crate::audio::sound_trigger_editor::SoundTriggerEditor;
 use crate::{
     storage::{Asset, AssetId, AssetTrait},
     ui::{asset_tree::AssetTree, gled_slider::GledSlider},
@@ -21,7 +21,7 @@ pub struct MultipliedCurve<R: Range> {
     pub multiplier: f32,
     curve: Option<AssetId<Curve>>,
     #[serde(default)]
-    adsr: Option<ADSR>,
+    sound_trigger: Option<SoundTriggerEditor>,
     #[serde(skip)]
     _phantom: PhantomData<R>,
 }
@@ -35,7 +35,7 @@ impl<R: Range> MultipliedCurve<R> {
         Self {
             multiplier,
             curve: None,
-            adsr: None,
+            sound_trigger: None,
             _phantom: PhantomData,
         }
     }
@@ -44,7 +44,7 @@ impl<R: Range> MultipliedCurve<R> {
         Self {
             multiplier: 1.0,
             curve: Some(AssetId::from_uuid(Uuid::from_bytes(bytes))),
-            adsr: None,
+            sound_trigger: None,
             _phantom: PhantomData,
         }
     }
@@ -63,11 +63,11 @@ impl<R: Range> MultipliedCurve<R> {
             .unwrap_or(1.0)
             * self.multiplier
             * R::MAX
-            * self.adsr_value()
+            * self.sound_trigger_value()
     }
 
-    pub fn adsr_value(&self) -> f32 {
-        self.adsr
+    pub fn sound_trigger_value(&self) -> f32 {
+        self.sound_trigger
             .as_ref()
             .map(|editor| editor.reactive_signal_handle.level())
             .unwrap_or(1.0)
@@ -114,7 +114,7 @@ impl<R: Range> MultipliedCurve<R> {
                 .map(|curve| curve.data.value(beat_progression % 4.0))
                 .unwrap_or(1.0)
                 * self.multiplier
-                * self.adsr_value();
+                * self.sound_trigger_value();
             changed |= ui
                 .put(
                     left,
@@ -126,11 +126,11 @@ impl<R: Range> MultipliedCurve<R> {
                 )
                 .changed();
 
-            let (mut curve_rect, mut adsr_rect) = right
+            let (mut curve_rect, mut sound_trigger_rect) = right
                 .shrink2(vec2(2.0, 0.0))
                 .split_left_right_at_fraction(0.5);
             curve_rect = curve_rect.shrink2(vec2(2.0, 0.0));
-            adsr_rect = adsr_rect.shrink2(vec2(2.0, 0.0));
+            sound_trigger_rect = sound_trigger_rect.shrink2(vec2(2.0, 0.0));
             ui.scope_builder(UiBuilder::default().max_rect(curve_rect), |ui| {
                 ui.take_available_space();
                 let rect = MenuButton::from_button(
@@ -139,7 +139,7 @@ impl<R: Range> MultipliedCurve<R> {
                     } else {
                         icons::CHART_LINE.regular()
                     })
-                    .min_size(adsr_rect.size()),
+                    .min_size(sound_trigger_rect.size()),
                 )
                 .config(
                     MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
@@ -182,15 +182,15 @@ impl<R: Range> MultipliedCurve<R> {
             });
 
             // Menu for reactive sound
-            ui.scope_builder(UiBuilder::default().max_rect(adsr_rect), |ui| {
+            ui.scope_builder(UiBuilder::default().max_rect(sound_trigger_rect), |ui| {
                 ui.take_available_space();
                 let rect = MenuButton::from_button(
-                    Button::new(if self.adsr.is_some() {
+                    Button::new(if self.sound_trigger.is_some() {
                         RichText::default()
                     } else {
                         icons::MICROPHONE.regular()
                     })
-                    .min_size(adsr_rect.size()),
+                    .min_size(sound_trigger_rect.size()),
                 )
                 .config(
                     MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
@@ -198,16 +198,16 @@ impl<R: Range> MultipliedCurve<R> {
                 .ui(ui, |ui| {
                     ui.set_min_width(300.0);
                     // Remove Button
-                    if self.adsr.is_some()
+                    if self.sound_trigger.is_some()
                         && ui
                             .vertical_centered_justified(|ui| {
-                                ui.add(Button::new("Remove ADSR").fill(Color32::DARK_RED))
+                                ui.add(Button::new("Remove Trigger").fill(Color32::DARK_RED))
                             })
                             .inner
                             .clicked()
                     {
                         // this will automatically remove the reactive signal from the audio thread
-                        self.adsr = None;
+                        self.sound_trigger = None;
                         changed = true;
                         ui.close_kind(UiKind::Menu);
                         return;
@@ -215,17 +215,17 @@ impl<R: Range> MultipliedCurve<R> {
 
                     ui.set_min_height(400.0);
                     // create a reactive signal as clicking the menu button is interpreted as adding reactive sound behavior
-                    if self.adsr.is_none() {
-                        self.adsr = Some(ADSR::default());
+                    if self.sound_trigger.is_none() {
+                        self.sound_trigger = Some(SoundTriggerEditor::default());
                     }
                     // show controls for the reactive signal
-                    if let Some(editor) = &mut self.adsr {
+                    if let Some(editor) = &mut self.sound_trigger {
                         editor.show(ui);
                     }
                 })
                 .0
                 .rect;
-                if let Some(editor) = &mut self.adsr {
+                if let Some(editor) = &mut self.sound_trigger {
                     editor.show_minified(ui, rect);
                 }
             });

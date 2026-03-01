@@ -1,5 +1,5 @@
 use crate::audio::fft::{fft_data_u8, MAX_FREQ};
-use crate::audio::reactive_signal::{AdsrParams, ReactiveSignal};
+use crate::audio::sound_trigger::{SoundTriggerParams, SoundTrigger};
 use crate::audio::{ReactiveSignalHandle, REACTIVE_SIGNAL_THREAD};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
@@ -178,8 +178,8 @@ impl PreviewShader {
 }
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
-#[serde(from = "AdsrEditorShell", into = "AdsrEditorShell")]
-pub struct ADSR {
+#[serde(from = "SoundTriggerEditorShell", into = "SoundTriggerEditorShell")]
+pub struct SoundTriggerEditor {
     pub reactive_signal_handle: ReactiveSignalHandle,
     f_center: f32,
     f_radius: f32,
@@ -188,15 +188,15 @@ pub struct ADSR {
 }
 
 #[derive(Serialize, Deserialize)]
-struct AdsrEditorShell {
-    params: AdsrParams,
+struct SoundTriggerEditorShell {
+    params: SoundTriggerParams,
     f_center: f32,
     f_radius: f32,
     averaging_time: f32,
 }
 
-impl From<AdsrEditorShell> for ADSR {
-    fn from(shell: AdsrEditorShell) -> Self {
+impl From<SoundTriggerEditorShell> for SoundTriggerEditor {
+    fn from(shell: SoundTriggerEditorShell) -> Self {
         let reactive_signal_handle = REACTIVE_SIGNAL_THREAD
             .write()
             .unwrap()
@@ -210,8 +210,8 @@ impl From<AdsrEditorShell> for ADSR {
         }
     }
 }
-impl From<ADSR> for AdsrEditorShell {
-    fn from(editor: ADSR) -> Self {
+impl From<SoundTriggerEditor> for SoundTriggerEditorShell {
+    fn from(editor: SoundTriggerEditor) -> Self {
         let params = *editor.reactive_signal_handle.params.lock().unwrap();
         Self {
             params,
@@ -222,17 +222,17 @@ impl From<ADSR> for AdsrEditorShell {
     }
 }
 
-impl Default for ADSR {
+impl Default for SoundTriggerEditor {
     fn default() -> Self {
-        Self::new(AdsrParams::default(), 8200., 990., 0.1)
+        Self::new(SoundTriggerParams::default(), 8200., 990., 0.1)
     }
 }
-impl ADSR {
-    fn new(adsr_params: AdsrParams, f_center: f32, f_radius: f32, averaging_time: f32) -> Self {
+impl SoundTriggerEditor {
+    fn new(sound_trigger_params: SoundTriggerParams, f_center: f32, f_radius: f32, averaging_time: f32) -> Self {
         let reactive_signal_handle = REACTIVE_SIGNAL_THREAD
             .write()
             .unwrap()
-            .register_reactive_signal(adsr_params);
+            .register_reactive_signal(sound_trigger_params);
         Self {
             reactive_signal_handle,
             f_center,
@@ -243,10 +243,10 @@ impl ADSR {
     }
 }
 
-impl ADSR {
+impl SoundTriggerEditor {
     pub fn show(&mut self, ui: &mut Ui) {
         #[cfg(feature = "profiling")]
-        puffin::profile_function!("ADSREditor::show");
+        puffin::profile_function!("SoundTriggerEditor::show");
         Frame::new().inner_margin(5.).show(ui, |ui| {
             if let Some(signal) = self
                 .reactive_signal_handle
@@ -317,7 +317,7 @@ impl ADSR {
         );
     }
 
-    fn lock_params(&self) -> MutexGuard<'_, AdsrParams> {
+    fn lock_params(&self) -> MutexGuard<'_, SoundTriggerParams> {
         self.reactive_signal_handle.params.lock().unwrap()
     }
 
@@ -446,7 +446,7 @@ impl ADSR {
 
     fn draw_spectrum(&mut self, ui: &mut Ui) {
         #[cfg(feature = "profiling")]
-        puffin::profile_function!("ADSREditor::draw_spectrum");
+        puffin::profile_function!("SoundTriggerEditor::draw_spectrum");
         let size = vec2(ui.available_width(), 190.);
         let mut spectrum_rect = Rect::from_min_size(ui.cursor().min, size);
 
@@ -493,7 +493,7 @@ impl ADSR {
             Frame::default().inner_margin(5.0),
             |ui| {
                 #[cfg(feature = "profiling")]
-                puffin::profile_function!("ADSREditor::draw_spectrum_knobs");
+                puffin::profile_function!("SoundTriggerEditor::draw_spectrum_knobs");
                 // Frequency center
                 ui.add(
                     knob_default(Knob::new(&mut self.f_center, 0., 20_000., KnobStyle::Wiper))
@@ -533,20 +533,20 @@ impl ADSR {
         ui.painter()
             .rect_filled(level_rect, 0., Color32::LIGHT_GREEN);
 
-        let mut adsr = ReactiveSignal::new(*self.lock_params(), 100.);
+        let mut sound_trigger = SoundTrigger::new(*self.lock_params(), 100.);
         let points: Vec<Pos2> = (0..=n)
             .map(|i| {
                 let t = i as f32 / (n as f32);
                 let input = if 0.2 < t
                     && t < (0.4
-                        + adsr.params.decay_duration * 0.4
-                        + adsr.params.attack_duration * 0.4)
+                        + sound_trigger.params.decay_duration * 0.4
+                        + sound_trigger.params.attack_duration * 0.4)
                 {
                     1.0
                 } else {
                     0.0
                 };
-                let y = -adsr.tick_adsr(input) + 1.;
+                let y = -sound_trigger.tick_adsr(input) + 1.;
                 to_screen * pos2(t, y)
             })
             .collect();

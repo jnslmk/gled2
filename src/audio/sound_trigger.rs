@@ -1,5 +1,5 @@
 use crate::audio::fft::{FREQ_BINS, MAX_FREQ};
-use crate::audio::ADSR_SAMPLE_INTERVAL_MS;
+use crate::audio::SOUND_TRIGGER_SAMPLE_INTERVAL_MS;
 use ndarray::{s, Array1};
 use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use std::ops::Mul;
 const MAX_BUFFER_LENGTH: usize = 1001;
 
 #[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
-pub struct AdsrParams {
+pub struct SoundTriggerParams {
     center_bin: usize,
     bin_radius: usize,
     pub attack_duration: f32,  // in seconds
@@ -22,7 +22,7 @@ pub struct AdsrParams {
     pub averaging_samples: usize,
     echo_samples: usize,
 }
-impl AdsrParams {
+impl SoundTriggerParams {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         f_center: f32,
@@ -61,9 +61,9 @@ impl AdsrParams {
     }
 }
 
-impl Default for AdsrParams {
+impl Default for SoundTriggerParams {
     fn default() -> Self {
-        AdsrParams::new(
+        SoundTriggerParams::new(
             8520.,
             990.,
             0.1,
@@ -87,11 +87,11 @@ pub enum AdsrPhase {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct ReactiveSignal {
+pub struct SoundTrigger {
     pub phase: AdsrPhase,
     pub gate_active: bool,
-    pub params: AdsrParams,
-    prev_params: AdsrParams,
+    pub params: SoundTriggerParams,
+    prev_params: SoundTriggerParams,
     pub impulse: f32,
     pub delta_time: f32,
     pub spectrum: Array1<f32>,
@@ -104,17 +104,17 @@ pub struct ReactiveSignal {
     running_impulse_sum: f32,
 }
 
-impl Default for ReactiveSignal {
+impl Default for SoundTrigger {
     fn default() -> Self {
-        ReactiveSignal::new(
-            AdsrParams::default(),
-            ADSR_SAMPLE_INTERVAL_MS as f32 / 1000.,
+        SoundTrigger::new(
+            SoundTriggerParams::default(),
+            SOUND_TRIGGER_SAMPLE_INTERVAL_MS as f32 / 1000.,
         )
     }
 }
 
-impl ReactiveSignal {
-    pub fn new(params: AdsrParams, delta_time: f32) -> Self {
+impl SoundTrigger {
+    pub fn new(params: SoundTriggerParams, delta_time: f32) -> Self {
         Self {
             delta_time,
             gate_active: false,
@@ -366,8 +366,8 @@ impl<T> PrimitiveRingBuffer<T> where T: Clone {
 mod tests {
     use super::*;
 
-    fn run_for_with_impulse_at(run_for: usize, at: usize, impulse: f32) -> ReactiveSignal {
-        let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
+    fn run_for_with_impulse_at(run_for: usize, at: usize, impulse: f32) -> SoundTrigger {
+        let mut signal = SoundTrigger::new(SoundTriggerParams::default(), 0.01);
         signal.params.averaging_samples = 1;
         for i in 0..run_for {
             let data = if i == at {[impulse; FREQ_BINS]} else {[0f32; FREQ_BINS]};
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn test_wraparound(){
-            let mut signal = ReactiveSignal::new(AdsrParams::default(), 0.01);
+            let mut signal = SoundTrigger::new(SoundTriggerParams::default(), 0.01);
             signal.params.averaging_samples = 1;
             for i in 0..(MAX_BUFFER_LENGTH +10) {
                 signal.tick([1f32; FREQ_BINS]);
