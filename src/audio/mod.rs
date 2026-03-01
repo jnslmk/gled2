@@ -24,6 +24,7 @@ use std::{
     thread::sleep,
     time::Duration,
 };
+use cpal::DeviceDirection::{Duplex, Input};
 use tokio::runtime::{self, Runtime};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
@@ -217,7 +218,7 @@ pub fn audio_device_info_loop(continue_scan: &AtomicBool) {
                     .description()
                     .expect("Failed to get audio device description"),
             )
-        }));
+        }).filter(|(_, desc)| desc.direction() == Input || desc.direction() == Duplex));
 
         *AUDIO_DEVICES.lock().unwrap() = device_map;
         sleep(Duration::from_secs(1));
