@@ -22,7 +22,7 @@ use tokio::runtime;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
-pub static REACTIVE_SIGNAL_THREAD: Lazy<RwLock<SoundTriggeThread>> =
+pub static SOUND_TRIGGER_THREAD: Lazy<RwLock<SoundTriggeThread>> =
     Lazy::new(|| RwLock::new(SoundTriggeThread::new()));
 static SOUND_TRIGGER_SAMPLE_INTERVAL_MS: u64 = 10;
 pub static AUDIO_DEVICES: Lazy<Mutex<Vec<(DeviceId, DeviceDescription)>>> = Lazy::new(|| Mutex::new(Vec::new()));
@@ -48,7 +48,7 @@ impl AudioPool {
         let selected_device = None;
         let (fft_tx, receiver) = crossbeam_channel::bounded(3);
 
-        runtime.spawn(start_reactive_sound_thread(receiver));
+        runtime.spawn(start_sound_trigger_thread(receiver));
         let mut ret = Self{runtime, fft_cancel: None, selected_device, fft_tx};
         ret.restart_fft();
         ret
@@ -68,7 +68,7 @@ impl AudioPool {
         else {
             log::info!("No audio input device selected, audio analysis disabled");
             self.fft_cancel = None;
-            REACTIVE_SIGNAL_THREAD.write().unwrap().reset();
+            SOUND_TRIGGER_THREAD.write().unwrap().reset();
         }
     }
 }
@@ -81,10 +81,10 @@ pub struct SoundTriggerHandle {
 
 impl Drop for SoundTriggerHandle {
     fn drop(&mut self) {
-        REACTIVE_SIGNAL_THREAD
+        SOUND_TRIGGER_THREAD
             .write()
             .unwrap()
-            .signals
+            .triggers
             .remove(&self.uuid);
     }
 }
@@ -96,25 +96,25 @@ impl PartialEq for SoundTriggerHandle {
 }
 
 impl SoundTriggerHandle {
-    pub fn update_params_and_fetch_signal(&self) -> Option<SoundTrigger> {
-        REACTIVE_SIGNAL_THREAD
+    pub fn update_params_and_fetch_trigger(&self) -> Option<SoundTrigger> {
+        SOUND_TRIGGER_THREAD
             .write()
             .unwrap()
-            .signals
+            .triggers
             .get_mut(&self.uuid)
-            .map(|signal| {
-                let mut signal = signal.lock().unwrap();
-                signal.params = *self.params.lock().unwrap();
-                signal.clone()
+            .map(|trigger| {
+                let mut trigger = trigger.lock().unwrap();
+                trigger.params = *self.params.lock().unwrap();
+                trigger.clone()
             })
     }
     pub fn level(&self) -> f32 {
-        REACTIVE_SIGNAL_THREAD
+        SOUND_TRIGGER_THREAD
             .write()
             .unwrap()
-            .signals
+            .triggers
             .get_mut(&self.uuid)
-            .map(|signal| signal.lock().unwrap().current_level)
+            .map(|trigger| trigger.lock().unwrap().current_level)
             .unwrap_or(0.0)
     }
 }
@@ -126,19 +126,19 @@ impl Hash for SoundTriggerHandle {
 }
 
 pub struct SoundTriggeThread {
-    signals: HashMap<Uuid,Arc<Mutex<SoundTrigger>>>,
+    triggers: HashMap<Uuid,Arc<Mutex<SoundTrigger>>>,
 }
 
 impl SoundTriggeThread {
     fn new() -> Self {
         Self {
-            signals: HashMap::new(),
+            triggers: HashMap::new(),
         }
     }
-    pub fn register_reactive_signal(&mut self, sound_trigger_params: SoundTriggerParams) -> SoundTriggerHandle {
+    pub fn register_sound_trigger(&mut self, sound_trigger_params: SoundTriggerParams) -> SoundTriggerHandle {
         let uuid = Uuid::new_v4();
-        let signal = SoundTrigger::new(sound_trigger_params, SOUND_TRIGGER_SAMPLE_INTERVAL_MS as f32 / 1000.);
-        self.signals.insert(uuid, Arc::new(Mutex::new(signal)));
+        let trigger = SoundTrigger::new(sound_trigger_params, SOUND_TRIGGER_SAMPLE_INTERVAL_MS as f32 / 1000.);
+        self.triggers.insert(uuid, Arc::new(Mutex::new(trigger)));
         SoundTriggerHandle {
             uuid,
             params: Arc::new(Mutex::new(sound_trigger_params)),
@@ -147,43 +147,43 @@ impl SoundTriggeThread {
 
     fn tick(&mut self, root_sample: [f32; FREQ_BINS]) {
         #[cfg(feature = "profiling")]
-        puffin::profile_scope!("tick_reactive_signals");
-        self.signals
+        puffin::profile_scope!("tick_sound_triggers");
+        self.triggers
             .values_mut()
-            .for_each(move |signal| {
-                let signal = Arc::clone(signal);
+            .for_each(move |trigger| {
+                let trigger = Arc::clone(trigger);
                 let sample_copy = root_sample.clone();
-                let mut signal_guard = signal.lock().unwrap();
-                signal_guard.tick(sample_copy);
+                let mut trigger_guard = trigger.lock().unwrap();
+                trigger_guard.tick(sample_copy);
             });
     }
 
     fn reset(&mut self) {
-        self.signals
+        self.triggers
             .values_mut()
-            .for_each(move |signal| {
-                let signal = Arc::clone(signal);
-                let mut signal_guard = signal.lock().unwrap();
-                signal_guard.reset();
+            .for_each(move |trigger| {
+                let trigger = Arc::clone(trigger);
+                let mut trigger_guard = trigger.lock().unwrap();
+                trigger_guard.reset();
             });
     }
 }
-pub async fn start_reactive_sound_thread(rx: Receiver<[f32; FREQ_BINS]>) {
+pub async fn start_sound_trigger_thread(rx: Receiver<[f32; FREQ_BINS]>) {
     loop {
         {
-            // give tokio the opportunity to break the reactive sound thread loop
+            // give tokio the opportunity to break the sound trigger thread loop
             tokio::task::yield_now().await;
             #[cfg(feature = "profiling")]
-            puffin::profile_scope!("SoundTriggerThread::waitForSignal");
+            puffin::profile_scope!("SoundTriggerThread::waitForTrigger");
             let root_sample = match rx.recv_timeout(Duration::from_millis(10)) {
                 Ok(root_sample) => root_sample,
                 Err(RecvTimeoutError::Timeout) => continue,
                 Err(RecvTimeoutError::Disconnected) => {
-                    log::error!("Audio receiver disconnected, shutting down reactive sound thread");
+                    log::error!("Audio receiver disconnected, shutting down sound trigger thread");
                     break
                 },
             };
-            REACTIVE_SIGNAL_THREAD.write().unwrap().tick(root_sample);
+            SOUND_TRIGGER_THREAD.write().unwrap().tick(root_sample);
         }
     }
 }

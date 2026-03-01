@@ -1,6 +1,6 @@
 use crate::audio::fft::{fft_data_u8, MAX_FREQ};
 use crate::audio::sound_trigger::{SoundTriggerParams, SoundTrigger};
-use crate::audio::{SoundTriggerHandle, REACTIVE_SIGNAL_THREAD};
+use crate::audio::{SoundTriggerHandle, SOUND_TRIGGER_THREAD};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
@@ -197,12 +197,12 @@ struct SoundTriggerEditorShell {
 
 impl From<SoundTriggerEditorShell> for SoundTriggerEditor {
     fn from(shell: SoundTriggerEditorShell) -> Self {
-        let reactive_signal_handle = REACTIVE_SIGNAL_THREAD
+        let sound_trigger_handle = SOUND_TRIGGER_THREAD
             .write()
             .unwrap()
-            .register_reactive_signal(shell.params);
+            .register_sound_trigger(shell.params);
         Self {
-            sound_trigger_handle: reactive_signal_handle,
+            sound_trigger_handle,
             f_center: shell.f_center,
             f_radius: shell.f_radius,
             preview_shader: None,
@@ -229,12 +229,12 @@ impl Default for SoundTriggerEditor {
 }
 impl SoundTriggerEditor {
     fn new(sound_trigger_params: SoundTriggerParams, f_center: f32, f_radius: f32, averaging_time: f32) -> Self {
-        let reactive_signal_handle = REACTIVE_SIGNAL_THREAD
+        let sound_trigger_handle = SOUND_TRIGGER_THREAD
             .write()
             .unwrap()
-            .register_reactive_signal(sound_trigger_params);
+            .register_sound_trigger(sound_trigger_params);
         Self {
-            sound_trigger_handle: reactive_signal_handle,
+            sound_trigger_handle,
             f_center,
             f_radius,
             averaging_time,
@@ -248,16 +248,16 @@ impl SoundTriggerEditor {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("SoundTriggerEditor::show");
         Frame::new().inner_margin(5.).show(ui, |ui| {
-            if let Some(signal) = self
+            if let Some(trigger) = self
                 .sound_trigger_handle
-                .update_params_and_fetch_signal()
+                .update_params_and_fetch_trigger()
                 {
-                    let mut spectrum = signal.spectrum.clone();
+                    let mut spectrum = trigger.spectrum.clone();
                     spectrum.map_inplace(|x| {
                         *x = (*x*10.0 + 10.0).log10() - 1.0;
                     });
-                    let impulse = signal.impulse.clamp(0.0, 1.0);
-                    let output_level = signal.current_level;
+                    let impulse = trigger.impulse.clamp(0.0, 1.0);
+                    let output_level = trigger.current_level;
 
                     if self.preview_shader.is_none() {
                         self.preview_shader = PreviewShader::try_init();

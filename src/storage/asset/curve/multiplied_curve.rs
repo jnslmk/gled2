@@ -181,7 +181,7 @@ impl<R: Range> MultipliedCurve<R> {
                 }
             });
 
-            // Menu for reactive sound
+            // Menu for sound trigger
             ui.scope_builder(UiBuilder::default().max_rect(sound_trigger_rect), |ui| {
                 ui.take_available_space();
                 let rect = MenuButton::from_button(
@@ -206,7 +206,7 @@ impl<R: Range> MultipliedCurve<R> {
                             .inner
                             .clicked()
                     {
-                        // this will automatically remove the reactive signal from the audio thread
+                        // this will automatically remove the sound trigger from the audio thread
                         self.sound_trigger = None;
                         changed = true;
                         ui.close_kind(UiKind::Menu);
@@ -214,11 +214,11 @@ impl<R: Range> MultipliedCurve<R> {
                     };
 
                     ui.set_min_height(400.0);
-                    // create a reactive signal as clicking the menu button is interpreted as adding reactive sound behavior
+                    // create a sound trigger as clicking the menu button is interpreted as adding trigger behavior
                     if self.sound_trigger.is_none() {
                         self.sound_trigger = Some(SoundTriggerEditor::default());
                     }
-                    // show controls for the reactive signal
+                    // show controls for the sound trigger
                     if let Some(editor) = &mut self.sound_trigger {
                         editor.show(ui);
                     }
