@@ -390,54 +390,35 @@ impl SoundTriggerEditor {
                 // ADSR knobs
                 Frame::new().inner_margin(5.).show(ui, |ui| {
                     ui.add(
-                        knob_default(Knob::new(
+                        knob_default(
                             &mut self.lock_params().attack_duration,
                             0.0,
                             2.0,
-                            KnobStyle::Wiper,
-                        ))
-                        .with_size(50.0)
-                        .with_label("Attack", LabelPosition::Bottom),
-                    );
-
-                    ui.add(
-                        knob_default(Knob::new(
-                            &mut self.lock_params().decay_duration,
-                            0.0,
-                            10.0,
-                            KnobStyle::Wiper,
-                        ))
-                        .with_size(50.0)
-                        .with_label("Decay", LabelPosition::Bottom),
+                            0.01,
+                        )
+                            .with_size(50.0)
+                            .with_logarithmic_scaling()
+                            .with_label("Attack", LabelPosition::Bottom),
                     );
                     ui.add(
-                        knob_default(Knob::new(
-                            &mut self.lock_params().sustain_level,
-                            0.0,
-                            1.0,
-                            KnobStyle::Wiper,
-                        ))
-                        .with_size(50.0)
-                        .with_label("Sustain", LabelPosition::Bottom),
-                    );
-                    ui.add(
-                        knob_default(Knob::new(
+                        knob_default(
                             &mut self.lock_params().release_duration,
                             0.0,
                             10.0,
-                            KnobStyle::Wiper,
-                        ))
-                        .with_size(50.0)
-                        .with_label("Release", LabelPosition::Bottom),
+                            1.0,
+                        )
+                            .with_size(50.0)
+                            .with_logarithmic_scaling()
+                            .with_label("Release", LabelPosition::Bottom),
                     );
                     // Threshold knob
                     ui.add(
-                        knob_default(Knob::new(
+                        knob_default(
                             &mut self.lock_params().gate_activation_threshold,
                             0.0,
                             1.0,
-                            KnobStyle::Wiper,
-                        ))
+                            0.5,
+                        )
                         .with_size(30.0)
                         .with_label("Threshold", LabelPosition::Bottom),
                     );
@@ -495,26 +476,24 @@ impl SoundTriggerEditor {
                 puffin::profile_function!("SoundTriggerEditor::draw_spectrum_knobs");
                 // Frequency center
                 ui.add(
-                    knob_default(Knob::new(&mut self.f_center, 0., 20_000., KnobStyle::Wiper))
+                    knob_default(&mut self.f_center, 0., 24_000., 100.0)
                         .with_size(50.0)
+                        .with_logarithmic_scaling()
                         .with_label("Frequency", LabelPosition::Bottom),
                 );
                 // Frequency radius
                 ui.add(
-                    knob_default(Knob::new(&mut self.f_radius, 0., 20_000., KnobStyle::Wiper))
+                    knob_default(&mut self.f_radius, 0., 24_000., 50.0)
                         .with_size(50.0)
+                        .with_logarithmic_scaling()
                         .with_label("Range", LabelPosition::Bottom),
                 );
                 // Sensitivity knob
                 ui.add(
-                    knob_default(Knob::new(
-                        &mut self.lock_params().sensitivity,
-                        0.0,
-                        1.0,
-                        KnobStyle::Wiper,
-                    ))
-                    .with_size(50.0)
-                    .with_label("Sensitivity", LabelPosition::Bottom),
+                    knob_default(&mut self.lock_params().sensitivity, 0.01, 10.0, 1.0)
+                        .with_size(50.0)
+                        .with_logarithmic_scaling()
+                        .with_label("Sensitivity", LabelPosition::Bottom),
                 );
                 self.lock_params()
                     .set_filter_tune(self.f_center, self.f_radius);
@@ -557,9 +536,15 @@ impl SoundTriggerEditor {
     }
 }
 
-fn knob_default(knob: Knob) -> Knob {
-    knob.with_font_size(12.0)
+fn knob_default(value: &mut f32, min: f32, max: f32, reset: f32) -> Knob {
+    Knob::new(
+        value,
+        min,
+        max,
+        KnobStyle::Wiper
+    )
+        .with_font_size(12.0)
         .with_colors(Color32::GRAY, Color32::WHITE, Color32::WHITE)
         .with_stroke_width(3.0)
-        .with_logarithmic_scaling()
+        .with_double_click_reset(reset)
 }

@@ -64,12 +64,12 @@ impl SoundTriggerParams {
 impl Default for SoundTriggerParams {
     fn default() -> Self {
         SoundTriggerParams::new(
-            8520.,
-            990.,
+            100.,
+            50.,
+            0.01,
+            0.0,
+            1.0,
             0.1,
-            0.2,
-            0.5,
-            1.,
             1.,
             0.5,
         )
@@ -99,7 +99,6 @@ pub struct SoundTrigger {
     sample_buffer: PrimitiveRingBuffer<Array1<f32>>,
     running_sum: Array1<f32>,
     prev_averaging_samples: usize,
-    max_impulse: f32,
     echo_buffer: PrimitiveRingBuffer<f32>,
     running_impulse_sum: f32,
 }
@@ -127,7 +126,6 @@ impl SoundTrigger {
             sample_buffer: PrimitiveRingBuffer::new(Array1::zeros(FREQ_BINS), MAX_BUFFER_LENGTH),
             running_sum: Array1::zeros(FREQ_BINS),
             prev_averaging_samples: params.averaging_samples,
-            max_impulse: 0.00001,
             echo_buffer: PrimitiveRingBuffer::new(0.0, MAX_BUFFER_LENGTH),
             running_impulse_sum: 0.0,
         }
@@ -166,7 +164,7 @@ impl SoundTrigger {
             .mul(4.0);
 
         self.impulse = self.highpass(self.impulse);
-        self.impulse =self.normalize(self.impulse);
+        self.impulse = self.impulse.mul(self.params.sensitivity);
         self.tick_adsr(self.impulse);
     }
 
@@ -301,20 +299,6 @@ impl SoundTrigger {
         // use a small decay here to counter the accumulation of errors
         //self.running_sum = &self.running_sum * 0.98;
         &self.running_sum / self.params.averaging_samples as f32
-    }
-
-    fn normalize(&mut self, sample: f32) -> f32{
-        // reset on change
-        if self.params.bin_radius != self.prev_params.bin_radius
-            || self.params.center_bin != self.prev_params.center_bin
-            || self.params.averaging_samples != self.prev_params.averaging_samples
-            || self.prev_params.sensitivity != self.params.sensitivity
-        {
-            self.max_impulse = 0.00001;
-            self.prev_params = self.params;
-        }
-        self.max_impulse = self.max_impulse.max(sample);
-        self.impulse / self.max_impulse
     }
 
 
