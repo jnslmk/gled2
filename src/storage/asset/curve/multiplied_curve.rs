@@ -69,7 +69,7 @@ impl<R: Range> MultipliedCurve<R> {
     pub fn sound_trigger_value(&self) -> f32 {
         self.sound_trigger
             .as_ref()
-            .map(|editor| editor.reactive_signal_handle.level())
+            .map(|editor| editor.sound_trigger_handle.level())
             .unwrap_or(1.0)
     }
 }

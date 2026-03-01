@@ -22,8 +22,8 @@ use tokio::runtime;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
-pub static REACTIVE_SIGNAL_THREAD: Lazy<RwLock<ReactiveSignalThread>> =
-    Lazy::new(|| RwLock::new(ReactiveSignalThread::new()));
+pub static REACTIVE_SIGNAL_THREAD: Lazy<RwLock<SoundTriggeThread>> =
+    Lazy::new(|| RwLock::new(SoundTriggeThread::new()));
 static SOUND_TRIGGER_SAMPLE_INTERVAL_MS: u64 = 10;
 pub static AUDIO_DEVICES: Lazy<Mutex<Vec<(DeviceId, DeviceDescription)>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
@@ -74,12 +74,12 @@ impl AudioPool {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ReactiveSignalHandle {
+pub struct SoundTriggerHandle {
     uuid: Uuid,
     params: Arc<Mutex<SoundTriggerParams>>,
 }
 
-impl Drop for ReactiveSignalHandle {
+impl Drop for SoundTriggerHandle {
     fn drop(&mut self) {
         REACTIVE_SIGNAL_THREAD
             .write()
@@ -89,13 +89,13 @@ impl Drop for ReactiveSignalHandle {
     }
 }
 
-impl PartialEq for ReactiveSignalHandle {
+impl PartialEq for SoundTriggerHandle {
     fn eq(&self, other: &Self) -> bool {
         self.uuid == other.uuid
     }
 }
 
-impl ReactiveSignalHandle {
+impl SoundTriggerHandle {
     pub fn update_params_and_fetch_signal(&self) -> Option<SoundTrigger> {
         REACTIVE_SIGNAL_THREAD
             .write()
@@ -119,27 +119,27 @@ impl ReactiveSignalHandle {
     }
 }
 
-impl Hash for ReactiveSignalHandle {
+impl Hash for SoundTriggerHandle {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.uuid.hash(state);
     }
 }
 
-pub struct ReactiveSignalThread {
+pub struct SoundTriggeThread {
     signals: HashMap<Uuid,Arc<Mutex<SoundTrigger>>>,
 }
 
-impl ReactiveSignalThread {
+impl SoundTriggeThread {
     fn new() -> Self {
         Self {
             signals: HashMap::new(),
         }
     }
-    pub fn register_reactive_signal(&mut self, sound_trigger_params: SoundTriggerParams) -> ReactiveSignalHandle {
+    pub fn register_reactive_signal(&mut self, sound_trigger_params: SoundTriggerParams) -> SoundTriggerHandle {
         let uuid = Uuid::new_v4();
         let signal = SoundTrigger::new(sound_trigger_params, SOUND_TRIGGER_SAMPLE_INTERVAL_MS as f32 / 1000.);
         self.signals.insert(uuid, Arc::new(Mutex::new(signal)));
-        ReactiveSignalHandle {
+        SoundTriggerHandle {
             uuid,
             params: Arc::new(Mutex::new(sound_trigger_params)),
         }
@@ -174,7 +174,7 @@ pub async fn start_reactive_sound_thread(rx: Receiver<[f32; FREQ_BINS]>) {
             // give tokio the opportunity to break the reactive sound thread loop
             tokio::task::yield_now().await;
             #[cfg(feature = "profiling")]
-            puffin::profile_scope!("ReactiveSignalThread::waitForSignal");
+            puffin::profile_scope!("SoundTriggerThread::waitForSignal");
             let root_sample = match rx.recv_timeout(Duration::from_millis(10)) {
                 Ok(root_sample) => root_sample,
                 Err(RecvTimeoutError::Timeout) => continue,

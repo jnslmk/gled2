@@ -1,6 +1,6 @@
 use crate::audio::fft::{fft_data_u8, MAX_FREQ};
 use crate::audio::sound_trigger::{SoundTriggerParams, SoundTrigger};
-use crate::audio::{ReactiveSignalHandle, REACTIVE_SIGNAL_THREAD};
+use crate::audio::{SoundTriggerHandle, REACTIVE_SIGNAL_THREAD};
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
@@ -180,7 +180,7 @@ impl PreviewShader {
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 #[serde(from = "SoundTriggerEditorShell", into = "SoundTriggerEditorShell")]
 pub struct SoundTriggerEditor {
-    pub reactive_signal_handle: ReactiveSignalHandle,
+    pub sound_trigger_handle: SoundTriggerHandle,
     f_center: f32,
     f_radius: f32,
     preview_shader: Option<PreviewShader>,
@@ -202,7 +202,7 @@ impl From<SoundTriggerEditorShell> for SoundTriggerEditor {
             .unwrap()
             .register_reactive_signal(shell.params);
         Self {
-            reactive_signal_handle,
+            sound_trigger_handle: reactive_signal_handle,
             f_center: shell.f_center,
             f_radius: shell.f_radius,
             preview_shader: None,
@@ -212,7 +212,7 @@ impl From<SoundTriggerEditorShell> for SoundTriggerEditor {
 }
 impl From<SoundTriggerEditor> for SoundTriggerEditorShell {
     fn from(editor: SoundTriggerEditor) -> Self {
-        let params = *editor.reactive_signal_handle.params.lock().unwrap();
+        let params = *editor.sound_trigger_handle.params.lock().unwrap();
         Self {
             params,
             f_center: editor.f_center,
@@ -234,7 +234,7 @@ impl SoundTriggerEditor {
             .unwrap()
             .register_reactive_signal(sound_trigger_params);
         Self {
-            reactive_signal_handle,
+            sound_trigger_handle: reactive_signal_handle,
             f_center,
             f_radius,
             averaging_time,
@@ -249,7 +249,7 @@ impl SoundTriggerEditor {
         puffin::profile_function!("SoundTriggerEditor::show");
         Frame::new().inner_margin(5.).show(ui, |ui| {
             if let Some(signal) = self
-                .reactive_signal_handle
+                .sound_trigger_handle
                 .update_params_and_fetch_signal()
                 {
                     let mut spectrum = signal.spectrum.clone();
@@ -276,7 +276,7 @@ impl SoundTriggerEditor {
     pub fn show_minified(&mut self, ui: &mut Ui, rect: Rect) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::show_minified");
-        let level = self.reactive_signal_handle.level();
+        let level = self.sound_trigger_handle.level();
         scoped_frame(
             ui,
             UiBuilder::new().max_rect(rect),
@@ -318,7 +318,7 @@ impl SoundTriggerEditor {
     }
 
     fn lock_params(&self) -> MutexGuard<'_, SoundTriggerParams> {
-        self.reactive_signal_handle.params.lock().unwrap()
+        self.sound_trigger_handle.params.lock().unwrap()
     }
 
     fn draw_adsr(&mut self, ui: &mut Ui, input_level: f32, output_level: f32) {
@@ -336,7 +336,7 @@ impl SoundTriggerEditor {
                 + meter_height
                     * (1.0
                         - self
-                            .reactive_signal_handle
+                            .sound_trigger_handle
                             .params
                             .lock()
                             .unwrap()
@@ -353,7 +353,7 @@ impl SoundTriggerEditor {
                 + meter_height
                     * (1.0
                         - self
-                            .reactive_signal_handle
+                            .sound_trigger_handle
                             .params
                             .lock()
                             .unwrap()
