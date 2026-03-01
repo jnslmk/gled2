@@ -1860,8 +1860,6 @@ dependencies = [
  "svgdom",
  "sysinfo",
  "tiny-skia",
- "tokio",
- "tokio-util",
  "typemap",
  "usvg",
  "uuid",

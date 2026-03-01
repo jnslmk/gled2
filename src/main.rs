@@ -177,7 +177,7 @@ fn main() {
                 )
                 .map_err(|_err| ())
                 .expect("Could not set wgpu render state");
-            let audio_pool = AudioPool::init();
+            let audio_pool = AudioPool::default();
             Ok(Box::new(
                 App::new(
                     ui_action_receiver,

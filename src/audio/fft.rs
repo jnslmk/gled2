@@ -6,8 +6,7 @@ use rtrb::{Consumer, Producer, RingBuffer};
 use rustfft::{FftPlanner, num_complex::Complex};
 use std::clone::Clone;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
-use tokio_util::sync::CancellationToken;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
@@ -36,118 +35,126 @@ pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
     fft_data_u8
 }
 
-pub async fn start(
-    device_id: DeviceId,
-    fft_tx: Sender<[f32; FREQ_BINS]>,
-    cancel_token: CancellationToken,
-) {
-    log::info!("Starting audio capture thread");
-    #[cfg(feature = "profiling")]
-    profiling::register_thread!("audio:capture");
-    log::info!("Starting FFT thread");
+#[derive(Debug)]
+pub struct AudioSource {
+    running: Arc<AtomicBool>,
+}
 
-    let host = cpal::default_host();
-    let device = host.device_by_id(&device_id);
+impl Drop for AudioSource {
+    fn drop(&mut self) {
+        self.running.store(false, Ordering::Relaxed);
+    }
+}
 
-    let device = match device {
-        Some(device) => {
-            log::info!(
-                "Using audio input device: {}",
-                device
-                    .description()
-                    .map(|desc| desc.name().to_string())
-                    .unwrap_or_else(|_| "Unknown".to_string())
-            );
-            device
-        }
-        None => {
-            log::warn!("No audio input device found, audio analysis disabled");
-            return;
-        }
-    };
+impl AudioSource {
+    pub fn start(device_id: DeviceId, fft_tx: Sender<[f32; FREQ_BINS]>) -> Self {
+        let running = Arc::new(AtomicBool::new(true));
 
-    let config = match device.default_input_config() {
-        Ok(config) => config,
-        Err(err) => {
-            log::error!("Failed to get default input config: {}", err);
-            return;
-        }
-    };
+        std::thread::spawn({
+            let running = running.clone();
+            move || {
+                #[cfg(feature = "profiling")]
+                profiling::register_thread!("audio:capture");
 
-    log::info!("Audio input config: {:?}", config);
-    let channels = config.channels() as usize;
+                let host = cpal::default_host();
+                let device = host.device_by_id(&device_id);
 
-    let (mut producer, consumer) = RingBuffer::<f32>::new(WINDOW_SIZE * 2);
-    let mut processor = FFTProcessor::new(consumer, fft_tx);
+                let device = match device {
+                    Some(device) => {
+                        log::info!(
+                            "Using audio input device: {}",
+                            device
+                                .description()
+                                .map(|desc| desc.name().to_string())
+                                .unwrap_or_else(|_| "Unknown".to_string())
+                        );
+                        device
+                    }
+                    None => {
+                        log::warn!("No audio input device found, audio analysis disabled");
+                        return;
+                    }
+                };
 
-    let stream = match config.sample_format() {
-        SampleFormat::F32 => device.build_input_stream(
-            &StreamConfig::from(config),
-            move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                push_sample(Vec::from(data), channels, &mut producer);
-            },
-            |err| {
-                log::error!("Audio stream error: {}", err);
-            },
-            None,
-        ),
-        SampleFormat::I16 => device.build_input_stream(
-            &StreamConfig::from(config),
-            move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
-                push_sample(f32_data, channels, &mut producer);
-            },
-            |err| {
-                log::error!("Audio stream error: {}", err);
-            },
-            None,
-        ),
-        SampleFormat::U16 => device.build_input_stream(
-            &StreamConfig::from(config),
-            move |data: &[u16], _: &cpal::InputCallbackInfo| {
-                let f32_data: Vec<f32> = data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
-                push_sample(f32_data, channels, &mut producer);
-            },
-            |err| {
-                log::error!("Audio stream error: {}", err);
-            },
-            None,
-        ),
-        _ => {
-            log::error!("Unsupported sample format: {:?}", config.sample_format());
-            return;
-        }
-    };
+                let config = match device.default_input_config() {
+                    Ok(config) => config,
+                    Err(err) => {
+                        log::error!("Failed to get default input config: {}", err);
+                        return;
+                    }
+                };
 
-    match stream {
-        Ok(stream) => {
-            if let Err(err) = stream.play() {
-                log::error!("Failed to start audio stream: {}", err);
-                return;
-            }
-            log::info!("Audio stream started successfully");
-            let cancel_processing_token = cancel_token.clone();
-            tokio::spawn(async move {
+                log::info!("Audio input config: {:?}", config);
+                let channels = config.channels() as usize;
+
+                let (mut producer, consumer) = RingBuffer::<f32>::new(WINDOW_SIZE * 2);
+                let mut processor = FFTProcessor::new(consumer, fft_tx);
+
+                let stream = match config.sample_format() {
+                    SampleFormat::F32 => device.build_input_stream(
+                        &StreamConfig::from(config),
+                        move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                            push_sample(Vec::from(data), channels, &mut producer);
+                        },
+                        |err| {
+                            log::error!("Audio stream error: {}", err);
+                        },
+                        None,
+                    ),
+                    SampleFormat::I16 => device.build_input_stream(
+                        &StreamConfig::from(config),
+                        move |data: &[i16], _: &cpal::InputCallbackInfo| {
+                            let f32_data: Vec<f32> =
+                                data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
+                            push_sample(f32_data, channels, &mut producer);
+                        },
+                        |err| {
+                            log::error!("Audio stream error: {}", err);
+                        },
+                        None,
+                    ),
+                    SampleFormat::U16 => device.build_input_stream(
+                        &StreamConfig::from(config),
+                        move |data: &[u16], _: &cpal::InputCallbackInfo| {
+                            let f32_data: Vec<f32> =
+                                data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
+                            push_sample(f32_data, channels, &mut producer);
+                        },
+                        |err| {
+                            log::error!("Audio stream error: {}", err);
+                        },
+                        None,
+                    ),
+                    _ => {
+                        log::error!("Unsupported sample format: {:?}", config.sample_format());
+                        return;
+                    }
+                };
+
+                let stream = match stream {
+                    Ok(stream) => stream,
+                    Err(err) => {
+                        log::error!("Failed to build audio stream: {}", err);
+                        return;
+                    }
+                };
+                if let Err(err) = stream.play() {
+                    log::error!("Failed to start audio stream: {}", err);
+                    return;
+                }
+                log::info!("Audio stream started successfully");
+
                 loop {
-                    if cancel_processing_token.is_cancelled() {
-                        log::info!("FFT thread cancelled");
+                    if !running.load(Ordering::Relaxed) {
+                        log::info!("Audio capture stopping...");
                         break;
                     }
                     processor.process_audio_samples();
-                    tokio::task::yield_now().await;
                 }
-            });
-            loop {
-                if cancel_token.is_cancelled() {
-                    log::info!("Audio capture cancelled");
-                    break;
-                }
-                tokio::task::yield_now().await;
             }
-        }
-        Err(err) => {
-            log::error!("Failed to build audio stream: {}", err);
-        }
+        });
+
+        Self { running }
     }
 }
 

@@ -73,8 +73,6 @@ static_assertions = "1"
 strum = { version = "0.27", features = ["derive"] }
 svgdom = "0.18"
 sysinfo = "0.38"
-tokio = { version = "1.49.0", features = ["rt-multi-thread", "time"] }
-tokio-util = "*"
 tiny-skia = { version = "0.12", default-features = false, features = [
     "simd",
     "std",

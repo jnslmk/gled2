@@ -4,14 +4,15 @@ pub mod sound_trigger;
 pub mod sound_trigger_editor;
 
 use crate::audio::{
-    fft::FREQ_BINS,
+    fft::{AudioSource, FREQ_BINS},
     sound_trigger::{SoundTrigger, SoundTriggerParams},
 };
+use cpal::DeviceDirection::{Duplex, Input};
 use cpal::{
     DeviceDescription, DeviceId,
     traits::{DeviceTrait, HostTrait},
 };
-use kanal::{ReceiveErrorTimeout, Receiver, Sender};
+use kanal::Sender;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -24,9 +25,6 @@ use std::{
     thread::sleep,
     time::Duration,
 };
-use cpal::DeviceDirection::{Duplex, Input};
-use tokio::runtime::{self, Runtime};
-use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 pub static SOUND_TRIGGER_THREAD_DATA: Lazy<RwLock<SoundTriggerThreadData>> =
@@ -35,58 +33,20 @@ static SOUND_TRIGGER_SAMPLE_INTERVAL_MS: u64 = 10;
 pub static AUDIO_DEVICES: Lazy<Mutex<Vec<(DeviceId, DeviceDescription)>>> =
     Lazy::new(|| Mutex::new(Vec::new()));
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AudioPool {
-    runtime: Runtime,
-    fft_tx: Sender<[f32; FREQ_BINS]>,
-    fft_cancel: Option<CancellationToken>,
     pub selected_device: Option<DeviceId>,
+    pub audio_source: Option<AudioSource>,
 }
 
 impl AudioPool {
-    pub fn init() -> Self {
-        #[cfg(feature = "profiling")]
-        puffin::profile_function!("AudioPool::init");
-        let runtime = runtime::Builder::new_multi_thread()
-            .worker_threads(1)
-            .thread_name("gled_audio_pool")
-            .enable_time()
-            .build()
-            .expect("Failed to create audio thread pool");
-
-        let selected_device = None;
-        let (fft_tx, receiver) = kanal::bounded(3);
-
-        runtime.spawn(start_sound_trigger_thread(receiver));
-        let mut ret = Self {
-            runtime,
-            fft_cancel: None,
-            selected_device,
-            fft_tx,
-        };
-        ret.restart_fft();
-        ret
-    }
-
     pub fn restart_fft(&mut self) {
-        if let Some(fft_cancel) = self.fft_cancel.take() {
-            // wait for the thread to stop
-            fft_cancel.cancel();
-        }
-
-        if let Some(device_id) = self.selected_device.clone() {
-            let cancel_token = CancellationToken::new();
-            self.runtime.spawn(fft::start(
-                device_id,
-                self.fft_tx.clone(),
-                cancel_token.clone(),
-            ));
-            self.fft_cancel = Some(cancel_token);
-        } else {
-            log::info!("No audio input device selected, audio analysis disabled");
-            self.fft_cancel = None;
-            SOUND_TRIGGER_THREAD_DATA.write().unwrap().reset();
-        }
+        self.audio_source = self.selected_device.clone().map(|device_id| {
+            log::info!("Restarting FFT with device: {:?}", device_id);
+            let fft_tx = start_sound_trigger_thread();
+            AudioSource::start(device_id, fft_tx)
+        });
+        SOUND_TRIGGER_THREAD_DATA.write().unwrap().reset();
     }
 }
 
@@ -178,26 +138,19 @@ impl SoundTriggerThreadData {
         });
     }
 }
-pub async fn start_sound_trigger_thread(rx: Receiver<[f32; FREQ_BINS]>) {
-    loop {
-        {
-            // give tokio the opportunity to break the sound trigger thread loop
-            tokio::task::yield_now().await;
-            #[cfg(feature = "profiling")]
-            puffin::profile_scope!("SoundTriggerThread::waitForTrigger");
-            let root_sample = match rx.recv_timeout(Duration::from_millis(10)) {
-                Ok(root_sample) => root_sample,
-                Err(ReceiveErrorTimeout::Timeout) => continue,
-                Err(err) => {
-                    log::error!(
-                        "Audio receiver disconnected({err}), shutting down sound trigger thread"
-                    );
-                    break;
-                }
-            };
+pub fn start_sound_trigger_thread() -> Sender<[f32; FREQ_BINS]> {
+    let (tx, rx) = kanal::bounded(0);
+
+    std::thread::spawn(move || {
+        #[cfg(feature = "profiling")]
+        profiling::register_thread!("SoundTriggerThread");
+        log::info!("Sound trigger thread started");
+        while let Ok(root_sample) = rx.recv() {
             SOUND_TRIGGER_THREAD_DATA.write().unwrap().tick(root_sample);
         }
-    }
+    });
+
+    tx
 }
 
 // poll for audio device changes every second
@@ -211,14 +164,18 @@ pub fn audio_device_info_loop(continue_scan: &AtomicBool) {
 
         let host = cpal::default_host();
         let devices = host.input_devices().expect("Failed to get audio devices");
-        let device_map = Vec::from_iter(devices.map(|device| {
-            (
-                device.id().expect("Failed to get audio device id"),
-                device
-                    .description()
-                    .expect("Failed to get audio device description"),
-            )
-        }).filter(|(_, desc)| desc.direction() == Input || desc.direction() == Duplex));
+        let device_map = Vec::from_iter(
+            devices
+                .map(|device| {
+                    (
+                        device.id().expect("Failed to get audio device id"),
+                        device
+                            .description()
+                            .expect("Failed to get audio device description"),
+                    )
+                })
+                .filter(|(_, desc)| desc.direction() == Input || desc.direction() == Duplex),
+        );
 
         *AUDIO_DEVICES.lock().unwrap() = device_map;
         sleep(Duration::from_secs(1));
