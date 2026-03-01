@@ -1,13 +1,11 @@
-use std::sync::{
-    OnceLock,
-    mpsc::{Receiver, Sender},
-};
+use kanal::{Receiver, Sender, bounded};
+use std::sync::OnceLock;
 use uuid::Uuid;
 
 static SENDER: OnceLock<Sender<StorageAction>> = OnceLock::new();
 
 pub fn init() -> Receiver<StorageAction> {
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = bounded(16);
     SENDER.set(tx).expect("Could not set ACTION_SENDER");
     rx
 }

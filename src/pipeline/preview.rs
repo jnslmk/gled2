@@ -148,6 +148,7 @@ impl Preview {
         }
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn run(encoder: &mut CommandEncoder) {
         PREVIEW.with(|preview| {
             let preview = preview.get_or_init(Self::init);

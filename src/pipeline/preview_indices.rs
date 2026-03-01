@@ -14,8 +14,8 @@ use log::debug;
 use std::{
     num::{NonZero, NonZeroU64},
     sync::{
-        atomic::{AtomicBool, Ordering::Relaxed},
         OnceLock,
+        atomic::{AtomicBool, Ordering::Relaxed},
     },
 };
 use wgpu::{
@@ -179,6 +179,7 @@ impl PreviewIndices {
         })
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn prepare(&self, queue: &Queue) {
         if !self.send_positions.load(Relaxed) {
             return;
@@ -198,6 +199,7 @@ impl PreviewIndices {
         }
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn run(&self, encoder: &mut CommandEncoder) {
         if !self.send_positions.swap(false, Relaxed) {
             return;

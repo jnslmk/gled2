@@ -1,15 +1,15 @@
 use super::{
-    asset::{Asset, AssetTrait},
     STORAGE_DIR,
+    asset::{Asset, AssetTrait},
 };
 use crate::{storage::AssetId, ui::action::UiAction};
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use std::{collections::HashMap, fmt::Debug, str::FromStr, sync::Arc};
+use std::{collections::BTreeMap, fmt::Debug, str::FromStr, sync::Arc};
 use typemap::Key;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Default)]
-pub struct Collection<T: AssetTrait>(HashMap<Uuid, Arc<Asset<T>>>);
+pub struct Collection<T: AssetTrait>(BTreeMap<Uuid, Arc<Asset<T>>>);
 
 impl<T: AssetTrait + 'static> Key for Collection<T> {
     type Value = Collection<T>;
@@ -19,7 +19,7 @@ impl<T: AssetTrait> Collection<T> {
     pub fn load() -> Self {
         let path = STORAGE_DIR.join(T::DIR_NAME);
         let Ok(directory) = path.read_dir() else {
-            return Self(HashMap::new());
+            return Self(BTreeMap::new());
         };
 
         let folders = directory

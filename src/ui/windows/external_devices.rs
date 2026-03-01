@@ -1,27 +1,31 @@
+use crate::audio::{AUDIO_DEVICES, audio_device_info_loop};
+use crate::input::artnet::ArtnetConfig;
+use crate::storage::asset::project::Project;
+use crate::storage::collections::Collections;
+use crate::ui::action::UiAction;
+use crate::ui::asset::CollectionsChangeButton;
+use crate::{
+    input::artnet::ARTNET_CONFIG,
+    storage::asset::{Asset, output_device::routing::OutputRouting},
+    ui::{
+        window_common::{default_viewport_builder, gled_window_frame},
+        windows::output_routings::HOVERED_OUTPUT_ROUTING,
+    },
+};
+use chrono::Local;
+use egui::{
+    Button, CentralPanel, ComboBox, Context, DragValue, Id, Layout, Response, RichText, SidePanel,
+    Slider, Ui, Vec2, ViewportId, Widget, WidgetText,
+};
+use egui_phosphor_icons::icons;
+use epaint::mutex::MutexGuard;
+use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use std::collections::BTreeMap;
 use std::net::Ipv4Addr;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::thread;
 use std::thread::JoinHandle;
-use crate::audio::{audio_device_info_loop, AUDIO_DEVICES};
-use crate::storage::asset::project::Project;
-use crate::ui::action::UiAction;
-use crate::{
-    input::artnet::ARTNET_CONFIG,
-    storage::asset::{Asset, output_device::routing::OutputRouting},
-    ui::{
-        ChangeButton,
-        window_common::{default_viewport_builder, gled_window_frame},
-        windows::output_routings::HOVERED_OUTPUT_ROUTING,
-    },
-};
-use chrono::Local;
-use egui::{Button, CentralPanel, ComboBox, Context, DragValue, Id, Layout, Response, RichText, SidePanel, Slider, Ui, Vec2, ViewportId, Widget, WidgetText};
-use egui_phosphor_icons::icons;
-use epaint::mutex::MutexGuard;
-use network_interface::{NetworkInterface, NetworkInterfaceConfig};
-use crate::input::artnet::ArtnetConfig;
 
 static REFRESH_DEVICES: AtomicBool = AtomicBool::new(false);
 
@@ -40,7 +44,12 @@ struct EditSate {
 
 impl ExternalDeviceSettings {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context, project: &mut Option<Project>) {
+    pub fn update(
+        &mut self,
+        ctx: &Context,
+        project: &mut Option<Project>,
+        collections: &mut Collections,
+    ) {
         REFRESH_DEVICES.store(self.open && self.selected_submenu == "Audio Input", Relaxed);
         if !self.open {
             return;
@@ -88,7 +97,7 @@ impl ExternalDeviceSettings {
                             audio_input_settings(ui, (**project, edit_state))
                         })
                         .add_submenu("Artnet Bridge".into(), |ui, (project, edit_state)| {
-                            artnet_bridge_settings(ui, (**project, edit_state))
+                            artnet_bridge_settings(ui, (**project, edit_state), collections)
                         })
                         .add_submenu("Artnet Control".into(), |ui, (project, edit_state)| {
                             artnet_control_input_settings(ui, (**project, edit_state))
@@ -99,7 +108,9 @@ impl ExternalDeviceSettings {
                     ui.add(settings_menu);
                 });
 
-                let is_refreshing = self.handle.as_ref()
+                let is_refreshing = self
+                    .handle
+                    .as_ref()
                     .map_or_else(|| false, |x| !x.is_finished());
                 if !is_refreshing && REFRESH_DEVICES.load(Relaxed) {
                     self.handle = Some(thread::spawn(|| audio_device_info_loop(&REFRESH_DEVICES)));
@@ -146,7 +157,11 @@ fn artnet_control_input_settings(ui: &mut Ui, state: (&mut Project, &mut EditSat
     });
 }
 
-fn artnet_bridge_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
+fn artnet_bridge_settings(
+    ui: &mut Ui,
+    state: (&mut Project, &mut EditSate),
+    collections: &mut Collections,
+) {
     let mut config = ARTNET_CONFIG.lock();
     let (_project, edit_state) = state;
 
@@ -178,9 +193,16 @@ fn artnet_bridge_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
                                 .to_string(),
                         );
 
-                        bridge.output_routing.device.change_button(ui);
+                        bridge
+                            .output_routing
+                            .device
+                            .collections_change_button(ui, collections);
 
-                        if let Some(device) = bridge.output_routing.device.and_then(Asset::get) {
+                        if let Some(device) = bridge
+                            .output_routing
+                            .device
+                            .and_then(|asset_id| Asset::get(asset_id, collections))
+                        {
                             let device_universes = device.data.universes();
                             if !device_universes.is_empty() {
                                 ComboBox::new(format!("{universe}_universe"), "")
@@ -236,9 +258,6 @@ fn artnet_trigger_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
     ui.add_space(3.0);
 
     ui.horizontal(|ui| {
-        ui.label("Active");
-        ui.checkbox(&mut config.active, "");
-
         bind_adress_settings(edit_state, &mut config, ui);
     });
     ui.separator();
@@ -246,7 +265,11 @@ fn artnet_trigger_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
     ui.add(Slider::new(&mut config.universe, 0..=32768));
 }
 
-fn bind_adress_settings(edit_state: &mut EditSate, config: &mut MutexGuard<ArtnetConfig>, ui: &mut Ui) {
+fn bind_adress_settings(
+    edit_state: &mut EditSate,
+    config: &mut MutexGuard<ArtnetConfig>,
+    ui: &mut Ui,
+) {
     ui.label("Bind address");
     let mut selected_index = edit_state
         .addresses
@@ -298,7 +321,7 @@ impl<'a, S> SettingsMenu<'a, S> {
 
 impl<'a, S> Widget for SettingsMenu<'a, S> {
     fn ui(mut self, ui: &mut Ui) -> Response {
-        debug_assert!(self.submenus.len() > 0);
+        debug_assert!(!self.submenus.is_empty());
         SidePanel::left("artnet_input_config")
             .resizable(true)
             .width_range(100.0..=200.0)

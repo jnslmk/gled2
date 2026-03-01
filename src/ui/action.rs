@@ -1,21 +1,23 @@
-use crate::storage::asset::project::Project;
-use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
-use crate::storage::asset::scene::grid::GridLocation;
-use crate::storage::asset::scene::Scene;
-use crate::{app::{persistant_state::PersistantState, svg::Svg, App}, input::artnet::ARTNET_CONFIG, pipeline::extract_output::ExtractOutput, storage::{
-    asset::{
-        animation::Animation, curve::multiplied_curve::MultipliedCurve, Asset,
+use crate::{
+    app::{App, svg::Svg},
+    input::artnet::ARTNET_CONFIG,
+    storage::{
+        asset::{
+            Asset,
+            animation::Animation,
+            curve::multiplied_curve::MultipliedCurve,
+            project::{Project, scene_instance_path::SceneInstanceUnion},
+            scene::{Scene, grid::GridLocation},
+        },
+        asset_id::AssetId,
     },
-    asset_id::AssetId,
-}};
+};
 use cpal::DeviceId;
 use egui::ViewportId;
+use kanal::{Receiver, Sender, unbounded};
 use notify_rust::Notification;
 use once_cell::sync::OnceCell;
-use std::sync::{
-    mpsc::{Receiver, Sender},
-    Arc,
-};
+use std::sync::Arc;
 
 static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 
@@ -57,14 +59,14 @@ impl App {
     #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn handle_ui_actions(&mut self) {
         loop {
-            let Some(action) = self.ui_action_receiver.try_recv().ok() else {
+            let Ok(Some(action)) = self.ui_action_receiver.try_recv() else {
                 return;
             };
             log::trace!("Handling ui action: {action:?}");
 
             match (&mut self.project, action) {
                 (Some(project), UiAction::AddScene(pos, scene)) => {
-                    project.add_scene(pos, scene);
+                    project.add_scene(pos, scene, &self.collections);
                 }
                 (Some(project), UiAction::DeleteSceneInstance { location }) => {
                     project.remove_scene_instance(location);
@@ -81,6 +83,7 @@ impl App {
                         project.add_scene(
                             project.next_empty_grid_location(self.selected_scene_instance),
                             scene_id,
+                            &self.collections,
                         );
                     }
                 }
@@ -89,12 +92,18 @@ impl App {
                         .get_scenes_instance(&location)
                         .map(|scene_instance| scene_instance.scene_id)
                     {
-                        project.add_scene(project.next_empty_grid_location(location), scene_id);
+                        project.add_scene(
+                            project.next_empty_grid_location(location),
+                            scene_id,
+                            &self.collections,
+                        );
                     }
                 }
                 (Some(project), UiAction::ReloadShaderCode(animation)) => {
-                    project.reload_shader_code(animation);
-                    self.windows.scenes.reload_shader_code(animation);
+                    project.reload_shader_code(animation, &self.collections);
+                    self.windows
+                        .scenes
+                        .reload_shader_code(animation, &mut self.collections);
                 }
                 (Some(project), UiAction::SendPositions) => {
                     project.send_positions();
@@ -162,10 +171,9 @@ impl App {
                     self.blackout = blackout;
                 }
                 (_, UiAction::SetProject(project)) => {
-                    if let Some(project) = Asset::get(project) {
-                        let mut persistant_state = PersistantState::get();
-                        persistant_state.last_project_id = Some(project.id);
-                        persistant_state.save();
+                    if let Some(project) = Asset::get(project, &self.collections) {
+                        self.persistant_state.set_last_project_id(project.id);
+                        self.persistant_state.save();
 
                         self.project_id = Some(project.id);
                         let project = Arc::unwrap_or_clone(project).data;
@@ -174,7 +182,7 @@ impl App {
                             .next()
                             .copied()
                             .unwrap_or_default();
-                        *ExtractOutput::get().routings.lock() = project.output_routings.clone();
+                        self.extract_output.routings = project.output_routings.clone();
                         *ARTNET_CONFIG.lock() = project.artnet_config.clone();
                         project.channel_overwrites.clone().set();
                         self.audio_pool.selected_device = project.audio_input_device.clone();
@@ -182,7 +190,7 @@ impl App {
                         self.project = Some(project);
                         UiAction::ReloadShaderCode(None).enqueue();
                     } else {
-                        self.windows.artnet_input.close();
+                        self.windows.external_device_settings.close();
                         self.windows.output_routings.close();
                         self.windows.shortcuts.close();
                         self.project.take();
@@ -199,7 +207,7 @@ impl App {
                 (_, UiAction::MidiOutputActive(active)) => {
                     self.midi_output_active = active;
                 }
-                
+
                 (_, UiAction::Error(error)) => {
                     log::error!("{error}");
 
@@ -222,7 +230,7 @@ impl App {
 
 impl UiAction {
     pub fn init_queue() -> Receiver<UiAction> {
-        let (sender, receiver) = std::sync::mpsc::channel();
+        let (sender, receiver) = unbounded();
         ACTION_SENDER.set(sender).unwrap();
         receiver
     }

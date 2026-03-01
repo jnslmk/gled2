@@ -3,10 +3,10 @@ pub mod event;
 pub mod external_control;
 
 use crate::input::artnet::ArtnetEvent;
-use crossbeam_channel::Receiver;
-use egui::{mutex::Mutex, Context};
+use egui::{Context, mutex::Mutex};
 use event::{GamepadEvent, InputEvent};
 use gilrs::{Axis, Button, Event, Gilrs};
+use kanal::Receiver;
 use log::debug;
 use std::{
     collections::{HashMap, HashSet},
@@ -74,7 +74,7 @@ impl Input {
             });
         }
 
-        while let Ok(event) = input.artnet_receiver.try_recv() {
+        while let Ok(Some(event)) = input.artnet_receiver.try_recv() {
             log::trace!("Received Artnet event: {event:?}");
             if event.value == 0 {
                 input.events.remove(&InputEvent::Artnet(event.channel));

@@ -1,10 +1,13 @@
 use crate::{
     app::{persistant_state::PersistantState, timing::Timing},
     pipeline::renderer_callback::RendererCallback,
-    storage::asset::{Asset, animation::Animation, scene::effect::Effect},
+    storage::{
+        asset::{Asset, animation::Animation, scene::effect::Effect},
+        collections::Collections,
+    },
     ui::{
-        ChangeButton,
         action::UiAction,
+        asset::CollectionsChangeButton,
         asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
         effect::widget::EffectWidget,
         window_common::{default_viewport_builder, gled_window_frame},
@@ -34,21 +37,23 @@ pub struct AnimationWindow {
 }
 
 impl AnimationWindow {
-    fn validate(&mut self) {
+    fn validate(&mut self, collections: &Collections) {
         if let TreeSelection::Asset(animation) = &self.tree.selected()
             && let Some(effect) = self.effect.as_mut()
         {
             effect.animation_overwrite = Some(Arc::new(animation.clone()));
             let mut validator = Validator::new(ValidationFlags::all(), Capabilities::all());
-            match parse_str(&effect.shader_code_complete())
-                .map_err(|err| err.emit_to_string(&effect.shader_code_complete()))
+            match parse_str(&effect.shader_code_complete(collections))
+                .map_err(|err| err.emit_to_string(&effect.shader_code_complete(collections)))
                 .and_then(|module| {
-                    validator
-                        .validate(&module)
-                        .map_err(|err| err.emit_to_string(&effect.shader_code_complete()))
+                    validator.validate(&module).map_err(|err| {
+                        err.emit_to_string(&effect.shader_code_complete(collections))
+                    })
                 }) {
                 Ok(_) => {
-                    effect.state.set_shader_code(&effect.shader_code_complete());
+                    effect
+                        .state
+                        .set_shader_code(&effect.shader_code_complete(collections));
                     self.error.take();
                 }
                 Err(err) => {
@@ -59,7 +64,13 @@ impl AnimationWindow {
     }
 
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context, timing: &Timing) {
+    pub fn update(
+        &mut self,
+        ctx: &Context,
+        timing: &Timing,
+        collections: &mut Collections,
+        persistant_state: &mut PersistantState,
+    ) {
         if !self.open {
             self.dirty = false;
             return;
@@ -83,9 +94,12 @@ impl AnimationWindow {
             let queue = &wgpu_render_state.queue;
             effect.prepare(
                 queue,
-                PersistantState::get().preview_palette.and_then(Asset::get),
+                persistant_state
+                    .preview_palette()
+                    .and_then(|id| Asset::get(id, collections)),
                 &Default::default(),
                 1.0,
+                collections,
             );
             let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("Render animations for animation editor"),
@@ -100,7 +114,7 @@ impl AnimationWindow {
         }
 
         if self.preview {
-            self.show_preview_window(ctx);
+            self.show_preview_window(ctx, collections, persistant_state);
         }
 
         ctx.show_viewport_immediate(
@@ -120,7 +134,11 @@ impl AnimationWindow {
                         .exact_width(TREE_WIDTH)
                         .resizable(false)
                         .show_inside(ui, |ui| {
-                            if self.tree.show(ui, ui.make_persistent_id("animations_tree")) {
+                            if self.tree.show(
+                                ui,
+                                ui.make_persistent_id("animations_tree"),
+                                collections,
+                            ) {
                                 self.dirty = false;
                                 validate = true;
                             }
@@ -148,7 +166,7 @@ impl AnimationWindow {
                         });
 
                     egui::CentralPanel::default().show_inside(ui, |ui| {
-                        if self.tree.common_settings(ui, &mut self.dirty) {
+                        if self.tree.common_settings(ui, &mut self.dirty, collections) {
                             validate = true;
                             if let TreeSelection::Asset(animation) = &self.tree.selected() {
                                 UiAction::ReloadShaderCode(Some(animation.id)).enqueue();
@@ -193,7 +211,7 @@ impl AnimationWindow {
         );
 
         if validate {
-            self.validate();
+            self.validate(collections);
         }
     }
 
@@ -201,7 +219,12 @@ impl AnimationWindow {
         self.open = true;
     }
 
-    pub fn show_preview_window(&mut self, ctx: &Context) {
+    pub fn show_preview_window(
+        &mut self,
+        ctx: &Context,
+        collections: &mut Collections,
+        persistant_state: &mut PersistantState,
+    ) {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("animation preview window")),
             default_viewport_builder()
@@ -223,7 +246,9 @@ impl AnimationWindow {
                                 ScrollArea::vertical()
                                     .scroll_bar_visibility(AlwaysVisible)
                                     .max_height(ui.available_height())
-                                    .show(ui, |ui| effect.config_ui(ui, false, None, 1.0));
+                                    .show(ui, |ui| {
+                                        effect.config_ui(ui, false, None, 1.0, collections)
+                                    });
                             });
                     }
 
@@ -234,8 +259,10 @@ impl AnimationWindow {
                             .show(ui, |ui| {
                                 ui.label("Preview Palette");
                                 ui.vertical_centered_justified(|ui| {
-                                    let mut persistant_state = PersistantState::get();
-                                    if persistant_state.preview_palette.change_button(ui) {
+                                    if persistant_state
+                                        .preview_palette_mut()
+                                        .collections_change_button(ui, collections)
+                                    {
                                         persistant_state.save();
                                     }
                                 });
@@ -257,6 +284,7 @@ impl AnimationWindow {
                                             groups: None,
                                             groups_show_index: false,
                                             beat_progression: None,
+                                            collections,
                                         },
                                     );
                                     if ui

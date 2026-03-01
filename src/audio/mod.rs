@@ -3,22 +3,28 @@ pub mod fft;
 pub mod sound_trigger;
 pub mod sound_trigger_editor;
 
-use crate::audio::fft::FREQ_BINS;
-use crate::audio::sound_trigger::{SoundTrigger, SoundTriggerParams};
-use cpal::traits::{DeviceTrait, HostTrait};
-use cpal::{DeviceDescription, DeviceId};
-use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
+use crate::audio::{
+    fft::FREQ_BINS,
+    sound_trigger::{SoundTrigger, SoundTriggerParams},
+};
+use cpal::{
+    DeviceDescription, DeviceId,
+    traits::{DeviceTrait, HostTrait},
+};
+use kanal::{ReceiveErrorTimeout, Receiver, Sender};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::hash::{DefaultHasher, Hash};
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::Relaxed;
-use std::sync::{Arc, Mutex, RwLock};
-use std::thread::sleep;
-use std::time::Duration;
-use tokio::runtime;
-use tokio::runtime::Runtime;
+use std::{
+    collections::HashMap,
+    hash::Hash,
+    sync::{
+        Arc, Mutex, RwLock,
+        atomic::{AtomicBool, Ordering::Relaxed},
+    },
+    thread::sleep,
+    time::Duration,
+};
+use tokio::runtime::{self, Runtime};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
@@ -48,7 +54,7 @@ impl AudioPool {
             .expect("Failed to create audio thread pool");
 
         let selected_device = None;
-        let (fft_tx, receiver) = crossbeam_channel::bounded(3);
+        let (fft_tx, receiver) = kanal::bounded(3);
 
         runtime.spawn(start_sound_trigger_thread(receiver));
         let mut ret = Self {
@@ -166,9 +172,8 @@ impl SoundTriggerThreadData {
         puffin::profile_scope!("tick_sound_triggers");
         self.triggers.values_mut().for_each(move |trigger| {
             let trigger = Arc::clone(trigger);
-            let sample_copy = root_sample.clone();
             let mut trigger_guard = trigger.lock().unwrap();
-            trigger_guard.tick(sample_copy);
+            trigger_guard.tick(root_sample);
         });
     }
 
@@ -189,9 +194,11 @@ pub async fn start_sound_trigger_thread(rx: Receiver<[f32; FREQ_BINS]>) {
             puffin::profile_scope!("SoundTriggerThread::waitForTrigger");
             let root_sample = match rx.recv_timeout(Duration::from_millis(10)) {
                 Ok(root_sample) => root_sample,
-                Err(RecvTimeoutError::Timeout) => continue,
-                Err(RecvTimeoutError::Disconnected) => {
-                    log::error!("Audio receiver disconnected, shutting down sound trigger thread");
+                Err(ReceiveErrorTimeout::Timeout) => continue,
+                Err(err) => {
+                    log::error!(
+                        "Audio receiver disconnected({err}), shutting down sound trigger thread"
+                    );
                     break;
                 }
             };
@@ -211,7 +218,7 @@ pub fn audio_device_info_loop(continue_scan: &AtomicBool) {
 
         let host = cpal::default_host();
         let devices = host.input_devices().expect("Failed to get audio devices");
-        let mut device_map = Vec::from_iter(devices.map(|device| {
+        let device_map = Vec::from_iter(devices.map(|device| {
             (
                 device.id().expect("Failed to get audio device id"),
                 device
@@ -219,8 +226,6 @@ pub fn audio_device_info_loop(continue_scan: &AtomicBool) {
                     .expect("Failed to get audio device description"),
             )
         }));
-        let mut hasher = DefaultHasher::new();
-        device_map.sort_by(|a, b| a.0.hash(&mut hasher).cmp(&b.0.hash(&mut hasher)));
 
         *AUDIO_DEVICES.lock().unwrap() = device_map;
         sleep(Duration::from_secs(1));

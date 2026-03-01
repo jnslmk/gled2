@@ -1,6 +1,7 @@
 use crate::storage::{
     asset::{Asset, AssetTrait},
     asset_id::AssetId,
+    collections::Collections,
 };
 use egui::{
     Button, Color32, Id, Label, Margin, Pos2, Rect, ScrollArea, Stroke, Ui, UiKind, Vec2,
@@ -30,6 +31,7 @@ impl<T: AssetTrait> TreeEntry<T> {
         tree_ids: &mut Vec<TreeId<T>>,
         builder: &mut Option<&mut TreeViewBuilder<usize>>,
         only_asset_selection: bool,
+        collections: &mut Collections,
     ) {
         match self {
             TreeEntry::Dir(dir, children) => {
@@ -81,7 +83,7 @@ impl<T: AssetTrait> TreeEntry<T> {
                                         {
                                             let mut asset = Asset::<T>::new(new_asset_name);
                                             asset.change_dir(dir);
-                                            asset.save();
+                                            asset.save(collections);
                                             ui.close_kind(UiKind::Menu);
                                         }
                                     });
@@ -95,13 +97,25 @@ impl<T: AssetTrait> TreeEntry<T> {
                     .values()
                     .filter(|entry| !matches!(entry, TreeEntry::Dir(..)))
                 {
-                    entry.build(empty_dirs, tree_ids, builder, only_asset_selection);
+                    entry.build(
+                        empty_dirs,
+                        tree_ids,
+                        builder,
+                        only_asset_selection,
+                        collections,
+                    );
                 }
                 for entry in children
                     .values()
                     .filter(|entry| !matches!(entry, TreeEntry::Asset(..)))
                 {
-                    entry.build(empty_dirs, tree_ids, builder, only_asset_selection);
+                    entry.build(
+                        empty_dirs,
+                        tree_ids,
+                        builder,
+                        only_asset_selection,
+                        collections,
+                    );
                 }
 
                 if let Some(builder) = builder {
@@ -166,9 +180,9 @@ impl<T: AssetTrait> Default for AssetTree<T> {
 }
 
 impl<T: AssetTrait> AssetTree<T> {
-    pub fn load(&self) -> Vec<TreeEntry<T>> {
+    pub fn load(&self, collections: &Collections) -> Vec<TreeEntry<T>> {
         let mut root = TreeEntry::default();
-        let assets = Asset::all();
+        let assets = Asset::all(collections);
         for asset in assets {
             let pos = Self::add_dir(&mut root, asset.dir());
             if let TreeEntry::Dir(_, dir) = pos {
@@ -188,9 +202,9 @@ impl<T: AssetTrait> AssetTree<T> {
         dir.into_values().collect()
     }
 
-    pub fn find_index(&self, id: &TreeId<T>) -> Option<usize> {
+    pub fn find_index(&self, id: &TreeId<T>, collections: &mut Collections) -> Option<usize> {
         let mut empty_dirs = vec![];
-        let entries = self.load();
+        let entries = self.load(collections);
         let mut tree_ids = vec![];
         for entry in entries.iter() {
             entry.build(
@@ -198,6 +212,7 @@ impl<T: AssetTrait> AssetTree<T> {
                 &mut tree_ids,
                 &mut None,
                 self.only_asset_selection,
+                collections,
             );
         }
 
@@ -219,13 +234,13 @@ impl<T: AssetTrait> AssetTree<T> {
     }
 
     /// Returns true if the selection has changed
-    pub fn show(&mut self, ui: &mut Ui, id: Id) -> bool {
+    pub fn show(&mut self, ui: &mut Ui, id: Id, collections: &mut Collections) -> bool {
         let mut selection_changed = false;
         ScrollArea::vertical()
             .scroll_bar_visibility(AlwaysVisible)
             .id_salt(format!("scroll: {id:?}"))
             .show(ui, |ui| {
-                let entries = self.load();
+                let entries = self.load(collections);
                 let mut tree_ids = vec![];
 
                 if !self.only_asset_selection {
@@ -269,6 +284,7 @@ impl<T: AssetTrait> AssetTree<T> {
                                 &mut tree_ids,
                                 &mut Some(builder),
                                 self.only_asset_selection,
+                                collections,
                             );
                         }
                     })
@@ -282,7 +298,7 @@ impl<T: AssetTrait> AssetTree<T> {
                                 .copied()
                                 .map(|index| tree_ids.remove(index))
                                 .and_then(|id| match id {
-                                    TreeId::File(id) => Asset::get(id).map(|asset| {
+                                    TreeId::File(id) => Asset::get(id, collections).map(|asset| {
                                         TreeSelection::Asset(Arc::unwrap_or_clone(asset))
                                     }),
                                     TreeId::Dir(dir) => Some(TreeSelection::Dir {
@@ -307,7 +323,7 @@ impl<T: AssetTrait> AssetTree<T> {
                                     (source, target)
                                 {
                                     let target = target.clone();
-                                    if let Some(asset) = Asset::get(source) {
+                                    if let Some(asset) = Asset::get(source, collections) {
                                         let mut asset = Arc::unwrap_or_clone(asset);
                                         asset.path = target
                                             .into_iter()
@@ -315,7 +331,7 @@ impl<T: AssetTrait> AssetTree<T> {
                                                 asset.path.last().unwrap().clone(),
                                             ))
                                             .collect();
-                                        asset.save();
+                                        asset.save(collections);
                                     }
                                 }
                             }
@@ -332,7 +348,12 @@ impl<T: AssetTrait> AssetTree<T> {
         &mut self.selection
     }
 
-    pub fn common_settings(&mut self, ui: &mut Ui, dirty: &mut bool) -> bool {
+    pub fn common_settings(
+        &mut self,
+        ui: &mut Ui,
+        dirty: &mut bool,
+        collections: &mut Collections,
+    ) -> bool {
         let mut changed = false;
 
         egui::Frame::NONE
@@ -353,7 +374,7 @@ impl<T: AssetTrait> AssetTree<T> {
                         }
                     }
                     TreeSelection::Dir { .. } => {
-                        self.show_folder_editor(ui);
+                        self.show_folder_editor(ui, collections);
                         return;
                     }
                     _ => {
@@ -384,7 +405,7 @@ impl<T: AssetTrait> AssetTree<T> {
                                     *dirty = false;
 
                                     if let TreeSelection::Asset(asset) = &self.selection {
-                                        asset.clone().save();
+                                        asset.clone().save(collections);
                                     }
 
                                     changed = true;
@@ -409,7 +430,7 @@ impl<T: AssetTrait> AssetTree<T> {
                                     *dirty = false;
 
                                     if let TreeSelection::Asset(asset) = &self.selection {
-                                        asset.copy().save();
+                                        asset.copy().save(collections);
                                     }
 
                                     changed = true;
@@ -438,7 +459,7 @@ impl<T: AssetTrait> AssetTree<T> {
                                     *dirty = false;
                                     if let TreeSelection::Asset(asset) = &mut self.selection {
                                         *asset = Arc::unwrap_or_clone(
-                                            Asset::get(asset.id).unwrap_or_default(),
+                                            Asset::get(asset.id, collections).unwrap_or_default(),
                                         );
                                     }
 
@@ -457,7 +478,7 @@ impl<T: AssetTrait> AssetTree<T> {
                                     .clicked()
                                 {
                                     if let TreeSelection::Asset(asset) = &self.selection {
-                                        asset.delete();
+                                        asset.delete(collections);
                                     }
                                     self.selection = TreeSelection::None;
 
@@ -471,7 +492,7 @@ impl<T: AssetTrait> AssetTree<T> {
         changed
     }
 
-    fn show_folder_editor(&mut self, ui: &mut Ui) {
+    fn show_folder_editor(&mut self, ui: &mut Ui, collections: &mut Collections) {
         let TreeSelection::Dir { current, new } = &mut self.selection else {
             return;
         };
@@ -497,12 +518,12 @@ impl<T: AssetTrait> AssetTree<T> {
                     .clicked()
                 {
                     self.folder_dirty = false;
-                    let assets = Asset::<T>::all();
+                    let assets = Asset::<T>::all(collections);
                     for asset in assets {
                         if &asset.dir() == current {
                             let mut asset = Arc::unwrap_or_clone(asset);
                             asset.change_dir(new);
-                            asset.save();
+                            asset.save(collections);
                         }
                     }
                     for empty_dir in self.empty_dirs.iter_mut() {
@@ -518,12 +539,16 @@ impl<T: AssetTrait> AssetTree<T> {
         });
     }
 
-    pub fn show_asset_selection(ui: &mut Ui, id: Id) -> Option<AssetId<T>> {
+    pub fn show_asset_selection(
+        ui: &mut Ui,
+        id: Id,
+        collections: &mut Collections,
+    ) -> Option<AssetId<T>> {
         let mut tree = AssetTree {
             only_asset_selection: true,
             ..Default::default()
         };
-        tree.show(ui, id);
+        tree.show(ui, id, collections);
         match tree.selection {
             TreeSelection::Asset(asset) => Some(asset.id),
             _ => None,

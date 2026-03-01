@@ -3,6 +3,8 @@ pub mod float_value;
 use float_value::FloatValue;
 use serde::{Deserialize, Serialize};
 
+use crate::storage::collections::Collections;
+
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq)]
 #[serde(default)]
 pub struct AnimationConfig {
@@ -18,16 +20,51 @@ pub struct AnimationConfig {
 }
 
 impl AnimationConfig {
-    pub fn write_data(&self, data: &mut [u8], beat_progression: f32) {
+    pub fn write_data(
+        &self,
+        data: &mut [u8],
+        beat_progression: f32,
+        collections: &Collections,
+    ) {
         data[0..4].copy_from_slice(&self.u32_0.to_le_bytes());
         data[4..8].copy_from_slice(&self.u32_1.to_le_bytes());
         data[8..12].copy_from_slice(&self.u32_2.to_le_bytes());
-        data[12..16].copy_from_slice(&self.float_0.value(beat_progression).to_le_bytes());
-        data[16..20].copy_from_slice(&self.float_1.value(beat_progression).to_le_bytes());
-        data[20..24].copy_from_slice(&self.float_2.value(beat_progression).to_le_bytes());
-        data[24..28].copy_from_slice(&self.float_3.value(beat_progression).to_le_bytes());
-        data[28..32].copy_from_slice(&self.float_4.value(beat_progression).to_le_bytes());
-        data[32..36].copy_from_slice(&self.float_5.value(beat_progression).to_le_bytes());
+        data[12..16].copy_from_slice(
+            &self
+                .float_0
+                .value(beat_progression, collections)
+                .to_le_bytes(),
+        );
+        data[16..20].copy_from_slice(
+            &self
+                .float_1
+                .value(beat_progression, collections)
+                .to_le_bytes(),
+        );
+        data[20..24].copy_from_slice(
+            &self
+                .float_2
+                .value(beat_progression, collections)
+                .to_le_bytes(),
+        );
+        data[24..28].copy_from_slice(
+            &self
+                .float_3
+                .value(beat_progression, collections)
+                .to_le_bytes(),
+        );
+        data[28..32].copy_from_slice(
+            &self
+                .float_4
+                .value(beat_progression, collections)
+                .to_le_bytes(),
+        );
+        data[32..36].copy_from_slice(
+            &self
+                .float_5
+                .value(beat_progression, collections)
+                .to_le_bytes(),
+        );
     }
 
     pub const fn size() -> usize {

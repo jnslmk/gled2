@@ -1,7 +1,10 @@
 use crate::{
-    storage::asset::{
-        Asset,
-        output_device::{OutputDevice, enttec_usb_pro::serial_numbers},
+    storage::{
+        asset::{
+            Asset,
+            output_device::{OutputDevice, enttec_usb_pro::serial_numbers},
+        },
+        collections::Collections,
     },
     ui::{
         asset_tree::{AssetTree, TreeSelection},
@@ -42,7 +45,7 @@ struct DeviceStrings {
 
 impl OutputDevicesWindow {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &egui::Context) {
+    pub fn update(&mut self, ctx: &egui::Context, collections: &mut Collections) {
         if !self.open {
             return;
         }
@@ -64,17 +67,18 @@ impl OutputDevicesWindow {
                         .exact_width(200.0)
                         .resizable(false)
                         .show_inside(ui, |ui| {
-                            if self
-                                .tree
-                                .show(ui, ui.make_persistent_id("output_devices_tree"))
-                            {
+                            if self.tree.show(
+                                ui,
+                                ui.make_persistent_id("output_devices_tree"),
+                                collections,
+                            ) {
                                 self.dirty = false;
                                 self.device_strings = Default::default();
                             }
                         });
 
                     egui::CentralPanel::default().show_inside(ui, |ui| {
-                        self.tree.common_settings(ui, &mut self.dirty);
+                        self.tree.common_settings(ui, &mut self.dirty, collections);
                         if let TreeSelection::Asset(output_device) = &mut self.tree.selected() {
                             output_device_editor(
                                 ui,

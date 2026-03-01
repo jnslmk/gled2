@@ -1,7 +1,7 @@
 //! Renders to a texture
 use crate::{
     pipeline::constants::TEXTURE_SIZE,
-    storage::{Asset, Palette, scene::effect_state::EffectState},
+    storage::{Asset, Palette, collections::Collections, scene::effect_state::EffectState},
     wgpu_render_state,
 };
 use std::{
@@ -129,6 +129,7 @@ impl AnimationRenderer {
         state: &EffectState,
         beat_progression: f32,
         palette: Option<Arc<Asset<Palette>>>,
+        collections: &Collections,
     ) {
         let mut contents = [0; Palette::size() + EffectState::size()];
         if let Some(palette) = palette {
@@ -137,6 +138,7 @@ impl AnimationRenderer {
         state.write_data(
             beat_progression,
             &mut contents[Palette::size()..Palette::size() + EffectState::size()],
+            collections,
         );
 
         if let Some(mut view) = queue.write_buffer_with(
@@ -148,6 +150,7 @@ impl AnimationRenderer {
         }
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn render(&self, encoder: &mut CommandEncoder) {
         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Renderer Pass"),

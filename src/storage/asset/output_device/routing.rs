@@ -1,6 +1,6 @@
 use crate::{
     pipeline::output_sender::Recipient,
-    storage::{AssetId, OutputDevice, asset::Asset},
+    storage::{AssetId, OutputDevice, asset::Asset, collections::Collections},
 };
 use egui::ahash::HashMap;
 use serde::{Deserialize, Serialize};
@@ -27,6 +27,10 @@ where
 }
 
 impl OutputRoutings {
+    pub fn get(&self, universe: &u16) -> Option<&OutputRouting> {
+        self.routings.get(universe)
+    }
+
     pub fn universe_output_routing(&mut self, universe: u16) -> &mut OutputRouting {
         self.routings.entry(universe).or_default()
     }
@@ -64,8 +68,8 @@ pub struct OutputRouting {
 }
 
 impl OutputRouting {
-    pub fn recipient(&self) -> Option<Recipient> {
-        let device = self.device.and_then(Asset::get)?;
+    pub fn recipient(&self, collections: &Collections) -> Option<Recipient> {
+        let device = self.device.and_then(|id| Asset::get(id, collections))?;
 
         match &device.data {
             OutputDevice::Artnet { ip, universes, .. } => {

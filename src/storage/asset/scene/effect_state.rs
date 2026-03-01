@@ -3,13 +3,16 @@ use crate::{
         group::Group, output_mix::OutputMix, renderer_callback::RendererCallback,
         texture_to_output::TextureToOutput,
     },
-    storage::animation::{config::AnimationConfig, renderer::AnimationRenderer},
+    storage::{
+        animation::{config::AnimationConfig, renderer::AnimationRenderer},
+        collections::Collections,
+    },
     ui::action::UiAction,
     wgpu_render_state,
 };
 use arboard::{Clipboard, ImageData};
 use egui::TextureId;
-use rand::Rng;
+use kanal::bounded;
 use wgpu::{CommandEncoder, MapMode, PollType};
 
 #[derive(Debug, Default, PartialEq)]
@@ -66,6 +69,7 @@ impl EffectState {
         self.output_mix.as_ref()
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn render(&self, encoder: &mut CommandEncoder, send_output: bool) {
         if let Some(renderer) = self.renderer.as_ref() {
             renderer.render(encoder);
@@ -80,8 +84,8 @@ impl EffectState {
         }
     }
 
-    pub fn write_data(&self, beat_progression: f32, data: &mut [u8]) {
-        data[0..4].copy_from_slice(&rand::rng().random::<f32>().to_le_bytes());
+    pub fn write_data(&self, beat_progression: f32, data: &mut [u8], collections: &Collections) {
+        data[0..4].copy_from_slice(&rand::random::<f32>().to_le_bytes());
         data[4..8].copy_from_slice(&self.beat_progression.to_le_bytes());
         data[8..12].copy_from_slice(&self.beats_per_minute.to_le_bytes());
         data[12..16].copy_from_slice(&self.framerate.to_le_bytes());
@@ -91,6 +95,7 @@ impl EffectState {
         self.animation_config.write_data(
             &mut data[28..28 + AnimationConfig::size()],
             beat_progression,
+            collections,
         );
 
         // Write FFT data (256 frequency bins = 1024 bytes)
@@ -150,7 +155,7 @@ impl EffectState {
         RendererCallback::add(encoder.finish());
 
         let buffer_slice = buffer.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = bounded(0);
         buffer_slice.map_async(MapMode::Read, move |v| {
             tx.send(v).expect("Could not send on oneshot sender")
         });

@@ -1,5 +1,7 @@
 use crate::{
-    pipeline::group::Groups, storage::asset::scene::effect::Effect, ui::pills::show_pills,
+    pipeline::group::Groups,
+    storage::{asset::scene::effect::Effect, collections::Collections},
+    ui::pills::show_pills,
 };
 use egui::{
     Button, Color32, CornerRadius, Image, Margin, Rect, Response, Sense, Shape, TextureHandle, Ui,
@@ -16,6 +18,7 @@ pub struct EffectWidget<'a> {
     pub groups_show_index: bool,
     /// used for showing the dimmer
     pub beat_progression: Option<f32>,
+    pub collections: &'a Collections,
 }
 
 impl Widget for EffectWidget<'_> {
@@ -41,7 +44,10 @@ impl Widget for EffectWidget<'_> {
                 ui.painter()
                     .rect_filled(bg_rect, CornerRadius::ZERO, Color32::BLACK);
                 if let Some(beat_progression) = self.beat_progression {
-                    let dimmer = self.effect.opacity.value(beat_progression);
+                    let dimmer = self
+                        .effect
+                        .opacity
+                        .value(beat_progression, self.collections);
                     bg_rect.min.y += (bg_rect.height() * (1.0 - dimmer)).round().max(0.0);
                     ui.painter()
                         .rect_filled(bg_rect, CornerRadius::ZERO, Color32::DARK_GREEN);

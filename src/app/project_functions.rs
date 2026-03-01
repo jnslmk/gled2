@@ -1,4 +1,4 @@
-use super::{svg::Svg, App};
+use super::{App, svg::Svg};
 
 impl App {
     pub fn svg(&self) -> Option<&Svg> {
@@ -7,9 +7,11 @@ impl App {
             .and_then(|project| project.svg.as_ref())
     }
 
-    pub fn svg_mut(&mut self) -> Option<&mut Svg> {
+    pub fn svg_texture(&mut self, context: &egui::Context) -> Option<egui::TextureHandle> {
         self.project
-            .as_mut()
-            .and_then(|project| project.svg.as_mut())
+            .as_mut()?
+            .svg
+            .as_mut()?
+            .image(context, &mut self.extract_output)
     }
 }

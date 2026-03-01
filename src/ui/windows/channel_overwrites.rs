@@ -2,9 +2,9 @@ use std::collections::{BTreeMap};
 use crate::{
     storage::{
         asset::{Asset, output_device::{OutputDevice, routing::OutputRouting}},
-        asset_id::AssetId,
+        asset_id::AssetId, collections::Collections,
     },
-    ui::{ChangeButton, window_common::{default_viewport_builder, gled_window_frame}, windows::channel_overwrites},
+    ui::{asset::CollectionsChangeButton, window_common::{default_viewport_builder, gled_window_frame}, windows::channel_overwrites},
 };
 use egui::{
     mutex::Mutex, scroll_area::ScrollBarVisibility::AlwaysVisible, Color32, ComboBox, Context, Id, RichText, Vec2, ViewportId
@@ -33,7 +33,7 @@ impl Default for ChannelOverwritesWindow {
 
 impl ChannelOverwritesWindow {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context) {
+    pub fn update(&mut self, ctx: &Context, collections: &mut Collections) {
         if !self.open {
             return;
         }
@@ -54,11 +54,11 @@ impl ChannelOverwritesWindow {
                     let mut channel_overwrites = channel_overwrites::ChannelOverwrites::get();
 
                     ui.horizontal(|ui| {
-                        if self.device.change_button(ui) {
+                        if self.device.collections_change_button(ui, collections) {
                             self.universe.take();
                         }
 
-                        if let Some(device) = self.device.and_then(Asset::get) {
+                        if let Some(device) = self.device.and_then(|id|Asset::get(id, collections)) {
                             let device_universes = device.data.universes();
                             if !device_universes.is_empty() {
                                 ComboBox::new("channel_overwrites_universe", "")
@@ -109,7 +109,7 @@ impl ChannelOverwritesWindow {
                             ui.set_min_width(ui.available_width());
                             for (channel_identifier, value) in channel_overwrites.0.iter() {
                                 ui.horizontal(|ui| {
-                                    let device_name = Asset::get(channel_identifier.device)
+                                    let device_name = Asset::get(channel_identifier.device, collections)
                                         .map(|d| d.name().to_owned())
                                         .unwrap_or_else(|| {
                                             format!(

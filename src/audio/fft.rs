@@ -1,12 +1,12 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{DeviceId, SampleFormat, StreamConfig};
-use rustfft::{num_complex::Complex, FftPlanner};
-use std::clone::Clone;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-use crossbeam_channel::Sender;
+use kanal::Sender;
 use log::debug;
 use rtrb::{Consumer, Producer, RingBuffer};
+use rustfft::{FftPlanner, num_complex::Complex};
+use std::clone::Clone;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio_util::sync::CancellationToken;
 
 pub const SAMPLE_RATE: f32 = 48_000.0;
@@ -36,7 +36,11 @@ pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
     fft_data_u8
 }
 
-pub async fn start(device_id: DeviceId, fft_tx: Sender<[f32; FREQ_BINS]>, cancel_token: CancellationToken) {
+pub async fn start(
+    device_id: DeviceId,
+    fft_tx: Sender<[f32; FREQ_BINS]>,
+    cancel_token: CancellationToken,
+) {
     log::info!("Starting audio capture thread");
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio:capture");
@@ -73,50 +77,42 @@ pub async fn start(device_id: DeviceId, fft_tx: Sender<[f32; FREQ_BINS]>, cancel
     log::info!("Audio input config: {:?}", config);
     let channels = config.channels() as usize;
 
-
     let (mut producer, consumer) = RingBuffer::<f32>::new(WINDOW_SIZE * 2);
-    let mut processor = FFTProcessor::new(consumer, fft_tx, );
+    let mut processor = FFTProcessor::new(consumer, fft_tx);
 
     let stream = match config.sample_format() {
-        SampleFormat::F32 => {
-            device.build_input_stream(
-                &StreamConfig::from(config),
-                move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                    push_sample(Vec::from(data), channels, &mut producer);
-                },
-                |err| {
-                    log::error!("Audio stream error: {}", err);
-                },
-                None,
-            )
-        }
-        SampleFormat::I16 => {
-            device.build_input_stream(
-                &StreamConfig::from(config),
-                move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                    let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
-                    push_sample(f32_data, channels, &mut producer);
-                },
-                |err| {
-                    log::error!("Audio stream error: {}", err);
-                },
-                None,
-            )
-        }
-        SampleFormat::U16 => {
-            device.build_input_stream(
-                &StreamConfig::from(config),
-                move |data: &[u16], _: &cpal::InputCallbackInfo| {
-                    let f32_data: Vec<f32> =
-                        data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
-                    push_sample(f32_data, channels, &mut producer);
-                },
-                |err| {
-                    log::error!("Audio stream error: {}", err);
-                },
-                None,
-            )
-        }
+        SampleFormat::F32 => device.build_input_stream(
+            &StreamConfig::from(config),
+            move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                push_sample(Vec::from(data), channels, &mut producer);
+            },
+            |err| {
+                log::error!("Audio stream error: {}", err);
+            },
+            None,
+        ),
+        SampleFormat::I16 => device.build_input_stream(
+            &StreamConfig::from(config),
+            move |data: &[i16], _: &cpal::InputCallbackInfo| {
+                let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
+                push_sample(f32_data, channels, &mut producer);
+            },
+            |err| {
+                log::error!("Audio stream error: {}", err);
+            },
+            None,
+        ),
+        SampleFormat::U16 => device.build_input_stream(
+            &StreamConfig::from(config),
+            move |data: &[u16], _: &cpal::InputCallbackInfo| {
+                let f32_data: Vec<f32> = data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
+                push_sample(f32_data, channels, &mut producer);
+            },
+            |err| {
+                log::error!("Audio stream error: {}", err);
+            },
+            None,
+        ),
         _ => {
             log::error!("Unsupported sample format: {:?}", config.sample_format());
             return;
@@ -165,35 +161,31 @@ pub fn push_sample(data: Vec<f32>, channels: usize, producer: &mut Producer<f32>
         } else {
             chunk[0]
         };
-        producer.push(mono_sample).unwrap_or_else(|_| {DROPPED_SAMPLES.fetch_add(1, Ordering::Relaxed);})
+        producer.push(mono_sample).unwrap_or_else(|_| {
+            DROPPED_SAMPLES.fetch_add(1, Ordering::Relaxed);
+        })
     }
 }
 
-struct FFTProcessor{
+struct FFTProcessor {
     consumer: Consumer<f32>,
     fft: Arc<dyn rustfft::Fft<f32>>,
     fft_tx: Sender<[f32; FREQ_BINS]>,
 }
 
 impl FFTProcessor {
-
-    pub fn new(
-        consumer: Consumer<f32>,
-        fft_tx: Sender<[f32; FREQ_BINS]>,
-    ) -> Self {
+    pub fn new(consumer: Consumer<f32>, fft_tx: Sender<[f32; FREQ_BINS]>) -> Self {
         // Create FFT planner
         let mut planner = FftPlanner::new();
         let fft = planner.plan_fft_forward(WINDOW_SIZE);
-        Self{
+        Self {
             consumer,
             fft,
             fft_tx,
         }
     }
 
-    pub fn process_audio_samples(
-        &mut self,
-    ) {
+    pub fn process_audio_samples(&mut self) {
         // When we have enough samples, perform FFT
         if let Ok(chunk) = self.consumer.read_chunk(WINDOW_SIZE) {
             #[cfg(feature = "profiling")]
@@ -213,7 +205,9 @@ impl FFTProcessor {
             // Apply window function (Hanning window) to reduce spectral leakage
             for (i, sample) in complex_samples.iter_mut().enumerate() {
                 let window = 0.5
-                    * (1.0 - (2.0 * std::f32::consts::PI * i as f32 / (WINDOW_SIZE as f32 - 1.0)).cos());
+                    * (1.0
+                        - (2.0 * std::f32::consts::PI * i as f32 / (WINDOW_SIZE as f32 - 1.0))
+                            .cos());
                 sample.re *= window;
             }
 
@@ -241,8 +235,9 @@ impl FFTProcessor {
                 let _log_min = min_freq.ln();
                 let _log_max = max_freq.ln();
                 //let log_freq = log_min + (log_max - log_min) * ;
-                let linear_freq = min_freq + (max_freq - min_freq)
-                    * curved_log(output_bin as f32 / FREQ_BINS as f32, -8.0);
+                let linear_freq = min_freq
+                    + (max_freq - min_freq)
+                        * curved_log(output_bin as f32 / FREQ_BINS as f32, -8.0);
 
                 // Find the corresponding linear bin(s) and interpolate
                 let linear_bin = linear_freq - 1.0;
@@ -264,12 +259,16 @@ impl FFTProcessor {
             }
 
             let sample = magnitudes.try_into().unwrap();
-            self.fft_tx.try_send(sample).unwrap_or_else(|error| {debug!("{}", error)});
+            if let Err(error) = self.fft_tx.try_send(sample) {
+                debug!("Error sending fft: {error}")
+            };
         }
     }
 }
 
 fn curved_log(x: f32, k: f32) -> f32 {
-    if k == 0.0 {return x}
-    f32::ln(1.0 + (f32::exp(k)-1.0) * x) / k
+    if k == 0.0 {
+        return x;
+    }
+    f32::ln(1.0 + (f32::exp(k) - 1.0) * x) / k
 }

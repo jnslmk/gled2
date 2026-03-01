@@ -1,4 +1,4 @@
-use crate::{app::{persistant_state::PersistantState, GitUiState}, storage::{action::StorageAction, branches, Branches}, ui::window_common::{default_viewport_builder, gled_window_frame}};
+use crate::{app::{GitUiState, persistant_state::{ PersistantState}}, storage::{Branches, action::StorageAction, branches}, ui::window_common::{default_viewport_builder, gled_window_frame}};
 use egui::{Button, Color32, ComboBox, Context, Id, Layout, RichText, TextEdit, UiKind, Vec2, ViewportId};
 use egui_flex::{item, Flex};
 use home::home_dir;
@@ -11,7 +11,7 @@ pub struct GitConfigWindow {
 
 impl GitConfigWindow {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context) {
+    pub fn update(&mut self, ctx: &Context, persistant_state: &mut PersistantState) {
         if !self.open {
             return;
         }
@@ -70,9 +70,8 @@ impl GitConfigWindow {
                             .on_hover_text("This deletes all assets on disk and starts from scratch by cloning the repository!")
                             .clicked()
                         {
-                            let mut persistant = PersistantState::get();
-                            persistant.git_url = self.git_ui_state.url.clone();
-                            persistant.save();
+                            persistant_state.set_git_url(self.git_ui_state.url.clone());
+                            persistant_state.save();
                             self.git_ui_state.url = GitUiState::default().url;
 
                             StorageAction::Nuke.enqueue();
@@ -89,7 +88,7 @@ impl GitConfigWindow {
 
                     ui.horizontal(|ui| {
                         ui.vertical_centered_justified(|ui| {
-                            let choose_private_key_text = match PersistantState::git_credentials().private_key_path() {
+                            let choose_private_key_text = match persistant_state.git_credentials().private_key_path() {
                                 Some(path) => format!("Choose private key (current: {})", path.display()),
                                 None => "Choose private key".to_owned(),
                             };
@@ -105,9 +104,9 @@ impl GitConfigWindow {
                                     }
                                     if let Some(private_key_path) = 
                                         file_dialog.pick_file() {
-                                        let mut persistant = PersistantState::get();
-                                        persistant.git_credentials.set_private_key_path(private_key_path);
-                                        persistant.save();
+                                        let mut persistant_state = PersistantState::default();
+                                        persistant_state.git_credentials_mut().set_private_key_path(private_key_path);
+                                        persistant_state.save();
                                     }
                                 });
                             }
@@ -116,18 +115,16 @@ impl GitConfigWindow {
 
                     ui.horizontal(|ui| {
                         if ui.checkbox(&mut self.git_ui_state.use_passphrase, "Use passphrase").changed() {
-                            let mut persistant = PersistantState::get();
-                            persistant.git_credentials.set_use_passphrase(self.git_ui_state.use_passphrase);
-                            persistant.save();
+                            persistant_state.git_credentials_mut().set_use_passphrase(self.git_ui_state.use_passphrase);
+                            persistant_state.save();
                         }
 
                         if self.git_ui_state.use_passphrase {
                             ui.label("Passphrase:");
                             if ui.add(TextEdit::singleline(&mut self.git_ui_state.passphrase).hint_text("Please enter key password").password(true)).lost_focus()
                             && ui.ctx().input(|input| input.key_pressed(egui::Key::Enter)) {
-                                let mut persistant = PersistantState::get();
-                                persistant.git_credentials.set_passphrase(self.git_ui_state.passphrase.clone());
-                                persistant.save();
+                                persistant_state.git_credentials_mut().set_passphrase(self.git_ui_state.passphrase.clone());
+                                persistant_state.save();
                                 self.git_ui_state.passphrase = GitUiState::default().passphrase;
                             }
                         }

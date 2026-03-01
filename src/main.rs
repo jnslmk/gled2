@@ -1,4 +1,5 @@
 #![windows_subsystem = "windows"]
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 pub mod app;
 pub mod audio;
@@ -10,7 +11,9 @@ pub mod storage;
 pub mod svg;
 pub mod ui;
 
-use crate::pipeline::output_sender;
+use crate::audio::AudioPool;
+use crate::input::artnet;
+use crate::pipeline::{extract_output, output_sender};
 use app::{App, persistant_state::PersistantState};
 use clap::Parser;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
@@ -25,8 +28,6 @@ use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallbac
 use std::sync::{Arc, OnceLock};
 use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
-use crate::audio::AudioPool;
-use crate::input::artnet;
 
 pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
 pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
@@ -79,10 +80,12 @@ fn main() {
     storage::start_thread();
     ui::temperature::start_thread();
     midi::start_thread();
-    network_stats::start_thread();
-    let output_package_sender = output_sender::start().expect("Could not start output sender");
-    let (artnet_bridge_receiver, artnet_control_receiver)
-        = artnet::start_thread(output_package_sender);
+    let network_stats_receiver = network_stats::start_thread();
+    let (extract_output, output_receiver) = extract_output::ExtractOutput::new();
+    let output_package_sender =
+        output_sender::start(output_receiver).expect("Could not start output sender");
+    let (artnet_bridge_receiver, artnet_control_receiver) =
+        artnet::start_thread(output_package_sender);
 
     #[cfg(not(debug_assertions))]
     ui::update_check::Update::start_thread();
@@ -91,7 +94,7 @@ fn main() {
     wgpu_options.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
-            power_preference: if PersistantState::prefer_discrete_gpu() {
+            power_preference: if PersistantState::default().prefer_discrete_gpu() {
                 PowerPreference::HighPerformance
             } else {
                 PowerPreference::LowPower
@@ -178,9 +181,12 @@ fn main() {
             Ok(Box::new(
                 App::new(
                     ui_action_receiver,
+                    network_stats_receiver,
+                    extract_output,
                     artnet_control_receiver,
                     audio_pool,
-                ).expect("Could not create new App"),
+                )
+                .expect("Could not create new App"),
             ))
         }),
     )

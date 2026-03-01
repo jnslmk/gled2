@@ -1,5 +1,5 @@
-use crossbeam_channel::Sender;
 use egui::mutex::Mutex;
+use kanal::{Sender, unbounded};
 use log::{debug, trace, warn};
 use once_cell::sync::{Lazy, OnceCell};
 use serialport::SerialPort;
@@ -16,7 +16,7 @@ static SENDER: OnceCell<Sender<(String, [u8; 512])>> = OnceCell::new();
 pub fn start() {
     find_devices();
 
-    let (tx, rx) = crossbeam_channel::unbounded();
+    let (tx, rx) = unbounded();
     SENDER.set(tx).expect("SENDER already set");
 
     debug!("Spawning enttec dmx usb pro thread");
@@ -28,7 +28,7 @@ pub fn start() {
         loop {
             let now = Instant::now();
             let mut data_per_serial_number = HashMap::new();
-            while let Ok((serial_number, data)) = rx.try_recv() {
+            while let Ok(Some((serial_number, data))) = rx.try_recv() {
                 data_per_serial_number.insert(serial_number, data);
             }
 

@@ -2,7 +2,6 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 
 use super::App;
-use crate::app::PersistantState;
 use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 use crate::storage::asset::scene::grid::GridLocation;
 use crate::ui::ContextMenuAction;
@@ -30,14 +29,14 @@ impl App {
                 let Some(project) = self.project.as_mut() else {
                     return;
                 };
-                ui.set_width(GRID_WIDTH as f32 * (PersistantState::effects_size() + 20.) + 20.);
-                ui.set_height(GRID_HEIGHT as f32 * (PersistantState::effects_size() + 20.) + 20.);
+                let effects_size = self.persistant_state.effects_size();
+                ui.set_width(GRID_WIDTH as f32 * (effects_size + 20.) + 20.);
+                ui.set_height(GRID_HEIGHT as f32 * (effects_size + 20.) + 20.);
 
                 let to_global = ui
                     .ctx()
                     .layer_transform_to_global(ui.layer_id())
                     .unwrap_or_default();
-                let effects_size = PersistantState::effects_size();
                 let groups = project.groups.clone();
 
                 let grid = &mut project.scenes_instances_grid;
@@ -47,15 +46,8 @@ impl App {
                 for row in 0..GRID_HEIGHT {
                     if row == GRID_HEIGHT - 1 {
                         let quick_scene_rect = Rect::from_min_size(
-                            start_pos
-                                + vec2(
-                                    20.,
-                                    20. + row as f32 * (PersistantState::effects_size() + 20.),
-                                ),
-                            vec2(
-                                (PersistantState::effects_size() + 20.) * GRID_WIDTH as f32 - 20.,
-                                PersistantState::effects_size(),
-                            ),
+                            start_pos + vec2(20., 20. + row as f32 * (effects_size + 20.)),
+                            vec2((effects_size + 20.) * GRID_WIDTH as f32 - 20., effects_size),
                         )
                         .expand(10.);
                         ui.painter().rect_filled(
@@ -72,13 +64,10 @@ impl App {
                             start_pos
                                 + vec2(20., 20.)
                                 + vec2(
-                                    col as f32 * (PersistantState::effects_size() + 20.),
-                                    row as f32 * (PersistantState::effects_size() + 20.),
+                                    col as f32 * (effects_size + 20.),
+                                    row as f32 * (effects_size + 20.),
                                 ),
-                            vec2(
-                                PersistantState::effects_size(),
-                                PersistantState::effects_size(),
-                            ),
+                            vec2(effects_size, effects_size),
                         ));
                         let (_, dropped_payload) = ui
                             .scope_builder(UiBuilder::new().max_rect(rect), |ui| {
@@ -101,6 +90,8 @@ impl App {
                                                             size: Vec2::splat(effects_size),
                                                             groups: &groups,
                                                             timing: &self.timing,
+                                                            collections: &self.collections,
+                                                            effects_size,
                                                         })
                                                     });
 
@@ -176,7 +167,11 @@ impl App {
                                                 }
                                             }
                                             None => {
-                                                ui.add(EmptyGridSpot { location });
+                                                ui.add(EmptyGridSpot {
+                                                    location,
+                                                    collections: &mut self.collections,
+                                                    effects_size,
+                                                });
                                             }
                                         };
                                     },
@@ -218,26 +213,25 @@ impl App {
                         ui.set_clip_rect(ui.ctx().content_rect());
                         let rect = Rect::from_min_size(
                             ui.ctx().content_rect().left_bottom()
-                                + vec2(10.0, -(PersistantState::effects_size() + 10.0)),
-                            Vec2::splat(PersistantState::effects_size()),
+                                + vec2(10.0, -(effects_size + 10.0)),
+                            Vec2::splat(effects_size),
                         );
-                        ui.place(rect, TrashWidget {});
+                        ui.place(rect, TrashWidget { effects_size });
                     });
                 }
             });
     }
 }
 
-pub struct TrashWidget {}
+pub struct TrashWidget {
+    effects_size: f32,
+}
 
 impl Widget for TrashWidget {
     fn ui(self, ui: &mut Ui) -> Response {
         let (response, dropped) =
             dnd_drop_zone::<GridLocation, ()>(ui, Frame::default().corner_radius(2.), |ui| {
-                let rect = Rect::from_min_size(
-                    ui.cursor().min,
-                    Vec2::splat(PersistantState::effects_size()),
-                );
+                let rect = Rect::from_min_size(ui.cursor().min, Vec2::splat(self.effects_size));
                 ui.painter()
                     .rect_filled(rect, 5.0, Color32::from_rgb(150, 0, 0));
                 ui.place(

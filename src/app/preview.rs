@@ -28,7 +28,9 @@ impl App {
         if let Some(palette_tree_id) = palette_tree_id.as_ref() {
             let mut state = TreeViewState::load(ui, palette_asset_tree_id).unwrap_or_default();
             if state.selected().iter().next().is_none()
-                && let Some(index) = self.palette_asset_tree.find_index(palette_tree_id)
+                && let Some(index) = self
+                    .palette_asset_tree
+                    .find_index(palette_tree_id, &mut self.collections)
             {
                 state.set_selected(vec![index]);
                 state.store(ui, palette_asset_tree_id);
@@ -38,15 +40,14 @@ impl App {
         let height = ui.available_height();
         ui.horizontal(|ui| {
             let size = Vec2::splat(height.min(ui.available_width()));
-            let res =
-                self.svg_mut()
-                    .and_then(|svg| svg.image(ui.ctx()))
-                    .map(|svg_texture_handle| {
-                        ui.add(
-                            Image::new(SizedTexture::new(svg_texture_handle.id(), size))
-                                .bg_fill(Color32::BLACK),
-                        )
-                    });
+
+            let svg_texture = self.svg_texture(ui.ctx());
+            let res = svg_texture.map(|svg_texture_handle| {
+                ui.add(
+                    Image::new(SizedTexture::new(svg_texture_handle.id(), size))
+                        .bg_fill(Color32::BLACK),
+                )
+            });
             let preview = Image::new(SizedTexture::new(Preview::texture_id(), size));
             match res {
                 Some(res) => {
@@ -61,7 +62,11 @@ impl App {
                 ui.add_space(ui.available_width() - (300.0 + 16.0 + 40.0 + 16.0));
                 ui.scope(|ui| {
                     ui.set_max_width(300.0);
-                    if self.palette_asset_tree.show(ui, palette_asset_tree_id) {
+                    if self.palette_asset_tree.show(
+                        ui,
+                        palette_asset_tree_id,
+                        &mut self.collections,
+                    ) {
                         match self.palette_asset_tree.selected() {
                             TreeSelection::Asset(palette) => {
                                 project.palette = Some(palette.id);
@@ -71,7 +76,8 @@ impl App {
                                     .unwrap_or_default();
                                 if let Some(index) =
                                     palette_tree_id.as_ref().and_then(|palette_tree_id| {
-                                        self.palette_asset_tree.find_index(palette_tree_id)
+                                        self.palette_asset_tree
+                                            .find_index(palette_tree_id, &mut self.collections)
                                     })
                                 {
                                     state.set_selected(vec![index]);

@@ -5,7 +5,8 @@ pub mod palette;
 pub mod project;
 pub mod scene;
 
-use super::{AssetId, COLLECTIONS, StorageAction, collection::Collection};
+use super::{AssetId, StorageAction};
+use crate::storage::collections::Collections;
 use egui::Rect;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::{fmt::Debug, fs::File, sync::Arc};
@@ -62,66 +63,46 @@ impl<T: AssetTrait> Asset<T> {
         }
     }
 
-    pub fn get(id: AssetId<T>) -> Option<Arc<Self>> {
-        COLLECTIONS
-            .lock()
-            .as_ref()?
-            .get::<Collection<T>>()?
-            .get(&id)
-            .cloned()
+    pub fn get(id: AssetId<T>, collections: &Collections) -> Option<Arc<Self>> {
+        collections.get::<T>()?.get(&id).cloned()
     }
 
-    pub fn get_asset_from_index(index: usize) -> Option<Arc<Self>> {
+    pub fn get_asset_from_index(index: usize, collections: &Collections) -> Option<Arc<Self>> {
         match index {
             0 => None,
-            index => Self::all().get(index-1).cloned()
+            index => Self::all(collections).get(index - 1).cloned(),
         }
     }
 
-    pub fn all() -> Vec<Arc<Asset<T>>> {
-        let get_assets = || {
-            Some(
-                COLLECTIONS
-                    .lock()
-                    .as_ref()?
-                    .get::<Collection<T>>()?
-                    .assets(),
-            )
+    pub fn all(collections: &Collections) -> Vec<Arc<Asset<T>>> {
+        let Some(collections) = collections.get::<T>() else {
+            return vec![];
         };
-        get_assets().unwrap_or_default()
+
+        collections.assets()
     }
 
-    pub fn save(self) {
-        std::thread::spawn(move || {
-            #[cfg(feature = "profiling")]
-            profiling::register_thread!("asset:save");
+    pub fn save(self, collections: &mut Collections) {
+        log::info!("Setting asset in cache: {:?}", self.id);
+        collections.get_mut::<T>().set_asset(self.clone());
 
-            log::info!("Setting asset in cache: {:?}", self.id);
-            if let Some(collections) = COLLECTIONS.lock().as_mut() {
-                collections
-                    .entry::<Collection<T>>()
-                    .or_insert_with(Default::default)
-                    .set_asset(self.clone());
-            }
-
-            log::info!("Saving asset: {:?}", self.id);
-            let uuid = self.id.id;
-            match self.into_json() {
-                Ok(json) => {
-                    StorageAction::SaveAsset {
-                        dir_name: T::DIR_NAME,
-                        uuid,
-                        json,
-                    }
-                    .enqueue();
+        log::info!("Saving asset: {:?}", self.id);
+        let uuid = self.id.id;
+        match self.into_json() {
+            Ok(json) => {
+                StorageAction::SaveAsset {
+                    dir_name: T::DIR_NAME,
+                    uuid,
+                    json,
                 }
-                Err(err) => log::error!("Could not serialize asset {uuid}: {err}"),
+                .enqueue();
             }
-        });
+            Err(err) => log::error!("Could not serialize asset {uuid}: {err}"),
+        }
     }
 
-    pub fn delete(&self) {
-        self.id.delete();
+    pub fn delete(&self, collections: &mut Collections) {
+        self.id.delete(collections);
     }
 
     pub fn read(file: File, id: AssetId<T>) -> Result<Arc<Self>, serde_json::Error> {

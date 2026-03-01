@@ -1,37 +1,43 @@
 pub mod scene_instance_path;
 
-use super::{animation::Animation, output_device::routing::OutputRoutings, scene::instance::SceneInstance, Asset, AssetTrait};
-use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
-use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
-use crate::storage::asset::scene::grid::GridLocation;
-use crate::{app::svg::Svg, input::{
-    artnet::ArtnetConfig,
-    event::{GamepadEvent, InputEvent},
-}, pipeline::{
-    group::Groups, preview::Preview
-    ,
-}, storage::{
-    asset::{palette::Palette, scene::Scene},
-    asset_id::AssetId,
-}, ui::windows::channel_overwrites::ChannelOverwrites, wgpu_render_state};
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::{
-    collections::BTreeSet,
-    time::Instant,
+use super::{
+    Asset, AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
+    scene::instance::SceneInstance,
 };
-use std::time::Duration;
-use cpal::DeviceId;
-use rand::prelude::IndexedMutRandom;
-use wgpu::CommandEncoderDescriptor;
 use crate::app::timing::Timing;
-use crate::input::artnet::{ARTNET_CONFIG};
+use crate::input::artnet::ARTNET_CONFIG;
 use crate::input::external_control::ArtnetControlConfig;
+use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 use crate::pipeline::extract_output::ExtractOutput;
 use crate::pipeline::output_clear::OutputClear;
 use crate::pipeline::preview_indices::PreviewIndices;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::pipeline::transition::{Transition, TransitionGoal};
+use crate::storage::asset::project::scene_instance_path::SceneInstanceUnion;
+use crate::storage::asset::scene::grid::GridLocation;
+use crate::storage::collections::Collections;
+use crate::{
+    app::svg::Svg,
+    input::{
+        artnet::ArtnetConfig,
+        event::{GamepadEvent, InputEvent},
+    },
+    pipeline::{group::Groups, preview::Preview},
+    storage::{
+        asset::{palette::Palette, scene::Scene},
+        asset_id::AssetId,
+    },
+    ui::windows::channel_overwrites::ChannelOverwrites,
+    wgpu_render_state,
+};
+use cpal::DeviceId;
+use rand::prelude::IndexedMutRandom;
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+use std::time::Duration;
+use std::{collections::BTreeSet, time::Instant};
+use wgpu::CommandEncoderDescriptor;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
@@ -46,7 +52,7 @@ pub struct Project {
     pub auto_mode_last_change: Option<Instant>,
     pub svg: Option<Svg>,
     pub channel_overwrites: ChannelOverwrites,
-    pub output_routings: OutputRoutings,
+    pub output_routings: Arc<OutputRoutings>,
     pub artnet_config: ArtnetConfig,
     pub tap_input_events: BTreeSet<InputEvent>,
     pub blackout_input_events: BTreeSet<InputEvent>,
@@ -54,8 +60,10 @@ pub struct Project {
     pub half_input_events: BTreeSet<InputEvent>,
     pub double_input_events: BTreeSet<InputEvent>,
     pub main_dimmer: f32,
-    #[serde(serialize_with = "crate::audio::device_id_serde::serialize_device_id",
-        deserialize_with = "crate::audio::device_id_serde::deserialize_scene_instances")]
+    #[serde(
+        serialize_with = "crate::audio::device_id_serde::serialize_device_id",
+        deserialize_with = "crate::audio::device_id_serde::deserialize_scene_instances"
+    )]
     pub audio_input_device: Option<DeviceId>,
     artnet_control_config: ArtnetControlConfig,
 }
@@ -146,11 +154,15 @@ impl Project {
 
     /// Reload shader code for all effects using the given animation, should be called after an animation is edited
     /// If the given animation is None, reloads all effects
-    pub fn reload_shader_code(&mut self, animation: Option<AssetId<Animation>>) {
+    pub fn reload_shader_code(
+        &mut self,
+        animation: Option<AssetId<Animation>>,
+        collections: &Collections,
+    ) {
         self.scenes_instances_grid
             .values_mut()
             .for_each(|scene_instance| {
-                scene_instance.reload_shader_code(animation);
+                scene_instance.reload_shader_code(animation, collections);
             });
     }
 
@@ -168,12 +180,15 @@ impl Project {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn render(
         &mut self,
         timing: &Timing,
         blackout: bool,
         always_render: bool,
         fade_duration: Duration,
+        collections: &Collections,
+        extract_output: &ExtractOutput,
     ) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
@@ -228,7 +243,7 @@ impl Project {
             self.auto_mode_last_change.take();
         }
 
-        let palette = self.palette.and_then(Asset::get);
+        let palette = self.palette.and_then(|id| Asset::get(id, collections));
         let deck_groups = self.groups.clone();
         let main_dimmer = self.main_dimmer;
         for scene_instance in self.scenes_instances_grid.values_mut() {
@@ -239,6 +254,7 @@ impl Project {
                 &deck_groups,
                 timing,
                 main_dimmer,
+                collections,
             );
         }
 
@@ -263,7 +279,7 @@ impl Project {
                     always_render,
                 );
             }
-            ExtractOutput::get().run(&mut wgpu_profiler.scope("ExtractOutput", &mut encoder));
+            extract_output.run(&mut wgpu_profiler.scope("ExtractOutput", &mut encoder));
             PreviewIndices::get().run(&mut wgpu_profiler.scope("PreviewIndices", &mut encoder));
             Preview::run(&mut wgpu_profiler.scope("Preview", &mut encoder));
             wgpu_profiler.resolve_queries(&mut encoder);
@@ -275,7 +291,7 @@ impl Project {
             for scene_instance in self.scenes_instances_grid.values_mut() {
                 scene_instance.render(&mut encoder, blackout, always_render);
             }
-            ExtractOutput::get().run(&mut encoder);
+            extract_output.run(&mut encoder);
             PreviewIndices::get().run(&mut encoder);
             Preview::run(&mut encoder);
         }
@@ -307,8 +323,13 @@ impl Project {
         self.double_input_events.iter().any(|event| event.is_new())
     }
 
-    pub fn add_scene(&mut self, pos: GridLocation, scene_id: AssetId<Scene>) {
-        let scene_instance: SceneInstance = scene_id.into();
+    pub fn add_scene(
+        &mut self,
+        pos: GridLocation,
+        scene_id: AssetId<Scene>,
+        collections: &Collections,
+    ) {
+        let scene_instance = SceneInstance::from_scene_id(scene_id, collections);
         self.add_scene_instance(pos, scene_instance);
     }
 
@@ -326,7 +347,7 @@ impl Project {
 
     pub fn artnet_control_config(&mut self, apply: impl FnOnce(&mut ArtnetControlConfig)) {
         apply(&mut self.artnet_control_config);
-        ARTNET_CONFIG.lock().artnet_control_config = self.artnet_control_config.clone();
+        ARTNET_CONFIG.lock().artnet_control_config = self.artnet_control_config;
     }
 }
 

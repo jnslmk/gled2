@@ -1,5 +1,8 @@
 use crate::{
-    storage::asset::{Asset, curve::Curve},
+    storage::{
+        asset::{Asset, curve::Curve},
+        collections::Collections,
+    },
     ui::{
         asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
         window_common::{default_viewport_builder, gled_window_frame},
@@ -16,7 +19,7 @@ pub struct CurvesWindow {
 
 impl CurvesWindow {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context) {
+    pub fn update(&mut self, ctx: &Context, collections: &mut Collections) {
         if !self.open {
             self.dirty = false;
             return;
@@ -39,13 +42,16 @@ impl CurvesWindow {
                         .exact_width(TREE_WIDTH)
                         .resizable(false)
                         .show_inside(ui, |ui| {
-                            if self.tree.show(ui, ui.make_persistent_id("curves_tree")) {
+                            if self
+                                .tree
+                                .show(ui, ui.make_persistent_id("curves_tree"), collections)
+                            {
                                 self.dirty = false;
                             }
                         });
 
                     egui::CentralPanel::default().show_inside(ui, |ui| {
-                        self.tree.common_settings(ui, &mut self.dirty);
+                        self.tree.common_settings(ui, &mut self.dirty, collections);
 
                         if let TreeSelection::Asset(curve) = &mut self.tree.selected() {
                             curve_editor(ui, curve, &mut self.dirty);

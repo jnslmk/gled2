@@ -1,12 +1,16 @@
-use crate::{app::timing::Timing, storage::asset::project::Project};
+use crate::{
+    app::{persistant_state::PersistantState, timing::Timing},
+    pipeline::extract_output::ExtractOutput,
+    storage::{asset::project::Project, collections::Collections},
+};
 use egui::Context;
 
 pub mod about;
 pub mod animation;
-pub mod external_devices;
 pub mod channel_overwrites;
 pub mod curves;
 pub mod errors;
+pub mod external_devices;
 pub mod git_config;
 pub mod output_devices;
 pub mod output_routings;
@@ -19,7 +23,7 @@ pub mod shortcuts;
 pub struct Windows {
     pub about: about::AboutWindow,
     pub animations: animation::AnimationWindow,
-    pub artnet_input: external_devices::ExternalDeviceSettings,
+    pub external_device_settings: external_devices::ExternalDeviceSettings,
     pub channel_overwrites: channel_overwrites::ChannelOverwritesWindow,
     pub curves: curves::CurvesWindow,
     pub errors: errors::ErrorsWindow,
@@ -34,19 +38,31 @@ pub struct Windows {
 
 impl Windows {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context, timing: &Timing, project: &mut Option<Project>) {
+    pub fn update(
+        &mut self,
+        ctx: &Context,
+        timing: &Timing,
+        project: &mut Option<Project>,
+        collections: &mut Collections,
+        persistant_state: &mut PersistantState,
+        extract_output: &mut ExtractOutput,
+    ) {
         self.about.update(ctx);
-        self.animations.update(ctx, timing);
-        self.channel_overwrites.update(ctx);
-        self.curves.update(ctx);
+        self.animations
+            .update(ctx, timing, collections, persistant_state);
+        self.channel_overwrites.update(ctx, collections);
+        self.curves.update(ctx, collections);
         self.errors.update(ctx);
-        self.git_config.update(ctx);
-        self.artnet_input.update(ctx, project);
-        self.output_devices.update(ctx);
-        self.output_routings.update(ctx);
-        self.palettes.update(ctx);
-        self.projects.update(ctx);
-        self.scenes.update(ctx, timing);
+        self.git_config.update(ctx, persistant_state);
+        self.external_device_settings
+            .update(ctx, project, collections);
+        self.output_devices.update(ctx, collections);
+        self.output_routings
+            .update(ctx, collections, extract_output);
+        self.palettes.update(ctx, collections);
+        self.projects.update(ctx, collections);
+        self.scenes
+            .update(ctx, timing, collections, persistant_state);
         self.shortcuts.update(ctx, project);
     }
 }

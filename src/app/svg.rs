@@ -9,7 +9,7 @@ use crate::{
 use anyhow::Result;
 use egui::{Context, TextureHandle};
 use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, collections::BTreeSet, path::Path};
+use std::{cell::RefCell, collections::BTreeSet, path::Path, sync::Arc};
 
 thread_local! {
     static MEASUREMENT_POINTS: RefCell<MeasurementPoints> = const { RefCell::new(MeasurementPoints::new()) };
@@ -55,7 +55,11 @@ impl Svg {
         Ok(())
     }
 
-    pub fn image(&mut self, context: &Context) -> Option<TextureHandle> {
+    pub fn image(
+        &mut self,
+        context: &Context,
+        extract_output: &mut ExtractOutput,
+    ) -> Option<TextureHandle> {
         if self.image.is_none() {
             self.image = {
                 let svg = crate::svg::ParsedSvg::parse(&self.svg_contents).ok()?;
@@ -67,7 +71,7 @@ impl Svg {
                 });
                 let image = svg.render().ok()?;
                 PreviewIndices::get().send_positions();
-                *ExtractOutput::get().universes.lock() = universes;
+                extract_output.universes = Arc::new(universes);
                 UiAction::SendPositions.enqueue();
 
                 let texture_handle =

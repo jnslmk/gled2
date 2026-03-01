@@ -1,25 +1,31 @@
-use crate::storage::asset::Asset;
-use crate::storage::asset::project::{Project, grid_location_from_continuous_index};
-use crate::storage::asset::scene::Scene;
-use crate::storage::asset::scene::grid::GridLocation;
-use crate::storage::asset::scene::instance::SceneInstance;
-use crate::storage::asset_id::AssetId;
-use crossbeam_channel::Receiver;
+use crate::storage::{
+    asset::{
+        Asset,
+        project::{Project, grid_location_from_continuous_index},
+        scene::{Scene, grid::GridLocation, instance::SceneInstance},
+    },
+    asset_id::AssetId,
+    collections::Collections,
+};
 use deku::prelude::*;
+use kanal::Receiver;
 use serde::{Deserialize, Serialize};
 
 const ARTNET_CONTROL_SLOTS: usize = 10;
 const SCENE_SPECIFIC_PARAMETERS: usize = 10;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
-pub struct ArtnetControlConfig{
+pub struct ArtnetControlConfig {
     pub active: bool,
     pub universe: u16,
 }
 
 impl Default for ArtnetControlConfig {
     fn default() -> Self {
-        Self { active: false, universe: 1337 }
+        Self {
+            active: false,
+            universe: 1337,
+        }
     }
 }
 
@@ -52,20 +58,19 @@ impl ExternalControlState {
         }
     }
 
-    pub fn process_events(&mut self, project: &mut Option<Project>) {
-        loop {
-            if let Ok(dmx_data) = self.artnet_control_receiver.try_recv() {
-                let dmx_data = dmx_data.as_ref();
-
-                self.process_dmx(project, &dmx_data);
-            } else {
-                break;
-            }
+    pub fn process_events(&mut self, project: &mut Option<Project>, collections: &Collections) {
+        while let Ok(Some(dmx_data)) = self.artnet_control_receiver.try_recv() {
+            self.process_dmx(project, &dmx_data, collections);
         }
     }
 
-    fn process_dmx(&mut self, project: &mut Option<Project>, dmx_data: &&Vec<u8>) {
-        let mut remaining = (&dmx_data[..], 0);
+    fn process_dmx(
+        &mut self,
+        project: &mut Option<Project>,
+        dmx_data: &[u8],
+        collections: &Collections,
+    ) {
+        let mut remaining = (dmx_data, 0);
         let mut scene_state: ArtnetSceneControlState;
 
         for i in 0..ARTNET_CONTROL_SLOTS {
@@ -77,15 +82,19 @@ impl ExternalControlState {
                 let grid_location = location(i);
                 let scene_instance = project.scenes_instances_grid.get_mut(&grid_location);
 
-                let asset_id = Asset::get_asset_from_index(scene_state.scene_index as usize)
-                    .map(|asset| asset.id);
+                let asset_id =
+                    Asset::get_asset_from_index(scene_state.scene_index as usize, collections)
+                        .map(|asset| asset.id);
                 let scene_data = match (asset_id, scene_instance) {
                     (None, _) => {
                         project.scenes_instances_grid.remove(&grid_location);
                         None
                     }
                     (Some(asset_id), None) => {
-                        project.add_scene_instance(grid_location, SceneInstance::from(asset_id));
+                        project.add_scene_instance(
+                            grid_location,
+                            SceneInstance::from_scene_id(asset_id, collections),
+                        );
                         project
                             .scenes_instances_grid
                             .get_mut(&grid_location)
@@ -96,7 +105,13 @@ impl ExternalControlState {
                 if let Some((asset_id, scene_instance)) = scene_data {
                     // check if the scene index has changed
                     let prev_state = &self.prev_values[i];
-                    update_scene_instance(&mut scene_state, asset_id, scene_instance, prev_state);
+                    update_scene_instance(
+                        &mut scene_state,
+                        asset_id,
+                        scene_instance,
+                        prev_state,
+                        collections,
+                    );
                 }
             } else {
                 log::warn!("Received Artnet DMX data, but no project is loaded");
@@ -111,9 +126,13 @@ fn update_scene_instance(
     asset_id: AssetId<Scene>,
     scene_instance: &mut SceneInstance,
     prev_state: &ArtnetSceneControlState,
+    collections: &Collections,
 ) {
     if prev_state.scene_index != scene_state.scene_index {
-        scene_instance.scene = Asset::get(asset_id).unwrap_or_default().data.clone();
+        scene_instance.scene = Asset::get(asset_id, collections)
+            .unwrap_or_default()
+            .data
+            .clone();
     }
     scene_instance.active = scene_state.opacity != 0;
     scene_instance.opacity.multiplier = scene_state.opacity as f32 / 255.0;

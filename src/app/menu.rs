@@ -1,17 +1,18 @@
-use super::{App, PersistantState, svg::Svg};
+use super::{App, svg::Svg};
 use crate::{
     app::timing::{CONNECTED_PEERS, LINK_ACTIVE_COLOR},
     input::artnet::ARTNET_CONFIG,
-    pipeline::extract_output::ExtractOutput,
     storage::{STORAGE_DIR, asset::Asset},
     ui::{
         action::UiAction, logo::logo_image, window_common::window_buttons,
         windows::channel_overwrites::ChannelOverwrites,
     },
 };
-use egui::{Button, Color32, Id, Image, Key, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2, ViewportId, text::LayoutJob, KeyboardShortcut};
+use egui::{
+    Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Slider, Stroke, TextFormat, Ui,
+    UiKind, Vec2, ViewportId, text::LayoutJob,
+};
 use log::debug;
-use rand::Rng;
 use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
@@ -39,17 +40,20 @@ impl App {
                 let mut save_project = ui
                     .ctx()
                     .input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::S));
-                let mut open_svg_file = ui
-                    .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::O));
-                let mut save_svg_file = ui
-                    .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::S));
+                let mut open_svg_file = ui.ctx().input_mut(|i| {
+                    i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::O)
+                });
+                let mut save_svg_file = ui.ctx().input_mut(|i| {
+                    i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::S)
+                });
 
                 ui.menu_button("Project", |ui| {
                     ui.set_min_width(300.0);
 
-                    if let Some(project) = self.project_id.and_then(Asset::get) {
+                    if let Some(project) = self
+                        .project_id
+                        .and_then(|id| Asset::get(id, &self.collections))
+                    {
                         ui.label(format!("Project: {}", project.name()));
                     } else {
                         ui.label("No project loaded");
@@ -59,7 +63,10 @@ impl App {
 
                     if ui
                         .add(Button::new("Load project").shortcut_text(
-                            ui.ctx().format_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::O))
+                            ui.ctx().format_shortcut(&KeyboardShortcut::new(
+                                Modifiers::COMMAND,
+                                Key::O,
+                            )),
                         ))
                         .clicked()
                     {
@@ -70,9 +77,9 @@ impl App {
                     if ui
                         .add_enabled(
                             self.project.is_some(),
-                            Button::new("Save project").shortcut_text(
-                                ui.ctx().format_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::S))
-                            ),
+                            Button::new("Save project").shortcut_text(ui.ctx().format_shortcut(
+                                &KeyboardShortcut::new(Modifiers::COMMAND, Key::S),
+                            )),
                         )
                         .clicked()
                     {
@@ -93,9 +100,12 @@ impl App {
                     if ui
                         .add_enabled(
                             self.project.is_some(),
-                            Button::new("Open SVG file").shortcut_text(
-                                ui.ctx().format_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, Key::O))
-                            ),
+                            Button::new("Open SVG file").shortcut_text(ui.ctx().format_shortcut(
+                                &KeyboardShortcut::new(
+                                    Modifiers::COMMAND | Modifiers::SHIFT,
+                                    Key::O,
+                                ),
+                            )),
                         )
                         .clicked()
                     {
@@ -106,9 +116,12 @@ impl App {
                     if ui
                         .add_enabled(
                             self.svg().is_some(),
-                            Button::new("Save SVG file").shortcut_text(
-                                ui.ctx().format_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, Key::S))
-                            ),
+                            Button::new("Save SVG file").shortcut_text(ui.ctx().format_shortcut(
+                                &KeyboardShortcut::new(
+                                    Modifiers::COMMAND | Modifiers::SHIFT,
+                                    Key::S,
+                                ),
+                            )),
                         )
                         .clicked()
                     {
@@ -127,7 +140,7 @@ impl App {
                         .add_enabled(self.project.is_some(), Button::new("External Devices"))
                         .clicked()
                     {
-                        self.windows.artnet_input.open();
+                        self.windows.external_device_settings.open();
                         ui.close_kind(UiKind::Menu);
                     }
                     if ui
@@ -160,15 +173,15 @@ impl App {
                     && let (Some(project), Some(mut asset)) = (
                         self.project.as_ref(),
                         self.project_id
-                            .and_then(Asset::get)
+                            .and_then(|id| Asset::get(id, &self.collections))
                             .map(Arc::unwrap_or_clone),
                     )
                 {
                     asset.data = project.to_owned();
                     asset.data.artnet_config = ARTNET_CONFIG.lock().clone();
-                    asset.data.output_routings = ExtractOutput::get().routings.lock().clone();
+                    asset.data.output_routings = self.extract_output.routings.clone();
                     asset.data.channel_overwrites = ChannelOverwrites::get();
-                    asset.save();
+                    asset.save(&mut self.collections);
                 }
 
                 if open_svg_file {
@@ -260,7 +273,7 @@ impl App {
                     ui.separator();
 
                     ui.label("GPU preference");
-                    let mut prefer_discrete_gpu = PersistantState::prefer_discrete_gpu();
+                    let mut prefer_discrete_gpu = self.persistant_state.prefer_discrete_gpu();
                     if ui
                         .checkbox(
                             &mut prefer_discrete_gpu,
@@ -269,12 +282,12 @@ impl App {
                         .on_hover_text("Needs restart of gled")
                         .changed()
                     {
-                        let mut persistant_state = PersistantState::get();
-                        persistant_state.prefer_discrete_gpu = prefer_discrete_gpu;
-                        persistant_state.save();
+                        self.persistant_state
+                            .set_prefer_discrete_gpu(prefer_discrete_gpu);
+                        self.persistant_state.save();
                     }
                     ui.label("Framerate Limiter");
-                    let mut fps_limit = PersistantState::fps_limit();
+                    let mut fps_limit = self.persistant_state.fps_limit();
                     ui.spacing_mut().slider_width = 290.0;
                     if ui
                         .add(
@@ -284,19 +297,17 @@ impl App {
                         )
                         .changed()
                     {
-                        let mut persistant_state = PersistantState::get();
-                        persistant_state.fps_limit = fps_limit;
-                        persistant_state.save();
+                        self.persistant_state.set_fps_limit(fps_limit);
+                        self.persistant_state.save();
                     }
-                    let mut persistant_state = PersistantState::get();
                     if ui
                         .checkbox(
-                            &mut persistant_state.effects_always_render,
+                            self.persistant_state.effects_always_render_mut(),
                             "Always render all scenes",
                         )
                         .changed()
                     {
-                        persistant_state.save();
+                        self.persistant_state.save();
                     };
 
                     ui.separator();
@@ -305,28 +316,30 @@ impl App {
 
                     ui.separator();
 
-                    let mut persistant_state = PersistantState::get();
                     ui.label("Scene preview size");
                     if ui
                         .add(
-                            Slider::new(&mut persistant_state.effects_size, 50.0..=500.0)
+                            Slider::new(self.persistant_state.effects_size_mut(), 50.0..=500.0)
                                 .show_value(false),
                         )
                         .changed()
                     {
-                        persistant_state.save();
+                        self.persistant_state.save();
                     }
                 });
 
-                let mut open_new_window = ui
-                    .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::N));
+                let mut open_new_window = ui.ctx().input_mut(|i| {
+                    i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::N)
+                });
                 ui.menu_button("Window", |ui| {
                     ui.set_min_width(300.0);
 
                     if ui
                         .add(Button::new("Open new window").shortcut_text(
-                            ui.ctx().format_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::N))
+                            ui.ctx().format_shortcut(&KeyboardShortcut::new(
+                                Modifiers::COMMAND.plus(Modifiers::SHIFT),
+                                Key::N,
+                            )),
                         ))
                         .clicked()
                     {
@@ -336,10 +349,8 @@ impl App {
                 });
 
                 if open_new_window {
-                    let viewport_id = ViewportId(Id::new(format!(
-                        "Second Window {}",
-                        rand::rng().random::<u64>()
-                    )));
+                    let viewport_id =
+                        ViewportId(Id::new(format!("Second Window {}", rand::random::<u64>())));
                     self.other_main_windows.insert(viewport_id);
                 }
 

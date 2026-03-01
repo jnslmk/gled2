@@ -1,7 +1,7 @@
 use super::Curve;
-use crate::audio::sound_trigger_editor::SoundTriggerEditor;
 use crate::{
-    storage::{Asset, AssetId, AssetTrait},
+    audio::sound_trigger_editor::SoundTriggerEditor,
+    storage::{Asset, AssetId, AssetTrait, collections::Collections},
     ui::{asset_tree::AssetTree, gled_slider::GledSlider},
 };
 use egui::{
@@ -56,9 +56,9 @@ pub trait Range: Eq {
 }
 
 impl<R: Range> MultipliedCurve<R> {
-    pub fn value(&self, beat_progression: f32) -> f32 {
+    pub fn value(&self, beat_progression: f32, collections: &Collections) -> f32 {
         self.curve
-            .and_then(Asset::get)
+            .and_then(|id| Asset::get(id, collections))
             .map(|curve| curve.data.value(beat_progression % 4.0))
             .unwrap_or(1.0)
             * self.multiplier
@@ -101,7 +101,12 @@ impl<R: Range> Default for MultipliedCurve<R> {
 impl<R: Range> Eq for MultipliedCurve<R> {}
 
 impl<R: Range> MultipliedCurve<R> {
-    pub fn change_button(&mut self, ui: &mut egui::Ui, beat_progression: f32) -> bool {
+    pub fn change_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        beat_progression: f32,
+        collections: &mut Collections,
+    ) -> bool {
         let mut changed = false;
 
         let mut rect = ui.available_rect_before_wrap();
@@ -110,7 +115,7 @@ impl<R: Range> MultipliedCurve<R> {
         ui.horizontal(|ui| {
             let preview_value = self
                 .curve
-                .and_then(Asset::get)
+                .and_then(|curve_id| Asset::get(curve_id, collections))
                 .map(|curve| curve.data.value(beat_progression % 4.0))
                 .unwrap_or(1.0)
                 * self.multiplier
@@ -121,8 +126,7 @@ impl<R: Range> MultipliedCurve<R> {
                     GledSlider::new(&mut self.multiplier, R::MAX)
                         .horizontal()
                         .preview_value(preview_value)
-                        .size(left.height())
-                    
+                        .size(left.height()),
                 )
                 .changed();
 
@@ -160,9 +164,11 @@ impl<R: Range> MultipliedCurve<R> {
                     };
 
                     ui.set_min_height(400.0);
-                    if let Some(id) =
-                        AssetTree::show_asset_selection(ui, ui.make_persistent_id(Curve::NAME))
-                    {
+                    if let Some(id) = AssetTree::show_asset_selection(
+                        ui,
+                        ui.make_persistent_id(Curve::NAME),
+                        collections,
+                    ) {
                         self.curve = Some(id);
                         ui.data_mut(|d| {
                             d.remove::<TreeViewState<usize>>(ui.make_persistent_id(Curve::NAME))
@@ -173,7 +179,7 @@ impl<R: Range> MultipliedCurve<R> {
                 })
                 .0
                 .rect;
-                if let Some(curve) = self.curve.and_then(Asset::get) {
+                if let Some(curve) = self.curve.and_then(|id| Asset::get(id, collections)) {
                     curve
                         .data
                         .clone()

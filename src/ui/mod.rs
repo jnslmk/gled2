@@ -1,5 +1,7 @@
 use crate::storage::asset::scene::grid::GridLocation;
-use egui::{Button, Color32, Frame, InnerResponse, KeyboardShortcut, Response, Stroke, Ui, UiBuilder};
+use egui::{
+    Button, Color32, Frame, InnerResponse, KeyboardShortcut, Response, Stroke, Ui, UiBuilder,
+};
 
 pub mod action;
 pub mod asset;
@@ -101,10 +103,8 @@ impl ContextMenuBuilder {
     pub fn show(self, response: &mut Response, location: GridLocation) {
         response.context_menu(|ctx_menu_ui| {
             for action in &self.actions {
-                let context_button = Button::new(format!(
-                    "{}",
-                    action.description,
-                )).shortcut_text(ctx_menu_ui.ctx().format_shortcut(&action.keyboard_shortcut));
+                let context_button = Button::new(action.description.to_string())
+                    .shortcut_text(ctx_menu_ui.ctx().format_shortcut(&action.keyboard_shortcut));
                 if ctx_menu_ui.add(context_button).clicked() {
                     (action.ctx_action)(location);
                     return;

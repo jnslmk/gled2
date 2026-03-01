@@ -8,9 +8,10 @@ use crate::{
             scene::{Scene, effect::Effect},
         },
         asset_id::AssetId,
+        collections::Collections,
     },
     ui::{
-        ChangeButton,
+        asset::CollectionsChangeButton,
         asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
         effect::widget::EffectWidget,
         window_common::{default_viewport_builder, gled_window_frame},
@@ -33,7 +34,16 @@ pub struct ScenesWindow {
 
 impl ScenesWindow {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn update(&mut self, ctx: &Context, timing: &Timing) {
+    pub fn update(
+        &mut self,
+        ctx: &Context,
+        timing: &Timing,
+        collections: &mut Collections,
+        persistant_state: &mut PersistantState,
+    ) {
+        if !self.open {
+            return;
+        }
         if !self.open {
             return;
         }
@@ -55,7 +65,10 @@ impl ScenesWindow {
                         .exact_width(TREE_WIDTH)
                         .resizable(false)
                         .show_inside(ui, |ui| {
-                            if self.tree.show(ui, ui.make_persistent_id("scenes_tree")) {
+                            if self
+                                .tree
+                                .show(ui, ui.make_persistent_id("scenes_tree"), collections)
+                            {
                                 self.dirty = false;
                                 self.selected_effect = 0;
                             }
@@ -74,7 +87,8 @@ impl ScenesWindow {
                                 .scroll_bar_visibility(AlwaysVisible)
                                 .show(ui, |ui| {
                                     if let Some(effect) = scene.data.effect(self.selected_effect) {
-                                        self.dirty |= effect.config_ui(ui, true, None, 1.0);
+                                        self.dirty |=
+                                            effect.config_ui(ui, true, None, 1.0, collections);
                                     }
 
                                     ui.separator();
@@ -124,7 +138,8 @@ impl ScenesWindow {
                         });
 
                     egui::CentralPanel::default().show_inside(ui, |ui| {
-                        let asset_changed: bool = self.tree.common_settings(ui, &mut self.dirty);
+                        let asset_changed: bool =
+                            self.tree.common_settings(ui, &mut self.dirty, collections);
 
                         ui.add_space(4.0);
 
@@ -133,7 +148,9 @@ impl ScenesWindow {
                             if asset_changed
                                 && let Some(effect) = scene.effect(self.selected_effect)
                             {
-                                effect.state.set_shader_code(&effect.shader_code_complete());
+                                effect
+                                    .state
+                                    .set_shader_code(&effect.shader_code_complete(collections));
                             }
 
                             egui::Frame::NONE
@@ -142,8 +159,10 @@ impl ScenesWindow {
                                 .show(ui, |ui| {
                                     ui.label("Preview Palette");
                                     ui.vertical_centered_justified(|ui| {
-                                        let mut persistant_state = PersistantState::get();
-                                        if persistant_state.preview_palette.change_button(ui) {
+                                        if persistant_state
+                                            .preview_palette_mut()
+                                            .collections_change_button(ui, collections)
+                                        {
                                             persistant_state.save();
                                         }
                                     });
@@ -163,9 +182,12 @@ impl ScenesWindow {
                                 let queue = &wgpu_render_state.queue;
                                 scene.prepare(
                                     queue,
-                                    PersistantState::get().preview_palette.and_then(Asset::get),
+                                    persistant_state
+                                        .preview_palette()
+                                        .and_then(|id| Asset::get(id, collections)),
                                     &Default::default(),
                                     1.0,
+                                    collections,
                                 );
                                 let mut encoder =
                                     device.create_command_encoder(&CommandEncoderDescriptor {
@@ -199,6 +221,7 @@ impl ScenesWindow {
                                                         groups: None,
                                                         groups_show_index: false,
                                                         beat_progression: None,
+                                                        collections,
                                                     },
                                                 );
                                             }
@@ -216,11 +239,15 @@ impl ScenesWindow {
         self.open = true;
     }
 
-    pub fn reload_shader_code(&mut self, animation: Option<AssetId<Animation>>) {
+    pub fn reload_shader_code(
+        &mut self,
+        animation: Option<AssetId<Animation>>,
+        collections: &mut Collections,
+    ) {
         let TreeSelection::Asset(scene) = self.tree.selected() else {
             return;
         };
 
-        scene.data.reload_shader_code(animation);
+        scene.data.reload_shader_code(animation, collections);
     }
 }

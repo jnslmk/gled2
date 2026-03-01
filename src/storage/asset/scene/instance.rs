@@ -9,6 +9,7 @@ use crate::{
     storage::{
         Asset, AssetId,
         asset::{animation::Animation, scene::color::SceneInstanceColor},
+        collections::Collections,
         curve::multiplied_curve::{MultipliedCurve, RangePercentage},
         palette::Palette,
     },
@@ -96,11 +97,11 @@ impl DragDropItem for &mut SceneInstance {
     }
 }
 
-impl From<AssetId<Scene>> for SceneInstance {
-    fn from(scene_id: AssetId<Scene>) -> Self {
-        let asset = Asset::get(scene_id).unwrap_or_default();
+impl SceneInstance {
+    pub fn from_scene_id(scene_id: AssetId<Scene>, collections: &Collections) -> Self {
+        let asset = Asset::get(scene_id, collections).unwrap_or_default();
         let mut scene = asset.data.clone();
-        scene.reload_shader_code(None);
+        scene.reload_shader_code(None, collections);
 
         Self {
             scene_id,
@@ -127,13 +128,15 @@ impl From<AssetId<Scene>> for SceneInstance {
             palette_overwrite: Default::default(),
         }
     }
-}
 
-impl SceneInstance {
     /// Reload shader code for all effects using the given animation, should be called after an animation is edited
     /// If the given animation is None, reloads all effects
-    pub fn reload_shader_code(&mut self, animation: Option<AssetId<Animation>>) {
-        self.scene.reload_shader_code(animation);
+    pub fn reload_shader_code(
+        &mut self,
+        animation: Option<AssetId<Animation>>,
+        collections: &Collections,
+    ) {
+        self.scene.reload_shader_code(animation, collections);
     }
 
     pub fn prepare(
@@ -144,6 +147,7 @@ impl SceneInstance {
         deck_groups: &Groups,
         timing: &Timing,
         main_dimmer: f32,
+        collections: &Collections,
     ) {
         if let Some(event) = self.flash_input.as_ref() {
             if !self.flash && event.is_live() && self.set_offset_on_flash {
@@ -157,7 +161,9 @@ impl SceneInstance {
         }
 
         let mut beat_progression = timing.beat_progression();
-        beat_progression += self.beat_progression_offset.value(beat_progression);
+        beat_progression += self
+            .beat_progression_offset
+            .value(beat_progression, collections);
         for effect in self.scene.effects.iter_mut() {
             effect.state.beat_progression = beat_progression;
             effect.state.beats_per_minute = timing.beats_per_minute();
@@ -180,7 +186,7 @@ impl SceneInstance {
         if always_render || self.active || self.flash {
             let groups = self.groups_overwrite.as_ref().unwrap_or(deck_groups);
             let palette = match self.palette_overwrite.as_ref() {
-                Some(id) => id.and_then(Asset::get),
+                Some(id) => id.and_then(|id| Asset::get(id, collections)),
                 None => palette,
             };
             let main_opacity = if self.ignore_main_dimmer {
@@ -188,12 +194,14 @@ impl SceneInstance {
             } else {
                 main_dimmer
             } * opacity_factor
-                * self.opacity.value(beat_progression)
+                * self.opacity.value(beat_progression, collections)
                 * self.input_dimmer;
-            self.scene.prepare(queue, palette, groups, main_opacity);
+            self.scene
+                .prepare(queue, palette, groups, main_opacity, collections);
         }
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn render(&mut self, encoder: &mut CommandEncoder, blackout: bool, always_render: bool) {
         if !self.active && !self.flash && !always_render {
             return;

@@ -5,7 +5,7 @@ use egui::{CentralPanel, Color32, Margin, RichText, TopBottomPanel};
 impl App {
     #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn config(&mut self, ui: &mut egui::Ui) {
-        let svg = self.svg_mut().and_then(|svg| svg.image(ui.ctx()));
+        let svg = self.svg_texture(ui.ctx());
         let Some(project) = self.project.as_mut() else {
             return;
         };
@@ -55,6 +55,7 @@ impl App {
                         svg,
                         scene_instance.groups_overwrite.clone().unwrap_or(groups),
                         &self.timing,
+                        &mut self.collections,
                     ),
                     None => {
                         ui.label("There's no Effect to configure.");

@@ -1,34 +1,37 @@
 //! Send data to output devices.
 
 use anyhow::{Context, Result};
-use crossbeam_channel::{Receiver, Sender};
+use kanal::{Receiver, Sender, bounded};
 use log::{debug, trace, warn};
 use std::{
     borrow::Cow,
     collections::{HashMap, hash_map::Entry},
     net::SocketAddr,
+    sync::Arc,
     thread,
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
 use crate::{
     input::artnet::ARTNET_SOCKET,
-    pipeline::{
-        constants::{UNIVERSE_BUFFER_SIZE, UNIVERSES},
-        extract_output::ExtractOutput,
+    pipeline::constants::{UNIVERSE_BUFFER_SIZE, UNIVERSES},
+    storage::{
+        asset::output_device::{enttec_usb_pro, routing::OutputRoutings},
+        collections::Collections,
     },
-    storage::asset::output_device::enttec_usb_pro,
-    svg::universe_color_channels::UniverseColorChannels,
+    svg::{measurement_point::Universes, universe_color_channels::UniverseColorChannels},
     ui::windows::{channel_overwrites::ChannelOverwrites, output_routings::HOVERED_OUTPUT_ROUTING},
 };
 
 /// Start output thread.
-pub fn start() -> Result<Sender<OutputPackage>> {
+pub fn start(
+    output_receiver: Receiver<(Vec<u8>, Arc<Universes>, Arc<OutputRoutings>)>,
+) -> Result<Sender<OutputPackage>> {
     enttec_usb_pro::start();
 
     debug!("Spawning output thread");
 
-    let (sender, receiver) = crossbeam_channel::bounded(10);
+    let (sender, receiver) = bounded(16);
     thread::Builder::new()
         .name("gled:output:tx".to_owned())
         .spawn(move || {
@@ -37,34 +40,35 @@ pub fn start() -> Result<Sender<OutputPackage>> {
         .context("Could not spawn output merge and send thread")?;
 
     thread::Builder::new()
-        .name("gled:output:tx".to_owned())
+        .name("gled:output:prepare".to_owned())
         .spawn({
             let sender = sender.clone();
             move || {
                 #[cfg(feature = "profiling")]
                 profiling::register_thread!("output:tx");
 
-                let extract_output = ExtractOutput::get();
-                let output_receiver = extract_output
-                    .take_output_receiver()
-                    .expect("Could not take output receiver");
+                // Wait for first output before getting collections to avoid blocking
+                let _ = output_receiver.recv();
 
-                for mut output_data in output_receiver.iter() {
-                    trace!("Sending output data");
+                let mut collections = Collections::default();
+
+                while let Ok((mut output_data, universes, routings)) = output_receiver.recv() {
+                    collections.update();
+
+                    trace!("Preparing output data");
                     {
-                        let mut routings = extract_output.routings.lock();
                         let hovered_output_routing = HOVERED_OUTPUT_ROUTING.lock().clone();
                         let mut channel_overwrites = ChannelOverwrites::get();
 
-                        for (universe, values) in extract_output
-                            .universes
-                            .lock()
+                        for (universe, values) in universes
                             .iter()
                             .take(UNIVERSES as usize)
                             .zip(output_data.chunks_exact_mut(UNIVERSE_BUFFER_SIZE as usize))
                         {
-                            let routing = routings.universe_output_routing(*universe);
-                            if Some(&*routing) == hovered_output_routing.as_ref() {
+                            let Some(routing) = routings.get(universe) else {
+                                continue;
+                            };
+                            if Some(routing) == hovered_output_routing.as_ref() {
                                 continue;
                             }
                             let Some(device_id) = routing.device else {
@@ -73,22 +77,28 @@ pub fn start() -> Result<Sender<OutputPackage>> {
                             UniverseColorChannels::correct(*universe, values);
                             channel_overwrites.overwrite_data(device_id, routing.universe, values);
 
-                            if let Some(recipient) = routing.recipient() {
+                            if let Some(recipient) = routing.recipient(&collections) {
                                 let mut data = [0u8; UNIVERSE_BUFFER_SIZE as usize];
                                 data.copy_from_slice(values);
-                                sender.send(OutputPackage::Gled { recipient, data }).ok();
+                                sender
+                                    .send(OutputPackage::Gled { recipient, data })
+                                    .expect("Could not send output package");
                             }
                         }
 
                         if let Some(routing) = hovered_output_routing
-                            && let Some(recipient) = routing.recipient()
+                            && let Some(recipient) = routing.recipient(&collections)
                         {
-                            sender.send(OutputPackage::Hovered { recipient }).ok();
+                            sender
+                                .send(OutputPackage::Hovered { recipient })
+                                .expect("Could not send hovered output package");
                         }
 
                         for (routing, data) in channel_overwrites.overwritten_universes() {
-                            if let Some(recipient) = routing.recipient() {
-                                sender.send(OutputPackage::Gled { recipient, data }).ok();
+                            if let Some(recipient) = routing.recipient(&collections) {
+                                sender
+                                    .send(OutputPackage::Gled { recipient, data })
+                                    .expect("Could not send overwritten output package");
                             }
                         }
                     }
@@ -138,7 +148,15 @@ fn merge_and_send_thread(receiver: Receiver<OutputPackage>) {
     let mut gled_cache =
         HashMap::<Recipient, (Instant, Instant, [u8; UNIVERSE_BUFFER_SIZE as usize])>::new();
 
-    for package in receiver.iter() {
+    loop {
+        let package = match receiver.recv() {
+            Ok(package) => package,
+            Err(err) => {
+                warn!("Output package sender disconnected: {err}");
+                break;
+            }
+        };
+
         let now = Instant::now();
         let (recipient, hovered) = match package {
             OutputPackage::ArtnetInput {

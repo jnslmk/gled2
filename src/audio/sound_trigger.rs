@@ -1,6 +1,6 @@
-use crate::audio::fft::{FREQ_BINS, MAX_FREQ};
 use crate::audio::SOUND_TRIGGER_SAMPLE_INTERVAL_MS;
-use ndarray::{s, Array1};
+use crate::audio::fft::{FREQ_BINS, MAX_FREQ};
+use ndarray::{Array1, s};
 use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
 use std::ops::Mul;
@@ -63,16 +63,7 @@ impl SoundTriggerParams {
 
 impl Default for SoundTriggerParams {
     fn default() -> Self {
-        SoundTriggerParams::new(
-            8520.,
-            990.,
-            0.1,
-            0.2,
-            0.5,
-            1.,
-            1.,
-            0.5,
-        )
+        SoundTriggerParams::new(8520., 990., 0.1, 0.2, 0.5, 1., 1., 0.5)
     }
 }
 
@@ -148,7 +139,9 @@ impl SoundTrigger {
         puffin::profile_function!("SoundTrigger::tick");
         self.spectrum = self.compute_running_average(root_sample);
         //self.spectrum = self.spectrum.map(|x|{ 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.mul(5.0).log10() });
-        self.spectrum.map_inplace(|x|{ *x = x.mul(self.delta_time * 3.0).clamp(0.0, f32::infinity());});
+        self.spectrum.map_inplace(|x| {
+            *x = x.mul(self.delta_time * 3.0).clamp(0.0, f32::infinity());
+        });
 
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
         self.impulse = (self
@@ -166,7 +159,7 @@ impl SoundTrigger {
             .mul(4.0);
 
         self.impulse = self.highpass(self.impulse);
-        self.impulse =self.normalize(self.impulse);
+        self.impulse = self.normalize(self.impulse);
         self.tick_adsr(self.impulse);
     }
 
@@ -280,9 +273,9 @@ impl SoundTrigger {
             // }
 
             // the non-dynamic variant of this:
-             self.running_sum = (0..=self.params.averaging_samples).map(|i|{
-                 self.sample_buffer.get_from_offset(i as i32)
-             }).fold(Array1::zeros(FREQ_BINS), |acc, x| acc + x);
+            self.running_sum = (0..=self.params.averaging_samples)
+                .map(|i| self.sample_buffer.get_from_offset(i as i32))
+                .fold(Array1::zeros(FREQ_BINS), |acc, x| acc + x);
 
             self.prev_averaging_samples = self.params.averaging_samples;
         }
@@ -290,7 +283,9 @@ impl SoundTrigger {
         let current_rms_sample = Array1::from_vec(current_sample.to_vec());
 
         // remove the oldest sample from the buffer
-        let remove = self.sample_buffer.get_from_offset(-(self.params.averaging_samples as i32));
+        let remove = self
+            .sample_buffer
+            .get_from_offset(-(self.params.averaging_samples as i32));
         self.running_sum = &self.running_sum - &remove;
         // advance the buffer
         self.sample_buffer.progress();
@@ -303,7 +298,7 @@ impl SoundTrigger {
         &self.running_sum / self.params.averaging_samples as f32
     }
 
-    fn normalize(&mut self, sample: f32) -> f32{
+    fn normalize(&mut self, sample: f32) -> f32 {
         // reset on change
         if self.params.bin_radius != self.prev_params.bin_radius
             || self.params.center_bin != self.prev_params.center_bin
@@ -317,40 +312,44 @@ impl SoundTrigger {
         self.impulse / self.max_impulse
     }
 
-
     fn highpass(&mut self, x: f32) -> f32 {
-        let remove = self.echo_buffer.get_from_offset(-(self.params.echo_samples as i32));
-        self.running_impulse_sum = &self.running_impulse_sum - &remove;
+        let remove = self
+            .echo_buffer
+            .get_from_offset(-(self.params.echo_samples as i32));
+        self.running_impulse_sum -= remove;
         // advance the buffer
         self.echo_buffer.progress();
         // add the new sample to the buffer
         self.echo_buffer.insert(x);
-        self.running_impulse_sum = &self.running_impulse_sum + &x;
-        let y = &self.running_impulse_sum / (2.0*self.params.echo_samples as f32);
+        self.running_impulse_sum += x;
+        let y = self.running_impulse_sum / (2.0 * self.params.echo_samples as f32);
         x - y
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct PrimitiveRingBuffer<T> where T: Clone {
+struct PrimitiveRingBuffer<T>
+where
+    T: Clone,
+{
     inner: Vec<T>,
     capacity: usize,
     front: usize,
 }
 
-impl<T> PrimitiveRingBuffer<T> where T: Clone {
-    pub fn new(default_elem: T, capacity: usize) -> Self{
-        Self{
-            inner: Vec::from_iter(std::iter::repeat(default_elem).take(capacity)),
+impl<T> PrimitiveRingBuffer<T>
+where
+    T: Clone,
+{
+    pub fn new(default_elem: T, capacity: usize) -> Self {
+        Self {
+            inner: Vec::from_iter(std::iter::repeat_n(default_elem, capacity)),
             capacity,
             front: capacity.saturating_sub(1),
         }
     }
     pub fn get_from_offset(&self, offset: i32) -> T {
-        self.inner[
-            (self.front as i32 + offset)
-                .rem_euclid(self.capacity as i32) as usize
-            ].clone()
+        self.inner[(self.front as i32 + offset).rem_euclid(self.capacity as i32) as usize].clone()
     }
     pub fn insert(&mut self, elem: T) {
         self.inner[self.front] = elem;
@@ -361,7 +360,6 @@ impl<T> PrimitiveRingBuffer<T> where T: Clone {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -370,7 +368,11 @@ mod tests {
         let mut signal = SoundTrigger::new(SoundTriggerParams::default(), 0.01);
         signal.params.averaging_samples = 1;
         for i in 0..run_for {
-            let data = if i == at {[impulse; FREQ_BINS]} else {[0f32; FREQ_BINS]};
+            let data = if i == at {
+                [impulse; FREQ_BINS]
+            } else {
+                [0f32; FREQ_BINS]
+            };
             signal.tick(data);
             eprintln!("{:?}", signal.running_sum);
             eprintln!("--------------")
@@ -379,22 +381,22 @@ mod tests {
     }
 
     #[test]
-    fn test_running_sum_removal(){
+    fn test_running_sum_removal() {
         let signal = run_for_with_impulse_at(4, 1, 1.0);
         assert_eq!(signal.running_sum, Array1::from_vec(vec![0f32; FREQ_BINS]));
     }
 
     #[test]
-    fn test_wraparound(){
-            let mut signal = SoundTrigger::new(SoundTriggerParams::default(), 0.01);
-            signal.params.averaging_samples = 1;
-            for i in 0..(MAX_BUFFER_LENGTH +10) {
-                signal.tick([1f32; FREQ_BINS]);
-                eprintln!("running_rms_sum = {:?}", signal.running_sum);
-                eprintln!("--------------");
-                if i >= 2 {
-                    assert_eq!(signal.running_sum, Array1::from_vec(vec![2f32; FREQ_BINS]))
-                }
+    fn test_wraparound() {
+        let mut signal = SoundTrigger::new(SoundTriggerParams::default(), 0.01);
+        signal.params.averaging_samples = 1;
+        for i in 0..(MAX_BUFFER_LENGTH + 10) {
+            signal.tick([1f32; FREQ_BINS]);
+            eprintln!("running_rms_sum = {:?}", signal.running_sum);
+            eprintln!("--------------");
+            if i >= 2 {
+                assert_eq!(signal.running_sum, Array1::from_vec(vec![2f32; FREQ_BINS]))
             }
         }
+    }
 }

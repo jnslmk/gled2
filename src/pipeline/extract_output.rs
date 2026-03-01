@@ -7,43 +7,36 @@ use crate::{
     svg::measurement_point::Universes,
     wgpu_render_state,
 };
-use crossbeam_channel::{Receiver, Sender, bounded};
-use egui::mutex::Mutex;
-use std::{
-    collections::BTreeSet,
-    sync::{Arc, OnceLock},
-};
+use kanal::{Receiver, Sender, bounded};
+use std::sync::Arc;
 use wgpu::{BufferDescriptor, BufferUsages, CommandEncoder, MapMode};
 
-//#[derive(Clone)]
 pub struct ExtractOutput {
-    output_sender: Sender<Vec<u8>>,
-    output_receiver: Mutex<Option<Receiver<Vec<u8>>>>,
-    pub universes: Arc<Mutex<Universes>>,
-    pub routings: Arc<Mutex<OutputRoutings>>,
+    output_sender: Sender<(Vec<u8>, Arc<Universes>, Arc<OutputRoutings>)>,
+    pub universes: Arc<Universes>,
+    pub routings: Arc<OutputRoutings>,
 }
 
 impl ExtractOutput {
-    pub fn get() -> &'static Self {
-        static EXTRACT_OUTPUT: OnceLock<ExtractOutput> = OnceLock::new();
-        EXTRACT_OUTPUT.get_or_init(|| {
-            let (output_sender, output_receiver) = bounded(1);
+    pub fn new() -> (
+        Self,
+        Receiver<(Vec<u8>, Arc<Universes>, Arc<OutputRoutings>)>,
+    ) {
+        let (output_sender, output_receiver) = bounded(0);
 
+        (
             Self {
                 output_sender,
-                output_receiver: Mutex::new(Some(output_receiver)),
-                universes: Arc::new(Mutex::new(BTreeSet::new())),
-                routings: Arc::new(Mutex::new(OutputRoutings::default())),
-            }
-        })
+                universes: Default::default(),
+                routings: Default::default(),
+            },
+            output_receiver,
+        )
     }
 
-    pub fn take_output_receiver(&self) -> Option<Receiver<Vec<u8>>> {
-        self.output_receiver.lock().take()
-    }
-
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn run(&self, encoder: &mut CommandEncoder) {
-        let active_len = (self.universes.lock().len() as u64).min(UNIVERSES) * UNIVERSE_BUFFER_SIZE;
+        let active_len = (self.universes.len() as u64).min(UNIVERSES) * UNIVERSE_BUFFER_SIZE;
         if active_len > 0 {
             let buffer_desc = BufferDescriptor {
                 size: active_len,
@@ -57,10 +50,12 @@ impl ExtractOutput {
 
             let output_sender = self.output_sender.clone();
             let capturable = output_cpu.clone();
+            let universes = self.universes.clone();
+            let routings = self.routings.clone();
             encoder.map_buffer_on_submit(&output_cpu, MapMode::Read, ..active_len, move |_v| {
                 let output_data = capturable.get_mapped_range(..active_len).to_vec();
                 output_sender
-                    .send(output_data)
+                    .send((output_data, universes, routings))
                     .expect("Output sender receiver lost");
                 capturable.unmap();
             });
