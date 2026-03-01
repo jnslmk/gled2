@@ -114,23 +114,19 @@ impl PartialEq for SoundTriggerHandle {
 impl SoundTriggerHandle {
     pub fn update_params_and_fetch_trigger(&self) -> Option<SoundTrigger> {
         SOUND_TRIGGER_THREAD_DATA
-            .write()
+            .read()
             .unwrap()
             .triggers
-            .get_mut(&self.uuid)
-            .map(|trigger| {
-                let mut trigger = trigger.lock().unwrap();
-                trigger.params = *self.params.lock().unwrap();
-                trigger.clone()
-            })
+            .get(&self.uuid)
+            .cloned()
     }
     pub fn level(&self) -> f32 {
         SOUND_TRIGGER_THREAD_DATA
-            .write()
+            .read()
             .unwrap()
             .triggers
-            .get_mut(&self.uuid)
-            .map(|trigger| trigger.lock().unwrap().current_level)
+            .get(&self.uuid)
+            .map(|trigger| trigger.current_level)
             .unwrap_or(0.0)
     }
 }
@@ -142,7 +138,7 @@ impl Hash for SoundTriggerHandle {
 }
 
 pub struct SoundTriggerThreadData {
-    triggers: HashMap<Uuid, Arc<Mutex<SoundTrigger>>>,
+    triggers: HashMap<Uuid, SoundTrigger>,
 }
 
 impl SoundTriggerThreadData {
@@ -160,7 +156,7 @@ impl SoundTriggerThreadData {
             sound_trigger_params,
             SOUND_TRIGGER_SAMPLE_INTERVAL_MS as f32 / 1000.,
         );
-        self.triggers.insert(uuid, Arc::new(Mutex::new(trigger)));
+        self.triggers.insert(uuid, trigger);
         Arc::new(SoundTriggerHandle {
             uuid,
             params: Mutex::new(sound_trigger_params),
@@ -171,17 +167,13 @@ impl SoundTriggerThreadData {
         #[cfg(feature = "profiling")]
         puffin::profile_scope!("tick_sound_triggers");
         self.triggers.values_mut().for_each(move |trigger| {
-            let trigger = Arc::clone(trigger);
-            let mut trigger_guard = trigger.lock().unwrap();
-            trigger_guard.tick(root_sample);
+            trigger.tick(root_sample);
         });
     }
 
     fn reset(&mut self) {
         self.triggers.values_mut().for_each(move |trigger| {
-            let trigger = Arc::clone(trigger);
-            let mut trigger_guard = trigger.lock().unwrap();
-            trigger_guard.reset();
+            trigger.reset();
         });
     }
 }
