@@ -69,33 +69,36 @@ impl ProjectsWindow {
                                         Button::new("🖻 Export SVG file"),
                                     )
                                     .clicked()
-                                {
+                                {  
                                     let svg = project.data.svg.as_ref().cloned();
-                                    std::thread::spawn(move || {
-                                        #[cfg(feature = "profiling")]
-                                        profiling::register_thread!("save_svg_file");
+                                    std::thread::Builder::new()
+                                        .name("gled:ui:save_svg".to_string())
+                                        .spawn(move || {
+                                            #[cfg(feature = "profiling")]
+                                            profiling::register_thread!("save_svg_file");
 
-                                        if let (Some(svg), Some(path)) = (
-                                            svg,
-                                            rfd::FileDialog::new()
-                                                .set_title("Save SVG file")
-                                                .add_filter("svg", &["svg"])
-                                                .save_file(),
-                                        ) {
-                                            match svg.save(&path) {
-                                                Ok(_) => {
-                                                    debug!("Saved svg file \"{}\"", path.display());
-                                                }
-                                                Err(err) => {
-                                                    UiAction::Error(format!(
-                                                        "Could not save svg file \"{}\": {err:?}",
-                                                        path.display()
-                                                    ))
-                                                    .enqueue();
-                                                }
-                                            };
-                                        }
-                                    });
+                                            if let (Some(svg), Some(path)) = (
+                                                svg,
+                                                rfd::FileDialog::new()
+                                                    .set_title("Save SVG file")
+                                                    .add_filter("svg", &["svg"])
+                                                    .save_file(),
+                                            ) {
+                                                match svg.save(&path) {
+                                                    Ok(_) => {
+                                                        debug!("Saved svg file \"{}\"", path.display());
+                                                    }
+                                                    Err(err) => {
+                                                        UiAction::Error(format!(
+                                                            "Could not save svg file \"{}\": {err:?}",
+                                                            path.display()
+                                                        ))
+                                                        .enqueue();
+                                                    }
+                                                };
+                                            }
+                                        })
+                                        .ok();
                                 }
                             });
                         }

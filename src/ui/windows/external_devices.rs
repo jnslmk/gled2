@@ -87,7 +87,12 @@ impl ExternalDeviceSettings {
                     .as_ref()
                     .map_or_else(|| false, |x| !x.is_finished());
                 if !is_refreshing && REFRESH_DEVICES.load(Relaxed) {
-                    self.handle = Some(thread::spawn(|| audio_device_info_loop(&REFRESH_DEVICES)));
+                    self.handle = Some(
+                        thread::Builder::new()
+                            .name("gled:audio:device_refresh".to_string())
+                            .spawn(|| audio_device_info_loop(&REFRESH_DEVICES))
+                            .expect("Could not spawn audio device refresh thread"),
+                    );
                 }
             },
         );
@@ -130,11 +135,7 @@ fn artnet_control_input_settings(ui: &mut Ui, project: &mut Project) {
     });
 }
 
-fn artnet_bridge_settings(
-    ui: &mut Ui,
-    _project: &mut Project,
-    collections: &mut Collections,
-) {
+fn artnet_bridge_settings(ui: &mut Ui, _project: &mut Project, collections: &mut Collections) {
     let mut config = ARTNET_CONFIG.lock();
     ui.heading("Artnet Bridge");
     ui.add_space(3.0);

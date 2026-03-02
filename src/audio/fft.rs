@@ -50,109 +50,112 @@ impl AudioSource {
     pub fn start(device_id: DeviceId, fft_tx: Sender<[f32; FREQ_BINS]>) -> Self {
         let running = Arc::new(AtomicBool::new(true));
 
-        std::thread::spawn({
-            let running = running.clone();
-            move || {
-                #[cfg(feature = "profiling")]
-                profiling::register_thread!("audio:capture");
+        std::thread::Builder::new()
+            .name("gled:audio:capture".to_string())
+            .spawn({
+                let running = running.clone();
+                move || {
+                    #[cfg(feature = "profiling")]
+                    profiling::register_thread!("audio:capture");
 
-                let host = cpal::default_host();
-                let device = host.device_by_id(&device_id);
+                    let host = cpal::default_host();
+                    let device = host.device_by_id(&device_id);
 
-                let device = match device {
-                    Some(device) => {
-                        log::info!(
-                            "Using audio input device: {}",
+                    let device = match device {
+                        Some(device) => {
+                            log::info!(
+                                "Using audio input device: {}",
+                                device
+                                    .description()
+                                    .map(|desc| desc.name().to_string())
+                                    .unwrap_or_else(|_| "Unknown".to_string())
+                            );
                             device
-                                .description()
-                                .map(|desc| desc.name().to_string())
-                                .unwrap_or_else(|_| "Unknown".to_string())
-                        );
-                        device
-                    }
-                    None => {
-                        log::warn!("No audio input device found, audio analysis disabled");
+                        }
+                        None => {
+                            log::warn!("No audio input device found, audio analysis disabled");
+                            return;
+                        }
+                    };
+
+                    let config = match device.default_input_config() {
+                        Ok(config) => config,
+                        Err(err) => {
+                            log::error!("Failed to get default input config: {}", err);
+                            return;
+                        }
+                    };
+
+                    log::info!("Audio input config: {:?}", config);
+                    let channels = config.channels() as usize;
+
+                    let (mut producer, consumer) = RingBuffer::<f32>::new(WINDOW_SIZE * 2);
+                    let mut processor = FFTProcessor::new(consumer, fft_tx);
+
+                    let stream = match config.sample_format() {
+                        SampleFormat::F32 => device.build_input_stream(
+                            &StreamConfig::from(config),
+                            move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                                push_sample(Vec::from(data), channels, &mut producer);
+                            },
+                            |err| {
+                                log::error!("Audio stream error: {}", err);
+                            },
+                            None,
+                        ),
+                        SampleFormat::I16 => device.build_input_stream(
+                            &StreamConfig::from(config),
+                            move |data: &[i16], _: &cpal::InputCallbackInfo| {
+                                let f32_data: Vec<f32> =
+                                    data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
+                                push_sample(f32_data, channels, &mut producer);
+                            },
+                            |err| {
+                                log::error!("Audio stream error: {}", err);
+                            },
+                            None,
+                        ),
+                        SampleFormat::U16 => device.build_input_stream(
+                            &StreamConfig::from(config),
+                            move |data: &[u16], _: &cpal::InputCallbackInfo| {
+                                let f32_data: Vec<f32> =
+                                    data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
+                                push_sample(f32_data, channels, &mut producer);
+                            },
+                            |err| {
+                                log::error!("Audio stream error: {}", err);
+                            },
+                            None,
+                        ),
+                        _ => {
+                            log::error!("Unsupported sample format: {:?}", config.sample_format());
+                            return;
+                        }
+                    };
+
+                    let stream = match stream {
+                        Ok(stream) => stream,
+                        Err(err) => {
+                            log::error!("Failed to build audio stream: {}", err);
+                            return;
+                        }
+                    };
+                    if let Err(err) = stream.play() {
+                        log::error!("Failed to start audio stream: {}", err);
                         return;
                     }
-                };
+                    log::info!("Audio stream started successfully");
 
-                let config = match device.default_input_config() {
-                    Ok(config) => config,
-                    Err(err) => {
-                        log::error!("Failed to get default input config: {}", err);
-                        return;
+                    loop {
+                        if !running.load(Ordering::Relaxed) {
+                            log::info!("Audio capture stopping...");
+                            break;
+                        }
+                        processor.process_audio_samples();
                     }
-                };
-
-                log::info!("Audio input config: {:?}", config);
-                let channels = config.channels() as usize;
-
-                let (mut producer, consumer) = RingBuffer::<f32>::new(WINDOW_SIZE * 2);
-                let mut processor = FFTProcessor::new(consumer, fft_tx);
-
-                let stream = match config.sample_format() {
-                    SampleFormat::F32 => device.build_input_stream(
-                        &StreamConfig::from(config),
-                        move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                            push_sample(Vec::from(data), channels, &mut producer);
-                        },
-                        |err| {
-                            log::error!("Audio stream error: {}", err);
-                        },
-                        None,
-                    ),
-                    SampleFormat::I16 => device.build_input_stream(
-                        &StreamConfig::from(config),
-                        move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                            let f32_data: Vec<f32> =
-                                data.iter().map(|&s| s as f32 / MAX_FREQ).collect();
-                            push_sample(f32_data, channels, &mut producer);
-                        },
-                        |err| {
-                            log::error!("Audio stream error: {}", err);
-                        },
-                        None,
-                    ),
-                    SampleFormat::U16 => device.build_input_stream(
-                        &StreamConfig::from(config),
-                        move |data: &[u16], _: &cpal::InputCallbackInfo| {
-                            let f32_data: Vec<f32> =
-                                data.iter().map(|&s| (s as f32 / 32768.0) - 1.0).collect();
-                            push_sample(f32_data, channels, &mut producer);
-                        },
-                        |err| {
-                            log::error!("Audio stream error: {}", err);
-                        },
-                        None,
-                    ),
-                    _ => {
-                        log::error!("Unsupported sample format: {:?}", config.sample_format());
-                        return;
-                    }
-                };
-
-                let stream = match stream {
-                    Ok(stream) => stream,
-                    Err(err) => {
-                        log::error!("Failed to build audio stream: {}", err);
-                        return;
-                    }
-                };
-                if let Err(err) = stream.play() {
-                    log::error!("Failed to start audio stream: {}", err);
-                    return;
                 }
-                log::info!("Audio stream started successfully");
-
-                loop {
-                    if !running.load(Ordering::Relaxed) {
-                        log::info!("Audio capture stopping...");
-                        break;
-                    }
-                    processor.process_audio_samples();
-                }
-            }
-        });
+            })
+            .expect("Could not spawn audio capture thread");
 
         Self { running }
     }

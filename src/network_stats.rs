@@ -11,23 +11,26 @@ static OUTGOING_BYTES: AtomicUsize = AtomicUsize::new(0);
 pub fn start_thread() -> Receiver<(f64, f64)> {
     let (tx, rx) = bounded(0);
 
-    std::thread::spawn(move || {
-        log::info!("Starting network stats thread");
-        #[cfg(feature = "profiling")]
-        profiling::register_thread!("network:stats");
+    std::thread::Builder::new()
+        .name("gled:network:stats".to_string())
+        .spawn(move || {
+            log::info!("Starting network stats thread");
+            #[cfg(feature = "profiling")]
+            profiling::register_thread!("network:stats");
 
-        loop {
-            std::thread::sleep(std::time::Duration::from_secs(UPDATE_SECONDS));
+            loop {
+                std::thread::sleep(std::time::Duration::from_secs(UPDATE_SECONDS));
 
-            let incoming = INCOMING_BYTES.swap(0, Relaxed);
-            let outgoing = OUTGOING_BYTES.swap(0, Relaxed);
-            tx.send((
-                incoming as f64 / COUNTED_BYTES_TO_MBIT,
-                outgoing as f64 / COUNTED_BYTES_TO_MBIT,
-            ))
-            .expect("Could not send network stats");
-        }
-    });
+                let incoming = INCOMING_BYTES.swap(0, Relaxed);
+                let outgoing = OUTGOING_BYTES.swap(0, Relaxed);
+                tx.send((
+                    incoming as f64 / COUNTED_BYTES_TO_MBIT,
+                    outgoing as f64 / COUNTED_BYTES_TO_MBIT,
+                ))
+                .expect("Could not send network stats");
+            }
+        })
+        .expect("Could not spawn network stats thread");
 
     rx
 }

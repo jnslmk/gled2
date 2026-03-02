@@ -68,15 +68,18 @@ impl Update {
 
     /// Start thread which checks for updates every 10 minutes
     pub fn start_thread() {
-        std::thread::spawn(|| {
-            #[cfg(feature = "profiling")]
-            profiling::register_thread!("update_check");
+        std::thread::Builder::new()
+            .name("gled:update_check".to_string())
+            .spawn(|| {
+                #[cfg(feature = "profiling")]
+                profiling::register_thread!("update_check");
 
-            loop {
-                *AVAILABLE_UPDATE.lock() = Self::available_update();
-                std::thread::sleep(Duration::from_secs(10 * 60));
-            }
-        });
+                loop {
+                    *AVAILABLE_UPDATE.lock() = Self::available_update();
+                    std::thread::sleep(Duration::from_secs(10 * 60));
+                }
+            })
+            .expect("Could not spawn update check thread");
     }
 }
 

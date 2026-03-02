@@ -84,22 +84,26 @@ impl PersistantStateInner {
     }
 
     fn save(self) {
-        std::thread::spawn(move || {
-            let Some(path) = Self::path() else {
-                UiAction::Error("Could not determine persistant state path".to_string()).enqueue();
-                return;
-            };
-            let Ok(contents) = serde_json::to_string_pretty(&self) else {
-                UiAction::Error("Could not serialize persistant state".to_string()).enqueue();
-                return;
-            };
+        std::thread::Builder::new()
+            .name("gled:persist:save".to_string())
+            .spawn(move || {
+                let Some(path) = Self::path() else {
+                    UiAction::Error("Could not determine persistant state path".to_string())
+                        .enqueue();
+                    return;
+                };
+                let Ok(contents) = serde_json::to_string_pretty(&self) else {
+                    UiAction::Error("Could not serialize persistant state".to_string()).enqueue();
+                    return;
+                };
 
-            if let Err(err) = std::fs::write(path, contents) {
-                UiAction::Error(format!("Could not persist state: {err:?}")).enqueue();
-            }
+                if let Err(err) = std::fs::write(path, contents) {
+                    UiAction::Error(format!("Could not persist state: {err:?}")).enqueue();
+                }
 
-            info!("Saved persistant state");
-        });
+                info!("Saved persistant state");
+            })
+            .ok();
     }
 }
 

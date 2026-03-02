@@ -117,18 +117,21 @@ impl Hash for SoundTriggerHandle {
 pub fn start_sound_trigger_thread() -> Sender<[f32; FREQ_BINS]> {
     let (tx, rx) = kanal::bounded(0);
 
-    std::thread::spawn(move || {
-        #[cfg(feature = "profiling")]
-        profiling::register_thread!("SoundTriggerThread");
-        log::info!("Sound trigger thread started");
-        let mut data = SoundTriggerData::default();
+    std::thread::Builder::new()
+        .name("gled:audio:trigger".to_string())
+        .spawn(move || {
+            #[cfg(feature = "profiling")]
+            profiling::register_thread!("SoundTriggerThread");
+            log::info!("Sound trigger thread started");
+            let mut data = SoundTriggerData::default();
 
-        while let Ok(root_sample) = rx.recv() {
-            data.update();
-            data.tick(root_sample);
-            data.save();
-        }
-    });
+            while let Ok(root_sample) = rx.recv() {
+                data.update();
+                data.tick(root_sample);
+                data.save();
+            }
+        })
+        .expect("Could not spawn sound trigger thread");
 
     tx
 }

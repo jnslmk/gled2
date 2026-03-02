@@ -3,7 +3,6 @@ use super::{
     asset::{Asset, AssetTrait},
 };
 use crate::{storage::AssetId, ui::action::UiAction};
-use rayon::iter::{ParallelBridge, ParallelIterator};
 use std::{collections::BTreeMap, fmt::Debug, str::FromStr, sync::Arc};
 use typemap::Key;
 use uuid::Uuid;
@@ -23,7 +22,7 @@ impl<T: AssetTrait> Collection<T> {
         };
 
         let folders = directory
-            .par_bridge()
+            .into_iter()
             .filter_map(|entry| {
                 let entry = entry
                     .map_err(|err| log::warn!("Could not read dir entry: {err:?}"))

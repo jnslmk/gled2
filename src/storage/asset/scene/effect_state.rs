@@ -177,28 +177,33 @@ impl EffectState {
         let mut data = buffer_slice.get_mapped_range().to_vec();
         buffer.unmap();
 
-        std::thread::spawn(move || {
-            #[cfg(feature = "profiling")]
-            profiling::register_thread!("copy_image_to_clipboard");
+        std::thread::Builder::new()
+            .name("gled:clipboard:copy".to_string())
+            .spawn(move || {
+                #[cfg(feature = "profiling")]
+                profiling::register_thread!("copy_image_to_clipboard");
 
-            data.chunks_exact_mut(4).for_each(|pixel| {
-                pixel.swap(0, 2);
-                pixel[3] = 255;
-            });
+                data.chunks_exact_mut(4).for_each(|pixel| {
+                    pixel.swap(0, 2);
+                    pixel[3] = 255;
+                });
 
-            if let Ok(mut clipboard) = Clipboard::new() {
-                if let Err(err) = clipboard.set_image(ImageData {
-                    bytes: data.into(),
-                    width: texture_size.width as usize,
-                    height: texture_size.height as usize,
-                }) {
-                    UiAction::Error(format!("Could not copy rendered image to clipboard: {err}"))
+                if let Ok(mut clipboard) = Clipboard::new() {
+                    if let Err(err) = clipboard.set_image(ImageData {
+                        bytes: data.into(),
+                        width: texture_size.width as usize,
+                        height: texture_size.height as usize,
+                    }) {
+                        UiAction::Error(format!(
+                            "Could not copy rendered image to clipboard: {err}"
+                        ))
                         .enqueue();
-                } else {
-                    log::info!("Copied rendered image to clipboard");
+                    } else {
+                        log::info!("Copied rendered image to clipboard");
+                    }
                 }
-            }
-        });
+            })
+            .ok();
     }
 }
 

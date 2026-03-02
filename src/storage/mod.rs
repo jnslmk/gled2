@@ -107,221 +107,227 @@ pub fn branches() -> Option<Branches> {
 pub fn start_thread() {
     let actions = action::init();
 
-    std::thread::spawn(move || {
-        #[cfg(feature = "profiling")]
-        profiling::register_thread!("storage");
+    std::thread::Builder::new()
+        .name("gled:storage".to_string())
+        .spawn(move || {
+            #[cfg(feature = "profiling")]
+            profiling::register_thread!("storage");
 
-        let mut retry_wait = std::time::Duration::from_secs(0);
-        loop {
-            sleep(retry_wait);
-            retry_wait = std::time::Duration::from_secs(2);
+            let mut retry_wait = std::time::Duration::from_secs(0);
+            loop {
+                sleep(retry_wait);
+                retry_wait = std::time::Duration::from_secs(2);
 
-            ERROR.lock().take();
+                ERROR.lock().take();
 
-            // Clear the queue
-            while let Ok(Some(_)) = actions.try_recv() {}
+                // Clear the queue
+                while let Ok(Some(_)) = actions.try_recv() {}
 
-            Loading::GitRepository.set();
-            let mut git = match git::Git::open(PersistantState::default().git_url()) {
-                Ok(git) => git,
-                Err(err) => {
-                    let err: String = format!("Could not open git: {err}");
-                    log::error!("{err}");
-                    ERROR.lock().replace(err);
-                    continue;
-                }
-            };
-
-            StorageAction::LoadBranches.enqueue();
-            StorageAction::CountStagedFiles.enqueue();
-            StorageAction::LoadAssets.enqueue();
-            StorageAction::LoadAssets.enqueue();
-
-            while let Ok(action) = actions.recv() {
-                WORKING.store(true, Relaxed);
-
-                match action {
-                    StorageAction::Nuke => {
-                        ERROR.lock().take();
-                        Loading::Nuking.set();
-                        remove_dir_all(&*STORAGE_DIR).ok();
-                        StorageAction::Restart.enqueue();
+                Loading::GitRepository.set();
+                let mut git = match git::Git::open(PersistantState::default().git_url()) {
+                    Ok(git) => git,
+                    Err(err) => {
+                        let err: String = format!("Could not open git: {err}");
+                        log::error!("{err}");
+                        ERROR.lock().replace(err);
+                        continue;
                     }
-                    StorageAction::Restart => {
-                        break;
-                    }
-                    StorageAction::Stop => {
-                        return;
-                    }
-                    StorageAction::CountStagedFiles => match git.count_staged_files() {
-                        Err(err) => {
-                            ERROR
-                                .lock()
-                                .replace(format!("Error counting staged files: {err}"));
-                            sleep(Duration::from_secs(1));
+                };
+
+                StorageAction::LoadBranches.enqueue();
+                StorageAction::CountStagedFiles.enqueue();
+                StorageAction::LoadAssets.enqueue();
+                StorageAction::LoadAssets.enqueue();
+
+                while let Ok(action) = actions.recv() {
+                    println!("Storage action: {action:?}");
+                    WORKING.store(true, Relaxed);
+
+                    match action {
+                        StorageAction::Nuke => {
+                            ERROR.lock().take();
+                            Loading::Nuking.set();
+                            remove_dir_all(&*STORAGE_DIR).ok();
+                            StorageAction::Restart.enqueue();
+                        }
+                        StorageAction::Restart => {
+                            break;
+                        }
+                        StorageAction::Stop => {
+                            return;
+                        }
+                        StorageAction::CountStagedFiles => match git.count_staged_files() {
+                            Err(err) => {
+                                ERROR
+                                    .lock()
+                                    .replace(format!("Error counting staged files: {err}"));
+                                sleep(Duration::from_secs(1));
+                                StorageAction::CountStagedFiles.enqueue();
+                            }
+                            Ok(count) => {
+                                STAGED_FILES.store(count, Relaxed);
+                                ERROR.lock().take();
+                            }
+                        },
+                        StorageAction::Pull => {
+                            if let Err(err) = git.pull() {
+                                ERROR.lock().replace(format!("Error pulling: {err}"));
+                                sleep(Duration::from_secs(1));
+                                StorageAction::Pull.enqueue();
+                            } else {
+                                ERROR.lock().take();
+                            }
+                        }
+                        StorageAction::Push => {
+                            if let Err(err) = git.push() {
+                                ERROR.lock().replace(format!("Error pushing: {err}"));
+                                sleep(Duration::from_secs(1));
+                                StorageAction::Push.enqueue();
+                            } else {
+                                ERROR.lock().take();
+                            }
+                        }
+                        StorageAction::Commit { message } => {
+                            if let Err(err) = git.commit(&message) {
+                                ERROR
+                                    .lock()
+                                    .replace(format!("Error committing and pushing: {err}"));
+                                sleep(Duration::from_secs(1));
+                                StorageAction::Commit { message }.enqueue();
+                            } else {
+                                ERROR.lock().take();
+                            }
                             StorageAction::CountStagedFiles.enqueue();
                         }
-                        Ok(count) => {
-                            STAGED_FILES.store(count, Relaxed);
-                            ERROR.lock().take();
-                        }
-                    },
-                    StorageAction::Pull => {
-                        if let Err(err) = git.pull() {
-                            ERROR.lock().replace(format!("Error pulling: {err}"));
-                            sleep(Duration::from_secs(1));
-                            StorageAction::Pull.enqueue();
-                        } else {
-                            ERROR.lock().take();
-                        }
-                    }
-                    StorageAction::Push => {
-                        if let Err(err) = git.push() {
-                            ERROR.lock().replace(format!("Error pushing: {err}"));
-                            sleep(Duration::from_secs(1));
-                            StorageAction::Push.enqueue();
-                        } else {
-                            ERROR.lock().take();
-                        }
-                    }
-                    StorageAction::Commit { message } => {
-                        if let Err(err) = git.commit(&message) {
-                            ERROR
-                                .lock()
-                                .replace(format!("Error committing and pushing: {err}"));
-                            sleep(Duration::from_secs(1));
-                            StorageAction::Commit { message }.enqueue();
-                        } else {
-                            ERROR.lock().take();
-                        }
-                        StorageAction::CountStagedFiles.enqueue();
-                    }
-                    StorageAction::LoadBranches => {
-                        BRANCHES.lock().take();
+                        StorageAction::LoadBranches => {
+                            BRANCHES.lock().take();
 
-                        Loading::GitBranches.set();
-                        let branches = match git.branches() {
-                            Ok(branches) => branches,
-                            Err(err) => {
-                                let err: String = format!("Could not get branches: {err}");
-                                log::error!("{err}");
-                                ERROR.lock().replace(err);
-                                continue;
-                            }
-                        };
-
-                        Loading::GitBranch.set();
-                        let current_branch = match git.current_branch() {
-                            Ok(current_branch) => current_branch,
-                            Err(err) => {
-                                let err: String = format!("Could not get current_branch: {err}");
-                                log::error!("{err}");
-                                ERROR.lock().replace(err);
-                                continue;
-                            }
-                        };
-
-                        *BRANCHES.lock() = Some(Branches {
-                            available: branches,
-                            current: current_branch,
-                        });
-
-                        ERROR.lock().take();
-                    }
-                    StorageAction::LoadAssets => {
-                        let version_file = STORAGE_DIR.join("version");
-                        match read_to_string(version_file).ok().and_then(|version| {
-                            semver::Version::parse(version.trim())
-                                .map_err(|err| log::error!("Could not parse version file: {err:?}"))
-                                .ok()
-                        }) {
-                            Some(version) => {
-                                if version
-                                    > semver::Version::parse(env!("CARGO_PKG_VERSION"))
-                                        .expect("Could not parse cargo pkg version")
-                                {
-                                    log::error!(
-                                        "Gled version is too old. Please update to the latest version."
-                                    );
-                                    ERROR.lock().replace("Gled version is too old. Please update to the latest version.".to_string());
+                            Loading::GitBranches.set();
+                            let branches = match git.branches() {
+                                Ok(branches) => branches,
+                                Err(err) => {
+                                    let err: String = format!("Could not get branches: {err}");
+                                    log::error!("{err}");
+                                    ERROR.lock().replace(err);
                                     continue;
                                 }
-                            }
-                            None => {
-                                write_storage_version_file(&mut git);
-                            }
+                            };
+
+                            Loading::GitBranch.set();
+                            let current_branch = match git.current_branch() {
+                                Ok(current_branch) => current_branch,
+                                Err(err) => {
+                                    let err: String = format!("Could not get current_branch: {err}");
+                                    log::error!("{err}");
+                                    ERROR.lock().replace(err);
+                                    continue;
+                                }
+                            };
+
+                            *BRANCHES.lock() = Some(Branches {
+                                available: branches,
+                                current: current_branch,
+                            });
+
+                            ERROR.lock().take();
                         }
+                        StorageAction::LoadAssets => {
+                            let version_file = STORAGE_DIR.join("version");
+                            match read_to_string(version_file).ok().and_then(|version| {
+                                semver::Version::parse(version.trim())
+                                    .map_err(|err| log::error!("Could not parse version file: {err:?}"))
+                                    .ok()
+                            }) {
+                                Some(version) => {
+                                    if version
+                                        > semver::Version::parse(env!("CARGO_PKG_VERSION"))
+                                            .expect("Could not parse cargo pkg version")
+                                    {
+                                        log::error!(
+                                            "Gled version is too old. Please update to the latest version."
+                                        );
+                                        ERROR.lock().replace("Gled version is too old. Please update to the latest version.".to_string());
+                                        continue;
+                                    }
+                                }
+                                None => {
+                                    write_storage_version_file(&mut git);
+                                }
+                            }
 
-                        if let Err(err) = mkdirp::mkdirp(STORAGE_DIR.join("svg")) {
-                            ERROR
-                                .lock()
-                                .replace(format!("Could not create svg templates folder: {err}"));
-                            continue;
+                            if let Err(err) = mkdirp::mkdirp(STORAGE_DIR.join("svg")) {
+                                ERROR
+                                    .lock()
+                                    .replace(format!("Could not create svg templates folder: {err}"));
+                                continue;
+                            }
+
+                            let mut collections = Collections::default();
+
+                            Loading::Animations.set();
+                            collections.insert::<Animation>(Collection::<Animation>::load());
+
+                            Loading::Curves.set();
+                            collections.insert::<Curve>(Collection::<Curve>::load());
+
+                            Loading::OutputDevices.set();
+                            collections.insert::<OutputDevice>(Collection::<OutputDevice>::load());
+
+                            Loading::Palettes.set();
+                            collections.insert::<Palette>(Collection::<Palette>::load());
+
+                            Loading::Projects.set();
+                            collections.insert::<Project>(Collection::<Project>::load());
+
+                            Loading::Scenes.set();
+                            collections.insert::<Scene>(Collection::<Scene>::load());
+
+                            collections.save();
+
+                            Loading::unset();
                         }
+                        StorageAction::SwitchBranch(branch) => match git.switch_branch(&branch) {
+                            Ok(_) => {
+                                StorageAction::Restart.enqueue();
+                                StorageAction::LoadBranches.enqueue();
+                                StorageAction::CountStagedFiles.enqueue();
+                                StorageAction::LoadAssets.enqueue();
+                            }
+                            Err(err) => {
+                                ERROR
+                                    .lock()
+                                    .replace(format!("Error switching branch: {err}"));
+                            }
+                        },
+                        StorageAction::SaveAsset {
+                            dir_name,
+                            uuid,
+                            json,
+                        } => {
+                            if let Err(err) = git.write_asset(&asset_path(uuid, dir_name), json) {
+                                UiAction::Error(format!("Could not write asset: {err}")).enqueue();
+                            }
 
-                        let mut collections = Collections::default();
+                            write_storage_version_file(&mut git);
 
-                        Loading::Animations.set();
-                        collections.insert::<Animation>(Collection::<Animation>::load());
-
-                        Loading::Curves.set();
-                        collections.insert::<Curve>(Collection::<Curve>::load());
-
-                        Loading::OutputDevices.set();
-                        collections.insert::<OutputDevice>(Collection::<OutputDevice>::load());
-
-                        Loading::Palettes.set();
-                        collections.insert::<Palette>(Collection::<Palette>::load());
-
-                        Loading::Projects.set();
-                        collections.insert::<Project>(Collection::<Project>::load());
-
-                        Loading::Scenes.set();
-                        collections.insert::<Scene>(Collection::<Scene>::load());
-
-                        collections.save();
-
-                        Loading::unset();
-                    }
-                    StorageAction::SwitchBranch(branch) => match git.switch_branch(&branch) {
-                        Ok(_) => {
-                            StorageAction::Restart.enqueue();
-                            StorageAction::LoadBranches.enqueue();
                             StorageAction::CountStagedFiles.enqueue();
-                            StorageAction::LoadAssets.enqueue();
                         }
-                        Err(err) => {
-                            ERROR
-                                .lock()
-                                .replace(format!("Error switching branch: {err}"));
-                        }
-                    },
-                    StorageAction::SaveAsset {
-                        dir_name,
-                        uuid,
-                        json,
-                    } => {
-                        if let Err(err) = git.write_asset(&asset_path(uuid, dir_name), json) {
-                            UiAction::Error(format!("Could not write asset: {err}")).enqueue();
-                        }
+                        StorageAction::DeleteAsset { uuid, dir_name } => {
+                            if let Err(err) = git.delete_asset(&asset_path(uuid, dir_name)) {
+                                log::error!("Could not delete asset: {err:?}");
+                            }
 
-                        write_storage_version_file(&mut git);
-
-                        StorageAction::CountStagedFiles.enqueue();
+                            StorageAction::CountStagedFiles.enqueue();
+                        }
                     }
-                    StorageAction::DeleteAsset { uuid, dir_name } => {
-                        if let Err(err) = git.delete_asset(&asset_path(uuid, dir_name)) {
-                            log::error!("Could not delete asset: {err:?}");
-                        }
 
-                        StorageAction::CountStagedFiles.enqueue();
-                    }
+                    WORKING.store(false, Relaxed);
+
+                    println!("Storage action done..");
                 }
-
-                WORKING.store(false, Relaxed);
             }
-        }
-    });
+        })
+    .expect("Could not spawn storage thread");
 }
 
 pub fn asset_path(id: Uuid, dir_name: &str) -> PathBuf {

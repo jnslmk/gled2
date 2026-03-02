@@ -20,13 +20,15 @@ pub fn start() {
     SENDER.set(tx).expect("SENDER already set");
 
     debug!("Spawning enttec dmx usb pro thread");
-    thread::spawn(move || {
-        #[cfg(feature = "profiling")]
-        profiling::register_thread!("enttec_dmx_usb_pro");
+    thread::Builder::new()
+        .name("gled:enttec:usb_pro".to_string())
+        .spawn(move || {
+            #[cfg(feature = "profiling")]
+            profiling::register_thread!("enttec_dmx_usb_pro");
 
-        let mut devices = HashMap::<String, Box<dyn SerialPort>>::new();
-        loop {
-            let now = Instant::now();
+            let mut devices = HashMap::<String, Box<dyn SerialPort>>::new();
+            loop {
+                let now = Instant::now();
             let mut data_per_serial_number = HashMap::new();
             while let Ok(Some((serial_number, data))) = rx.try_recv() {
                 data_per_serial_number.insert(serial_number, data);
@@ -88,17 +90,20 @@ pub fn start() {
 
             std::thread::sleep(Duration::from_millis(1000 / 40).saturating_sub(now.elapsed()));
         }
-    });
+    })
+    .expect("Could not spawn enttec usb pro thread");
 }
 
 fn find_devices() {
     debug!("Spawning enttec dmx usb pro discovery thread");
-    thread::spawn(|| {
-        #[cfg(feature = "profiling")]
-        profiling::register_thread!("enttec_dmx_usb_pro:discovery");
+    thread::Builder::new()
+        .name("gled:enttec:discovery".to_string())
+        .spawn(|| {
+            #[cfg(feature = "profiling")]
+            profiling::register_thread!("enttec_dmx_usb_pro:discovery");
 
-        loop {
-            let mut serial_numbers_port = HashMap::new();
+            loop {
+                let mut serial_numbers_port = HashMap::new();
             let ports = match serialport::available_ports() {
                 Ok(ports) => ports,
                 Err(err) => {
@@ -119,7 +124,8 @@ fn find_devices() {
             *SERIAL_NUMBERS_PORT.lock() = serial_numbers_port;
             std::thread::sleep(Duration::from_secs(1));
         }
-    });
+    })
+    .expect("Could not spawn enttec discovery thread");
 }
 
 pub fn serial_numbers() -> Vec<String> {

@@ -185,13 +185,15 @@ impl App {
                 }
 
                 if open_svg_file {
-                    std::thread::spawn(|| {
-                        if let Some(path) = rfd::FileDialog::new()
-                            .set_title("Open SVG file")
-                            .add_filter("svg", &["svg"])
-                            .pick_file()
-                        {
-                            UiAction::SetSvg(match Svg::load(&path) {
+                    std::thread::Builder::new()
+                        .name("gled:ui:open_svg".to_string())
+                        .spawn(|| {
+                            if let Some(path) = rfd::FileDialog::new()
+                                .set_title("Open SVG file")
+                                .add_filter("svg", &["svg"])
+                                .pick_file()
+                            {
+                                UiAction::SetSvg(match Svg::load(&path) {
                                 Ok(svg) => {
                                     debug!("Loaded svg file \"{}\"", path.display());
                                     Some(svg)
@@ -208,7 +210,8 @@ impl App {
                             })
                             .enqueue();
                         }
-                    });
+                    })
+                    .ok();
                 }
                 if save_svg_file
                     && let (Some(svg), Some(path)) = (
