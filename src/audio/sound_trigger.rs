@@ -132,7 +132,7 @@ impl SoundTrigger {
 
     #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn tick(&mut self, samples: [f32; FREQ_BINS]) {
-        self.spectrum = self.compute_running_average(samples);
+        self.compute_running_average(samples);
         //self.spectrum = self.spectrum.map(|x|{ 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.mul(5.0).log10() });
         self.spectrum.map_inplace(|x| {
             *x = x.mul(self.delta_time * 3.0).clamp(0.0, f32::infinity());
@@ -244,7 +244,7 @@ impl SoundTrigger {
         self.current_level
     }
 
-    pub fn compute_running_average(&mut self, current_sample: [f32; FREQ_BINS]) -> Array1<f32> {
+    pub fn compute_running_average(&mut self, current_sample: [f32; FREQ_BINS]) {
         // idea of the running sum:
         // the following condition shall always hold:
         // running_sum == (current_buffer_index-averaging_samples..=current_buffer_index).folding_sum(|i| buffer[i])
@@ -290,7 +290,7 @@ impl SoundTrigger {
 
         // use a small decay here to counter the accumulation of errors
         //self.running_sum = &self.running_sum * 0.98;
-        &self.running_sum / self.params.averaging_samples as f32
+        self.spectrum = &self.running_sum / self.params.averaging_samples as f32;
     }
 
     fn highpass(&mut self, x: f32) -> f32 {
