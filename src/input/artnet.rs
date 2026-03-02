@@ -12,7 +12,9 @@ use std::{
     thread,
     time::Duration,
 };
-
+use std::net::IpAddr;
+use std::ops::Shl;
+use sysinfo::Networks;
 use crate::input::external_control::ArtnetControlConfig;
 use crate::{
     pipeline::{constants::UNIVERSE_BUFFER_SIZE, output_sender::OutputPackage},
@@ -36,7 +38,6 @@ pub static ARTNET_CONFIG: Lazy<Mutex<ArtnetConfig>> = Lazy::new(|| Mutex::new(De
 #[serde(default)]
 pub struct ArtnetConfig {
     pub universe: u16,
-    pub bind_ip: Ipv4Addr,
     #[serde(deserialize_with = "crate::storage::serde::deserialize_u16_index_btreemap")]
     pub bridge: BTreeMap<u16, Bridge>,
     pub artnet_control_config: ArtnetControlConfig,
@@ -54,7 +55,6 @@ impl Default for ArtnetConfig {
     fn default() -> Self {
         Self {
             universe: 18,
-            bind_ip: Ipv4Addr::LOCALHOST,
             bridge: Default::default(),
             artnet_control_config: ArtnetControlConfig::default(),
         }
@@ -112,6 +112,21 @@ pub fn start_thread(
                     Ok(ArtCommand::Output(output)) => output,
                     Ok(ArtCommand::Poll(_poll)) => {
                         debug!("Artnet poll from {src:?}");
+
+                        let networks = Networks::new_with_refreshed_list();
+                        let bind_addr = &networks.iter().flat_map(|(_, network)| network.ip_networks().iter())
+                            .find_map(|ip_network| {
+                                match (ip_network.addr, src.ip()) {
+                                    (IpAddr::V4(interface_addr), IpAddr::V4(src_addr)) => {
+                                        let netmask = u32::MAX.shl(32 - ip_network.prefix);
+                                        ((interface_addr.to_bits() & netmask) == (src_addr.to_bits() & netmask))
+                                            .then_some(interface_addr)
+                                    }
+                                    _ => None,
+                                }
+                            });
+
+                        if let Some(bind_addr) = bind_addr {
                         let poll_reply = PollReply {
                             address: match src.ip() {
                                 std::net::IpAddr::V4(ip) => ip,
@@ -147,7 +162,7 @@ pub fn start_thread(
                             spare: [0; 3],
                             style: 0,
                             mac: [0; 6],
-                            bind_ip: ARTNET_CONFIG.lock().bind_ip.octets(),
+                            bind_ip: bind_addr.octets(),
                             bind_index: 0,
                             status_2: 0,
                             filler: [0; 26],
@@ -169,8 +184,9 @@ pub fn start_thread(
                                 crate::network_stats::add_outgoing_bytes(count);
                             }
                         }
+                    }
 
-                        continue;
+                    continue;
                     }
                     Ok(artnet) => {
                         debug!("Unhandeled ArtCommand: {artnet:?}");

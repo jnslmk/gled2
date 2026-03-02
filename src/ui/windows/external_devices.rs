@@ -1,5 +1,4 @@
 use crate::audio::{AUDIO_DEVICES, audio_device_info_loop};
-use crate::input::artnet::ArtnetConfig;
 use crate::storage::asset::project::Project;
 use crate::storage::collections::Collections;
 use crate::ui::action::UiAction;
@@ -18,10 +17,7 @@ use egui::{
     Slider, Ui, Vec2, ViewportId, Widget, WidgetText,
 };
 use egui_phosphor_icons::icons;
-use epaint::mutex::MutexGuard;
-use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use std::collections::BTreeMap;
-use std::net::Ipv4Addr;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::thread;
@@ -33,13 +29,7 @@ static REFRESH_DEVICES: AtomicBool = AtomicBool::new(false);
 pub struct ExternalDeviceSettings {
     open: bool,
     selected_submenu: String,
-    edit_state: EditSate,
     handle: Option<JoinHandle<()>>,
-}
-
-#[derive(Default)]
-struct EditSate {
-    addresses: Vec<Ipv4Addr>,
 }
 
 impl ExternalDeviceSettings {
@@ -60,21 +50,6 @@ impl ExternalDeviceSettings {
             return;
         };
 
-        self.edit_state.addresses = NetworkInterface::show()
-            .expect("Could not find network interfaces")
-            .into_iter()
-            .flat_map(|interface| {
-                interface
-                    .addr
-                    .into_iter()
-                    .filter_map(|addr| match addr.ip() {
-                        std::net::IpAddr::V4(ipv4) => Some(ipv4),
-                        _ => None,
-                    })
-            })
-            .collect::<Vec<_>>();
-        self.edit_state.addresses.sort();
-
         ctx.show_viewport_immediate(
             ViewportId(Id::new("external devices settings window")),
             default_viewport_builder()
@@ -91,19 +66,18 @@ impl ExternalDeviceSettings {
                 });
 
                 gled_window_frame(ctx, "External Devices", |ui| {
-                    let mut state = (&mut project, &mut self.edit_state);
-                    let settings_menu = SettingsMenu::new(&mut state, &mut self.selected_submenu)
-                        .add_submenu("Audio Input".into(), |ui, (project, edit_state)| {
-                            audio_input_settings(ui, (**project, edit_state))
+                    let settings_menu = SettingsMenu::new(&mut project, &mut self.selected_submenu)
+                        .add_submenu("Audio Input".into(), |ui, project| {
+                            audio_input_settings(ui, project)
                         })
-                        .add_submenu("Artnet Bridge".into(), |ui, (project, edit_state)| {
-                            artnet_bridge_settings(ui, (**project, edit_state), collections)
+                        .add_submenu("Artnet Bridge".into(), |ui, project| {
+                            artnet_bridge_settings(ui, project, collections)
                         })
-                        .add_submenu("Artnet Control".into(), |ui, (project, edit_state)| {
-                            artnet_control_input_settings(ui, (**project, edit_state))
+                        .add_submenu("Artnet Control".into(), |ui, project| {
+                            artnet_control_input_settings(ui, project)
                         })
-                        .add_submenu("Artnet Trigger".into(), |ui, (project, edit_state)| {
-                            artnet_trigger_settings(ui, (**project, edit_state))
+                        .add_submenu("Artnet Trigger".into(), |ui, project| {
+                            artnet_trigger_settings(ui, project)
                         });
                     ui.add(settings_menu);
                 });
@@ -128,8 +102,8 @@ impl ExternalDeviceSettings {
     }
 }
 
-fn audio_input_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
-    let (project, _edit_state) = state;
+fn audio_input_settings(ui: &mut Ui, state: &mut Project) {
+    let project = state;
     ui.heading("Audio Input Device");
     let mut selected = project.audio_input_device.clone();
     let old_selected = selected.clone();
@@ -148,8 +122,7 @@ fn audio_input_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
     }
 }
 
-fn artnet_control_input_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
-    let (project, _) = state;
+fn artnet_control_input_settings(ui: &mut Ui, project: &mut Project) {
     project.artnet_control_config(|config| {
         ui.heading("Artnet Control");
         ui.checkbox(&mut config.active, "Active");
@@ -159,13 +132,10 @@ fn artnet_control_input_settings(ui: &mut Ui, state: (&mut Project, &mut EditSat
 
 fn artnet_bridge_settings(
     ui: &mut Ui,
-    state: (&mut Project, &mut EditSate),
+    _project: &mut Project,
     collections: &mut Collections,
 ) {
     let mut config = ARTNET_CONFIG.lock();
-    let (_project, edit_state) = state;
-
-    bind_adress_settings(edit_state, &mut config, ui);
     ui.heading("Artnet Bridge");
     ui.add_space(3.0);
 
@@ -251,48 +221,14 @@ fn artnet_bridge_settings(
         });
 }
 
-fn artnet_trigger_settings(ui: &mut Ui, state: (&mut Project, &mut EditSate)) {
-    let (_project, edit_state) = state;
+fn artnet_trigger_settings(ui: &mut Ui, _project: &mut Project) {
     let mut config = ARTNET_CONFIG.lock();
     ui.heading("Artnet Trigger");
     ui.add_space(3.0);
 
-    ui.horizontal(|ui| {
-        bind_adress_settings(edit_state, &mut config, ui);
-    });
     ui.separator();
     ui.label("Universe");
     ui.add(Slider::new(&mut config.universe, 0..=32768));
-}
-
-fn bind_adress_settings(
-    edit_state: &mut EditSate,
-    config: &mut MutexGuard<ArtnetConfig>,
-    ui: &mut Ui,
-) {
-    ui.label("Bind address");
-    let mut selected_index = edit_state
-        .addresses
-        .iter()
-        .position(|addr| addr == &config.bind_ip)
-        .unwrap_or(0);
-    ComboBox::new("artnet_bind_address_combo", "")
-        .selected_text(
-            edit_state
-                .addresses
-                .get(selected_index)
-                .map(|addr| addr.to_string())
-                .unwrap_or_else(|| "Unknown".to_string()),
-        )
-        .width(275.0)
-        .show_ui(ui, |ui| {
-            for (index, addr) in edit_state.addresses.iter().enumerate() {
-                ui.selectable_value(&mut selected_index, index, addr.to_string());
-            }
-        });
-    if let Some(addr) = edit_state.addresses.get(selected_index) {
-        config.bind_ip = *addr;
-    }
 }
 
 struct SettingsMenu<'a, S> {
