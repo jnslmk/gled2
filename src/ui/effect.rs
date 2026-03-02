@@ -18,7 +18,7 @@ impl Effect {
         svg: Option<egui::TextureHandle>,
         beat_progression: f32,
         collections: &mut Collections,
-        sound_trigger_data: &SoundTriggerData,
+        sound_trigger_data: &mut SoundTriggerData,
     ) -> bool {
         let mut changed = false;
 

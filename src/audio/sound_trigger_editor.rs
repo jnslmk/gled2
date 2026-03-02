@@ -15,7 +15,7 @@ use epaint::{PathShape, PathStroke, Stroke};
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU64;
-use std::sync::{Arc, MutexGuard};
+use std::sync::Arc;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
@@ -198,9 +198,9 @@ struct SoundTriggerEditorShell {
 
 impl From<SoundTriggerEditorShell> for SoundTriggerEditor {
     fn from(shell: SoundTriggerEditorShell) -> Self {
-        let mut data = SoundTriggerData::default();
-        let sound_trigger_handle = data.register_sound_trigger(shell.params);
-        data.save();
+        let mut sound_trigger_data = SoundTriggerData::default();
+        let sound_trigger_handle = sound_trigger_data.register_sound_trigger(shell.params);
+        sound_trigger_data.save();
 
         Self {
             sound_trigger_handle,
@@ -213,7 +213,13 @@ impl From<SoundTriggerEditorShell> for SoundTriggerEditor {
 }
 impl From<SoundTriggerEditor> for SoundTriggerEditorShell {
     fn from(editor: SoundTriggerEditor) -> Self {
-        let params = *editor.sound_trigger_handle.params.lock().unwrap();
+        let sound_trigger_data = SoundTriggerData::default();
+        let params = editor
+            .sound_trigger_handle
+            .get_params(&sound_trigger_data)
+            .copied()
+            .unwrap_or_default();
+
         Self {
             params,
             f_center: editor.f_center,
@@ -251,11 +257,14 @@ impl SoundTriggerEditor {
 }
 
 impl SoundTriggerEditor {
-    pub fn show(&mut self, ui: &mut Ui, data: &SoundTriggerData) {
+    pub fn show(&mut self, ui: &mut Ui, sound_trigger_data: &mut SoundTriggerData) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("SoundTriggerEditor::show");
         Frame::new().inner_margin(5.).show(ui, |ui| {
-            if let Some(trigger) = self.sound_trigger_handle.get_sound_trigger(data) {
+            if let Some(trigger) = self
+                .sound_trigger_handle
+                .get_sound_trigger(sound_trigger_data)
+            {
                 let mut spectrum = trigger.spectrum.clone();
                 spectrum.map_inplace(|x| {
                     *x = (*x * 10.0 + 10.0).log10() - 1.0;
@@ -270,17 +279,22 @@ impl SoundTriggerEditor {
                     preview_shader.draw_spectrum_texture(spectrum);
                 }
 
-                self.draw_spectrum(ui);
+                self.draw_spectrum(ui, sound_trigger_data);
                 ui.separator();
-                self.draw_adsr(ui, impulse, output_level);
+                self.draw_adsr(ui, impulse, output_level, sound_trigger_data);
             }
         });
     }
 
-    pub fn show_minified(&mut self, ui: &mut Ui, rect: Rect, data: &SoundTriggerData) {
+    pub fn show_minified(
+        &mut self,
+        ui: &mut Ui,
+        rect: Rect,
+        sound_trigger_data: &SoundTriggerData,
+    ) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::show_minified");
-        let level = self.sound_trigger_handle.level(data);
+        let level = self.sound_trigger_handle.level(sound_trigger_data);
         scoped_frame(
             ui,
             UiBuilder::new().max_rect(rect),
@@ -316,16 +330,29 @@ impl SoundTriggerEditor {
                     ));
                 }
 
-                self.draw_curve(ui, rect, level);
+                if let Some(sound_trigger_params) =
+                    self.sound_trigger_handle.get_params(sound_trigger_data)
+                {
+                    self.draw_curve(ui, rect, level, sound_trigger_params);
+                }
             },
         );
     }
 
-    fn lock_params(&self) -> MutexGuard<'_, SoundTriggerParams> {
-        self.sound_trigger_handle.params.lock().unwrap()
-    }
+    fn draw_adsr(
+        &mut self,
+        ui: &mut Ui,
+        input_level: f32,
+        output_level: f32,
+        sound_trigger_data: &mut SoundTriggerData,
+    ) {
+        let Some(sound_trigger_params) =
+            &mut self.sound_trigger_handle.get_params_mut(sound_trigger_data)
+        else {
+            return;
+        };
+        let mut save_sound_trigger_data = false;
 
-    fn draw_adsr(&mut self, ui: &mut Ui, input_level: f32, output_level: f32) {
         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
             let meter_height = 200.0;
             let (_, rect) = ui.allocate_space(Vec2::new(40.0, meter_height));
@@ -336,15 +363,8 @@ impl SoundTriggerEditor {
             ui.painter()
                 .rect_filled(value_rect, 0., Color32::LIGHT_GREEN);
 
-            let threshold_line_y = rect.min.y
-                + meter_height
-                    * (1.0
-                        - self
-                            .sound_trigger_handle
-                            .params
-                            .lock()
-                            .unwrap()
-                            .gate_activation_threshold);
+            let threshold_line_y =
+                rect.min.y + meter_height * (1.0 - sound_trigger_params.gate_activation_threshold);
             ui.painter().line(
                 vec![
                     pos2(rect.min.x, threshold_line_y),
@@ -354,14 +374,7 @@ impl SoundTriggerEditor {
             );
 
             let threshold_deac_line_y = rect.min.y
-                + meter_height
-                    * (1.0
-                        - self
-                            .sound_trigger_handle
-                            .params
-                            .lock()
-                            .unwrap()
-                            .gate_deactivation_threshold);
+                + meter_height * (1.0 - sound_trigger_params.gate_deactivation_threshold);
             ui.painter().line(
                 vec![
                     pos2(rect.min.x, threshold_deac_line_y),
@@ -375,7 +388,7 @@ impl SoundTriggerEditor {
             let frame = Frame::new().inner_margin(5.0).fill(Color32::from_gray(60));
             scoped_frame(ui, UiBuilder::new().max_rect(rect), frame, |ui| {
                 let rect = ui.available_rect_before_wrap();
-                self.draw_curve(ui, rect, output_level);
+                self.draw_curve(ui, rect, output_level, sound_trigger_params);
             });
         });
         scoped_frame(
@@ -391,35 +404,67 @@ impl SoundTriggerEditor {
                 // Frequency center
                 // ADSR knobs
                 Frame::new().inner_margin(5.).show(ui, |ui| {
-                    ui.add(
-                        knob_default(&mut self.lock_params().attack_duration, 0.0, 2.0, 0.01)
-                            .with_size(50.0)
-                            .with_logarithmic_scaling()
-                            .with_label("Attack", LabelPosition::Bottom),
-                    );
-                    ui.add(
-                        knob_default(&mut self.lock_params().release_duration, 0.0, 10.0, 1.0)
+                    if ui
+                        .add(
+                            knob_default(&mut sound_trigger_params.attack_duration, 0.0, 2.0, 0.01)
+                                .with_size(50.0)
+                                .with_logarithmic_scaling()
+                                .with_label("Attack", LabelPosition::Bottom),
+                        )
+                        .changed()
+                    {
+                        save_sound_trigger_data = true;
+                    };
+                    if ui
+                        .add(
+                            knob_default(
+                                &mut sound_trigger_params.release_duration,
+                                0.0,
+                                10.0,
+                                1.0,
+                            )
                             .with_size(50.0)
                             .with_logarithmic_scaling()
                             .with_label("Release", LabelPosition::Bottom),
-                    );
-                    // Threshold knob
-                    ui.add(
-                        knob_default(
-                            &mut self.lock_params().gate_activation_threshold,
-                            0.0,
-                            1.0,
-                            0.5,
                         )
-                        .with_size(30.0)
-                        .with_label("Threshold", LabelPosition::Bottom),
-                    );
+                        .changed()
+                    {
+                        save_sound_trigger_data = true;
+                    };
+                    // Threshold knob
+                    if ui
+                        .add(
+                            knob_default(
+                                &mut sound_trigger_params.gate_activation_threshold,
+                                0.0,
+                                1.0,
+                                0.5,
+                            )
+                            .with_size(30.0)
+                            .with_label("Threshold", LabelPosition::Bottom),
+                        )
+                        .changed()
+                    {
+                        save_sound_trigger_data = true;
+                    }
                 });
             },
         );
+
+        if save_sound_trigger_data {
+            sound_trigger_data.save();
+        }
     }
 
-    fn draw_spectrum(&mut self, ui: &mut Ui) {
+    fn draw_spectrum(&mut self, ui: &mut Ui, sound_trigger_data: &mut SoundTriggerData) {
+        let Some(sound_trigger_params) =
+            self.sound_trigger_handle.get_params_mut(sound_trigger_data)
+        else {
+            return;
+        };
+
+        let mut save_sound_trigger_data = false;
+
         #[cfg(feature = "profiling")]
         puffin::profile_function!("SoundTriggerEditor::draw_spectrum");
         let size = vec2(ui.available_width(), 190.);
@@ -467,32 +512,50 @@ impl SoundTriggerEditor {
                 #[cfg(feature = "profiling")]
                 puffin::profile_function!("SoundTriggerEditor::draw_spectrum_knobs");
                 // Frequency center
-                ui.add(
-                    knob_default(&mut self.f_center, 0., 24_000., 100.0)
-                        .with_size(50.0)
-                        .with_logarithmic_scaling()
-                        .with_label("Frequency", LabelPosition::Bottom),
-                );
+
+                let mut filter_tune_changed = ui
+                    .add(
+                        knob_default(&mut self.f_center, 0., 24_000., 100.0)
+                            .with_size(50.0)
+                            .with_logarithmic_scaling()
+                            .with_label("Frequency", LabelPosition::Bottom),
+                    )
+                    .changed();
                 // Frequency radius
-                ui.add(
-                    knob_default(&mut self.f_radius, 0., 24_000., 50.0)
-                        .with_size(50.0)
-                        .with_logarithmic_scaling()
-                        .with_label("Range", LabelPosition::Bottom),
-                );
+                filter_tune_changed |= ui
+                    .add(
+                        knob_default(&mut self.f_radius, 0., 24_000., 50.0)
+                            .with_size(50.0)
+                            .with_logarithmic_scaling()
+                            .with_label("Range", LabelPosition::Bottom),
+                    )
+                    .changed();
                 // Sensitivity knob
-                ui.add(
-                    knob_default(&mut self.lock_params().sensitivity, 0.01, 10.0, 1.0)
-                        .with_size(50.0)
-                        .with_logarithmic_scaling()
-                        .with_label("Sensitivity", LabelPosition::Bottom),
-                );
-                self.lock_params()
-                    .set_filter_tune(self.f_center, self.f_radius);
+                if ui
+                    .add(
+                        knob_default(&mut sound_trigger_params.sensitivity, 0.01, 10.0, 1.0)
+                            .with_size(50.0)
+                            .with_logarithmic_scaling()
+                            .with_label("Sensitivity", LabelPosition::Bottom),
+                    )
+                    .changed()
+                {
+                    save_sound_trigger_data = true;
+                }
+
+                if filter_tune_changed {
+                    sound_trigger_params.set_filter_tune(self.f_center, self.f_radius);
+                    save_sound_trigger_data = true;
+                }
             },
         );
+
+        if save_sound_trigger_data {
+            sound_trigger_data.save();
+        }
     }
-    fn draw_curve(&self, ui: &mut Ui, rect: Rect, output_level: f32) {
+
+    fn draw_curve(&self, ui: &mut Ui, rect: Rect, output_level: f32, params: &SoundTriggerParams) {
         let n = 100;
 
         let to_screen =
@@ -503,7 +566,7 @@ impl SoundTriggerEditor {
         ui.painter()
             .rect_filled(level_rect, 0., Color32::LIGHT_GREEN);
 
-        let mut sound_trigger = SoundTrigger::new(*self.lock_params(), 100.);
+        let mut sound_trigger = SoundTrigger::new(*params, 100.);
         let points: Vec<Pos2> = (0..=n)
             .map(|i| {
                 let t = i as f32 / (n as f32);

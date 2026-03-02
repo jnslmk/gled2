@@ -41,7 +41,7 @@ impl ScenesWindow {
         timing: &Timing,
         collections: &mut Collections,
         persistant_state: &mut PersistantState,
-        sound_trigger_data: &SoundTriggerData,
+        sound_trigger_data: &mut SoundTriggerData,
     ) {
         if !self.open {
             return;

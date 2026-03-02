@@ -71,7 +71,7 @@ impl AnimationWindow {
         timing: &Timing,
         collections: &mut Collections,
         persistant_state: &mut PersistantState,
-        sound_trigger_data: &SoundTriggerData,
+        sound_trigger_data: &mut SoundTriggerData,
     ) {
         if !self.open {
             self.dirty = false;
@@ -227,7 +227,7 @@ impl AnimationWindow {
         ctx: &Context,
         collections: &mut Collections,
         persistant_state: &mut PersistantState,
-        sound_trigger_data: &SoundTriggerData,
+        sound_trigger_data: &mut SoundTriggerData,
     ) {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("animation preview window")),

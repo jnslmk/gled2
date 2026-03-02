@@ -47,7 +47,7 @@ impl Windows {
         collections: &mut Collections,
         persistant_state: &mut PersistantState,
         extract_output: &mut ExtractOutput,
-        sound_trigger_data: &SoundTriggerData,
+        sound_trigger_data: &mut SoundTriggerData,
     ) {
         self.about.update(ctx);
         self.animations.update(

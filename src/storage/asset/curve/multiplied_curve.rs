@@ -111,7 +111,7 @@ impl<R: Range> MultipliedCurve<R> {
         ui: &mut egui::Ui,
         beat_progression: f32,
         collections: &mut Collections,
-        sound_trigger_data: &SoundTriggerData,
+        sound_trigger_data: &mut SoundTriggerData,
     ) -> bool {
         let mut changed = false;
 

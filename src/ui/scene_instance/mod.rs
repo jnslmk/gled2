@@ -20,7 +20,7 @@ impl SceneInstance {
         groups: Groups,
         timing: &Timing,
         collections: &mut Collections,
-        sound_trigger_data: &SoundTriggerData,
+        sound_trigger_data: &mut SoundTriggerData,
     ) {
         let mut beat_progression = timing.beat_progression();
         beat_progression +=

@@ -140,7 +140,7 @@ impl Argument {
         svg: Option<TextureHandle>,
         beat_progression: f32,
         collection: &mut Collections,
-        sound_trigger_data: &SoundTriggerData,
+        sound_trigger_data: &mut SoundTriggerData,
     ) -> bool {
         let mut changed = false;
         ui.label(&self.name);

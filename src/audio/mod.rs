@@ -54,7 +54,6 @@ impl AudioPool {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SoundTriggerHandle {
     uuid: Uuid,
-    params: Mutex<SoundTriggerParams>,
 }
 
 impl Drop for SoundTriggerHandle {
@@ -72,12 +71,37 @@ impl PartialEq for SoundTriggerHandle {
 }
 
 impl SoundTriggerHandle {
-    pub fn get_sound_trigger<'a>(&'a self, data: &'a SoundTriggerData) -> Option<&'a SoundTrigger> {
-        data.triggers.get(&self.uuid)
+    pub fn get_sound_trigger<'a>(
+        &'a self,
+        sound_trigger_data: &'a SoundTriggerData,
+    ) -> Option<&'a SoundTrigger> {
+        sound_trigger_data.triggers.get(&self.uuid)
     }
 
-    pub fn level(&self, data: &SoundTriggerData) -> f32 {
-        data.triggers
+    pub fn get_sound_trigger_mut<'a>(
+        &'a self,
+        sound_trigger_data: &'a mut SoundTriggerData,
+    ) -> Option<&'a mut SoundTrigger> {
+        sound_trigger_data.triggers.get_mut(&self.uuid)
+    }
+
+    pub fn get_params<'a>(
+        &'a self,
+        sound_trigger_data: &'a SoundTriggerData,
+    ) -> Option<&'a SoundTriggerParams> {
+        Some(&self.get_sound_trigger(sound_trigger_data)?.params)
+    }
+
+    pub fn get_params_mut<'a>(
+        &'a self,
+        sound_trigger_data: &'a mut SoundTriggerData,
+    ) -> Option<&'a mut SoundTriggerParams> {
+        Some(&mut self.get_sound_trigger_mut(sound_trigger_data)?.params)
+    }
+
+    pub fn level(&self, sound_trigger_data: &SoundTriggerData) -> f32 {
+        sound_trigger_data
+            .triggers
             .get(&self.uuid)
             .map(|trigger| trigger.current_level)
             .unwrap_or(0.0)

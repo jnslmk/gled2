@@ -234,7 +234,7 @@ impl eframe::App for App {
             &mut self.collections,
             &mut self.persistant_state,
             &mut self.extract_output,
-            &self.sound_trigger_data,
+            &mut self.sound_trigger_data,
         );
 
         ctx.request_repaint();
