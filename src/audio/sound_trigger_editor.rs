@@ -513,7 +513,7 @@ impl SoundTriggerEditor {
                 // Frequency radius
                 filter_tune_changed |= ui
                     .add(
-                        knob_default(&mut self.f_radius, 0., 24_000., 50.0)
+                        knob_default(&mut self.f_radius, 100., 24_000., 50.0)
                             .with_size(50.0)
                             .with_logarithmic_scaling()
                             .with_label("Range", LabelPosition::Bottom),

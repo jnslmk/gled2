@@ -55,7 +55,7 @@ impl SoundTriggerParams {
         let center_bin = ((f_center / f_per_bin).round() as usize).min(FREQ_BINS - 1);
         let bin_radius = (f_radius / f_per_bin).round() as usize;
         self.center_bin = center_bin;
-        self.bin_radius = bin_radius;
+        self.bin_radius = bin_radius.max(1);
         self.gate_deactivation_threshold = self.gate_activation_threshold * 0.9;
         //self.averaging_samples = (100f32.mul(averaging_time) as usize);
     }
