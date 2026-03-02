@@ -1,7 +1,7 @@
 use crate::audio::SoundTriggerHandle;
 use crate::audio::fft::{MAX_FREQ, fft_data_u8};
+use crate::audio::sound_data::SoundData;
 use crate::audio::sound_trigger::{SoundTrigger, SoundTriggerParams};
-use crate::audio::sound_trigger_data::SoundTriggerData;
 use crate::pipeline::constants::TEXTURE_SIZE;
 use crate::pipeline::renderer_callback::RendererCallback;
 use crate::storage::asset::scene::effect_state::OwnedTextureId;
@@ -198,9 +198,9 @@ struct SoundTriggerEditorShell {
 
 impl From<SoundTriggerEditorShell> for SoundTriggerEditor {
     fn from(shell: SoundTriggerEditorShell) -> Self {
-        let mut sound_trigger_data = SoundTriggerData::default();
-        let sound_trigger_handle = sound_trigger_data.register_sound_trigger(shell.params);
-        sound_trigger_data.save();
+        let mut sound_data = SoundData::default();
+        let sound_trigger_handle = sound_data.register_sound_trigger(shell.params);
+        sound_data.save();
 
         Self {
             sound_trigger_handle,
@@ -213,10 +213,10 @@ impl From<SoundTriggerEditorShell> for SoundTriggerEditor {
 }
 impl From<SoundTriggerEditor> for SoundTriggerEditorShell {
     fn from(editor: SoundTriggerEditor) -> Self {
-        let sound_trigger_data = SoundTriggerData::default();
+        let sound_data = SoundData::default();
         let params = editor
             .sound_trigger_handle
-            .get_params(&sound_trigger_data)
+            .get_params(&sound_data)
             .copied()
             .unwrap_or_default();
 
@@ -242,7 +242,7 @@ impl SoundTriggerEditor {
         f_radius: f32,
         averaging_time: f32,
     ) -> Self {
-        let mut data = SoundTriggerData::default();
+        let mut data = SoundData::default();
         let sound_trigger_handle = data.register_sound_trigger(sound_trigger_params);
         data.save();
 
@@ -257,14 +257,11 @@ impl SoundTriggerEditor {
 }
 
 impl SoundTriggerEditor {
-    pub fn show(&mut self, ui: &mut Ui, sound_trigger_data: &mut SoundTriggerData) {
+    pub fn show(&mut self, ui: &mut Ui, sound_data: &mut SoundData) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("SoundTriggerEditor::show");
         Frame::new().inner_margin(5.).show(ui, |ui| {
-            if let Some(trigger) = self
-                .sound_trigger_handle
-                .get_sound_trigger(sound_trigger_data)
-            {
+            if let Some(trigger) = self.sound_trigger_handle.get_sound_trigger(sound_data) {
                 let mut spectrum = trigger.spectrum.clone();
                 spectrum.map_inplace(|x| {
                     *x = (*x * 10.0 + 10.0).log10() - 1.0;
@@ -279,22 +276,17 @@ impl SoundTriggerEditor {
                     preview_shader.draw_spectrum_texture(spectrum);
                 }
 
-                self.draw_spectrum(ui, sound_trigger_data);
+                self.draw_spectrum(ui, sound_data);
                 ui.separator();
-                self.draw_adsr(ui, impulse, output_level, sound_trigger_data);
+                self.draw_adsr(ui, impulse, output_level, sound_data);
             }
         });
     }
 
-    pub fn show_minified(
-        &mut self,
-        ui: &mut Ui,
-        rect: Rect,
-        sound_trigger_data: &SoundTriggerData,
-    ) {
+    pub fn show_minified(&mut self, ui: &mut Ui, rect: Rect, sound_data: &SoundData) {
         #[cfg(feature = "profiling")]
         puffin::profile_function!("ADSREditor::show_minified");
-        let level = self.sound_trigger_handle.level(sound_trigger_data);
+        let level = self.sound_trigger_handle.level(sound_data);
         scoped_frame(
             ui,
             UiBuilder::new().max_rect(rect),
@@ -330,8 +322,7 @@ impl SoundTriggerEditor {
                     ));
                 }
 
-                if let Some(sound_trigger_params) =
-                    self.sound_trigger_handle.get_params(sound_trigger_data)
+                if let Some(sound_trigger_params) = self.sound_trigger_handle.get_params(sound_data)
                 {
                     self.draw_curve(ui, rect, level, sound_trigger_params);
                 }
@@ -344,14 +335,13 @@ impl SoundTriggerEditor {
         ui: &mut Ui,
         input_level: f32,
         output_level: f32,
-        sound_trigger_data: &mut SoundTriggerData,
+        sound_data: &mut SoundData,
     ) {
-        let Some(sound_trigger_params) =
-            &mut self.sound_trigger_handle.get_params_mut(sound_trigger_data)
+        let Some(sound_trigger_params) = &mut self.sound_trigger_handle.get_params_mut(sound_data)
         else {
             return;
         };
-        let mut save_sound_trigger_data = false;
+        let mut save_sound_data = false;
 
         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
             let meter_height = 200.0;
@@ -413,7 +403,7 @@ impl SoundTriggerEditor {
                         )
                         .changed()
                     {
-                        save_sound_trigger_data = true;
+                        save_sound_data = true;
                     };
                     if ui
                         .add(
@@ -429,7 +419,7 @@ impl SoundTriggerEditor {
                         )
                         .changed()
                     {
-                        save_sound_trigger_data = true;
+                        save_sound_data = true;
                     };
                     // Threshold knob
                     if ui
@@ -445,25 +435,24 @@ impl SoundTriggerEditor {
                         )
                         .changed()
                     {
-                        save_sound_trigger_data = true;
+                        save_sound_data = true;
                     }
                 });
             },
         );
 
-        if save_sound_trigger_data {
-            sound_trigger_data.save();
+        if save_sound_data {
+            sound_data.save();
         }
     }
 
-    fn draw_spectrum(&mut self, ui: &mut Ui, sound_trigger_data: &mut SoundTriggerData) {
-        let Some(sound_trigger_params) =
-            self.sound_trigger_handle.get_params_mut(sound_trigger_data)
+    fn draw_spectrum(&mut self, ui: &mut Ui, sound_data: &mut SoundData) {
+        let Some(sound_trigger_params) = self.sound_trigger_handle.get_params_mut(sound_data)
         else {
             return;
         };
 
-        let mut save_sound_trigger_data = false;
+        let mut save_sound_data = false;
 
         #[cfg(feature = "profiling")]
         puffin::profile_function!("SoundTriggerEditor::draw_spectrum");
@@ -540,18 +529,18 @@ impl SoundTriggerEditor {
                     )
                     .changed()
                 {
-                    save_sound_trigger_data = true;
+                    save_sound_data = true;
                 }
 
                 if filter_tune_changed {
                     sound_trigger_params.set_filter_tune(self.f_center, self.f_radius);
-                    save_sound_trigger_data = true;
+                    save_sound_data = true;
                 }
             },
         );
 
-        if save_sound_trigger_data {
-            sound_trigger_data.save();
+        if save_sound_data {
+            sound_data.save();
         }
     }
 

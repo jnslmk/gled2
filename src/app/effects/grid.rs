@@ -92,8 +92,7 @@ impl App {
                                                             timing: &self.timing,
                                                             collections: &self.collections,
                                                             effects_size,
-                                                            sound_trigger_data: &self
-                                                                .sound_trigger_data,
+                                                            sound_data: &self.sound_data,
                                                         })
                                                     });
 

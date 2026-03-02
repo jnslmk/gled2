@@ -1,5 +1,5 @@
 use crate::{
-    audio::sound_trigger_data::SoundTriggerData,
+    audio::sound_data::SoundData,
     storage::{
         collections::Collections,
         curve::multiplied_curve::{MultipliedCurve, RangeDegrees, RangePercentage},
@@ -55,14 +55,12 @@ impl FloatValue {
         &self,
         beat_progression: f32,
         collection: &Collections,
-        sound_trigger_data: &SoundTriggerData,
+        sound_data: &SoundData,
     ) -> f32 {
         match self {
             Self::F32(value) => *value,
-            Self::Percentage(value) => {
-                value.value(beat_progression, collection, sound_trigger_data)
-            }
-            Self::Degrees(value) => value.value(beat_progression, collection, sound_trigger_data),
+            Self::Percentage(value) => value.value(beat_progression, collection, sound_data),
+            Self::Degrees(value) => value.value(beat_progression, collection, sound_data),
         }
     }
 }

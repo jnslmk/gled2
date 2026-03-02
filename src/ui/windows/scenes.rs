@@ -1,6 +1,6 @@
 use crate::{
     app::{persistant_state::PersistantState, timing::Timing},
-    audio::sound_trigger_data::SoundTriggerData,
+    audio::sound_data::SoundData,
     pipeline::renderer_callback::RendererCallback,
     storage::{
         asset::{
@@ -41,7 +41,7 @@ impl ScenesWindow {
         timing: &Timing,
         collections: &mut Collections,
         persistant_state: &mut PersistantState,
-        sound_trigger_data: &mut SoundTriggerData,
+        sound_data: &mut SoundData,
     ) {
         if !self.open {
             return;
@@ -95,7 +95,7 @@ impl ScenesWindow {
                                             None,
                                             1.0,
                                             collections,
-                                            sound_trigger_data,
+                                            sound_data,
                                         );
                                     }
 
@@ -196,7 +196,7 @@ impl ScenesWindow {
                                     &Default::default(),
                                     1.0,
                                     collections,
-                                    sound_trigger_data,
+                                    sound_data,
                                 );
                                 let mut encoder =
                                     device.create_command_encoder(&CommandEncoderDescriptor {
@@ -231,7 +231,7 @@ impl ScenesWindow {
                                                         groups_show_index: false,
                                                         beat_progression: None,
                                                         collections,
-                                                        sound_trigger_data,
+                                                        sound_data,
                                                     },
                                                 );
                                             }

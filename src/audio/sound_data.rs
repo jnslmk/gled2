@@ -15,38 +15,44 @@ use uuid::Uuid;
 
 const SOUND_TRIGGER_SAMPLE_INTERVAL_MS: u64 = 10;
 
-static CURRENT: Lazy<Mutex<HashMap<Uuid, SoundTrigger>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+type Data = (HashMap<Uuid, SoundTrigger>, [f32; FREQ_BINS]);
+
+static CURRENT: Lazy<Mutex<Data>> = Lazy::new(|| Mutex::new((HashMap::new(), [0.0; FREQ_BINS])));
 static INSTANCE_ID: AtomicUsize = AtomicUsize::new(0);
-static SENDERS: Lazy<Mutex<HashMap<usize, Sender<HashMap<Uuid, SoundTrigger>>>>> =
+static SENDERS: Lazy<Mutex<HashMap<usize, Sender<Data>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-pub struct SoundTriggerData {
+pub struct SoundData {
     id: usize,
-    receiver: Receiver<HashMap<Uuid, SoundTrigger>>,
+    receiver: Receiver<Data>,
     pub triggers: HashMap<Uuid, SoundTrigger>,
+    pub fft_samples: [f32; FREQ_BINS],
 }
 
-impl Default for SoundTriggerData {
+impl Default for SoundData {
     fn default() -> Self {
         let (sender, receiver) = bounded(10);
         let id = INSTANCE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         SENDERS.lock().insert(id, sender);
 
+        let (triggers, fft_samples) = CURRENT.lock().clone();
+
         Self {
             id,
             receiver,
-            triggers: CURRENT.lock().clone(),
+            triggers,
+            fft_samples,
         }
     }
 }
 
-impl Drop for SoundTriggerData {
+impl Drop for SoundData {
     fn drop(&mut self) {
         SENDERS.lock().remove(&self.id);
     }
 }
 
-impl SoundTriggerData {
+impl SoundData {
     pub fn register_sound_trigger(
         &mut self,
         sound_trigger_params: SoundTriggerParams,
@@ -60,16 +66,25 @@ impl SoundTriggerData {
         Arc::new(SoundTriggerHandle { uuid })
     }
 
+    pub fn fft_data_u8(&self) -> [u8; FREQ_BINS * 4] {
+        let mut data = [0u8; FREQ_BINS * 4];
+        for (i, sample) in self.fft_samples.iter().enumerate() {
+            let bytes = sample.to_le_bytes();
+            data[i * 4..(i + 1) * 4].copy_from_slice(&bytes);
+        }
+        data
+    }
+
     pub fn remove(&mut self, uuid: Uuid) {
         self.triggers.remove(&uuid);
     }
 
-    pub fn tick(&mut self, root_sample: [f32; FREQ_BINS]) {
-        #[cfg(feature = "profiling")]
-        puffin::profile_scope!("tick_sound_triggers");
+    #[cfg_attr(feature = "profiling", profiling::function)]
+    pub fn tick(&mut self, fft_samples: [f32; FREQ_BINS]) {
         self.triggers.values_mut().for_each(move |trigger| {
-            trigger.tick(root_sample);
+            trigger.tick(fft_samples);
         });
+        self.fft_samples = fft_samples;
     }
 
     pub fn reset(&mut self) {
@@ -78,10 +93,12 @@ impl SoundTriggerData {
         });
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self) {
         trace!("Updating sound trigger data (self.id = {})", self.id);
-        while let Ok(Some(new_triggers)) = self.receiver.try_recv() {
-            self.triggers = new_triggers;
+        while let Ok(Some((triggers, fft_samples))) = self.receiver.try_recv() {
+            self.triggers = triggers;
+            self.fft_samples = fft_samples;
         }
     }
 
@@ -94,10 +111,10 @@ impl SoundTriggerData {
 
             trace!("Sending sound trigger data to instance with id: {id}");
             sender
-                .send(self.triggers.clone())
+                .send((self.triggers.clone(), self.fft_samples))
                 .expect("Could not send sound trigger data");
         }
 
-        CURRENT.lock().clone_from(&self.triggers);
+        *CURRENT.lock() = (self.triggers.clone(), self.fft_samples);
     }
 }

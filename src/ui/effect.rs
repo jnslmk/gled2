@@ -1,7 +1,7 @@
 pub mod widget;
 
 use crate::{
-    audio::sound_trigger_data::SoundTriggerData,
+    audio::sound_data::SoundData,
     storage::{
         asset::{Asset, scene::effect::Effect},
         collections::Collections,
@@ -18,7 +18,7 @@ impl Effect {
         svg: Option<egui::TextureHandle>,
         beat_progression: f32,
         collections: &mut Collections,
-        sound_trigger_data: &mut SoundTriggerData,
+        sound_data: &mut SoundData,
     ) -> bool {
         let mut changed = false;
 
@@ -34,34 +34,28 @@ impl Effect {
 
         ui.label("Progression");
         ui.vertical_centered_justified(|ui| {
-            changed |= self.beat_progression.change_button(
-                ui,
-                beat_progression,
-                collections,
-                sound_trigger_data,
-            );
+            changed |=
+                self.beat_progression
+                    .change_button(ui, beat_progression, collections, sound_data);
         });
 
         let mut beat_progression = beat_progression;
         beat_progression +=
             self.beat_progression_offset
-                .value(beat_progression, collections, sound_trigger_data);
+                .value(beat_progression, collections, sound_data);
 
         ui.label("Colorshift");
         ui.vertical_centered_justified(|ui| {
-            changed |= self.color_shift.change_button(
-                ui,
-                beat_progression,
-                collections,
-                sound_trigger_data,
-            );
+            changed |=
+                self.color_shift
+                    .change_button(ui, beat_progression, collections, sound_data);
         });
 
         ui.label("Opacity");
         ui.vertical_centered_justified(|ui| {
-            changed |=
-                self.opacity
-                    .change_button(ui, beat_progression, collections, sound_trigger_data);
+            changed |= self
+                .opacity
+                .change_button(ui, beat_progression, collections, sound_data);
         });
 
         ui.label("Beat offset");
@@ -70,7 +64,7 @@ impl Effect {
                 ui,
                 beat_progression,
                 collections,
-                sound_trigger_data,
+                sound_data,
             );
         });
 
@@ -123,7 +117,7 @@ impl Effect {
                 svg,
                 beat_progression,
                 collections,
-                sound_trigger_data,
+                sound_data,
             );
         }
 

@@ -3,7 +3,7 @@ pub mod float_value;
 use float_value::FloatValue;
 use serde::{Deserialize, Serialize};
 
-use crate::{audio::sound_trigger_data::SoundTriggerData, storage::collections::Collections};
+use crate::{audio::sound_data::SoundData, storage::collections::Collections};
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq)]
 #[serde(default)]
@@ -25,7 +25,7 @@ impl AnimationConfig {
         data: &mut [u8],
         beat_progression: f32,
         collections: &Collections,
-        sound_trigger_data: &SoundTriggerData,
+        sound_data: &SoundData,
     ) {
         data[0..4].copy_from_slice(&self.u32_0.to_le_bytes());
         data[4..8].copy_from_slice(&self.u32_1.to_le_bytes());
@@ -33,37 +33,37 @@ impl AnimationConfig {
         data[12..16].copy_from_slice(
             &self
                 .float_0
-                .value(beat_progression, collections, sound_trigger_data)
+                .value(beat_progression, collections, sound_data)
                 .to_le_bytes(),
         );
         data[16..20].copy_from_slice(
             &self
                 .float_1
-                .value(beat_progression, collections, sound_trigger_data)
+                .value(beat_progression, collections, sound_data)
                 .to_le_bytes(),
         );
         data[20..24].copy_from_slice(
             &self
                 .float_2
-                .value(beat_progression, collections, sound_trigger_data)
+                .value(beat_progression, collections, sound_data)
                 .to_le_bytes(),
         );
         data[24..28].copy_from_slice(
             &self
                 .float_3
-                .value(beat_progression, collections, sound_trigger_data)
+                .value(beat_progression, collections, sound_data)
                 .to_le_bytes(),
         );
         data[28..32].copy_from_slice(
             &self
                 .float_4
-                .value(beat_progression, collections, sound_trigger_data)
+                .value(beat_progression, collections, sound_data)
                 .to_le_bytes(),
         );
         data[32..36].copy_from_slice(
             &self
                 .float_5
-                .value(beat_progression, collections, sound_trigger_data)
+                .value(beat_progression, collections, sound_data)
                 .to_le_bytes(),
         );
     }

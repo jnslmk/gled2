@@ -2,7 +2,7 @@ pub mod argument;
 pub mod config;
 pub mod renderer;
 
-use crate::{audio::sound_trigger_data::SoundTriggerData, storage::collections::Collections};
+use crate::{audio::sound_data::SoundData, storage::collections::Collections};
 
 use super::AssetTrait;
 use argument::{Argument, variables::VariablesCount};
@@ -142,7 +142,7 @@ impl Animation {
         svg: Option<egui::TextureHandle>,
         beat_progression: f32,
         collections: &mut Collections,
-        sound_trigger_data: &mut SoundTriggerData,
+        sound_data: &mut SoundData,
     ) -> bool {
         let mut changed = false;
         let mut count = VariablesCount::default();
@@ -155,7 +155,7 @@ impl Animation {
                 svg.clone(),
                 beat_progression,
                 collections,
-                sound_trigger_data,
+                sound_data,
             );
             count += argument.kind.variables().count();
         }

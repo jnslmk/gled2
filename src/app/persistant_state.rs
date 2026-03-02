@@ -178,6 +178,7 @@ impl PersistantState {
         &mut self.current.preview_palette
     }
 
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self) {
         while let Ok(Some(new)) = self.receiver.try_recv() {
             self.current = new;

@@ -1,7 +1,7 @@
 use super::effect_state::EffectState;
 use crate::{
     app::svg::Svg,
-    audio::sound_trigger_data::SoundTriggerData,
+    audio::sound_data::SoundData,
     pipeline::group::Groups,
     storage::{
         Animation, Asset, AssetId, Palette,
@@ -98,24 +98,24 @@ impl Effect {
         groups: &Groups,
         main_opacity: f32,
         collections: &Collections,
-        sound_trigger_data: &SoundTriggerData,
+        sound_data: &SoundData,
     ) {
         let beat_progression = self.state.beat_progression
             + self.beat_progression_offset.value(
                 self.state.beat_progression,
                 collections,
-                sound_trigger_data,
+                sound_data,
             );
         self.state.beat_progression =
             self.beat_progression
-                .value(beat_progression, collections, sound_trigger_data);
+                .value(beat_progression, collections, sound_data);
         self.state.opacity = self
             .opacity
-            .value(beat_progression, collections, sound_trigger_data)
+            .value(beat_progression, collections, sound_data)
             * main_opacity;
         self.state.color_shift =
             self.color_shift
-                .value(beat_progression, collections, sound_trigger_data);
+                .value(beat_progression, collections, sound_data);
         self.state.speed_exponent = self.speed_exponent;
         self.state.animation_config = self.animation_config.clone();
 
@@ -135,7 +135,7 @@ impl Effect {
                 beat_progression,
                 palette,
                 collections,
-                sound_trigger_data,
+                sound_data,
             );
         }
     }

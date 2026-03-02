@@ -130,10 +130,9 @@ impl SoundTrigger {
         self.spectrum = Array1::zeros(FREQ_BINS);
     }
 
-    pub fn tick(&mut self, root_sample: [f32; FREQ_BINS]) {
-        #[cfg(feature = "profiling")]
-        puffin::profile_function!("SoundTrigger::tick");
-        self.spectrum = self.compute_running_average(root_sample);
+    #[cfg_attr(feature = "profiling", profiling::function)]
+    pub fn tick(&mut self, samples: [f32; FREQ_BINS]) {
+        self.spectrum = self.compute_running_average(samples);
         //self.spectrum = self.spectrum.map(|x|{ 1.0 + (10.0 * self.params.sensitivity + 1.0) * x.mul(5.0).log10() });
         self.spectrum.map_inplace(|x| {
             *x = x.mul(self.delta_time * 3.0).clamp(0.0, f32::infinity());

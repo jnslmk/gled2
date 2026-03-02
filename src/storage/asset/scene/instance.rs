@@ -1,7 +1,7 @@
 use super::Scene;
 use crate::{
     app::timing::Timing,
-    audio::sound_trigger_data::SoundTriggerData,
+    audio::sound_data::SoundData,
     input::event::InputEvent,
     pipeline::{
         group::{GroupIndices, Groups},
@@ -149,7 +149,7 @@ impl SceneInstance {
         timing: &Timing,
         main_dimmer: f32,
         collections: &Collections,
-        sound_trigger_data: &SoundTriggerData,
+        sound_data: &SoundData,
     ) {
         if let Some(event) = self.flash_input.as_ref() {
             if !self.flash && event.is_live() && self.set_offset_on_flash {
@@ -165,7 +165,7 @@ impl SceneInstance {
         let mut beat_progression = timing.beat_progression();
         beat_progression +=
             self.beat_progression_offset
-                .value(beat_progression, collections, sound_trigger_data);
+                .value(beat_progression, collections, sound_data);
         for effect in self.scene.effects.iter_mut() {
             effect.state.beat_progression = beat_progression;
             effect.state.beats_per_minute = timing.beats_per_minute();
@@ -198,7 +198,7 @@ impl SceneInstance {
             } * opacity_factor
                 * self
                     .opacity
-                    .value(beat_progression, collections, sound_trigger_data)
+                    .value(beat_progression, collections, sound_data)
                 * self.input_dimmer;
             self.scene.prepare(
                 queue,
@@ -206,7 +206,7 @@ impl SceneInstance {
                 groups,
                 main_opacity,
                 collections,
-                sound_trigger_data,
+                sound_data,
             );
         }
     }

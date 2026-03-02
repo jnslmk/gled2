@@ -1,5 +1,5 @@
 use crate::{
-    audio::sound_trigger_data::SoundTriggerData,
+    audio::sound_data::SoundData,
     pipeline::group::Groups,
     storage::{asset::scene::effect::Effect, collections::Collections},
     ui::pills::show_pills,
@@ -20,7 +20,7 @@ pub struct EffectWidget<'a> {
     /// used for showing the dimmer
     pub beat_progression: Option<f32>,
     pub collections: &'a Collections,
-    pub sound_trigger_data: &'a SoundTriggerData,
+    pub sound_data: &'a SoundData,
 }
 
 impl Widget for EffectWidget<'_> {
@@ -49,7 +49,7 @@ impl Widget for EffectWidget<'_> {
                     let dimmer = self.effect.opacity.value(
                         beat_progression,
                         self.collections,
-                        self.sound_trigger_data,
+                        self.sound_data,
                     );
                     bg_rect.min.y += (bg_rect.height() * (1.0 - dimmer)).round().max(0.0);
                     ui.painter()

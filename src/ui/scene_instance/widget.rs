@@ -1,4 +1,4 @@
-use crate::audio::sound_trigger_data::SoundTriggerData;
+use crate::audio::sound_data::SoundData;
 use crate::storage::asset::project::scene_instance_path::grid_scene_instance_index;
 use crate::storage::asset::scene::Scene;
 use crate::storage::asset::scene::grid::GridLocation;
@@ -27,7 +27,7 @@ pub struct SceneInstanceWidget<'a> {
     pub timing: &'a Timing,
     pub collections: &'a Collections,
     pub effects_size: f32,
-    pub sound_trigger_data: &'a SoundTriggerData,
+    pub sound_data: &'a SoundData,
 }
 
 const CORNER_RADIUS: u8 = 2;
@@ -42,7 +42,7 @@ impl Widget for SceneInstanceWidget<'_> {
             let (text_response, button_rect) = self.header_bar(name, ui);
             Frame::new().inner_margin(INNER_MARGIN).show(ui, |ui| {
                 self.preview(ui);
-                self.dimmer(ui, self.collections, self.sound_trigger_data);
+                self.dimmer(ui, self.collections, self.sound_data);
             });
             if !self.scene_instance.active {
                 ui.painter()
@@ -188,12 +188,7 @@ impl SceneInstanceWidget<'_> {
         });
     }
 
-    fn dimmer(
-        &mut self,
-        ui: &mut Ui,
-        collections: &Collections,
-        sound_trigger_data: &SoundTriggerData,
-    ) {
+    fn dimmer(&mut self, ui: &mut Ui, collections: &Collections, sound_data: &SoundData) {
         ui.scope_builder(UiBuilder::new(), |ui| {
             ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                 Frame::default().show(ui, |ui| {
@@ -204,7 +199,7 @@ impl SceneInstanceWidget<'_> {
                         * self.scene_instance.opacity.value(
                             self.timing.beat_progression(),
                             collections,
-                            sound_trigger_data,
+                            sound_data,
                         );
 
                     ui.add(

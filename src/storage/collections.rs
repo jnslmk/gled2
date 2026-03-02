@@ -37,6 +37,7 @@ impl Drop for Collections {
 }
 
 impl Collections {
+    #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn update(&mut self) {
         while let Ok(Some(new_collections)) = self.receiver.try_recv() {
             self.current = new_collections;

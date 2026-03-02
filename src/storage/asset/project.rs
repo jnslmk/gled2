@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     app::{svg::Svg, timing::Timing},
-    audio::sound_trigger_data::SoundTriggerData,
+    audio::sound_data::SoundData,
     input::{
         artnet::{ARTNET_CONFIG, ArtnetConfig},
         event::{GamepadEvent, InputEvent},
@@ -194,7 +194,7 @@ impl Project {
         fade_duration: Duration,
         collections: &Collections,
         extract_output: &ExtractOutput,
-        sound_trigger_data: &SoundTriggerData,
+        sound_data: &SoundData,
     ) {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
@@ -261,7 +261,7 @@ impl Project {
                 timing,
                 main_dimmer,
                 collections,
-                sound_trigger_data,
+                sound_data,
             );
         }
 

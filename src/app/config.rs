@@ -56,7 +56,7 @@ impl App {
                         scene_instance.groups_overwrite.clone().unwrap_or(groups),
                         &self.timing,
                         &mut self.collections,
-                        &mut self.sound_trigger_data,
+                        &mut self.sound_data,
                     ),
                     None => {
                         ui.label("There's no Effect to configure.");

@@ -36,17 +36,17 @@ pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
 }
 
 #[derive(Debug)]
-pub struct AudioSource {
+pub struct FFTAudioSource {
     running: Arc<AtomicBool>,
 }
 
-impl Drop for AudioSource {
+impl Drop for FFTAudioSource {
     fn drop(&mut self) {
         self.running.store(false, Ordering::Relaxed);
     }
 }
 
-impl AudioSource {
+impl FFTAudioSource {
     pub fn start(device_id: DeviceId, fft_tx: Sender<[f32; FREQ_BINS]>) -> Self {
         let running = Arc::new(AtomicBool::new(true));
 

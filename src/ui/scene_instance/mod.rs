@@ -4,7 +4,7 @@ pub mod widget;
 use super::ChangeButton;
 use crate::{
     app::timing::Timing,
-    audio::sound_trigger_data::SoundTriggerData,
+    audio::sound_data::SoundData,
     pipeline::group::Groups,
     storage::{asset::scene::instance::SceneInstance, collections::Collections},
     ui::{asset::CollectionsChangeButton, effect::widget::EffectWidget},
@@ -20,12 +20,12 @@ impl SceneInstance {
         groups: Groups,
         timing: &Timing,
         collections: &mut Collections,
-        sound_trigger_data: &mut SoundTriggerData,
+        sound_data: &mut SoundData,
     ) {
         let mut beat_progression = timing.beat_progression();
         beat_progression +=
             self.beat_progression_offset
-                .value(beat_progression, collections, sound_trigger_data);
+                .value(beat_progression, collections, sound_data);
         let width = ui.available_width() - 20.0;
 
         ScrollArea::vertical()
@@ -75,7 +75,7 @@ impl SceneInstance {
                                         ui,
                                         beat_progression,
                                         collections,
-                                        sound_trigger_data,
+                                        sound_data,
                                     );
                                 });
 
@@ -88,7 +88,7 @@ impl SceneInstance {
                                         ui,
                                         timing.beat_progression(),
                                         collections,
-                                        sound_trigger_data,
+                                        sound_data,
                                     );
                                 });
                             });
@@ -128,7 +128,7 @@ impl SceneInstance {
                                 groups_show_index: false,
                                 beat_progression: Some(beat_progression),
                                 collections,
-                                sound_trigger_data,
+                                sound_data,
                             },
                         );
 
@@ -150,7 +150,7 @@ impl SceneInstance {
                                         groups_show_index: true,
                                         beat_progression: Some(beat_progression),
                                         collections,
-                                        sound_trigger_data,
+                                        sound_data,
                                     },
                                 );
                                 ui.vertical(|ui| {
@@ -160,7 +160,7 @@ impl SceneInstance {
                                         svg.clone(),
                                         beat_progression,
                                         collections,
-                                        sound_trigger_data,
+                                        sound_data,
                                     );
                                 });
                             });

@@ -1,5 +1,5 @@
 use crate::{
-    audio::sound_trigger_data::SoundTriggerData,
+    audio::sound_data::SoundData,
     pipeline::{
         group::Group, output_mix::OutputMix, renderer_callback::RendererCallback,
         texture_to_output::TextureToOutput,
@@ -90,7 +90,7 @@ impl EffectState {
         beat_progression: f32,
         data: &mut [u8],
         collections: &Collections,
-        sound_trigger_data: &SoundTriggerData,
+        sound_data: &SoundData,
     ) {
         data[0..4].copy_from_slice(&rand::random::<f32>().to_le_bytes());
         data[4..8].copy_from_slice(&self.beat_progression.to_le_bytes());
@@ -103,13 +103,11 @@ impl EffectState {
             &mut data[28..28 + AnimationConfig::size()],
             beat_progression,
             collections,
-            sound_trigger_data,
+            sound_data,
         );
 
         // Write FFT data (256 frequency bins = 1024 bytes)
-        // TODO receive updates again
-        // let fft_data = fft_data_u8();
-        let fft_data = [0u8; 256 * 4];
+        let fft_data = sound_data.fft_data_u8();
         let fft_offset = 28 + AnimationConfig::size();
         data[fft_offset..fft_offset + fft_data.len()].copy_from_slice(&fft_data);
     }

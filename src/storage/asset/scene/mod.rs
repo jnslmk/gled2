@@ -6,7 +6,7 @@ pub mod instance;
 
 use super::{Asset, AssetTrait, animation::Animation, palette::Palette};
 use crate::{
-    audio::sound_trigger_data::SoundTriggerData,
+    audio::sound_data::SoundData,
     pipeline::group::{GroupIndices, Groups},
     storage::{AssetId, collections::Collections},
     ui::pills::show_pills,
@@ -81,7 +81,7 @@ impl Scene {
         groups: &Groups,
         main_opacity: f32,
         collections: &Collections,
-        sound_trigger_data: &SoundTriggerData,
+        sound_data: &SoundData,
     ) {
         for effect in self.effects.iter_mut() {
             effect.prepare(
@@ -90,7 +90,7 @@ impl Scene {
                 groups,
                 main_opacity,
                 collections,
-                sound_trigger_data,
+                sound_data,
             );
         }
     }
