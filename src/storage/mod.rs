@@ -140,7 +140,6 @@ pub fn start_thread() {
                 StorageAction::LoadAssets.enqueue();
 
                 while let Ok(action) = actions.recv() {
-                    println!("Storage action: {action:?}");
                     WORKING.store(true, Relaxed);
 
                     match action {
@@ -322,8 +321,6 @@ pub fn start_thread() {
                     }
 
                     WORKING.store(false, Relaxed);
-
-                    println!("Storage action done..");
                 }
             }
         })
