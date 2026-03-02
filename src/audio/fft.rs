@@ -194,82 +194,83 @@ impl FFTProcessor {
 
     pub fn process_audio_samples(&mut self) {
         // When we have enough samples, perform FFT
-        if let Ok(chunk) = self.consumer.read_chunk(WINDOW_SIZE) {
-            #[cfg(feature = "profiling")]
-            puffin::profile_scope!("audio:process_audio_samples");
-            // move out of buffer
-            let mut samples = [0f32; WINDOW_SIZE];
-            let (h, t) = chunk.as_slices();
-            samples[..h.len()].copy_from_slice(h);
-            samples[h.len()..].copy_from_slice(t);
-            // only consume a fraction of the buffer for overlap
-            chunk.commit(WINDOW_SIZE / 4);
+        let Ok(chunk) = self.consumer.read_chunk(WINDOW_SIZE) else {
+            std::thread::sleep(std::time::Duration::from_millis(1));
+            return;
+        };
 
-            // Convert to complex numbers (imaginary part is 0 for real input)
-            let mut complex_samples: Vec<Complex<f32>> =
-                samples.iter().map(|&s| Complex::new(s, 0.0)).collect();
+        #[cfg(feature = "profiling")]
+        puffin::profile_scope!("audio:process_audio_samples");
+        // move out of buffer
+        let mut samples = [0f32; WINDOW_SIZE];
+        let (h, t) = chunk.as_slices();
+        samples[..h.len()].copy_from_slice(h);
+        samples[h.len()..].copy_from_slice(t);
+        // only consume a fraction of the buffer for overlap
+        chunk.commit(WINDOW_SIZE / 4);
 
-            // Apply window function (Hanning window) to reduce spectral leakage
-            for (i, sample) in complex_samples.iter_mut().enumerate() {
-                let window = 0.5
-                    * (1.0
-                        - (2.0 * std::f32::consts::PI * i as f32 / (WINDOW_SIZE as f32 - 1.0))
-                            .cos());
-                sample.re *= window;
-            }
+        // Convert to complex numbers (imaginary part is 0 for real input)
+        let mut complex_samples: Vec<Complex<f32>> =
+            samples.iter().map(|&s| Complex::new(s, 0.0)).collect();
 
-            // Perform FFT
-            self.fft.process(&mut complex_samples);
-
-            // Calculate magnitude for each frequency bin
-            // Only use first FREQ_BINS (Nyquist frequency limit)
-            let mut linear_magnitudes = Vec::with_capacity(FREQ_BINS);
-
-            for sample in complex_samples.iter().take(FREQ_BINS) {
-                // Calculate magnitude (norm of complex number)
-                let magnitude = sample.norm();
-                linear_magnitudes.push(magnitude);
-            }
-
-            //// Apply logarithmic frequency scaling
-            //// Map linear FFT bins to logarithmic frequency bins
-            let mut magnitudes = vec![0.0f32; FREQ_BINS];
-            for (output_bin, magnitude_slot) in magnitudes.iter_mut().enumerate() {
-                // Map output bin to logarithmic frequency scale
-                // Use logarithmic mapping: log(freq) = log(min) + (log(max) - log(min)) * (bin / total_bins)
-                let min_freq = 0f32;
-                let max_freq: f32 = 400.0;
-                let _log_min = min_freq.ln();
-                let _log_max = max_freq.ln();
-                //let log_freq = log_min + (log_max - log_min) * ;
-                let linear_freq = min_freq
-                    + (max_freq - min_freq)
-                        * curved_log(output_bin as f32 / FREQ_BINS as f32, -8.0);
-
-                // Find the corresponding linear bin(s) and interpolate
-                let linear_bin = linear_freq - 1.0;
-                let lower_bin = linear_bin.floor() as usize;
-                let upper_bin = (linear_bin.ceil() as usize).min(FREQ_BINS - 1);
-                let fraction = linear_bin - lower_bin as f32;
-
-                if lower_bin < FREQ_BINS {
-                    let lower_mag = linear_magnitudes[lower_bin];
-                    let upper_mag = if upper_bin < FREQ_BINS && upper_bin != lower_bin {
-                        linear_magnitudes[upper_bin]
-                    } else {
-                        lower_mag
-                    };
-                    let scaled_mag = lower_mag * (1.0 - fraction) + upper_mag * fraction;
-                    *magnitude_slot = scaled_mag;
-                    // Update max_magnitude with the scaled value
-                }
-            }
-
-            let sample = magnitudes.try_into().unwrap();
-            if let Err(error) = self.fft_tx.try_send(sample) {
-                debug!("Error sending fft: {error}")
-            };
+        // Apply window function (Hanning window) to reduce spectral leakage
+        for (i, sample) in complex_samples.iter_mut().enumerate() {
+            let window = 0.5
+                * (1.0
+                    - (2.0 * std::f32::consts::PI * i as f32 / (WINDOW_SIZE as f32 - 1.0)).cos());
+            sample.re *= window;
         }
+
+        // Perform FFT
+        self.fft.process(&mut complex_samples);
+
+        // Calculate magnitude for each frequency bin
+        // Only use first FREQ_BINS (Nyquist frequency limit)
+        let mut linear_magnitudes = Vec::with_capacity(FREQ_BINS);
+
+        for sample in complex_samples.iter().take(FREQ_BINS) {
+            // Calculate magnitude (norm of complex number)
+            let magnitude = sample.norm();
+            linear_magnitudes.push(magnitude);
+        }
+
+        //// Apply logarithmic frequency scaling
+        //// Map linear FFT bins to logarithmic frequency bins
+        let mut magnitudes = vec![0.0f32; FREQ_BINS];
+        for (output_bin, magnitude_slot) in magnitudes.iter_mut().enumerate() {
+            // Map output bin to logarithmic frequency scale
+            // Use logarithmic mapping: log(freq) = log(min) + (log(max) - log(min)) * (bin / total_bins)
+            let min_freq = 0f32;
+            let max_freq: f32 = 400.0;
+            let _log_min = min_freq.ln();
+            let _log_max = max_freq.ln();
+            //let log_freq = log_min + (log_max - log_min) * ;
+            let linear_freq = min_freq
+                + (max_freq - min_freq) * curved_log(output_bin as f32 / FREQ_BINS as f32, -8.0);
+
+            // Find the corresponding linear bin(s) and interpolate
+            let linear_bin = linear_freq - 1.0;
+            let lower_bin = linear_bin.floor() as usize;
+            let upper_bin = (linear_bin.ceil() as usize).min(FREQ_BINS - 1);
+            let fraction = linear_bin - lower_bin as f32;
+
+            if lower_bin < FREQ_BINS {
+                let lower_mag = linear_magnitudes[lower_bin];
+                let upper_mag = if upper_bin < FREQ_BINS && upper_bin != lower_bin {
+                    linear_magnitudes[upper_bin]
+                } else {
+                    lower_mag
+                };
+                let scaled_mag = lower_mag * (1.0 - fraction) + upper_mag * fraction;
+                *magnitude_slot = scaled_mag;
+                // Update max_magnitude with the scaled value
+            }
+        }
+
+        let sample = magnitudes.try_into().unwrap();
+        if let Err(error) = self.fft_tx.try_send(sample) {
+            debug!("Error sending fft: {error}")
+        };
     }
 }
 
