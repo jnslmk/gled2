@@ -1,6 +1,7 @@
 pub mod artnet;
 pub mod event;
 pub mod external_control;
+pub mod osc;
 
 use crate::input::artnet::ArtnetEvent;
 use egui::{Context, mutex::Mutex};

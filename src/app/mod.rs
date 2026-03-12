@@ -10,6 +10,7 @@ pub mod storage;
 pub mod svg;
 pub mod timing;
 
+use std::sync::Arc;
 use crate::{
     audio::{AudioPool, sound_data::SoundData},
     input::{Input, external_control::ExternalControlState},
@@ -33,6 +34,7 @@ use persistant_state::PersistantState;
 use std::time::Instant;
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
+use crate::input::osc::OSCHandler;
 
 pub struct App {
     pub startup: bool,
@@ -59,6 +61,7 @@ pub struct App {
     pub external_control_state: ExternalControlState,
     pub audio_pool: AudioPool,
     pub sound_data: SoundData,
+    pub osc_handler: Option<Arc<OSCHandler>>,
 }
 
 impl eframe::App for App {
@@ -317,6 +320,7 @@ impl App {
             external_control_state: ExternalControlState::new(artnet_control_receiver),
             audio_pool,
             sound_data: Default::default(),
+            osc_handler: OSCHandler::start().ok(),
         };
 
         Some(app)
