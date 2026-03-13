@@ -115,14 +115,10 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
             self.last_title = title;
         }
-        
+
         // update the program state from network signals
         self.external_control_state
             .process_events(&mut self.project, &self.collections);
-        if let Some(project) = &mut self.project 
-            && let Some(osc_handler) = &self.osc_handler {
-            osc_handler.update_project_from_osc(project)
-        }
 
         if let Some(project) = &mut self.project {
             project.render(

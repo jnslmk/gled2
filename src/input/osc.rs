@@ -2,55 +2,46 @@ use std::{io, thread};
 use std::net::UdpSocket;
 use std::sync::Arc;
 use std::time::Duration;
-use kanal::{bounded, Receiver, Sender};
 use log::{debug, trace, warn};
 use rosc::{OscMessage, OscPacket};
-use crate::input::event::InputEvent;
-use crate::storage::asset::project::Project;
+use crate::ui::action::UiAction;
 
 static OSC_PORT: u16 = 8000;
 
+#[derive(Debug, Clone)]
+pub enum ControlEvent {
+    MainDimmer(f32),
+}
+
 pub struct OSCHandler{
     socket: UdpSocket,
-    tx: Sender<(OscMessage, std::net::SocketAddr)>,
-    rx: Receiver<(OscMessage, std::net::SocketAddr)>,
 }
 
 impl OSCHandler{
     pub fn start() -> io::Result<Arc<Self>>{
         let socket = UdpSocket::bind(("0.0.0.0", OSC_PORT))?;
-        let (tx, rx) = bounded(100);
         let ret = Arc::new(Self{
             socket,
-            tx,
-            rx,
         });
         start_network_loop(ret.clone());
         Ok(ret)
     }
+}
 
-    pub fn update_project_from_osc(&self, project: &mut Project){
-        #[cfg(feature = "profiling")]
-        puffin::profile_function!("OSCHandler::update_project_from_osc");
-        let mut messages =Vec::new();
-        match self.rx.drain_into(&mut messages) {
-            Ok(_) => {
-                // Process messages
-                for (msg, _) in messages {
-                    trace!("processing osc message {} msg", msg);
-                    match msg.addr.as_str() {
-                        "/main_dimmer" => {
-                            if let Some(v) = msg.args.first()
-                                .and_then(|v| v.clone().float()) {
-                                project.main_dimmer = v;
-                            }
-                        },
-                        _ => warn!("Received unknown osc message: {}", msg.addr),
-                    }
-                }
+fn parse_message(msg: &OscMessage) -> Result<ControlEvent, ()>{
+    match msg.addr.as_str() {
+        "/main_dimmer" => {
+            if let Some(v) = msg.args.first()
+                .and_then(|v| v.clone().float()) {
+                    Ok(ControlEvent::MainDimmer(v))
+            } else {
+                Err(())
             }
-            Err(e) => println!("Drain error: {:?}", e),
-        }
+        },
+        _ => {
+            warn!("Received unknown osc message: {}", msg.addr);
+            Err(())
+        },
     }
 }
 
@@ -59,7 +50,6 @@ fn start_network_loop(handler: Arc<OSCHandler>){
         .name("gled:artnet:osc".to_string())
         .spawn(move || {
             let mut buf = [0u8; rosc::decoder::MTU];
-            let tx = handler.tx.clone();
             trace!("Starting osc network receiving loop");
             loop {
                 trace!("Waiting for osc package...");
@@ -76,16 +66,14 @@ fn start_network_loop(handler: Arc<OSCHandler>){
                     OscPacket::Message(msg) => {
                         trace!("OSC address: {}", msg.addr);
                         trace!("OSC arguments: {:?}", msg.args);
-                        match tx.send((msg, src)) {
-                            Ok(_) => {}
-                            Err(_) => {
-                                warn!("OSCHandler got dropped; stopping listening to osc network");
-                                return;
-                            }
+                        if let Ok(event) = parse_message(&msg) {
+                            UiAction::enqueue(
+                                UiAction::ProjectUpdate(event)
+                            );
                         }
                     }
                     OscPacket::Bundle(bundle) => {
-                        trace!("OSC Bundle: {:?}", bundle);
+                        warn!("OSC Bundle are not supported currently: {:?}", bundle);
                     }
                 }
             }

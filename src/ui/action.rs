@@ -18,6 +18,7 @@ use kanal::{Receiver, Sender, unbounded};
 use notify_rust::Notification;
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
+use crate::input::osc::ControlEvent;
 
 static ACTION_SENDER: OnceCell<Sender<UiAction>> = OnceCell::new();
 
@@ -53,6 +54,7 @@ pub enum UiAction {
     MidiOutputActive(bool),
     Error(String),
     SetAudioDevice(Option<DeviceId>),
+    ProjectUpdate(ControlEvent),
 }
 
 impl App {
@@ -222,13 +224,26 @@ impl App {
 
                     self.windows.errors.entries.push(error);
                 }
+                (Some(project), UiAction::ProjectUpdate(event))
+                    => handle_project_update(project, event),
                 (None, _) => log::trace!("Ingoring ui action which needs a loaded project"),
             }
         }
     }
 }
 
-impl UiAction {
+pub fn handle_project_update(project: &mut Project, event: ControlEvent){
+    #[cfg(feature = "profiling")]
+    puffin::profile_function!("OSCHandler::handle_project_update");
+    match event {
+        ControlEvent::MainDimmer(dimmer) => {
+            project.main_dimmer = dimmer;
+        }
+    }
+}
+
+
+    impl UiAction {
     pub fn init_queue() -> Receiver<UiAction> {
         let (sender, receiver) = unbounded();
         ACTION_SENDER.set(sender).unwrap();
