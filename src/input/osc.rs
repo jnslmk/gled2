@@ -3,8 +3,10 @@ use std::net::UdpSocket;
 use std::sync::Arc;
 use std::time::Duration;
 use kanal::{bounded, Receiver, Sender};
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use rosc::{OscMessage, OscPacket};
+use crate::input::event::InputEvent;
+use crate::storage::asset::project::Project;
 
 static OSC_PORT: u16 = 8000;
 
@@ -25,6 +27,30 @@ impl OSCHandler{
         });
         start_network_loop(ret.clone());
         Ok(ret)
+    }
+
+    pub fn update_project_from_osc(&self, project: &mut Project){
+        #[cfg(feature = "profiling")]
+        puffin::profile_function!("OSCHandler::update_project_from_osc");
+        let mut messages =Vec::new();
+        match self.rx.drain_into(&mut messages) {
+            Ok(_) => {
+                // Process messages
+                for (msg, _) in messages {
+                    trace!("processing osc message {} msg", msg);
+                    match msg.addr.as_str() {
+                        "/main_dimmer" => {
+                            if let Some(v) = msg.args.first()
+                                .and_then(|v| v.clone().float()) {
+                                project.main_dimmer = v;
+                            }
+                        },
+                        _ => warn!("Received unknown osc message: {}", msg.addr),
+                    }
+                }
+            }
+            Err(e) => println!("Drain error: {:?}", e),
+        }
     }
 }
 
@@ -50,13 +76,13 @@ fn start_network_loop(handler: Arc<OSCHandler>){
                     OscPacket::Message(msg) => {
                         trace!("OSC address: {}", msg.addr);
                         trace!("OSC arguments: {:?}", msg.args);
-                        // match tx.send((msg, src)) {
-                        //     Ok(_) => {}
-                        //     Err(_) => {
-                        //         warn!("OSCHandler got dropped; stopping listening to osc network");
-                        //         return;
-                        //     }
-                        // }
+                        match tx.send((msg, src)) {
+                            Ok(_) => {}
+                            Err(_) => {
+                                warn!("OSCHandler got dropped; stopping listening to osc network");
+                                return;
+                            }
+                        }
                     }
                     OscPacket::Bundle(bundle) => {
                         trace!("OSC Bundle: {:?}", bundle);
