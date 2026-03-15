@@ -18,7 +18,6 @@ use crate::{
 use egui::TextureId;
 use egui_dnd::DragDropItem;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use uuid::Uuid;
 use wgpu::{CommandEncoder, Queue};
 
@@ -54,7 +53,7 @@ pub struct SceneInstance {
     #[serde(default)]
     pub groups_overwrite: Option<Groups>,
     #[serde(default)]
-    pub palette_overwrite: Option<Option<AssetId<Palette>>>,
+    pub palette_overwrite: Option<Option<Palette>>,
 
     #[serde(skip)]
     transition: Option<Transition>,
@@ -85,7 +84,7 @@ impl Clone for SceneInstance {
             scene_id: self.scene_id,
             scene: self.scene.clone(),
             groups_overwrite: self.groups_overwrite.clone(),
-            palette_overwrite: self.palette_overwrite,
+            palette_overwrite: self.palette_overwrite.clone(),
             transition: Default::default(),
             flash: Default::default(),
         }
@@ -143,8 +142,8 @@ impl SceneInstance {
     pub fn prepare(
         &mut self,
         queue: &Queue,
+        palette: Option<Palette>,
         always_render: bool,
-        palette: Option<Arc<Asset<Palette>>>,
         deck_groups: &Groups,
         timing: &Timing,
         main_dimmer: f32,
@@ -188,7 +187,7 @@ impl SceneInstance {
         if always_render || self.active || self.flash {
             let groups = self.groups_overwrite.as_ref().unwrap_or(deck_groups);
             let palette = match self.palette_overwrite.as_ref() {
-                Some(id) => id.and_then(|id| Asset::get(id, collections)),
+                Some(palette) => palette.clone(),
                 None => palette,
             };
             let main_opacity = if self.ignore_main_dimmer {

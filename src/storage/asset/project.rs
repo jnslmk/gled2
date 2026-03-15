@@ -1,7 +1,7 @@
 pub mod scene_instance_path;
 
 use super::{
-    Asset, AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
+    AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
     scene::instance::SceneInstance,
 };
 use crate::{
@@ -47,7 +47,7 @@ use wgpu::CommandEncoderDescriptor;
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Project {
-    pub palette: Option<AssetId<Palette>>,
+    pub palette: Option<Palette>,
     pub auto_mode_active: bool,
     pub auto_mode_seconds: u64,
     pub auto_mode_max_scenes: usize,
@@ -249,14 +249,14 @@ impl Project {
             self.auto_mode_last_change.take();
         }
 
-        let palette = self.palette.and_then(|id| Asset::get(id, collections));
+        let palette = self.palette.clone();
         let deck_groups = self.groups.clone();
         let main_dimmer = self.main_dimmer;
         for scene_instance in self.scenes_instances_grid.values_mut() {
             scene_instance.prepare(
                 queue,
-                always_render,
                 palette.clone(),
+            always_render,
                 &deck_groups,
                 timing,
                 main_dimmer,
@@ -355,6 +355,10 @@ impl Project {
     pub fn artnet_control_config(&mut self, apply: impl FnOnce(&mut ArtnetControlConfig)) {
         apply(&mut self.artnet_control_config);
         ARTNET_CONFIG.lock().artnet_control_config = self.artnet_control_config;
+    }
+
+    pub fn artnet_control_config_value(&self) -> ArtnetControlConfig {
+        self.artnet_control_config
     }
 }
 

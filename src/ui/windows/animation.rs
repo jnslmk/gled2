@@ -98,7 +98,8 @@ impl AnimationWindow {
                 queue,
                 persistant_state
                     .preview_palette()
-                    .and_then(|id| Asset::get(id, collections)),
+                    .and_then(|id| Asset::get(id, collections))
+                    .map(|palette| palette.data.clone()),
                 &Default::default(),
                 1.0,
                 collections,

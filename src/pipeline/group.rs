@@ -71,6 +71,22 @@ impl Groups {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    pub fn insert(&mut self, index: usize, group: Group) {
+        self.0.insert(index, group);
+    }
+
+    pub fn remove(&mut self, index: usize) {
+        self.0.remove(&index);
+    }
+
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&usize, &Group)> {
+        self.0.iter()
+    }
 }
 
 impl OverwriteChangeButton for Groups {

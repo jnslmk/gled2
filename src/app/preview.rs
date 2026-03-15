@@ -1,13 +1,9 @@
 use super::App;
 use crate::{
     pipeline::preview::Preview,
-    ui::{
-        asset_tree::{TreeId, TreeSelection},
-        gled_slider::GledSlider,
-    },
+    ui::{asset_tree::TreeSelection, gled_slider::GledSlider},
 };
 use egui::{Color32, Id, Image, Ui, Vec2, load::SizedTexture};
-use egui_ltreeview::TreeViewState;
 
 impl App {
     pub fn palette_asset_tree_id(&mut self, ui: &mut Ui) -> Id {
@@ -19,23 +15,6 @@ impl App {
     #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn preview(&mut self, ui: &mut egui::Ui) {
         let palette_asset_tree_id = self.palette_asset_tree_id(ui);
-        let palette_tree_id = self
-            .project
-            .as_ref()
-            .and_then(|project| project.palette)
-            .map(TreeId::File);
-
-        if let Some(palette_tree_id) = palette_tree_id.as_ref() {
-            let mut state = TreeViewState::load(ui, palette_asset_tree_id).unwrap_or_default();
-            if state.selected().iter().next().is_none()
-                && let Some(index) = self
-                    .palette_asset_tree
-                    .find_index(palette_tree_id, &mut self.collections)
-            {
-                state.set_selected(vec![index]);
-                state.store(ui, palette_asset_tree_id);
-            }
-        }
 
         let height = ui.available_height();
         ui.horizontal(|ui| {
@@ -66,26 +45,12 @@ impl App {
                         ui,
                         palette_asset_tree_id,
                         &mut self.collections,
-                    ) {
-                        match self.palette_asset_tree.selected() {
-                            TreeSelection::Asset(palette) => {
-                                project.palette = Some(palette.id);
-                            }
-                            _ => {
-                                let mut state = TreeViewState::load(ui, palette_asset_tree_id)
-                                    .unwrap_or_default();
-                                if let Some(index) =
-                                    palette_tree_id.as_ref().and_then(|palette_tree_id| {
-                                        self.palette_asset_tree
-                                            .find_index(palette_tree_id, &mut self.collections)
-                                    })
-                                {
-                                    state.set_selected(vec![index]);
-                                    state.store(ui, palette_asset_tree_id);
-                                }
-                            }
-                        };
+                    ) && let TreeSelection::Asset(palette) = self.palette_asset_tree.selected()
+                    {
+                        project.palette = Some(palette.data.clone());
                     }
+
+                    //TODO: Show and make project palette editable
                 });
 
                 let mut rect = ui.available_rect_before_wrap();
@@ -99,7 +64,7 @@ impl App {
                     GledSlider::new(&mut project.main_dimmer, 100.0)
                         .size(40.0)
                         .show_label()
-                        .preview_value(preview_value)
+                        .preview_value(preview_value),
                 );
             }
         });

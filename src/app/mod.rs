@@ -10,7 +10,7 @@ pub mod storage;
 pub mod svg;
 pub mod timing;
 
-use std::sync::Arc;
+use crate::input::osc::{OSCHandler, OscStateSnapshot};
 use crate::{
     audio::{AudioPool, sound_data::SoundData},
     input::{Input, external_control::ExternalControlState},
@@ -31,10 +31,10 @@ use eframe::egui_wgpu::Callback;
 use egui::{CentralPanel, Id, Rect, UiBuilder, ViewportId, ahash::HashSet};
 use kanal::Receiver;
 use persistant_state::PersistantState;
+use std::sync::Arc;
 use std::time::Instant;
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
-use crate::input::osc::OSCHandler;
 
 pub struct App {
     pub startup: bool,
@@ -137,6 +137,18 @@ impl eframe::App for App {
                 &self.extract_output,
                 &self.sound_data,
             );
+        }
+
+        if let Some(osc_handler) = &self.osc_handler
+            && osc_handler.has_subscribers()
+        {
+            osc_handler.enqueue_state_snapshot(OscStateSnapshot {
+                project: self.project.clone(),
+                selected_scene_instance: self.selected_scene_instance,
+                blackout: self.blackout || self.blackout_hold,
+                beats_per_minute: self.timing.beats_per_minute(),
+                beat_progression: self.timing.beat_progression(),
+            });
         }
 
         if self.midi_output_active {

@@ -6,11 +6,15 @@ use crate::{
     app::timing::Timing,
     audio::sound_data::SoundData,
     pipeline::group::Groups,
-    storage::{asset::scene::instance::SceneInstance, collections::Collections},
-    ui::{asset::CollectionsChangeButton, effect::widget::EffectWidget},
+    storage::{
+        asset::{AssetTrait, palette::Palette, scene::instance::SceneInstance},
+        collections::Collections,
+    },
+    ui::{asset_tree::AssetTree, effect::widget::EffectWidget},
 };
-use egui::{Checkbox, Margin, ScrollArea, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible};
+use egui::{Checkbox, Margin, ScrollArea, UiKind, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible};
 use egui_modal::Modal;
+use egui_ltreeview::TreeViewState;
 
 impl SceneInstance {
     pub fn config_ui(
@@ -106,8 +110,44 @@ impl SceneInstance {
                     .inner_margin(Margin::from(6.0))
                     .show(ui, |ui| {
                         ui.set_min_width(ui.available_width());
-                        self.palette_overwrite
-                            .collections_change_button(ui, collections);
+                        let mut overwrite = self.palette_overwrite.is_some();
+                        ui.checkbox(&mut overwrite, "Overwrite Palette");
+                        if self.palette_overwrite.is_none() && overwrite {
+                            self.palette_overwrite = Some(None);
+                        } else if self.palette_overwrite.is_some() && !overwrite {
+                            self.palette_overwrite = None;
+                        }
+
+                        if let Some(palette_overwrite) = self.palette_overwrite.as_mut() {
+                            let response = ui.menu_button("📂 Palette", |ui| {
+                                if ui.button("No Palette").clicked() {
+                                    *palette_overwrite = None;
+                                    ui.close_kind(UiKind::Menu);
+                                }
+
+                                if let Some(palette_id) = AssetTree::<Palette>::show_asset_selection(
+                                    ui,
+                                    ui.make_persistent_id(Palette::NAME),
+                                    collections,
+                                ) {
+                                    *palette_overwrite = crate::storage::asset::Asset::get(
+                                        palette_id,
+                                        collections,
+                                    )
+                                    .map(|palette| palette.data.clone());
+                                    ui.data_mut(|data| {
+                                        data.remove::<TreeViewState<usize>>(
+                                            ui.make_persistent_id(Palette::NAME),
+                                        )
+                                    });
+                                    ui.close_kind(UiKind::Menu);
+                                }
+                            }).response;
+
+                            if let Some(palette) = palette_overwrite.as_ref() {
+                                palette.show(ui, response.rect);
+                            }
+                        }
                     });
 
                 ui.separator();
