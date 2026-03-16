@@ -1,4 +1,4 @@
-use crate::audio::{AUDIO_DEVICES, audio_device_info_loop};
+use crate::audio::{AUDIO_DEVICES, audio_device_info_loop, audio_device_labels};
 use crate::storage::asset::project::Project;
 use crate::storage::collections::Collections;
 use crate::ui::action::UiAction;
@@ -113,10 +113,10 @@ fn audio_input_settings(ui: &mut Ui, state: &mut Project) {
     let mut selected = project.audio_input_device.clone();
     let old_selected = selected.clone();
 
-    let devices = AUDIO_DEVICES.lock().unwrap().clone();
+    let devices = audio_device_labels(&AUDIO_DEVICES.lock().unwrap().clone());
     ui.selectable_value(&mut selected, None, "None");
-    for (id, desc) in devices {
-        ui.selectable_value(&mut selected, Some(id), desc.name());
+    for (id, label) in devices {
+        ui.selectable_value(&mut selected, Some(id), label);
     }
 
     if selected != old_selected {
