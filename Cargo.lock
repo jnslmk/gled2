@@ -1745,7 +1745,7 @@ dependencies = [
 
 [[package]]
 name = "gled"
-version = "2.26.0"
+version = "2.26.1"
 dependencies = [
  "anyhow",
  "arboard",
