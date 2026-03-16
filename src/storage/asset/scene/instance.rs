@@ -139,6 +139,27 @@ impl SceneInstance {
         self.scene.reload_shader_code(animation, collections);
     }
 
+    fn update_input_state(&mut self, beat_progression: f32) {
+        if let Some(event) = self.activation_input.as_ref()
+            && event.is_new()
+        {
+            self.active = !self.active;
+        }
+
+        if let Some(event) = self.flash_input.as_ref() {
+            let flash_active = event.is_live();
+            if !self.flash && flash_active && self.set_offset_on_flash {
+                self.beat_progression_offset =
+                    MultipliedCurve::new_multiplier(4.0 - beat_progression % 4.0);
+            }
+            self.flash = flash_active;
+        }
+
+        if let Some(event) = self.dimmer_input.as_ref() {
+            self.input_dimmer = event.dimmer()
+        }
+    }
+
     pub fn prepare(
         &mut self,
         queue: &Queue,
@@ -150,16 +171,7 @@ impl SceneInstance {
         collections: &Collections,
         sound_data: &SoundData,
     ) {
-        if let Some(event) = self.flash_input.as_ref() {
-            if !self.flash && event.is_live() && self.set_offset_on_flash {
-                self.beat_progression_offset =
-                    MultipliedCurve::new_multiplier(4.0 - timing.beat_progression() % 4.0);
-            }
-            self.flash = event.is_live();
-        }
-        if let Some(event) = self.dimmer_input.as_ref() {
-            self.input_dimmer = event.dimmer();
-        }
+        self.update_input_state(timing.beat_progression());
 
         let mut beat_progression = timing.beat_progression();
         beat_progression +=
