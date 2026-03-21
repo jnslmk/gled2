@@ -13,8 +13,8 @@ pub fn deserialize_scene_instances<'de, D>(deserializer: D) -> Result<Option<Dev
 where
     D: serde::Deserializer<'de>,
 {
-    let serialized = Option::<String>::deserialize(deserializer)?;
-    serialized
-        .map(|s| DeviceId::from_str(&s).map_err(|_| serde::de::Error::custom("Invalid device id")))
-        .transpose()
+    let Some(serialized) = Option::<String>::deserialize(deserializer)? else {
+      return Ok(None)
+    };
+    Ok(DeviceId::from_str(&serialized).ok())
 }
