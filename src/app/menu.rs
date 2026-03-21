@@ -8,15 +8,13 @@ use crate::{
         windows::channel_overwrites::ChannelOverwrites,
     },
 };
-use egui::{
-    Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Slider, Stroke, TextFormat, Ui,
-    UiKind, Vec2, ViewportId, text::LayoutJob,
-};
+use egui::{Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2, ViewportId, text::LayoutJob, ViewportCommand, PointerButton, Sense};
 use log::debug;
 use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
 };
+use std::cmp::min;
 
 impl App {
     pub fn menu(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
@@ -26,6 +24,22 @@ impl App {
             }
 
             egui::MenuBar::new().ui(ui, |ui| {
+                let title_bar_response = ui.interact(
+                    ui.available_rect_before_wrap(),
+                    Id::new("title_bar"),
+                    Sense::click_and_drag(),
+                );
+                // Interact with the title bar (drag to move window):
+                if title_bar_response.double_clicked() {
+                    let is_maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
+                    ui.ctx()
+                        .send_viewport_cmd(ViewportCommand::Maximized(!is_maximized));
+                }
+
+                if title_bar_response.drag_started_by(PointerButton::Primary) {
+                    ui.ctx().send_viewport_cmd(ViewportCommand::StartDrag);
+                }
+
                 let menu_button_size = Vec2::new(100.0, ui.available_height());
 
                 if ui.add(Button::image(Image::new(logo_image()))).clicked() {
@@ -429,17 +443,14 @@ impl App {
                     );
                     ui.separator();
 
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                        ui.add_space(5.0);
-                        let slider_width = ui.available_width() - 70.0;
-                        if slider_width > 5.0 {
-                            ui.spacing_mut().slider_width = slider_width;
-                        }
-                        ui.add(
-                            Slider::new(&mut self.timing.change_beats_per_minute, 20.0..=999.0)
-                                .custom_formatter(|n, _| format!("{n:.1} bpm")),
-                        );
-                    });
+                    let slider_width = (ui.available_width() - 70.0).min(400.0);
+                    if slider_width > 5.0 {
+                        ui.spacing_mut().slider_width = slider_width;
+                    }
+                    ui.add(
+                        Slider::new(&mut self.timing.change_beats_per_minute, 20.0..=999.0)
+                            .custom_formatter(|n, _| format!("{n:.1} bpm")),
+                    );
                 });
             });
         });
