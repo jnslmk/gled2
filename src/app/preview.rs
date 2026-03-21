@@ -1,4 +1,5 @@
 use super::App;
+use crate::ui::scoped_frame;
 use crate::{
     pipeline::preview::Preview,
     ui::{
@@ -6,8 +7,14 @@ use crate::{
         gled_slider::GledSlider,
     },
 };
-use egui::{Color32, Id, Image, Ui, Vec2, load::SizedTexture};
+use egui::{load::SizedTexture, Button, Color32, Id, Image, Layout, Ui, UiBuilder, Vec2};
+use egui::Frame;
 use egui_ltreeview::TreeViewState;
+use egui_phosphor_icons::icons;
+use emath::{vec2, Align};
+use epaint::text::{LayoutJob, TextFormat};
+use epaint::Stroke;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 impl App {
     pub fn palette_asset_tree_id(&mut self, ui: &mut Ui) -> Id {
@@ -38,7 +45,7 @@ impl App {
         }
 
         let height = ui.available_height();
-        ui.horizontal(|ui| {
+        ui.horizontal(|mut ui| {
             let size = Vec2::splat(height.min(ui.available_width()));
 
             let svg_texture = self.svg_texture(ui.ctx());
@@ -93,14 +100,45 @@ impl App {
                 *rect.left_mut() = rect.right() - 56.0;
                 *rect.bottom_mut() -= 16.0;
 
-                let preview_value = project.main_dimmer;
-                ui.put(
-                    rect,
-                    GledSlider::new(&mut project.main_dimmer, 100.0)
-                        .size(40.0)
-                        .show_label()
-                        .preview_value(preview_value)
-                );
+                scoped_frame(
+                    ui,
+                    UiBuilder::new().max_rect(rect).layout(Layout::top_down_justified(Align::Min)),
+                    Frame::default(),
+                    |ui| {
+                        let (top, mut bottom) = rect.split_top_bottom_at_y(rect.height() + 20.0);
+
+                        let preview_value = if self.blackout {0.0} else {project.main_dimmer};
+                        ui.put(top, GledSlider::new(&mut project.main_dimmer, 100.0)
+                            .size(40.0)
+                            .show_label()
+                            .preview_value(preview_value));
+
+                        let underlined = TextFormat {
+                            underline: Stroke::new(1.0, Color32::GRAY),
+                            ..Default::default()
+                        };
+                        let mut blackout_text = LayoutJob::default();
+                        blackout_text.append("B", 0.0, underlined);
+                        blackout_text.append("lackout", 0.0, TextFormat::default());
+
+                        let mut blackout = Button::new(icons::LIGHTBULB);
+                        if self.blackout
+                            && SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .map(|d| d.as_millis() / 200 % 2 == 0)
+                            .unwrap_or_default()
+                        {
+                            blackout = blackout.fill(Color32::DARK_RED);
+                        }
+                        bottom.set_width(40.0);
+                        if ui.add_sized(vec2(10.0, 10.0), blackout).clicked()
+                            || project.blackout_input_is_new()
+                        {
+                            self.blackout = !self.blackout;
+                        }
+
+                        self.blackout_hold = project.blackout_hold_input_is_live();
+                    });
             }
         });
     }
