@@ -202,12 +202,12 @@ impl App {
                 }
                 (Some(project), UiAction::SelectScene(location)) => {
                     if let Some(pos) = project.location_by_location_or_quick_index(location) {
-                        self.selected_scene_instance = pos;
+                        self.set_selected_scene_instance(pos);
                     }
                 }
                 (Some(project), UiAction::SelectSceneByLocation(location)) => {
                     if project.scenes_instances_grid.contains_key(&location) {
-                        self.selected_scene_instance = location;
+                        self.set_selected_scene_instance(location);
                     }
                 }
                 (Some(project), UiAction::SetAudioDevice(device_id)) => {
@@ -224,7 +224,7 @@ impl App {
                     if let Some(to_item) = to_item {
                         project.add_scene_instance(from, to_item);
                     }
-                    self.selected_scene_instance = to;
+                    self.set_selected_scene_instance(to);
                 }
                 (Some(project), UiAction::SetSceneName(path, name)) => {
                     if let Some(scene_instance) =
@@ -691,11 +691,13 @@ impl App {
 
                         self.project_id = Some(project.id);
                         let project = Arc::unwrap_or_clone(project).data;
-                        self.selected_scene_instance = project
-                            .all_scene_instance_locations()
-                            .next()
-                            .copied()
-                            .unwrap_or_default();
+                        self.set_selected_scene_instance(
+                            project
+                                .all_scene_instance_locations()
+                                .next()
+                                .copied()
+                                .unwrap_or_default(),
+                        );
                         self.extract_output.routings = project.output_routings.clone();
                         *ARTNET_CONFIG.lock() = project.artnet_config.clone();
                         project.channel_overwrites.clone().set();

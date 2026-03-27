@@ -43,6 +43,7 @@ impl App {
                 let start_pos = ui.cursor().min;
 
                 let mut dropped = None;
+                let mut clicked_selection = None;
                 for row in 0..GRID_HEIGHT {
                     if row == GRID_HEIGHT - 1 {
                         let quick_scene_rect = Rect::from_min_size(
@@ -164,7 +165,7 @@ impl App {
                                                     );
                                                 }
                                                 if widget_response.clicked() {
-                                                    self.selected_scene_instance = location;
+                                                    clicked_selection = Some(location);
                                                 }
                                             }
                                             None => {
@@ -202,6 +203,10 @@ impl App {
                         grid.insert(from, to_item);
                     }
                     UiAction::SelectSceneByLocation(to).enqueue();
+                }
+
+                if let Some(location) = clicked_selection {
+                    self.set_selected_scene_instance(location);
                 }
 
                 static SHOW_TRASH_ONE_MORE_FRAME: AtomicBool = AtomicBool::new(false);

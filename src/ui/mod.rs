@@ -11,6 +11,7 @@ pub mod gled_slider;
 pub mod input;
 pub mod logo;
 pub mod pills;
+pub mod scene_effect_editor;
 pub mod scene_instance;
 pub mod temperature;
 pub mod update_check;

@@ -52,6 +52,7 @@ impl App {
                 match project.get_scenes_instance(&self.selected_scene_instance) {
                     Some(scene_instance) => scene_instance.config_ui(
                         ui,
+                        &mut self.selected_scene_effect_editor,
                         svg,
                         scene_instance.groups_overwrite.clone().unwrap_or(groups),
                         &self.timing,

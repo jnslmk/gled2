@@ -23,7 +23,8 @@ use crate::{
         loading,
     },
     ui::{
-        action::UiAction, asset_tree::AssetTree, window_common::default_viewport_builder,
+        action::UiAction, asset_tree::AssetTree,
+        scene_effect_editor::SceneEffectEditorState, window_common::default_viewport_builder,
         windows::Windows,
     },
 };
@@ -47,6 +48,7 @@ pub struct App {
     pub blackout: bool,
     pub blackout_hold: bool,
     pub selected_scene_instance: GridLocation,
+    pub selected_scene_effect_editor: SceneEffectEditorState,
     pub git_commit_message: String,
     pub ui_action_receiver: Receiver<UiAction>,
     pub last_title: String,
@@ -258,6 +260,11 @@ impl eframe::App for App {
 }
 
 impl App {
+    pub(crate) fn set_selected_scene_instance(&mut self, location: GridLocation) {
+        self.selected_scene_instance = location;
+        self.selected_scene_effect_editor.reset();
+    }
+
     #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn draw_main_window(&mut self, ctx: &egui::Context, viewport_id: Option<ViewportId>) {
         let panel_frame = egui::Frame::new()
@@ -312,6 +319,7 @@ impl App {
             blackout: true,
             blackout_hold: false,
             selected_scene_instance: Default::default(),
+            selected_scene_effect_editor: Default::default(),
             project: Default::default(),
             project_id: Default::default(),
             windows: Default::default(),
