@@ -358,10 +358,6 @@ pub fn audio_device_info_loop(continue_scan: &AtomicBool) {
                 return None;
             }
 
-            if device.default_input_config().is_err() {
-                return None;
-            }
-
             Some((id, description))
         }));
 
