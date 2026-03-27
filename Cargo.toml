@@ -122,7 +122,6 @@ macos = { "signingIdentity" = "Developer ID Application: FreshX GmbH (V5GQY7AUWA
 [patch.crates-io]
 egui_knob = { git = "https://github.com/elwerene/egui_knob", branch = "update_egui" }
 egui_phosphor_icons = { git = "https://github.com/elwerene/egui_phosphor_icons", branch = "update_egui" }
-polyfit-residuals = { git = "https://github.com/elwerene/polyfit-residuals", branch = "update_dependencies" }
 profiling = { git = "https://github.com/rerun-io/profiling", branch = "emilk/puffin-0.20"}
 wgpu-profiler = { git = "https://github.com/elwerene/wgpu-profiler", branch = "update_dependencies" }
 
