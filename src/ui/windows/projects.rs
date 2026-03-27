@@ -36,8 +36,8 @@ impl ProjectsWindow {
                 });
 
                 gled_window_frame(ctx, "Projects", |ui| {
-                    egui::SidePanel::left("projects tree")
-                        .exact_width(200.0)
+                    egui::Panel::left("projects tree")
+                        .exact_size(200.0)
                         .resizable(false)
                         .show_inside(ui, |ui| {
                             if self.tree.show(

@@ -59,7 +59,7 @@ impl Input {
 
         input.new_events = std::mem::take(&mut input.new_artnet_events);
 
-        if !input.ctx.wants_keyboard_input() {
+        if !input.ctx.egui_wants_keyboard_input() {
             let keys_down = input.ctx.input(|i| i.keys_down.clone());
             for key in keys_down.iter().copied() {
                 if input.events.insert(InputEvent::Key(key), 255).is_none() {

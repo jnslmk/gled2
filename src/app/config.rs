@@ -1,6 +1,6 @@
 use super::{App, timing::FadeMode};
 use crate::ui::ChangeButton;
-use egui::{CentralPanel, Color32, Margin, RichText, TopBottomPanel};
+use egui::{CentralPanel, Color32, Margin, RichText};
 
 impl App {
     #[cfg_attr(feature = "profiling", profiling::function)]
@@ -10,7 +10,7 @@ impl App {
             return;
         };
 
-        TopBottomPanel::top("project config")
+        egui::Panel::top("project config")
             .resizable(false)
             .frame(egui::Frame::NONE.inner_margin(Margin::from(4.0)))
             .show_inside(ui, |ui| {

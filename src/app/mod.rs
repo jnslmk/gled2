@@ -29,7 +29,7 @@ use crate::{
     },
 };
 use eframe::egui_wgpu::Callback;
-use egui::{CentralPanel, Id, Rect, UiBuilder, ViewportId, ahash::HashSet};
+use egui::{CentralPanel, Id, LayerId, Rect, Ui, UiBuilder, ViewportId, ahash::HashSet};
 use kanal::Receiver;
 use persistant_state::PersistantState;
 use std::sync::Arc;
@@ -68,7 +68,7 @@ pub struct App {
 
 impl eframe::App for App {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         #[cfg(feature = "profiling")]
         {
             crate::WGPU_PROFILER
@@ -222,8 +222,12 @@ impl eframe::App for App {
             }
             .enqueue();
         }
+    }
 
-        self.draw_main_window(ctx, None);
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = ui.ctx().clone();
+
+        self.draw_main_window(&ctx, None);
 
         let viewport_ids = self.other_main_windows.clone();
         for viewport_id in viewport_ids {
@@ -233,20 +237,20 @@ impl eframe::App for App {
                     .with_inner_size([1300.0, 1024.0])
                     .with_drag_and_drop(true)
                     .with_min_inner_size([300.0, 200.0]),
-                |ctx, _viewport_class| {
-                    ctx.input(|input| {
+                |ui, _viewport_class| {
+                    ui.ctx().input(|input| {
                         if input.viewport().close_requested() {
                             UiAction::CloseWindow(viewport_id).enqueue();
                         }
                     });
 
-                    self.draw_main_window(ctx, Some(viewport_id));
+                    self.draw_main_window(ui.ctx(), Some(viewport_id));
                 },
             );
         }
 
         self.windows.update(
-            ctx,
+            &ctx,
             &self.timing,
             &mut self.project,
             &mut self.collections,
@@ -268,10 +272,19 @@ impl App {
     #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn draw_main_window(&mut self, ctx: &egui::Context, viewport_id: Option<ViewportId>) {
         let panel_frame = egui::Frame::new()
-            .fill(ctx.style().visuals.window_fill())
-            .stroke(ctx.style().visuals.widgets.noninteractive.fg_stroke);
+            .fill(ctx.global_style().visuals.window_fill())
+            .stroke(ctx.global_style().visuals.widgets.noninteractive.fg_stroke);
 
-        CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
+        let mut root_ui = Ui::new(
+            ctx.clone(),
+            Id::new((ctx.viewport_id(), "main_window_panel")),
+            UiBuilder::new()
+                .layer_id(LayerId::background())
+                .max_rect(ctx.content_rect()),
+        );
+        root_ui.set_clip_rect(ctx.content_rect());
+
+        CentralPanel::default().frame(panel_frame).show_inside(&mut root_ui, |ui| {
             if viewport_id.is_none() {
                 let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
                 ui.painter().add(callback);
@@ -290,14 +303,14 @@ impl App {
             }
 
             if self.project.is_some() {
-                egui::SidePanel::left("config")
+                egui::Panel::left("config")
                     .resizable(false)
-                    .exact_width(400.0)
+                    .exact_size(400.0)
                     .show_inside(&mut ui, |ui| self.config(ui));
-                egui::TopBottomPanel::top("preview")
+                egui::Panel::top("preview")
                     .resizable(true)
-                    .default_height(200.0)
-                    .min_height(200.0)
+                    .default_size(200.0)
+                    .min_size(200.0)
                     .show_inside(&mut ui, |ui| self.preview(ui));
                 egui::CentralPanel::default().show_inside(&mut ui, |ui| self.scenes(ui));
             } else {

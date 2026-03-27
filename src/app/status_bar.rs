@@ -16,7 +16,7 @@ use epaint::text::{LayoutJob, TextFormat};
 
 impl App {
     pub fn status_bar(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
-        egui::TopBottomPanel::bottom(format!("{viewport_id:?} status bar")).show_inside(ui, |ui| {
+        egui::Panel::bottom(format!("{viewport_id:?} status bar")).show_inside(ui, |ui| {
             egui::Frame::NONE
                 .inner_margin(Margin::from(1.0))
                 .show(ui, |ui| {

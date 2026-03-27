@@ -65,8 +65,8 @@ impl ScenesWindow {
                 });
 
                 gled_window_frame(ctx, "Scenes", |ui| {
-                    egui::SidePanel::left("scenes tree")
-                        .exact_width(TREE_WIDTH)
+                    egui::Panel::left("scenes tree")
+                        .exact_size(TREE_WIDTH)
                         .resizable(false)
                         .show_inside(ui, |ui| {
                             if self
@@ -78,8 +78,8 @@ impl ScenesWindow {
                             }
                         });
 
-                    egui::SidePanel::right("scene editor")
-                        .exact_width(300.0)
+                    egui::Panel::right("scene editor")
+                        .exact_size(300.0)
                         .resizable(false)
                         .show_inside(ui, |ui| {
                             let TreeSelection::Asset(scene) = self.tree.selected() else {

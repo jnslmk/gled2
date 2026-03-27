@@ -78,8 +78,8 @@ impl PreviewShader {
 
         let spectrum_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("audio spectrum pipeline layout"),
-            bind_group_layouts: &[&spectrum_bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&spectrum_bind_group_layout)],
+            immediate_size: 0,
         });
 
         let spectrum_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -101,7 +101,7 @@ impl PreviewShader {
             primitive: PrimitiveState::default(),
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
         });
 
         let contents = [0u8; 1024];
@@ -169,6 +169,7 @@ impl PreviewShader {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
             render_pass.set_pipeline(&self.spectrum_pipeline);
             render_pass.set_bind_group(0, &self.spectrum_bind_group, &[]);

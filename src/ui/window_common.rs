@@ -9,13 +9,24 @@ pub fn gled_window_frame(
     title: &str,
     add_contents: impl FnOnce(&mut egui::Ui),
 ) {
-    use egui::{CentralPanel, UiBuilder};
+    use egui::{CentralPanel, Id, LayerId, Ui, UiBuilder};
 
     let panel_frame = egui::Frame::new()
-        .fill(ctx.style().visuals.window_fill())
-        .stroke(ctx.style().visuals.widgets.noninteractive.fg_stroke);
+        .fill(ctx.global_style().visuals.window_fill())
+        .stroke(ctx.global_style().visuals.widgets.noninteractive.fg_stroke);
 
-    CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
+    let mut root_ui = Ui::new(
+        ctx.clone(),
+        Id::new((ctx.viewport_id(), "gled_window_frame_panel")),
+        UiBuilder::new()
+            .layer_id(LayerId::background())
+            .max_rect(ctx.content_rect()),
+    );
+    root_ui.set_clip_rect(ctx.content_rect());
+
+    CentralPanel::default()
+        .frame(panel_frame)
+        .show_inside(&mut root_ui, |ui| {
         let app_rect = ui.max_rect();
 
         let title_bar_height = 32.0;

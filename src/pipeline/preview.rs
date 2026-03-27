@@ -93,8 +93,8 @@ impl Preview {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("preview pipeline layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&bind_group_layout)],
+            immediate_size: 0,
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -116,7 +116,7 @@ impl Preview {
             primitive: PrimitiveState::default(),
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
         });
 
         let texture_id = wgpu_render_state.renderer.write().register_native_texture(
@@ -172,6 +172,7 @@ impl Preview {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
             render_pass.set_pipeline(&preview.pipeline);
             render_pass.set_bind_group(0, &preview.bind_group, &[]);

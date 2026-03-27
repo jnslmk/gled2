@@ -38,8 +38,8 @@ impl PalettesWindow {
                 });
 
                 gled_window_frame(ctx, "Palettes", |ui| {
-                    egui::SidePanel::left("palettes tree")
-                        .exact_width(TREE_WIDTH)
+                    egui::Panel::left("palettes tree")
+                        .exact_size(TREE_WIDTH)
                         .resizable(false)
                         .show_inside(ui, |ui| {
                             if self.tree.show(
