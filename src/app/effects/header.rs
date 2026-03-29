@@ -6,6 +6,7 @@ impl App {
         let Some(project) = self.project.as_mut() else {
             return;
         };
+
         ui.horizontal(|ui| {
             ui.menu_button(
                 if project.auto_mode_active {

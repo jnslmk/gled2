@@ -1,15 +1,6 @@
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::Relaxed;
-
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use super::App;
-use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
-use crate::storage::asset::scene::grid::GridLocation;
-use crate::ui::ContextMenuAction;
-use crate::ui::ContextMenuBuilder;
-use crate::ui::action::UiAction;
-use crate::ui::scene_instance::dnd::{dnd_drag_source, dnd_drop_zone};
-use crate::ui::scene_instance::widget::EmptyGridSpot;
-use crate::ui::scene_instance::widget::SceneInstanceWidget;
+use crate::{midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH}, storage::asset::scene::grid::GridLocation, ui::{ContextMenuAction, ContextMenuBuilder, action::UiAction, scene_instance::{dnd::{dnd_drag_source, dnd_drop_zone}, widget::{EmptyGridSpot, SceneInstanceWidget}}}};
 use egui::{
     Color32, Frame, Id, KeyboardShortcut, Modifiers, TextureHandle, Ui, UiBuilder, Vec2,
     scroll_area::ScrollBarVisibility::AlwaysVisible,
