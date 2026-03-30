@@ -6,6 +6,7 @@ pub mod audio;
 pub mod input;
 pub mod midi;
 pub mod network_stats;
+pub mod output_state;
 pub mod pipeline;
 pub mod storage;
 pub mod svg;
@@ -79,7 +80,8 @@ fn main() {
     RendererCallback::init();
     storage::start_thread();
     ui::temperature::start_thread();
-    midi::start_thread();
+    let midi_monitor_receiver = midi::start_thread();
+    let midi_learn_receiver = midi::learn::init();
     let network_stats_receiver = network_stats::start_thread();
     let (extract_output, output_receiver) = extract_output::ExtractOutput::new();
     let output_package_sender =
@@ -170,6 +172,7 @@ fn main() {
             });
             install_image_loaders(&cc.egui_ctx);
             Input::init(&cc.egui_ctx, artnet_bridge_receiver);
+            output_state::init();
 
             WGPU_RENDER_STATE
                 .set(
@@ -184,6 +187,8 @@ fn main() {
                 App::new(
                     ui_action_receiver,
                     network_stats_receiver,
+                    midi_monitor_receiver,
+                    midi_learn_receiver,
                     extract_output,
                     artnet_control_receiver,
                     audio_pool,

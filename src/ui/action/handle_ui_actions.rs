@@ -27,6 +27,11 @@ impl App {
                 (Some(project), UiAction::DeleteSceneInstance { location }) => {
                     project.remove_scene_instance(location);
                 }
+                (Some(project), UiAction::DeleteSceneInstancePath(path)) => {
+                    if let Some(location) = project.location_by_location_or_quick_index(path) {
+                        project.remove_scene_instance(location);
+                    }
+                }
                 (Some(project), UiAction::DeleteSelectedSceneInstance) => {
                     project.remove_scene_instance(self.selected_scene_instance);
                 }
@@ -47,6 +52,19 @@ impl App {
                     if let Some(scene_id) = project
                         .get_scenes_instance(&location)
                         .map(|scene_instance| scene_instance.scene_id)
+                    {
+                        project.add_scene(
+                            project.next_empty_grid_location(location),
+                            scene_id,
+                            &self.collections,
+                        );
+                    }
+                }
+                (Some(project), UiAction::CloneSceneInstancePath(path)) => {
+                    if let Some(location) = project.location_by_location_or_quick_index(path)
+                        && let Some(scene_id) = project
+                            .get_scenes_instance(&location)
+                            .map(|scene_instance| scene_instance.scene_id)
                     {
                         project.add_scene(
                             project.next_empty_grid_location(location),

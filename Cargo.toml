@@ -26,8 +26,8 @@ egui = { version = "0.34.1", features = ["persistence"] }
 egui_dnd = "0.15"
 egui_extras = { version = "0.34.1", features = ["image", "syntect"] }
 egui_flex = "0.6"
-egui_knob = "0.3.10"
-egui_ltreeview = { git = "https://github.com/LennysLounge/egui_ltreeview", features = ["persistence"] }
+egui_knob = "0.3"
+egui_ltreeview = "0.7"
 egui_phosphor_icons = "0.2"
 emath = "0.34.1"
 env_logger = "0.11"
@@ -120,7 +120,6 @@ icons = ["logo/logo.png", "logo/logo.icns"]
 macos = { "signingIdentity" = "Developer ID Application: FreshX GmbH (V5GQY7AUWA)" }
 
 [patch.crates-io]
-egui_knob = { git = "https://github.com/elwerene/egui_knob", branch = "update_egui" }
 egui_phosphor_icons = { git = "https://github.com/elwerene/egui_phosphor_icons", branch = "update_egui" }
 profiling = { git = "https://github.com/rerun-io/profiling", branch = "emilk/puffin-0.20"}
 wgpu-profiler = { git = "https://github.com/elwerene/wgpu-profiler", branch = "update_dependencies" }

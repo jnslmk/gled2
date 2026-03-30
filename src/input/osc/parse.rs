@@ -3,7 +3,6 @@ use rosc::{OscMessage, OscType};
 use uuid::Uuid;
 
 use crate::input::event::InputEvent;
-use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 use crate::storage::asset::animation::argument::ArgumentKindId;
 use crate::storage::asset::project::scene_instance_path::{
     QuickSceneInstanceIndex, SceneInstanceUnion,
@@ -654,24 +653,10 @@ fn parse_target_action(
             parse_scene_palette_overwrite(msg, 0)?,
         )),
         "delete" => {
-            let location = match target {
-                SceneInstanceUnion::Grid(location) => location,
-                SceneInstanceUnion::Quick(index) => GridLocation {
-                    row: GRID_HEIGHT - 1,
-                    col: index.index,
-                },
-            };
-            Ok(UiAction::DeleteSceneInstance { location })
+            Ok(UiAction::DeleteSceneInstancePath(target))
         }
         "clone" => {
-            let location = match target {
-                SceneInstanceUnion::Grid(location) => location,
-                SceneInstanceUnion::Quick(index) => GridLocation {
-                    row: GRID_HEIGHT - 1,
-                    col: index.index,
-                },
-            };
-            Ok(UiAction::CloneSceneInstance(location))
+            Ok(UiAction::CloneSceneInstancePath(target))
         }
         _ => Err(()),
     }
@@ -713,17 +698,11 @@ fn parse_scene_palette_overwrite(
 fn parse_grid_location(col: &str, row: &str) -> Result<GridLocation, ()> {
     let col = col.parse::<usize>().map_err(|_| ())?;
     let row = row.parse::<usize>().map_err(|_| ())?;
-    if col >= GRID_WIDTH || row >= GRID_HEIGHT {
-        return Err(());
-    }
     Ok(GridLocation::new(col, row))
 }
 
 fn parse_quick_index(index: &str) -> Result<usize, ()> {
     let index = index.parse::<usize>().map_err(|_| ())?;
-    if index >= GRID_WIDTH {
-        return Err(());
-    }
     Ok(index)
 }
 
@@ -934,12 +913,19 @@ mod tests {
     }
 
     #[test]
-    fn rejects_out_of_bounds_grid_location() {
+    fn parses_large_grid_location_without_static_bounds_check() {
         let msg = msg(
-            &format!("/scene/grid/{}/{}/opacity", GRID_WIDTH, GRID_HEIGHT),
+            "/scene/grid/999/777/opacity",
             vec![OscType::Float(0.2)],
         );
-        assert!(parse_message(&msg).is_err());
+        match parse_message(&msg).expect("large grid location should parse") {
+            UiAction::SetSceneOpacity(SceneInstanceUnion::Grid(location), value) => {
+                assert_eq!(location.col, 999);
+                assert_eq!(location.row, 777);
+                assert_eq!(value, 0.2);
+            }
+            _ => panic!("wrong action variant"),
+        }
     }
 
     #[test]

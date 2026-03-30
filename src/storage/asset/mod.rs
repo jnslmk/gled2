@@ -1,5 +1,6 @@
 pub mod animation;
 pub mod curve;
+pub mod midi_controller;
 pub mod output_device;
 pub mod palette;
 pub mod project;

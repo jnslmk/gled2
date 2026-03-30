@@ -40,9 +40,11 @@ pub enum UiAction {
     DeleteSceneInstance {
         location: GridLocation,
     },
+    DeleteSceneInstancePath(SceneInstanceUnion),
     DeleteSelectedSceneInstance,
     CloneSelectedSceneInstance,
     CloneSceneInstance(GridLocation),
+    CloneSceneInstancePath(SceneInstanceUnion),
     SendPositions,
     ReloadShaderCode(Option<AssetId<Animation>>),
     CloseWindow(ViewportId),

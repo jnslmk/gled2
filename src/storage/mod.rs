@@ -16,6 +16,7 @@ use curve::Curve;
 use directories::BaseDirs;
 use egui::mutex::Mutex;
 use git::Git;
+use midi_controller::MidiController;
 use once_cell::sync::Lazy;
 use output_device::OutputDevice;
 use palette::Palette;
@@ -66,6 +67,8 @@ pub enum Loading {
     Curves,
     #[strum(serialize = "Loading output devices")]
     OutputDevices,
+    #[strum(serialize = "Loading MIDI controllers")]
+    MidiControllers,
     #[strum(serialize = "Loading palettes")]
     Palettes,
     #[strum(serialize = "Loading projects")]
@@ -271,6 +274,9 @@ pub fn start_thread() {
 
                             Loading::OutputDevices.set();
                             collections.insert::<OutputDevice>(Collection::<OutputDevice>::load());
+
+                            Loading::MidiControllers.set();
+                            collections.insert::<MidiController>(Collection::<MidiController>::load());
 
                             Loading::Palettes.set();
                             collections.insert::<Palette>(Collection::<Palette>::load());

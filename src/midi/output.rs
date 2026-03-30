@@ -1,5 +1,5 @@
 use crate::{
-    midi::{akai_apc40_mk2, state::new_receiver},
+    midi::{monitor, runtime::RuntimeBus, state::new_receiver},
     ui::action::UiAction,
 };
 use midir::MidiOutput;
@@ -9,7 +9,15 @@ use std::{
     time::Duration,
 };
 
-pub fn discover() {
+fn is_own_port(name: &str) -> bool {
+    name.contains("gled_read_input") || name.contains("gled_write_output")
+}
+
+fn is_midi_through(name: &str) -> bool {
+    name.contains("Midi Through")
+}
+
+pub fn discover(runtime_bus: RuntimeBus) {
     #[cfg(feature = "profiling")]
     profiling::register_thread!("midi:output:discover");
 
@@ -26,13 +34,14 @@ pub fn discover() {
                 .ports()
                 .into_iter()
                 .filter_map(|port| match output.port_name(&port) {
-                    Ok(name) => match name.split(':').next() {
-                        Some(name) => Some((port, name.to_owned())),
-                        None => {
+                    Ok(name) => {
+                        if name.trim().is_empty() {
                             UiAction::Error("Midi port name is empty".to_string()).enqueue();
                             None
+                        } else {
+                            Some((port, name))
                         }
-                    },
+                    }
                     Err(err) => {
                         UiAction::Error(format!("Could not get midi port name: {err:?}")).enqueue();
                         None
@@ -40,36 +49,44 @@ pub fn discover() {
                 })
                 .collect::<Vec<_>>()
         };
-        handled_devices.retain(|id| ports.iter().any(|(port, _)| port.id() == *id));
+        handled_devices.retain(|name| ports.iter().any(|(_, port_name)| port_name == name));
 
         for (port, name) in ports {
             let id = port.id();
-            if handled_devices.contains(&id) {
+            if handled_devices.contains(&name) {
+                continue;
+            }
+
+            if is_own_port(&name) {
+                continue;
+            }
+            if is_midi_through(&name) {
                 continue;
             }
 
             log::trace!("Discovered midi output device \"{name}\" at \"{id}\"");
-            match name.as_str() {
-                "APC40 mkII" | "APC40 mkII [0]" | "APC40 mkII [1]" => {
-                    log::info!("Connecting to output of \"{name}\" at \"{id}\"");
-                    if let Some(output) = output.take() {
-                        let connection = match output.connect(&port, "gled_write_output") {
-                            Ok(connection) => connection,
-                            Err(err) => {
-                                UiAction::Error(format!(
-                                    "Could not connect to midi output: {err:?}"
-                                ))
-                                .enqueue();
-                                continue;
-                            }
-                        };
-                        spawn(move || akai_apc40_mk2::send_output(new_receiver(), connection));
-                        handled_devices.insert(id);
+            log::info!("Connecting to output of \"{name}\" at \"{id}\"");
+            monitor::push_event(&name, "output connected", &[]);
+            if let Some(output) = output.take() {
+                let mut connection = match output.connect(&port, "gled_write_output") {
+                    Ok(connection) => connection,
+                    Err(err) => {
+                        UiAction::Error(format!("Could not connect to midi output: {err:?}"))
+                            .enqueue();
+                        monitor::push_event(&name, "output connect failed", &[]);
+                        continue;
                     }
-                }
-                name => {
-                    log::trace!("Ignoring \"{name}\" at \"{id}\"")
-                }
+                };
+                let port_name = name.clone();
+                let mut runtime = runtime_bus.runtime();
+                spawn(move || {
+                    let receiver = new_receiver();
+
+                    for state in receiver {
+                        runtime.send_output(&port_name, &state, &mut connection);
+                    }
+                });
+                handled_devices.insert(name);
             }
         }
 

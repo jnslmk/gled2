@@ -251,6 +251,10 @@ impl App {
                         self.windows.output_devices.open();
                         ui.close_kind(UiKind::Menu);
                     }
+                    if ui.button("MIDI Controllers").clicked() {
+                        self.windows.midi_controllers.open();
+                        ui.close_kind(UiKind::Menu);
+                    }
                     if ui.button("Palettes").clicked() {
                         self.windows.palettes.open();
                         ui.close_kind(UiKind::Menu);
