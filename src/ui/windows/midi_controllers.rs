@@ -54,21 +54,13 @@ pub struct MidiControllersWindow {
 }
 
 #[derive(Clone)]
+#[derive(Default)]
 struct MidiControllerTestState {
     selected_output_port: Option<String>,
     value_output_overrides: HashMap<usize, u8>,
     color_overrides_by_mapping_index: HashMap<usize, SceneInstanceColor>,
 }
 
-impl Default for MidiControllerTestState {
-    fn default() -> Self {
-        Self {
-            selected_output_port: None,
-            value_output_overrides: HashMap::new(),
-            color_overrides_by_mapping_index: HashMap::new(),
-        }
-    }
-}
 
 fn shift_u8_override_indices(map: &mut HashMap<usize, u8>, removed_index: usize) {
     let mut shifted = HashMap::new();
