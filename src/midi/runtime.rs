@@ -1,16 +1,18 @@
 use crate::{
     midi::state::MidiState,
-    midi::normalize_controller_key,
     output_state::ProjectState,
     storage::{
         asset::{
             Asset,
             midi_controller::{
-                MidiColorSource, MidiController, MidiControllerMapping, MidiInputAction,
-                MidiOutputBindingKind, MidiSceneTarget, MidiValueSource,
+                MidiColorSource, MidiController,
+                MidiControllerMapping, MidiInputAction, MidiOutputBindingKind,
+                MidiSceneTarget, MidiValueSource,
             },
             project::Project,
-            project::scene_instance_path::{SceneInstanceUnion, grid_scene_instance_index, quick_scene_instance_index},
+            project::scene_instance_path::{
+                SceneInstanceUnion, grid_scene_instance_index, quick_scene_instance_index,
+            },
             scene::color::SceneInstanceColor,
         },
         collections::Collections,
@@ -21,8 +23,36 @@ use egui::mutex::Mutex;
 use kanal::{Receiver, Sender, unbounded};
 use midir::MidiOutputConnection;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as StdMutex, OnceLock};
 use std::thread::spawn;
+
+#[derive(Default, Clone)]
+pub struct RuntimeTestState {
+    pub selected_output_port: Option<String>,
+    pub value_output_overrides: HashMap<usize, u8>,
+    pub scene_color_overrides: HashMap<String, SceneInstanceColor>,
+}
+
+static RUNTIME_TEST_STATES: OnceLock<StdMutex<HashMap<crate::storage::asset_id::AssetId<MidiController>, RuntimeTestState>>> = OnceLock::new();
+
+fn runtime_test_states(
+) -> &'static StdMutex<HashMap<crate::storage::asset_id::AssetId<MidiController>, RuntimeTestState>> {
+    RUNTIME_TEST_STATES.get_or_init(|| StdMutex::new(HashMap::new()))
+}
+
+pub fn set_controller_test_state(
+    controller_id: crate::storage::asset_id::AssetId<MidiController>,
+    state: Option<RuntimeTestState>,
+) {
+    let mut states = runtime_test_states()
+        .lock()
+        .expect("runtime test states lock poisoned");
+    if let Some(state) = state {
+        states.insert(controller_id, state);
+    } else {
+        states.remove(&controller_id);
+    }
+}
 
 #[derive(Clone)]
 pub struct RuntimeBus {
@@ -41,6 +71,7 @@ struct MidiRuntimeSnapshot {
 
 #[derive(Clone)]
 struct ActiveRuntimeMapping {
+    controller_id: crate::storage::asset_id::AssetId<MidiController>,
     mapping: MidiControllerMapping,
 }
 
@@ -144,11 +175,9 @@ fn handle_input_from_snapshot(
                 };
                 Some(UiAction::SpeedAdd(delta))
             }
-            MidiInputAction::SetSpeedMultiply => Some(UiAction::SpeedMultiply(if value > 63 {
-                2.0
-            } else {
-                0.5
-            })),
+            MidiInputAction::SetSpeedMultiply => {
+                Some(UiAction::SpeedMultiply(if value > 63 { 2.0 } else { 0.5 }))
+            }
             MidiInputAction::SelectScene { ref target } => match target {
                 MidiSceneTarget::Selected => None,
                 _ => scene_target_to_union(target).map(UiAction::SelectScene),
@@ -170,24 +199,23 @@ fn handle_input_from_snapshot(
                     .map(|target| UiAction::SetSceneOpacity(target, f32::from(value) / 127.0)),
             },
             MidiInputAction::SetSceneInputDimmer { ref target } => match target {
-                MidiSceneTarget::Selected => {
-                    Some(UiAction::SetSelectedSceneInputDimmer(f32::from(value) / 127.0))
-                }
-                _ => scene_target_to_union(target).map(|target| {
-                    UiAction::SetSceneInputDimmer(target, f32::from(value) / 127.0)
-                }),
+                MidiSceneTarget::Selected => Some(UiAction::SetSelectedSceneInputDimmer(
+                    f32::from(value) / 127.0,
+                )),
+                _ => scene_target_to_union(target)
+                    .map(|target| UiAction::SetSceneInputDimmer(target, f32::from(value) / 127.0)),
             },
             MidiInputAction::SetSceneBeatOffset { ref target } => match target {
-                MidiSceneTarget::Selected => {
-                    Some(UiAction::SetSelectedSceneBeatOffset(f32::from(value) / 127.0))
-                }
+                MidiSceneTarget::Selected => Some(UiAction::SetSelectedSceneBeatOffset(
+                    f32::from(value) / 127.0,
+                )),
                 _ => scene_target_to_union(target)
                     .map(|target| UiAction::SetSceneBeatOffset(target, f32::from(value) / 127.0)),
             },
             MidiInputAction::SetSceneIgnoreMainDimmer { ref target } => match target {
-                MidiSceneTarget::Selected => Some(UiAction::SetSelectedSceneIgnoreMainDimmer(
-                    value > 63,
-                )),
+                MidiSceneTarget::Selected => {
+                    Some(UiAction::SetSelectedSceneIgnoreMainDimmer(value > 63))
+                }
                 _ => scene_target_to_union(target)
                     .map(|target| UiAction::SetSceneIgnoreMainDimmer(target, value > 63)),
             },
@@ -203,11 +231,13 @@ fn handle_input_from_snapshot(
                 effect_index,
                 setting_index,
             } => match target {
-                MidiSceneTarget::Selected => Some(UiAction::SetSelectedSceneEffectAnimationConfigF32(
-                    effect_index as usize,
-                    setting_index as usize,
-                    f32::from(value) / 127.0,
-                )),
+                MidiSceneTarget::Selected => {
+                    Some(UiAction::SetSelectedSceneEffectAnimationConfigF32(
+                        effect_index as usize,
+                        setting_index as usize,
+                        f32::from(value) / 127.0,
+                    ))
+                }
                 _ => scene_target_to_union(target).map(|target| {
                     UiAction::SetSceneEffectAnimationConfigF32(
                         target,
@@ -234,97 +264,144 @@ fn send_output_from_snapshot(
     state: &MidiState,
     connection: &mut MidiOutputConnection,
 ) -> bool {
-    let mapping = resolve_mapping_for_port(&snapshot.mappings_by_controller, port_name);
-    let Some(mapping) = mapping else {
-        return false;
-    };
+    let test_states = runtime_test_states()
+        .lock()
+        .expect("runtime test states lock poisoned")
+        .clone();
+    let mut sent_any = false;
 
-    for binding in &mapping.mapping.output_bindings {
+    for (controller_key, mapping) in &snapshot.mappings_by_controller {
+        let test_state = test_states.get(&mapping.controller_id).cloned().unwrap_or_default();
+        let selected_test_port = test_state
+            .selected_output_port
+            .as_deref()
+            .is_some_and(|port| port == port_name);
+        if controller_key != port_name && !selected_test_port {
+            continue;
+        }
+
+        for (binding_index, binding) in mapping.mapping.output_bindings.iter().enumerate() {
         match &binding.kind {
             MidiOutputBindingKind::Value(output) => {
-                let value = match output.source {
-                    MidiValueSource::SelectedSceneOpacity => state.selected_scene_opacity,
-                    MidiValueSource::SelectedSceneInputDimmer => state.selected_scene_input_dimmer,
-                    MidiValueSource::SelectedSceneBeatOffset => state.selected_scene_beat_offset,
-                    MidiValueSource::SelectedSceneIgnoreMainDimmer => {
-                        if state.selected_scene_ignore_main_dimmer {
-                            1.0
-                        } else {
-                            0.0
-                        }
+                let mut midi_value = match output.source {
+                    MidiValueSource::SelectedSceneOpacity => {
+                        scale_to_range(state.selected_scene_opacity, output.min, output.max)
                     }
-                    MidiValueSource::SelectedSceneSetOffsetOnFlash => {
-                        if state.selected_scene_set_offset_on_flash {
-                            1.0
-                        } else {
-                            0.0
-                        }
+                    MidiValueSource::SelectedSceneInputDimmer => scale_to_range(
+                        state.selected_scene_input_dimmer,
+                        output.min,
+                        output.max,
+                    ),
+                    MidiValueSource::SelectedSceneBeatOffset => {
+                        scale_to_range(state.selected_scene_beat_offset, output.min, output.max)
                     }
-                    MidiValueSource::MainDimmer => state.main_dimmer,
-                    MidiValueSource::BeatFlank => f32::from(state.beat_flank.min(4)) / 4.0,
-                    MidiValueSource::Blackout => {
-                        if state.blackout { 1.0 } else { 0.0 }
+                    MidiValueSource::SelectedSceneIgnoreMainDimmer => binary_output_value(
+                        state.selected_scene_ignore_main_dimmer,
+                        output.active_value,
+                    ),
+                    MidiValueSource::SelectedSceneSetOffsetOnFlash => binary_output_value(
+                        state.selected_scene_set_offset_on_flash,
+                        output.active_value,
+                    ),
+                    MidiValueSource::MainDimmer => {
+                        scale_to_range(state.main_dimmer, output.min, output.max)
                     }
-                    MidiValueSource::SceneOpacity { ref target } => scene_opacity(state, target),
+                    MidiValueSource::BeatFlankPulse {
+                        start_beat,
+                        end_beat,
+                    } => binary_output_value(
+                        beat_range_contains(state.beat_progression.rem_euclid(4.0), start_beat, end_beat),
+                        output.active_value,
+                    ),
+                    MidiValueSource::Blackout { inverted, blink } => binary_output_value(
+                        blackout_output_active(state, inverted, blink),
+                        output.active_value,
+                    ),
+                    MidiValueSource::SceneOpacity { ref target } => {
+                        scale_to_range(scene_opacity(state, target), output.min, output.max)
+                    }
                     MidiValueSource::SceneInputDimmer { ref target } => {
-                        scene_input_dimmer(state, target)
+                        scale_to_range(scene_input_dimmer(state, target), output.min, output.max)
                     }
                     MidiValueSource::SceneBeatOffset { ref target } => {
-                        scene_beat_offset(state, target)
+                        scale_to_range(scene_beat_offset(state, target), output.min, output.max)
                     }
-                    MidiValueSource::SceneIgnoreMainDimmer { ref target } => {
-                        if scene_ignore_main_dimmer(state, target) {
-                            1.0
-                        } else {
-                            0.0
-                        }
-                    }
-                    MidiValueSource::SceneSetOffsetOnFlash { ref target } => {
-                        if scene_set_offset_on_flash(state, target) {
-                            1.0
-                        } else {
-                            0.0
-                        }
-                    }
+                    MidiValueSource::SceneIgnoreMainDimmer { ref target } => binary_output_value(
+                        scene_ignore_main_dimmer(state, target),
+                        output.active_value,
+                    ),
+                    MidiValueSource::SceneSetOffsetOnFlash { ref target } => binary_output_value(
+                        scene_set_offset_on_flash(state, target),
+                        output.active_value,
+                    ),
                     MidiValueSource::SceneActive { ref target } => {
-                        if scene_is_active(state, target) { 1.0 } else { 0.0 }
+                        binary_output_value(scene_is_active(state, target), output.active_value)
                     }
                     MidiValueSource::SceneFlashed { ref target } => {
-                        if scene_is_flashed(state, target) { 1.0 } else { 0.0 }
+                        binary_output_value(scene_is_flashed(state, target), output.active_value)
                     }
                     MidiValueSource::SceneEffectSettingF32 {
                         ref target,
                         effect_index,
                         setting_index,
-                    } => scene_effect_setting_f32(
-                        state,
-                        target,
-                        effect_index as usize,
-                        setting_index as usize,
+                    } => scale_to_range(
+                        scene_effect_setting_f32(
+                            state,
+                            target,
+                            effect_index as usize,
+                            setting_index as usize,
+                        ),
+                        output.min,
+                        output.max,
                     ),
                 };
-                let midi_value = scale_to_range(value, output.min, output.max);
+                if selected_test_port && !value_source_uses_active_value(&output.source)
+                    && let Some(override_value) = test_state.value_output_overrides.get(&binding_index)
+                {
+                    midi_value = *override_value;
+                }
                 if let Err(err) = connection.send(&[output.status, output.data1, midi_value]) {
                     log::error!("Could not send generic midi value output: {err:?}");
                 }
+                sent_any = true;
             }
-            MidiOutputBindingKind::ColorChannels(output) => {
-                let color = match output.source {
-                    MidiColorSource::SelectedSceneColor => state.selected_scene_color,
+            MidiOutputBindingKind::SceneColorValue(output) => {
+                let scene_color = match output.source {
                     MidiColorSource::SceneColor { ref target } => scene_color(state, target),
                 };
-                let midi_value = scene_color_to_midi_value(color);
-                if let Err(err) = connection.send(&[output.status, output.data1, midi_value]) {
-                    log::error!("Could not send generic midi color output: {err:?}");
+                let Some(active_mapping) = mapping
+                    .mapping
+                    .color_mappings
+                    .iter()
+                    .find(|named| named.name == output.mapping_name) else {
+                    continue;
+                };
+                let effective_color = if selected_test_port {
+                    test_state
+                        .scene_color_overrides
+                        .get(&active_mapping.name)
+                        .copied()
+                        .unwrap_or(scene_color)
+                } else {
+                    scene_color
+                };
+                let message = active_mapping.mapping.message_for_color(effective_color);
+                if let Err(err) = connection.send(&[message.status, message.data1, message.value]) {
+                    log::error!("Could not send scene color midi value output: {err:?}");
                 }
+                sent_any = true;
             }
         }
     }
+    }
 
-    true
+    sent_any
 }
 
-fn snapshot_from_project_state(state: &ProjectState, collections: &Collections) -> MidiRuntimeSnapshot {
+fn snapshot_from_project_state(
+    state: &ProjectState,
+    collections: &Collections,
+) -> MidiRuntimeSnapshot {
     let mut mappings_by_controller = HashMap::new();
 
     let Some(project) = state.project.as_ref() else {
@@ -342,20 +419,13 @@ fn snapshot_from_project_state(state: &ProjectState, collections: &Collections) 
         };
         let mapping = controller.data.mapping.clone();
 
-        // Only load mappings with exact port names (not normalized keys from old versions)
-        // Exact port names contain port identifiers like "MIDI 1", "MIDI 2", etc.
-        // If the key equals its normalized form, it's likely an old normalized entry - skip it
-        let normalized = normalize_controller_key(controller_key);
-        if controller_key == &normalized {
-            // This looks like an already-normalized key - skip it as it's from old data
-            log::debug!(
-                "Skipping old normalized-key mapping: {}",
-                controller_key
-            );
-            continue;
-        }
-
-        mappings_by_controller.insert(controller_key.clone(), ActiveRuntimeMapping { mapping });
+        mappings_by_controller.insert(
+            controller_key.clone(),
+            ActiveRuntimeMapping {
+                controller_id: *controller_id,
+                mapping,
+            },
+        );
     }
 
     MidiRuntimeSnapshot {
@@ -363,7 +433,11 @@ fn snapshot_from_project_state(state: &ProjectState, collections: &Collections) 
     }
 }
 
-fn trigger_matches(trigger: &crate::storage::asset::midi_controller::MidiTrigger, status: u8, data1: u8) -> bool {
+fn trigger_matches(
+    trigger: &crate::storage::asset::midi_controller::MidiTrigger,
+    status: u8,
+    data1: u8,
+) -> bool {
     if trigger.status != status {
         return false;
     }
@@ -391,23 +465,57 @@ fn scale_to_range(value: f32, min: u8, max: u8) -> u8 {
     (min + (max - min) * value).round() as u8
 }
 
-fn scene_color_to_midi_value(color: SceneInstanceColor) -> u8 {
-    match color {
-        SceneInstanceColor::Black => 0,
-        SceneInstanceColor::White => 3,
-        SceneInstanceColor::Red => 5,
-        SceneInstanceColor::Orange => 9,
-        SceneInstanceColor::Yellow => 13,
-        SceneInstanceColor::Green => 21,
-        SceneInstanceColor::Blue => 45,
-        SceneInstanceColor::Purple => 49,
-        SceneInstanceColor::Pink => 53,
+fn value_source_uses_active_value(source: &MidiValueSource) -> bool {
+    matches!(
+        source,
+        MidiValueSource::SelectedSceneIgnoreMainDimmer
+            | MidiValueSource::SelectedSceneSetOffsetOnFlash
+            | MidiValueSource::BeatFlankPulse { .. }
+            | MidiValueSource::Blackout { .. }
+            | MidiValueSource::SceneIgnoreMainDimmer { .. }
+            | MidiValueSource::SceneSetOffsetOnFlash { .. }
+            | MidiValueSource::SceneActive { .. }
+            | MidiValueSource::SceneFlashed { .. }
+    )
+}
+
+fn binary_output_value(active: bool, active_value: u8) -> u8 {
+    if active { active_value } else { 0 }
+}
+
+fn beat_range_contains(position: f32, start: f32, end: f32) -> bool {
+    let start = start.rem_euclid(4.0);
+    let end = end.rem_euclid(4.0);
+
+    if start <= end {
+        position >= start && position <= end
+    } else {
+        position >= start || position <= end
     }
 }
 
-pub fn selected_scene_color(project: Option<&mut Project>, fallback: SceneInstanceColor, selected: crate::storage::asset::scene::grid::GridLocation) -> SceneInstanceColor {
+fn blackout_output_active(state: &MidiState, inverted: bool, blink: bool) -> bool {
+    let base_active = if inverted { !state.blackout } else { state.blackout };
+    if !base_active || !blink {
+        return base_active;
+    }
+
+    let beats_per_second = (state.beats_per_minute / 60.0).max(f32::EPSILON);
+    let elapsed_seconds = state.beat_progression / beats_per_second;
+    (elapsed_seconds * 2.0).rem_euclid(1.0) < 0.5
+}
+
+pub fn selected_scene_color(
+    project: Option<&mut Project>,
+    fallback: SceneInstanceColor,
+    selected: crate::storage::asset::scene::grid::GridLocation,
+) -> SceneInstanceColor {
     project
-        .and_then(|project| project.get_scenes_instance(&selected).map(|scene| scene.color))
+        .and_then(|project| {
+            project
+                .get_scenes_instance(&selected)
+                .map(|scene| scene.color)
+        })
         .unwrap_or(fallback)
 }
 
@@ -421,7 +529,10 @@ fn scene_target_to_union(target: &MidiSceneTarget) -> Option<SceneInstanceUnion>
     }
 }
 
-fn target_location(state: &MidiState, target: &MidiSceneTarget) -> crate::storage::asset::scene::grid::GridLocation {
+fn target_location(
+    state: &MidiState,
+    target: &MidiSceneTarget,
+) -> crate::storage::asset::scene::grid::GridLocation {
     match target {
         MidiSceneTarget::Selected => state.selected_scene_location,
         MidiSceneTarget::Quick { index } => {
@@ -448,11 +559,15 @@ fn scene_color(state: &MidiState, target: &MidiSceneTarget) -> SceneInstanceColo
 }
 
 fn scene_is_active(state: &MidiState, target: &MidiSceneTarget) -> bool {
-    state.active_scenes.contains(&target_location(state, target))
+    state
+        .active_scenes
+        .contains(&target_location(state, target))
 }
 
 fn scene_is_flashed(state: &MidiState, target: &MidiSceneTarget) -> bool {
-    state.flashed_scenes.contains(&target_location(state, target))
+    state
+        .flashed_scenes
+        .contains(&target_location(state, target))
 }
 
 fn scene_opacity(state: &MidiState, target: &MidiSceneTarget) -> f32 {

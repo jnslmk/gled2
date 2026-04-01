@@ -1,17 +1,12 @@
 use super::AssetTrait;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(default)]
-pub struct MidiController {
-    #[serde(default = "default_controller_type")]
-    pub controller_type: String,
-    #[serde(default)]
-    pub mapping: MidiControllerMapping,
-}
+use crate::storage::asset::scene::color::SceneInstanceColor;
 
-fn default_controller_type() -> String {
-    MidiController::default().controller_type
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct MidiController {
+    pub controller_type: String,
+    pub mapping: MidiControllerMapping,
 }
 
 impl Default for MidiController {
@@ -30,14 +25,13 @@ impl AssetTrait for MidiController {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
-#[serde(default)]
 pub struct MidiControllerMapping {
     pub input_bindings: Vec<MidiInputBinding>,
     pub output_bindings: Vec<MidiOutputBinding>,
+    pub color_mappings: Vec<MidiNamedSceneColorMapping>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(default)]
 pub struct MidiInputBinding {
     pub name: String,
     pub trigger: MidiTrigger,
@@ -55,16 +49,10 @@ impl Default for MidiInputBinding {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(default)]
 pub struct MidiTrigger {
     pub status: u8,
     pub data1: u8,
-    #[serde(default = "default_true")]
     pub match_data1: bool,
-}
-
-const fn default_true() -> bool {
-    true
 }
 
 impl Default for MidiTrigger {
@@ -84,14 +72,30 @@ pub enum MidiInputAction {
     SetBlackout,
     SetSpeedAdd,
     SetSpeedMultiply,
-    SelectScene { target: MidiSceneTarget },
-    ToggleSceneActive { target: MidiSceneTarget },
-    SetSceneActive { target: MidiSceneTarget },
-    SetSceneOpacity { target: MidiSceneTarget },
-    SetSceneInputDimmer { target: MidiSceneTarget },
-    SetSceneBeatOffset { target: MidiSceneTarget },
-    SetSceneIgnoreMainDimmer { target: MidiSceneTarget },
-    SetSceneSetOffsetOnFlash { target: MidiSceneTarget },
+    SelectScene {
+        target: MidiSceneTarget,
+    },
+    ToggleSceneActive {
+        target: MidiSceneTarget,
+    },
+    SetSceneActive {
+        target: MidiSceneTarget,
+    },
+    SetSceneOpacity {
+        target: MidiSceneTarget,
+    },
+    SetSceneInputDimmer {
+        target: MidiSceneTarget,
+    },
+    SetSceneBeatOffset {
+        target: MidiSceneTarget,
+    },
+    SetSceneIgnoreMainDimmer {
+        target: MidiSceneTarget,
+    },
+    SetSceneSetOffsetOnFlash {
+        target: MidiSceneTarget,
+    },
     SetSceneEffectSettingF32 {
         target: MidiSceneTarget,
         effect_index: u8,
@@ -103,12 +107,16 @@ pub enum MidiInputAction {
 pub enum MidiSceneTarget {
     #[default]
     Selected,
-    Quick { index: u8 },
-    Grid { row: u8, col: u8 },
+    Quick {
+        index: u8,
+    },
+    Grid {
+        row: u8,
+        col: u8,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(default)]
 pub struct MidiOutputBinding {
     pub name: String,
     pub kind: MidiOutputBindingKind,
@@ -126,16 +134,22 @@ impl Default for MidiOutputBinding {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum MidiOutputBindingKind {
     Value(MidiValueOutput),
-    ColorChannels(MidiColorChannelsOutput),
+    SceneColorValue(MidiSceneColorValueOutput),
+}
+
+impl Default for MidiOutputBindingKind {
+    fn default() -> Self {
+        Self::Value(MidiValueOutput::default())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(default)]
 pub struct MidiValueOutput {
     pub status: u8,
     pub data1: u8,
     pub min: u8,
     pub max: u8,
+    pub active_value: u8,
     pub source: MidiValueSource,
 }
 
@@ -146,12 +160,13 @@ impl Default for MidiValueOutput {
             data1: 0,
             min: 0,
             max: 127,
+            active_value: 127,
             source: MidiValueSource::SelectedSceneOpacity,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Default)]
 pub enum MidiValueSource {
     #[default]
     SelectedSceneOpacity,
@@ -160,15 +175,35 @@ pub enum MidiValueSource {
     SelectedSceneIgnoreMainDimmer,
     SelectedSceneSetOffsetOnFlash,
     MainDimmer,
-    BeatFlank,
-    Blackout,
-    SceneOpacity { target: MidiSceneTarget },
-    SceneInputDimmer { target: MidiSceneTarget },
-    SceneBeatOffset { target: MidiSceneTarget },
-    SceneIgnoreMainDimmer { target: MidiSceneTarget },
-    SceneSetOffsetOnFlash { target: MidiSceneTarget },
-    SceneActive { target: MidiSceneTarget },
-    SceneFlashed { target: MidiSceneTarget },
+    BeatFlankPulse {
+        start_beat: f32,
+        end_beat: f32,
+    },
+    Blackout {
+        inverted: bool,
+        blink: bool,
+    },
+    SceneOpacity {
+        target: MidiSceneTarget,
+    },
+    SceneInputDimmer {
+        target: MidiSceneTarget,
+    },
+    SceneBeatOffset {
+        target: MidiSceneTarget,
+    },
+    SceneIgnoreMainDimmer {
+        target: MidiSceneTarget,
+    },
+    SceneSetOffsetOnFlash {
+        target: MidiSceneTarget,
+    },
+    SceneActive {
+        target: MidiSceneTarget,
+    },
+    SceneFlashed {
+        target: MidiSceneTarget,
+    },
     SceneEffectSettingF32 {
         target: MidiSceneTarget,
         effect_index: u8,
@@ -176,27 +211,130 @@ pub enum MidiValueSource {
     },
 }
 
+impl Eq for MidiValueSource {}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(default)]
-pub struct MidiColorChannelsOutput {
-    pub status: u8,
-    pub data1: u8,
-    pub source: MidiColorSource,
+pub enum MidiColorSource {
+    SceneColor {
+        target: MidiSceneTarget,
+    },
 }
 
-impl Default for MidiColorChannelsOutput {
+impl Default for MidiColorSource {
     fn default() -> Self {
-        Self {
-            status: 144,
-            data1: 0,
-            source: MidiColorSource::SelectedSceneColor,
+        Self::SceneColor {
+            target: MidiSceneTarget::Selected,
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
-pub enum MidiColorSource {
-    #[default]
-    SelectedSceneColor,
-    SceneColor { target: MidiSceneTarget },
+pub struct MidiSceneColorValueOutput {
+    pub source: MidiColorSource,
+    pub mapping_name: String,
 }
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct MidiNamedSceneColorMapping {
+    pub name: String,
+    pub mapping: MidiSceneColorMessageMap,
+}
+
+impl Default for MidiNamedSceneColorMapping {
+    fn default() -> Self {
+        Self {
+            name: "Color Mapping".to_owned(),
+            mapping: MidiSceneColorMessageMap::default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct MidiSceneColorMessage {
+    pub status: u8,
+    pub data1: u8,
+    pub value: u8,
+}
+
+impl Default for MidiSceneColorMessage {
+    fn default() -> Self {
+        Self {
+            status: 144,
+            data1: 0,
+            value: 0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct MidiSceneColorMessageMap {
+    pub red: MidiSceneColorMessage,
+    pub green: MidiSceneColorMessage,
+    pub blue: MidiSceneColorMessage,
+    pub white: MidiSceneColorMessage,
+    pub orange: MidiSceneColorMessage,
+    pub yellow: MidiSceneColorMessage,
+    pub purple: MidiSceneColorMessage,
+    pub pink: MidiSceneColorMessage,
+    pub black: MidiSceneColorMessage,
+}
+
+impl Default for MidiSceneColorMessageMap {
+    fn default() -> Self {
+        Self {
+            red: MidiSceneColorMessage {
+                value: 5,
+                ..MidiSceneColorMessage::default()
+            },
+            green: MidiSceneColorMessage {
+                value: 21,
+                ..MidiSceneColorMessage::default()
+            },
+            blue: MidiSceneColorMessage {
+                value: 45,
+                ..MidiSceneColorMessage::default()
+            },
+            white: MidiSceneColorMessage {
+                value: 3,
+                ..MidiSceneColorMessage::default()
+            },
+            orange: MidiSceneColorMessage {
+                value: 9,
+                ..MidiSceneColorMessage::default()
+            },
+            yellow: MidiSceneColorMessage {
+                value: 13,
+                ..MidiSceneColorMessage::default()
+            },
+            purple: MidiSceneColorMessage {
+                value: 49,
+                ..MidiSceneColorMessage::default()
+            },
+            pink: MidiSceneColorMessage {
+                value: 53,
+                ..MidiSceneColorMessage::default()
+            },
+            black: MidiSceneColorMessage {
+                value: 0,
+                ..MidiSceneColorMessage::default()
+            },
+        }
+    }
+}
+
+impl MidiSceneColorMessageMap {
+    pub fn message_for_color(&self, color: SceneInstanceColor) -> &MidiSceneColorMessage {
+        match color {
+            SceneInstanceColor::Red => &self.red,
+            SceneInstanceColor::Green => &self.green,
+            SceneInstanceColor::Blue => &self.blue,
+            SceneInstanceColor::White => &self.white,
+            SceneInstanceColor::Orange => &self.orange,
+            SceneInstanceColor::Yellow => &self.yellow,
+            SceneInstanceColor::Purple => &self.purple,
+            SceneInstanceColor::Pink => &self.pink,
+            SceneInstanceColor::Black => &self.black,
+        }
+    }
+}
+

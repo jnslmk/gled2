@@ -12,6 +12,8 @@ static SENDERS: Lazy<Mutex<Vec<Sender<MidiState>>>> = Lazy::new(|| Mutex::new(Ve
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct MidiState {
     pub blackout: bool,
+    pub beat_progression: f32,
+    pub beats_per_minute: f32,
     pub beat_flank: u8,
     pub main_dimmer: f32,
     pub highlighted_row: Option<usize>,
@@ -44,9 +46,9 @@ impl MidiState {
     ) -> f32 {
         match value {
             crate::storage::asset::animation::config::float_value::FloatValue::F32(value) => *value,
-            crate::storage::asset::animation::config::float_value::FloatValue::Percentage(curve) => {
-                curve.multiplier
-            }
+            crate::storage::asset::animation::config::float_value::FloatValue::Percentage(
+                curve,
+            ) => curve.multiplier,
             crate::storage::asset::animation::config::float_value::FloatValue::Degrees(curve) => {
                 curve.multiplier
             }
@@ -78,7 +80,8 @@ impl MidiState {
         if let Some(project) = project {
             for (location, scene_instance) in &project.scenes_instances_grid {
                 scene_input_dimmer.insert(*location, scene_instance.input_dimmer);
-                scene_beat_offset.insert(*location, scene_instance.beat_progression_offset.multiplier);
+                scene_beat_offset
+                    .insert(*location, scene_instance.beat_progression_offset.multiplier);
                 scene_ignore_main_dimmer.insert(*location, scene_instance.ignore_main_dimmer);
                 scene_set_offset_on_flash.insert(*location, scene_instance.set_offset_on_flash);
 
@@ -92,17 +95,25 @@ impl MidiState {
                         &effect.animation_config.float_5,
                     ];
                     for (setting_index, value) in values.into_iter().enumerate() {
-                        scene_effect_setting_f32
-                            .insert((*location, effect_index, setting_index), Self::float_value_to_f32(value));
+                        scene_effect_setting_f32.insert(
+                            (*location, effect_index, setting_index),
+                            Self::float_value_to_f32(value),
+                        );
                     }
                 }
             }
         }
 
-        let selected_scene = project.and_then(|project| project.scenes_instances_grid.get(&state.selected_scene_instance));
+        let selected_scene = project.and_then(|project| {
+            project
+                .scenes_instances_grid
+                .get(&state.selected_scene_instance)
+        });
 
         MidiState {
             blackout: state.blackout,
+            beat_progression: state.beat_progression,
+            beats_per_minute: state.beats_per_minute,
             beat_flank: Self::beat_flank_from_progression(state.beat_progression),
             main_dimmer: project.map_or(1.0, |project| project.main_dimmer),
             highlighted_row,
@@ -112,14 +123,18 @@ impl MidiState {
                 project
                     .scenes_instances_grid
                     .iter()
-                    .filter_map(|(location, scene)| if scene.active { Some(*location) } else { None })
+                    .filter_map(
+                        |(location, scene)| if scene.active { Some(*location) } else { None },
+                    )
                     .collect()
             }),
             flashed_scenes: project.map_or_else(Default::default, |project| {
                 project
                     .scenes_instances_grid
                     .iter()
-                    .filter_map(|(location, scene)| if scene.flash { Some(*location) } else { None })
+                    .filter_map(
+                        |(location, scene)| if scene.flash { Some(*location) } else { None },
+                    )
                     .collect()
             }),
             available_scenes_grid: project.map_or_else(Default::default, |project| {
@@ -129,7 +144,8 @@ impl MidiState {
                     .map(|(location, scene_instance)| (*location, scene_instance.color))
                     .collect()
             }),
-            selected_scene_color: selected_scene.map_or(SceneInstanceColor::Black, |scene| scene.color),
+            selected_scene_color: selected_scene
+                .map_or(SceneInstanceColor::Black, |scene| scene.color),
             selected_scene_opacity: selected_scene.map_or(1.0, |scene| scene.opacity.multiplier),
             selected_scene_input_dimmer: selected_scene.map_or(1.0, |scene| scene.input_dimmer),
             selected_scene_beat_offset: selected_scene
@@ -159,7 +175,9 @@ pub fn start() {
     let mut previous = MidiState::default();
 
     loop {
-        let state = state_receiver.recv().expect("Could not receive project state");
+        let state = state_receiver
+            .recv()
+            .expect("Could not receive project state");
         let midi_state = MidiState::from_project_state(&state);
 
         if previous == midi_state {

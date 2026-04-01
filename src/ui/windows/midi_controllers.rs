@@ -2,15 +2,18 @@ use crate::{
     midi::{
         learn::{LearnState, MidiLearnRequest, MidiLearnTarget},
         monitor,
+        runtime::{self, RuntimeTestState},
     },
     storage::{
         asset::{
             Asset,
             midi_controller::{
-                MidiColorChannelsOutput, MidiColorSource, MidiController, MidiInputAction,
-                MidiControllerMapping, MidiInputBinding, MidiOutputBinding, MidiOutputBindingKind, MidiSceneTarget,
-                MidiValueOutput, MidiValueSource,
+                MidiColorSource, MidiController, MidiControllerMapping, MidiInputAction,
+                MidiInputBinding, MidiNamedSceneColorMapping, MidiOutputBinding,
+                MidiOutputBindingKind, MidiSceneColorMessage, MidiSceneColorMessageMap,
+                MidiSceneColorValueOutput, MidiSceneTarget, MidiValueOutput, MidiValueSource,
             },
+            scene::color::SceneInstanceColor,
         },
         collections::Collections,
     },
@@ -20,14 +23,13 @@ use crate::{
     },
 };
 use chrono::{Local, TimeZone};
-use egui::{Align, ComboBox, Context, DragValue, FontSelection, Id, Ui, Vec2, ViewportId};
 use egui::epaint::text::{LayoutJob, TextFormat};
+use egui::{Align, ComboBox, Context, DragValue, FontSelection, Id, Slider, Ui, Vec2, ViewportId};
 use egui_phosphor_icons::{Icon, icons};
 use kanal::Receiver;
 use std::collections::{HashMap, VecDeque};
 
 const MAX_EVENTS: usize = 1000;
-
 fn iconized(ui: &Ui, icon: Icon, text: &str) -> LayoutJob {
     let mut layout_job = LayoutJob::default();
     icon.regular().append_to(
@@ -47,6 +49,84 @@ pub struct MidiControllersWindow {
     tree: AssetTree<MidiController>,
     filter: String,
     events: VecDeque<monitor::MidiMonitorEvent>,
+    test_state_by_controller:
+        HashMap<crate::storage::asset_id::AssetId<MidiController>, MidiControllerTestState>,
+}
+
+#[derive(Clone)]
+struct MidiControllerTestState {
+    selected_output_port: Option<String>,
+    value_output_overrides: HashMap<usize, u8>,
+    color_overrides_by_mapping_index: HashMap<usize, SceneInstanceColor>,
+}
+
+impl Default for MidiControllerTestState {
+    fn default() -> Self {
+        Self {
+            selected_output_port: None,
+            value_output_overrides: HashMap::new(),
+            color_overrides_by_mapping_index: HashMap::new(),
+        }
+    }
+}
+
+fn shift_u8_override_indices(map: &mut HashMap<usize, u8>, removed_index: usize) {
+    let mut shifted = HashMap::new();
+    for (&index, &value) in map.iter() {
+        if index == removed_index {
+            continue;
+        }
+        let new_index = if index > removed_index { index - 1 } else { index };
+        shifted.insert(new_index, value);
+    }
+    *map = shifted;
+}
+
+fn shift_color_override_indices(
+    map: &mut HashMap<usize, SceneInstanceColor>,
+    removed_index: usize,
+) {
+    let mut shifted = HashMap::new();
+    for (&index, &value) in map.iter() {
+        if index == removed_index {
+            continue;
+        }
+        let new_index = if index > removed_index { index - 1 } else { index };
+        shifted.insert(new_index, value);
+    }
+    *map = shifted;
+}
+
+fn sync_runtime_test_state(
+    controller_id: crate::storage::asset_id::AssetId<MidiController>,
+    color_mappings: &[MidiNamedSceneColorMapping],
+    test_state: &MidiControllerTestState,
+) {
+    let Some(selected_output_port) = test_state.selected_output_port.clone() else {
+        runtime::set_controller_test_state(controller_id, None);
+        return;
+    };
+
+    if selected_output_port.is_empty() {
+        runtime::set_controller_test_state(controller_id, None);
+        return;
+    }
+
+    let mut scene_color_overrides = HashMap::new();
+    for (&mapping_index, color) in &test_state.color_overrides_by_mapping_index {
+        if let Some(mapping) = color_mappings.get(mapping_index) {
+            scene_color_overrides.insert(mapping.name.clone(), *color);
+        }
+    }
+
+    runtime::set_controller_test_state(
+        controller_id,
+        Some(RuntimeTestState {
+            selected_output_port: Some(selected_output_port),
+            value_output_overrides: test_state.value_output_overrides.clone(),
+            scene_color_overrides,
+        }),
+    );
 }
 
 impl MidiControllersWindow {
@@ -62,12 +142,12 @@ impl MidiControllersWindow {
     pub fn diagnostics(&self) -> Vec<monitor::MidiPortDiagnostics> {
         let mut by_port: HashMap<String, monitor::MidiPortDiagnostics> = HashMap::new();
         for event in &self.events {
-            let entry = by_port
-                .entry(event.port_name.clone())
-                .or_insert_with(|| monitor::MidiPortDiagnostics {
+            let entry = by_port.entry(event.port_name.clone()).or_insert_with(|| {
+                monitor::MidiPortDiagnostics {
                     port_name: event.port_name.clone(),
                     ..Default::default()
-                });
+                }
+            });
             match event.label.as_str() {
                 "input connected" => entry.input_connected = true,
                 "output connected" => entry.output_connected = true,
@@ -138,12 +218,18 @@ impl MidiControllersWindow {
 
                         if let TreeSelection::Asset(controller) = self.tree.selected() {
                             ui.separator();
+                            let test_state = self
+                                .test_state_by_controller
+                                .entry(controller.id)
+                                .or_default();
                             midi_controller_editor(
                                 ui,
                                 controller,
+                                test_state,
                                 &mut self.dirty,
                                 collections,
                                 &mut self.filter,
+                                &diagnostics,
                                 learn_state,
                             );
                         }
@@ -203,89 +289,107 @@ enum MidiValueSourceKind {
     SceneEffectSettingF32,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum MidiColorSourceKind {
-    SelectedSceneColor,
-    SceneColor,
-}
-
 fn midi_controller_editor(
     ui: &mut Ui,
     controller: &mut Asset<MidiController>,
+    test_state: &mut MidiControllerTestState,
     dirty: &mut bool,
     collections: &mut Collections,
     filter: &mut String,
+    diagnostics: &[monitor::MidiPortDiagnostics],
     learn_state: &mut LearnState,
 ) {
     learn_state.flush_timeouts();
     apply_learn_captures(controller, dirty, collections, learn_state);
 
-    ui.horizontal(|ui| {
-        ui.label(icons::SLIDERS);
-        ui.heading("Controller Type");
-    });
-    if ui
-        .text_edit_singleline(&mut controller.data.controller_type)
-        .changed()
-    {
-        *dirty = true;
-    }
-
-    ui.separator();
-    ui.horizontal(|ui| {
-        ui.label(iconized(ui, icons::FUNNEL, " Filter:"));
-        ui.text_edit_singleline(filter);
-        if !filter.is_empty() && ui.button(icons::X).clicked() {
-            filter.clear();
-        }
-    });
-    ui.add_space(4.0);
-
-    let filter_str = filter.as_str();
-    let controller_id = controller.id;
-    let mapping = &mut controller.data.mapping;
-
-    let mut remove_input = None;
-    let mut pending_matching_output = Vec::new();
-    let mut remove_output = None;
-
-    ui.columns(2, |cols| {
-        let (left, right) = cols.split_at_mut(1);
-        let (ri, pmo) = render_input_column(
-            &mut left[0],
-            &mut mapping.input_bindings,
-            filter_str,
-            dirty,
-            controller_id,
-            learn_state,
-        );
-        remove_input = ri;
-        pending_matching_output = pmo;
-        remove_output = render_output_column(
-            &mut right[0],
-            &mut mapping.output_bindings,
-            filter_str,
-            dirty,
-            controller_id,
-            learn_state,
-        );
-    });
-
-    for (name, status, data1, action) in pending_matching_output {
-        if add_matching_output_binding(mapping, &name, status, data1, &action) {
+    egui::ScrollArea::vertical().show(ui, |ui| {
+        ui.horizontal(|ui| {
+            ui.label(icons::SLIDERS);
+            ui.heading("Controller Type");
+        });
+        if ui
+            .text_edit_singleline(&mut controller.data.controller_type)
+            .changed()
+        {
             *dirty = true;
         }
-    }
 
-    if let Some(index) = remove_input {
-        mapping.input_bindings.remove(index);
-        *dirty = true;
-    }
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label(iconized(ui, icons::FUNNEL, " Filter:"));
+            ui.text_edit_singleline(filter);
+            if !filter.is_empty() && ui.button(icons::X).clicked() {
+                filter.clear();
+            }
+        });
+        ui.add_space(4.0);
 
-    if let Some(index) = remove_output {
-        mapping.output_bindings.remove(index);
-        *dirty = true;
-    }
+        let filter_str = filter.as_str();
+        let controller_id = controller.id;
+        let mapping = &mut controller.data.mapping;
+        let test_device_selected = test_state.selected_output_port.is_some();
+
+        render_test_device_box(ui, test_state, diagnostics, controller_id);
+        ui.add_space(6.0);
+
+        let mut remove_input = None;
+        let mut pending_matching_output = Vec::new();
+        let mut remove_output = None;
+
+        ui.columns(2, |cols| {
+            let (left, right) = cols.split_at_mut(1);
+            let (ri, pmo) = render_input_column(
+                &mut left[0],
+                &mut mapping.input_bindings,
+                filter_str,
+                dirty,
+                controller_id,
+                learn_state,
+            );
+            remove_input = ri;
+            pending_matching_output = pmo;
+            remove_output = render_output_column(
+                &mut right[0],
+                &mut mapping.output_bindings,
+                &mapping.color_mappings,
+                test_state,
+                test_device_selected,
+                filter_str,
+                dirty,
+                controller_id,
+                learn_state,
+            );
+        });
+
+        ui.separator();
+        render_color_mappings_section(
+            ui,
+            &mut mapping.color_mappings,
+            test_state,
+            test_device_selected,
+            dirty,
+            controller_id,
+        );
+
+        for (name, status, data1, action) in pending_matching_output {
+            if add_matching_output_binding(mapping, &name, status, data1, &action) {
+                *dirty = true;
+            }
+        }
+
+        if let Some(index) = remove_input {
+            mapping.input_bindings.remove(index);
+            *dirty = true;
+        }
+
+        if let Some(index) = remove_output {
+            mapping.output_bindings.remove(index);
+            shift_u8_override_indices(&mut test_state.value_output_overrides, index);
+            *dirty = true;
+        }
+
+        sync_runtime_test_state(controller_id, &mapping.color_mappings, test_state);
+    });
 }
 
 fn input_action_label(action: &MidiInputAction) -> &'static str {
@@ -315,7 +419,9 @@ fn input_binding_matches_filter(binding: &MidiInputBinding, filter: &str) -> boo
     binding.name.to_lowercase().contains(&f)
         || binding.trigger.status.to_string().contains(filter)
         || binding.trigger.data1.to_string().contains(filter)
-        || input_action_label(&binding.action).to_lowercase().contains(&f)
+        || input_action_label(&binding.action)
+            .to_lowercase()
+            .contains(&f)
 }
 
 fn output_binding_matches_filter(binding: &MidiOutputBinding, filter: &str) -> bool {
@@ -332,10 +438,9 @@ fn output_binding_matches_filter(binding: &MidiOutputBinding, filter: &str) -> b
                 || v.data1.to_string().contains(filter)
                 || value_source_label(&v.source).to_lowercase().contains(&f)
         }
-        MidiOutputBindingKind::ColorChannels(c) => {
-            c.status.to_string().contains(filter)
-                || c.data1.to_string().contains(filter)
-                || color_source_label(&c.source).to_lowercase().contains(&f)
+        MidiOutputBindingKind::SceneColorValue(v) => {
+            color_source_label(&v.source).to_lowercase().contains(&f)
+                || "scene color value".contains(&f)
         }
     }
 }
@@ -365,10 +470,7 @@ fn render_input_column(
         }
     });
 
-    egui::ScrollArea::vertical()
-        .id_salt("input_bindings_scroll")
-        .show(ui, |ui| {
-            for (index, binding) in bindings.iter_mut().enumerate() {
+    for (index, binding) in bindings.iter_mut().enumerate() {
                 if !input_binding_matches_filter(binding, filter) {
                     continue;
                 }
@@ -434,7 +536,7 @@ fn render_input_column(
                     }
 
                     let mut action_kind = input_action_kind(&binding.action);
-                    ComboBox::new(format!("{}_input_kind_{index}", controller_id), "Action")
+                    ComboBox::new(format!("{}_input_kind_{index}", controller_id), "")
                         .selected_text(format!("{action_kind:?}"))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut action_kind, MidiInputActionKind::Tap, "Tap");
@@ -521,7 +623,12 @@ fn render_input_column(
                         | MidiInputAction::SetSceneIgnoreMainDimmer { target }
                         | MidiInputAction::SetSceneSetOffsetOnFlash { target }
                         | MidiInputAction::SetSceneEffectSettingF32 { target, .. } => {
-                            scene_target_editor(ui, target, dirty, format!("{}_input_target_{index}", controller_id));
+                            scene_target_editor(
+                                ui,
+                                target,
+                                dirty,
+                                format!("{}_input_target_{index}", controller_id),
+                            );
                         }
                         _ => {}
                     }
@@ -562,11 +669,12 @@ fn render_input_column(
                         ));
                     }
                     if output_source_from_input_action(&binding.action).is_none() {
-                        ui.small("This input action does not support automatic output binding creation.");
+                        ui.small(
+                            "This input action does not support automatic output binding creation.",
+                        );
                     }
                 });
             }
-        });
 
     (remove_input, pending_matching_output)
 }
@@ -574,6 +682,9 @@ fn render_input_column(
 fn render_output_column(
     ui: &mut Ui,
     bindings: &mut Vec<MidiOutputBinding>,
+    color_mappings: &[MidiNamedSceneColorMapping],
+    test_state: &mut MidiControllerTestState,
+    test_device_selected: bool,
     filter: &str,
     dirty: &mut bool,
     controller_id: crate::storage::asset_id::AssetId<MidiController>,
@@ -593,10 +704,7 @@ fn render_output_column(
         *dirty = true;
     }
 
-    egui::ScrollArea::vertical()
-        .id_salt("output_bindings_scroll")
-        .show(ui, |ui| {
-            for (index, binding) in bindings.iter_mut().enumerate() {
+    for (index, binding) in bindings.iter_mut().enumerate() {
                 if !output_binding_matches_filter(binding, filter) {
                     continue;
                 }
@@ -631,45 +739,63 @@ fn render_output_column(
 
                     let mut kind = match binding.kind {
                         MidiOutputBindingKind::Value(_) => 0,
-                        MidiOutputBindingKind::ColorChannels(_) => 1,
+                        MidiOutputBindingKind::SceneColorValue(_) => 1,
                     };
 
-                    ComboBox::new(format!("{}_output_kind_{index}", controller_id), "Type")
+                    ComboBox::new(format!("{}_output_kind_{index}", controller_id), "")
                         .selected_text(if kind == 0 {
                             "Single Value"
                         } else {
-                            "Color Channels"
+                            "Scene Color Mapping"
                         })
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut kind, 0, "Single Value");
-                            ui.selectable_value(&mut kind, 1, "Color Channels");
+                            ui.selectable_value(&mut kind, 1, "Scene Color Mapping");
                         });
 
                     match kind {
                         0 => {
                             if !matches!(binding.kind, MidiOutputBindingKind::Value(_)) {
-                                binding.kind = MidiOutputBindingKind::Value(MidiValueOutput::default());
+                                binding.kind =
+                                    MidiOutputBindingKind::Value(MidiValueOutput::default());
                                 *dirty = true;
                             }
                             if let MidiOutputBindingKind::Value(value) = &mut binding.kind {
-                                value_output_editor(ui, value, dirty, controller_id, index);
+                                value_output_editor(
+                                    ui,
+                                    value,
+                                    test_state,
+                                    test_device_selected,
+                                    dirty,
+                                    controller_id,
+                                    index,
+                                );
                             }
                         }
                         _ => {
-                            if !matches!(binding.kind, MidiOutputBindingKind::ColorChannels(_)) {
-                                binding.kind = MidiOutputBindingKind::ColorChannels(
-                                    MidiColorChannelsOutput::default(),
+                            if !matches!(binding.kind, MidiOutputBindingKind::SceneColorValue(_)) {
+                                binding.kind = MidiOutputBindingKind::SceneColorValue(
+                                    MidiSceneColorValueOutput::default(),
                                 );
                                 *dirty = true;
                             }
-                            if let MidiOutputBindingKind::ColorChannels(colors) = &mut binding.kind {
-                                color_output_editor(ui, colors, dirty);
+                            if let MidiOutputBindingKind::SceneColorValue(scene_color_value) =
+                                &mut binding.kind
+                            {
+                                scene_color_value_output_editor(
+                                    ui,
+                                    scene_color_value,
+                                    color_mappings,
+                                    test_device_selected,
+                                    dirty,
+                                    controller_id,
+                                    index,
+                                );
                             }
                         }
                     }
                 });
             }
-        });
 
     remove_output
 }
@@ -710,9 +836,20 @@ fn apply_learn_captures(
                             value.status = capture.trigger.status;
                             value.data1 = capture.trigger.data1;
                         }
-                        MidiOutputBindingKind::ColorChannels(colors) => {
-                            colors.status = capture.trigger.status;
-                            colors.data1 = capture.trigger.data1;
+                        MidiOutputBindingKind::SceneColorValue(scene_color_value) => {
+                            if let Some(named_mapping) = controller
+                                .data
+                                .mapping
+                                .color_mappings
+                                .iter_mut()
+                                .find(|named| named.name == scene_color_value.mapping_name)
+                            {
+                                apply_status_data1_to_all_scene_colors(
+                                    &mut named_mapping.mapping,
+                                    capture.trigger.status,
+                                    capture.trigger.data1,
+                                );
+                            }
                         }
                     }
                     changed = true;
@@ -730,6 +867,8 @@ fn apply_learn_captures(
 fn value_output_editor(
     ui: &mut Ui,
     value: &mut MidiValueOutput,
+    test_state: &mut MidiControllerTestState,
+    test_device_selected: bool,
     dirty: &mut bool,
     controller_id: crate::storage::asset_id::AssetId<MidiController>,
     index: usize,
@@ -751,44 +890,172 @@ fn value_output_editor(
         }
     });
 
-    ui.horizontal(|ui| {
-        ui.label("Min");
-        if ui.add(DragValue::new(&mut value.min).range(0..=127)).changed() {
-            *dirty = true;
-        }
-        ui.label("Max");
-        if ui.add(DragValue::new(&mut value.max).range(0..=127)).changed() {
-            *dirty = true;
-        }
-    });
-
-    ComboBox::new(format!("{}_value_source_{index}", controller_id), "Source")
+    ComboBox::new(format!("{}_value_source_{index}", controller_id), "")
         .selected_text(value_source_label(&value.source))
         .show_ui(ui, |ui| {
             let mut kind = value_source_kind(&value.source);
-            if ui.selectable_value(&mut kind, MidiValueSourceKind::SelectedSceneOpacity, "Selected Scene Opacity").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SelectedSceneInputDimmer, "Selected Scene Input Dimmer").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SelectedSceneBeatOffset, "Selected Scene Beat Offset").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SelectedSceneIgnoreMainDimmer, "Selected Scene Ignore Main Dimmer").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SelectedSceneSetOffsetOnFlash, "Selected Scene Set Offset On Flash").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::MainDimmer, "Main Dimmer").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::BeatFlank, "Beat Flank").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::Blackout, "Blackout").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SceneOpacity, "Scene Opacity").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SceneInputDimmer, "Scene Input Dimmer").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SceneBeatOffset, "Scene Beat Offset").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SceneIgnoreMainDimmer, "Scene Ignore Main Dimmer").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SceneSetOffsetOnFlash, "Scene Set Offset On Flash").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SceneActive, "Scene Active").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SceneFlashed, "Scene Flashed").changed()
-                || ui.selectable_value(&mut kind, MidiValueSourceKind::SceneEffectSettingF32, "Scene Effect Setting (n,n) f32").changed()
+            if ui
+                .selectable_value(
+                    &mut kind,
+                    MidiValueSourceKind::SelectedSceneOpacity,
+                    "Selected Scene Opacity",
+                )
+                .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
+                        MidiValueSourceKind::SelectedSceneInputDimmer,
+                        "Selected Scene Input Dimmer",
+                    )
+                    .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
+                        MidiValueSourceKind::SelectedSceneBeatOffset,
+                        "Selected Scene Beat Offset",
+                    )
+                    .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
+                        MidiValueSourceKind::SelectedSceneIgnoreMainDimmer,
+                        "Selected Scene Ignore Main Dimmer",
+                    )
+                    .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
+                        MidiValueSourceKind::SelectedSceneSetOffsetOnFlash,
+                        "Selected Scene Set Offset On Flash",
+                    )
+                    .changed()
+                || ui
+                    .selectable_value(&mut kind, MidiValueSourceKind::MainDimmer, "Main Dimmer")
+                    .changed()
+                || ui
+                    .selectable_value(&mut kind, MidiValueSourceKind::BeatFlank, "Beat Flank")
+                    .changed()
+                || ui
+                    .selectable_value(&mut kind, MidiValueSourceKind::Blackout, "Blackout")
+                    .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
+                        MidiValueSourceKind::SceneOpacity,
+                        "Scene Opacity",
+                    )
+                    .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
+                        MidiValueSourceKind::SceneInputDimmer,
+                        "Scene Input Dimmer",
+                    )
+                    .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
+                        MidiValueSourceKind::SceneBeatOffset,
+                        "Scene Beat Offset",
+                    )
+                    .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
+                        MidiValueSourceKind::SceneIgnoreMainDimmer,
+                        "Scene Ignore Main Dimmer",
+                    )
+                    .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
+                        MidiValueSourceKind::SceneSetOffsetOnFlash,
+                        "Scene Set Offset On Flash",
+                    )
+                    .changed()
+                || ui
+                    .selectable_value(&mut kind, MidiValueSourceKind::SceneActive, "Scene Active")
+                    .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
+                        MidiValueSourceKind::SceneFlashed,
+                        "Scene Flashed",
+                    )
+                    .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
+                        MidiValueSourceKind::SceneEffectSettingF32,
+                        "Scene Effect Setting (n,n) f32",
+                    )
+                    .changed()
             {
                 value.source = value_source_from_kind(kind, value.source.clone());
                 *dirty = true;
             }
         });
 
+    if value_source_uses_active_value(&value.source) {
+        ui.horizontal(|ui| {
+            ui.label("Value");
+            if ui
+                .add(DragValue::new(&mut value.active_value).range(0..=127))
+                .changed()
+            {
+                *dirty = true;
+            }
+        });
+    } else {
+        ui.horizontal(|ui| {
+            ui.label("Min");
+            if ui
+                .add(DragValue::new(&mut value.min).range(0..=127))
+                .changed()
+            {
+                *dirty = true;
+            }
+            ui.label("Max");
+            if ui
+                .add(DragValue::new(&mut value.max).range(0..=127))
+                .changed()
+            {
+                *dirty = true;
+            }
+        });
+    }
+
     match &mut value.source {
+        MidiValueSource::BeatFlankPulse {
+            start_beat,
+            end_beat,
+        } => {
+            ui.horizontal(|ui| {
+                ui.label("Start Beat");
+                if ui
+                    .add(DragValue::new(start_beat).speed(0.01).range(0.0..=4.0))
+                    .changed()
+                {
+                    *dirty = true;
+                }
+                ui.label("End Beat");
+                if ui
+                    .add(DragValue::new(end_beat).speed(0.01).range(0.0..=4.0))
+                    .changed()
+                {
+                    *dirty = true;
+                }
+            });
+            ui.small("Inclusive beat range on 0.0..4.0, wrap supported");
+        }
+        MidiValueSource::Blackout { inverted, blink } => {
+            if ui.checkbox(inverted, "Invert (On when blackout is off)").changed() {
+                *dirty = true;
+            }
+            if ui.checkbox(blink, "Blink at 2 Hz when active").changed() {
+                *dirty = true;
+            }
+        }
         MidiValueSource::SceneOpacity { target }
         | MidiValueSource::SceneInputDimmer { target }
         | MidiValueSource::SceneBeatOffset { target }
@@ -796,17 +1063,30 @@ fn value_output_editor(
         | MidiValueSource::SceneSetOffsetOnFlash { target }
         | MidiValueSource::SceneActive { target }
         | MidiValueSource::SceneFlashed { target } => {
-            scene_target_editor(ui, target, dirty, format!("{}_value_target_{index}", controller_id));
+            scene_target_editor(
+                ui,
+                target,
+                dirty,
+                format!("{}_value_target_{index}", controller_id),
+            );
         }
         MidiValueSource::SceneEffectSettingF32 {
             target,
             effect_index,
             setting_index,
         } => {
-            scene_target_editor(ui, target, dirty, format!("{}_value_target_{index}", controller_id));
+            scene_target_editor(
+                ui,
+                target,
+                dirty,
+                format!("{}_value_target_{index}", controller_id),
+            );
             ui.horizontal(|ui| {
                 ui.label("Effect Index");
-                if ui.add(DragValue::new(effect_index).range(0..=255)).changed() {
+                if ui
+                    .add(DragValue::new(effect_index).range(0..=255))
+                    .changed()
+                {
                     *dirty = true;
                 }
                 ui.label("Setting Index");
@@ -820,40 +1100,292 @@ fn value_output_editor(
         }
         _ => {}
     }
+
+    if test_device_selected && !value_source_uses_active_value(&value.source) {
+        let test_value = test_state
+            .value_output_overrides
+            .entry(index)
+            .or_insert(value.max);
+        ui.horizontal(|ui| {
+            ui.label(iconized(ui, icons::FLASK, " Test Output"));
+            ui.add(Slider::new(test_value, 0..=127).show_value(true));
+        });
+    } else {
+        test_state.value_output_overrides.remove(&index);
+    }
 }
 
-fn color_output_editor(ui: &mut Ui, colors: &mut MidiColorChannelsOutput, dirty: &mut bool) {
+fn scene_color_value_output_editor(
+    ui: &mut Ui,
+    output: &mut MidiSceneColorValueOutput,
+    color_mappings: &[MidiNamedSceneColorMapping],
+    test_device_selected: bool,
+    dirty: &mut bool,
+    controller_id: crate::storage::asset_id::AssetId<MidiController>,
+    index: usize,
+) {
+    let MidiColorSource::SceneColor { target } = &mut output.source;
+    scene_target_editor(
+        ui,
+        target,
+        dirty,
+        format!("{}_{}_scene_color_value_target", controller_id, index),
+    );
+
     ui.horizontal(|ui| {
+        ui.label(iconized(ui, icons::PALETTE, " Mapping"));
+        ComboBox::new(
+            format!("{}_scene_color_mapping_name_{index}", controller_id),
+            "",
+        )
+        .selected_text(if output.mapping_name.is_empty() {
+            "Select mapping"
+        } else {
+            output.mapping_name.as_str()
+        })
+        .show_ui(ui, |ui| {
+            for named in color_mappings {
+                if ui
+                    .selectable_label(output.mapping_name == named.name, &named.name)
+                    .clicked()
+                {
+                    output.mapping_name = named.name.clone();
+                    *dirty = true;
+                }
+            }
+        });
+    });
+
+    if output.mapping_name.is_empty() && !color_mappings.is_empty() {
+        output.mapping_name = color_mappings[0].name.clone();
+        *dirty = true;
+    }
+    if color_mappings.is_empty() {
+        ui.small("Add a color mapping first.");
+    } else if test_device_selected {
+        ui.small("Uses the selected test color on the active test device.");
+    }
+}
+
+fn render_color_mappings_section(
+    ui: &mut Ui,
+    mappings: &mut Vec<MidiNamedSceneColorMapping>,
+    test_state: &mut MidiControllerTestState,
+    test_device_selected: bool,
+    dirty: &mut bool,
+    _controller_id: crate::storage::asset_id::AssetId<MidiController>,
+) {
+    egui::CollapsingHeader::new(iconized(ui, icons::PALETTE, " Color Mappings"))
+        .default_open(true)
+        .show(ui, |ui| {
+            if ui
+                .button(iconized(ui, icons::PLUS, " Add Color Mapping"))
+                .clicked()
+            {
+                mappings.push(MidiNamedSceneColorMapping {
+                    name: format!("Mapping {}", mappings.len() + 1),
+                    ..MidiNamedSceneColorMapping::default()
+                });
+                *dirty = true;
+            }
+
+            let mut remove_index = None;
+            for (index, mapping) in mappings.iter_mut().enumerate() {
+                ui.group(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(format!("Mapping {}", index + 1));
+                        if ui.button(iconized(ui, icons::TRASH, " Remove")).clicked() {
+                            remove_index = Some(index);
+                        }
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("Name");
+                        if ui.text_edit_singleline(&mut mapping.name).changed() {
+                            *dirty = true;
+                        }
+                    });
+
+                    egui::Frame::group(ui.style())
+                        .fill(ui.visuals().extreme_bg_color)
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label(iconized(ui, icons::EYEDROPPER, " Test Color"));
+                                let color = test_state
+                                    .color_overrides_by_mapping_index
+                                    .entry(index)
+                                    .or_insert(SceneInstanceColor::Pink);
+                                if test_device_selected {
+                                    let _ = scene_color_picker(ui, color, index);
+                                } else {
+                                    let response = ui
+                                        .add_enabled_ui(false, |ui| scene_color_picker(ui, color, index).1)
+                                        .inner;
+                                    response.on_disabled_hover_text(
+                                        "You need to select a test device first.",
+                                    );
+                                }
+                            });
+                        });
+
+                    scene_color_message_map_editor(ui, &mut mapping.mapping, dirty);
+                });
+            }
+
+            if let Some(index) = remove_index {
+                mappings.remove(index);
+                shift_color_override_indices(&mut test_state.color_overrides_by_mapping_index, index);
+                *dirty = true;
+            }
+        });
+}
+
+fn render_test_device_box(
+    ui: &mut Ui,
+    test_state: &mut MidiControllerTestState,
+    diagnostics: &[monitor::MidiPortDiagnostics],
+    controller_id: crate::storage::asset_id::AssetId<MidiController>,
+) {
+    egui::Frame::group(ui.style())
+        .fill(ui.visuals().extreme_bg_color)
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(iconized(ui, icons::RADIO_BUTTON, " Test Device"));
+                ComboBox::new(format!("{}_test_output_port", controller_id), "")
+                    .selected_text(if test_state.selected_output_port.is_none() {
+                        "No Test Device"
+                    } else {
+                        test_state.selected_output_port.as_deref().unwrap_or("No Test Device")
+                    })
+                    .show_ui(ui, |ui| {
+                        if ui
+                            .selectable_label(test_state.selected_output_port.is_none(), "No Test Device")
+                            .clicked()
+                        {
+                            test_state.selected_output_port = None;
+                        }
+                        for diag in diagnostics {
+                            if !diag.output_connected {
+                                continue;
+                            }
+                            if ui
+                                .selectable_label(
+                                    test_state
+                                        .selected_output_port
+                                        .as_deref()
+                                        .is_some_and(|port| port == diag.port_name),
+                                    &diag.port_name,
+                                )
+                                .clicked()
+                            {
+                                test_state.selected_output_port = Some(diag.port_name.clone());
+                            }
+                        }
+                    });
+            });
+        });
+}
+
+fn scene_color_picker(
+    ui: &mut Ui,
+    color: &mut SceneInstanceColor,
+    id_salt: usize,
+) -> (bool, egui::Response) {
+    let before = *color;
+    let response = egui::ComboBox::new(format!("scene_color_picker_{id_salt}"), "")
+        .selected_text(format!("{:?}", color))
+        .show_ui(ui, |ui| {
+            ui.selectable_value(color, SceneInstanceColor::Red, "Red");
+            ui.selectable_value(color, SceneInstanceColor::Green, "Green");
+            ui.selectable_value(color, SceneInstanceColor::Blue, "Blue");
+            ui.selectable_value(color, SceneInstanceColor::White, "White");
+            ui.selectable_value(color, SceneInstanceColor::Orange, "Orange");
+            ui.selectable_value(color, SceneInstanceColor::Yellow, "Yellow");
+            ui.selectable_value(color, SceneInstanceColor::Purple, "Purple");
+            ui.selectable_value(color, SceneInstanceColor::Pink, "Pink");
+            ui.selectable_value(color, SceneInstanceColor::Black, "Black");
+        })
+        .response;
+    (before != *color, response)
+}
+
+fn scene_color_message_map_editor(
+    ui: &mut Ui,
+    mappings: &mut MidiSceneColorMessageMap,
+    dirty: &mut bool,
+) {
+    scene_color_message_editor(ui, "Red", &mut mappings.red, dirty);
+    scene_color_message_editor(ui, "Green", &mut mappings.green, dirty);
+    scene_color_message_editor(ui, "Blue", &mut mappings.blue, dirty);
+    scene_color_message_editor(ui, "White", &mut mappings.white, dirty);
+    scene_color_message_editor(ui, "Orange", &mut mappings.orange, dirty);
+    scene_color_message_editor(ui, "Yellow", &mut mappings.yellow, dirty);
+    scene_color_message_editor(ui, "Purple", &mut mappings.purple, dirty);
+    scene_color_message_editor(ui, "Pink", &mut mappings.pink, dirty);
+    scene_color_message_editor(ui, "Black", &mut mappings.black, dirty);
+}
+
+fn scene_color_message_editor(
+    ui: &mut Ui,
+    label: &str,
+    message: &mut MidiSceneColorMessage,
+    dirty: &mut bool,
+) {
+    ui.horizontal(|ui| {
+        ui.label(label);
         ui.label("Status");
         if ui
-            .add(DragValue::new(&mut colors.status).range(0..=255))
+            .add(DragValue::new(&mut message.status).range(0..=255))
             .changed()
         {
             *dirty = true;
         }
         ui.label("Data1");
         if ui
-            .add(DragValue::new(&mut colors.data1).range(0..=127))
+            .add(DragValue::new(&mut message.data1).range(0..=127))
+            .changed()
+        {
+            *dirty = true;
+        }
+        ui.label("Value");
+        if ui
+            .add(DragValue::new(&mut message.value).range(0..=127))
             .changed()
         {
             *dirty = true;
         }
     });
+}
 
-    ComboBox::new(format!("color_source_{}_{}", colors.status, colors.data1), "Source")
-        .selected_text(color_source_label(&colors.source))
-        .show_ui(ui, |ui| {
-            let mut kind = color_source_kind(&colors.source);
-            if ui.selectable_value(&mut kind, MidiColorSourceKind::SelectedSceneColor, "Selected Scene Color").changed()
-                || ui.selectable_value(&mut kind, MidiColorSourceKind::SceneColor, "Scene Color").changed()
-            {
-                colors.source = color_source_from_kind(kind, colors.source.clone());
-                *dirty = true;
-            }
-        });
-
-    if let MidiColorSource::SceneColor { target } = &mut colors.source {
-        scene_target_editor(ui, target, dirty, format!("{}_{}_color_target", colors.status, colors.data1));
+fn apply_status_data1_to_all_scene_colors(
+    mappings: &mut MidiSceneColorMessageMap,
+    status: u8,
+    data1: u8,
+) {
+    for color in [
+        SceneInstanceColor::Red,
+        SceneInstanceColor::Green,
+        SceneInstanceColor::Blue,
+        SceneInstanceColor::White,
+        SceneInstanceColor::Orange,
+        SceneInstanceColor::Yellow,
+        SceneInstanceColor::Purple,
+        SceneInstanceColor::Pink,
+        SceneInstanceColor::Black,
+    ] {
+        let message = match color {
+            SceneInstanceColor::Red => &mut mappings.red,
+            SceneInstanceColor::Green => &mut mappings.green,
+            SceneInstanceColor::Blue => &mut mappings.blue,
+            SceneInstanceColor::White => &mut mappings.white,
+            SceneInstanceColor::Orange => &mut mappings.orange,
+            SceneInstanceColor::Yellow => &mut mappings.yellow,
+            SceneInstanceColor::Purple => &mut mappings.purple,
+            SceneInstanceColor::Pink => &mut mappings.pink,
+            SceneInstanceColor::Black => &mut mappings.black,
+        };
+        message.status = status;
+        message.data1 = data1;
     }
 }
 
@@ -953,7 +1485,10 @@ fn current_target_from_action(action: &MidiInputAction) -> MidiSceneTarget {
 fn output_source_from_input_action(action: &MidiInputAction) -> Option<MidiValueSource> {
     match action {
         MidiInputAction::SetMainDimmer => Some(MidiValueSource::MainDimmer),
-        MidiInputAction::SetBlackout => Some(MidiValueSource::Blackout),
+        MidiInputAction::SetBlackout => Some(MidiValueSource::Blackout {
+            inverted: false,
+            blink: false,
+        }),
         MidiInputAction::SetSceneActive { target } => Some(MidiValueSource::SceneActive {
             target: target.clone(),
         }),
@@ -1040,6 +1575,7 @@ fn add_matching_output_binding(
             data1: input_data1,
             min: 0,
             max: 127,
+            active_value: 127,
             source,
         }),
     });
@@ -1049,7 +1585,7 @@ fn add_matching_output_binding(
 
 fn scene_target_editor(ui: &mut Ui, target: &mut MidiSceneTarget, dirty: &mut bool, id: String) {
     let mut kind = scene_target_kind(target);
-    ComboBox::new(id, "Target")
+    ComboBox::new(id, "")
         .selected_text(scene_target_label(target))
         .show_ui(ui, |ui| {
             ui.selectable_value(&mut kind, MidiSceneTargetKind::Selected, "Selected Scene");
@@ -1130,17 +1666,13 @@ fn value_source_kind(source: &MidiValueSource) -> MidiValueSourceKind {
             MidiValueSourceKind::SelectedSceneSetOffsetOnFlash
         }
         MidiValueSource::MainDimmer => MidiValueSourceKind::MainDimmer,
-        MidiValueSource::BeatFlank => MidiValueSourceKind::BeatFlank,
-        MidiValueSource::Blackout => MidiValueSourceKind::Blackout,
+        MidiValueSource::BeatFlankPulse { .. } => MidiValueSourceKind::BeatFlank,
+        MidiValueSource::Blackout { .. } => MidiValueSourceKind::Blackout,
         MidiValueSource::SceneOpacity { .. } => MidiValueSourceKind::SceneOpacity,
         MidiValueSource::SceneInputDimmer { .. } => MidiValueSourceKind::SceneInputDimmer,
         MidiValueSource::SceneBeatOffset { .. } => MidiValueSourceKind::SceneBeatOffset,
-        MidiValueSource::SceneIgnoreMainDimmer { .. } => {
-            MidiValueSourceKind::SceneIgnoreMainDimmer
-        }
-        MidiValueSource::SceneSetOffsetOnFlash { .. } => {
-            MidiValueSourceKind::SceneSetOffsetOnFlash
-        }
+        MidiValueSource::SceneIgnoreMainDimmer { .. } => MidiValueSourceKind::SceneIgnoreMainDimmer,
+        MidiValueSource::SceneSetOffsetOnFlash { .. } => MidiValueSourceKind::SceneSetOffsetOnFlash,
         MidiValueSource::SceneActive { .. } => MidiValueSourceKind::SceneActive,
         MidiValueSource::SceneFlashed { .. } => MidiValueSourceKind::SceneFlashed,
         MidiValueSource::SceneEffectSettingF32 { .. } => MidiValueSourceKind::SceneEffectSettingF32,
@@ -1159,8 +1691,29 @@ fn value_source_from_kind(kind: MidiValueSourceKind, current: MidiValueSource) -
             MidiValueSource::SelectedSceneSetOffsetOnFlash
         }
         MidiValueSourceKind::MainDimmer => MidiValueSource::MainDimmer,
-        MidiValueSourceKind::BeatFlank => MidiValueSource::BeatFlank,
-        MidiValueSourceKind::Blackout => MidiValueSource::Blackout,
+        MidiValueSourceKind::BeatFlank => match current {
+            MidiValueSource::BeatFlankPulse {
+                start_beat,
+                end_beat,
+            } => MidiValueSource::BeatFlankPulse {
+                start_beat,
+                end_beat,
+            },
+            _ => MidiValueSource::BeatFlankPulse {
+                start_beat: 0.0,
+                end_beat: 0.0,
+            },
+        },
+        MidiValueSourceKind::Blackout => match current {
+            MidiValueSource::Blackout { inverted, blink } => MidiValueSource::Blackout {
+                inverted,
+                blink,
+            },
+            _ => MidiValueSource::Blackout {
+                inverted: false,
+                blink: false,
+            },
+        },
         MidiValueSourceKind::SceneOpacity => MidiValueSource::SceneOpacity {
             target: current_target_from_value_source(&current),
         },
@@ -1226,8 +1779,8 @@ fn value_source_label(source: &MidiValueSource) -> &'static str {
         MidiValueSource::SelectedSceneIgnoreMainDimmer => "Selected Scene Ignore Main Dimmer",
         MidiValueSource::SelectedSceneSetOffsetOnFlash => "Selected Scene Set Offset On Flash",
         MidiValueSource::MainDimmer => "Main Dimmer",
-        MidiValueSource::BeatFlank => "Beat Flank",
-        MidiValueSource::Blackout => "Blackout",
+        MidiValueSource::BeatFlankPulse { .. } => "Beat Flank",
+        MidiValueSource::Blackout { .. } => "Blackout",
         MidiValueSource::SceneOpacity { .. } => "Scene Opacity",
         MidiValueSource::SceneInputDimmer { .. } => "Scene Input Dimmer",
         MidiValueSource::SceneBeatOffset { .. } => "Scene Beat Offset",
@@ -1239,37 +1792,38 @@ fn value_source_label(source: &MidiValueSource) -> &'static str {
     }
 }
 
-fn color_source_kind(source: &MidiColorSource) -> MidiColorSourceKind {
+fn value_source_uses_active_value(source: &MidiValueSource) -> bool {
     match source {
-        MidiColorSource::SelectedSceneColor => MidiColorSourceKind::SelectedSceneColor,
-        MidiColorSource::SceneColor { .. } => MidiColorSourceKind::SceneColor,
-    }
-}
-
-fn color_source_from_kind(kind: MidiColorSourceKind, current: MidiColorSource) -> MidiColorSource {
-    match kind {
-        MidiColorSourceKind::SelectedSceneColor => MidiColorSource::SelectedSceneColor,
-        MidiColorSourceKind::SceneColor => MidiColorSource::SceneColor {
-            target: current_target_from_color_source(&current),
-        },
-    }
-}
-
-fn current_target_from_color_source(source: &MidiColorSource) -> MidiSceneTarget {
-    match source {
-        MidiColorSource::SceneColor { target } => target.clone(),
-        _ => MidiSceneTarget::Selected,
+        MidiValueSource::SelectedSceneIgnoreMainDimmer
+        | MidiValueSource::SelectedSceneSetOffsetOnFlash
+        | MidiValueSource::BeatFlankPulse { .. }
+        | MidiValueSource::Blackout { .. }
+        | MidiValueSource::SceneIgnoreMainDimmer { .. }
+        | MidiValueSource::SceneSetOffsetOnFlash { .. }
+        | MidiValueSource::SceneActive { .. }
+        | MidiValueSource::SceneFlashed { .. } => true,
+        MidiValueSource::SelectedSceneOpacity
+        | MidiValueSource::SelectedSceneInputDimmer
+        | MidiValueSource::SelectedSceneBeatOffset
+        | MidiValueSource::MainDimmer
+        | MidiValueSource::SceneOpacity { .. }
+        | MidiValueSource::SceneInputDimmer { .. }
+        | MidiValueSource::SceneBeatOffset { .. }
+        | MidiValueSource::SceneEffectSettingF32 { .. } => false,
     }
 }
 
 fn color_source_label(source: &MidiColorSource) -> &'static str {
     match source {
-        MidiColorSource::SelectedSceneColor => "Selected Scene Color",
         MidiColorSource::SceneColor { .. } => "Scene Color",
     }
 }
 
-fn show_live_midi_monitor(ui: &mut Ui, events: &mut VecDeque<monitor::MidiMonitorEvent>, diagnostics: &[monitor::MidiPortDiagnostics]) {
+fn show_live_midi_monitor(
+    ui: &mut Ui,
+    events: &mut VecDeque<monitor::MidiMonitorEvent>,
+    diagnostics: &[monitor::MidiPortDiagnostics],
+) {
     ui.horizontal(|ui| {
         ui.label(icons::GAUGE);
         ui.heading("Diagnostics");
@@ -1336,7 +1890,10 @@ fn show_live_midi_monitor(ui: &mut Ui, events: &mut VecDeque<monitor::MidiMonito
                         .single()
                         .map(|dt| dt.format("%Y-%m-%d %H:%M:%S%.3f").to_string())
                         .unwrap_or_else(|| event.timestamp_ms.to_string());
-                    format!("{} | {} | {} | [{}]", time, event.port_name, event.label, bytes)
+                    format!(
+                        "{} | {} | {} | [{}]",
+                        time, event.port_name, event.label, bytes
+                    )
                 })
                 .collect::<Vec<_>>()
                 .join("\n");
