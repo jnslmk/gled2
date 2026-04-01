@@ -1,6 +1,15 @@
-use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use super::App;
-use crate::{storage::asset::{scene::grid::GridLocation, project::GridHighlight}, ui::{ContextMenuAction, ContextMenuBuilder, action::UiAction, scene_instance::{dnd::{dnd_drag_source, dnd_drop_zone}, widget::{EmptyGridSpot, SceneInstanceWidget}}}};
+use crate::{
+    storage::asset::{project::GridHighlight, scene::grid::GridLocation},
+    ui::{
+        ContextMenuAction, ContextMenuBuilder,
+        action::UiAction,
+        scene_instance::{
+            dnd::{dnd_drag_source, dnd_drop_zone},
+            widget::{EmptyGridSpot, SceneInstanceWidget},
+        },
+    },
+};
 use egui::{
     Color32, Frame, Id, KeyboardShortcut, Modifiers, TextureHandle, Ui, UiBuilder, Vec2,
     scroll_area::ScrollBarVisibility::AlwaysVisible,
@@ -9,6 +18,7 @@ use egui::{DragAndDrop, Label, LayerId, Order, Response, Sense, Widget};
 use egui_phosphor_icons::icons;
 use emath::{Rect, vec2};
 use epaint::{Stroke, StrokeKind};
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
@@ -45,7 +55,10 @@ impl App {
                 if grid_highlight == GridHighlight::Column {
                     let quick_scene_rect = Rect::from_min_size(
                         start_pos + vec2(20. + quick_col as f32 * (effects_size + 20.), 20.),
-                        vec2(effects_size, (effects_size + 20.) * grid_height as f32 - 20.),
+                        vec2(
+                            effects_size,
+                            (effects_size + 20.) * grid_height as f32 - 20.,
+                        ),
                     )
                     .expand(10.);
                     ui.painter().rect_filled(

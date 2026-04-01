@@ -27,26 +27,26 @@ pub fn gled_window_frame(
     CentralPanel::default()
         .frame(panel_frame)
         .show_inside(&mut root_ui, |ui| {
-        let app_rect = ui.max_rect();
+            let app_rect = ui.max_rect();
 
-        let title_bar_height = 32.0;
-        let title_bar_rect = {
-            let mut rect = app_rect;
-            rect.max.y = rect.min.y + title_bar_height;
-            rect
-        };
-        title_bar_ui(ui, title_bar_rect, title);
+            let title_bar_height = 32.0;
+            let title_bar_rect = {
+                let mut rect = app_rect;
+                rect.max.y = rect.min.y + title_bar_height;
+                rect
+            };
+            title_bar_ui(ui, title_bar_rect, title);
 
-        // Add the contents:
-        let content_rect = {
-            let mut rect = app_rect;
-            rect.min.y = title_bar_rect.max.y;
-            rect
-        }
-        .shrink(4.0);
-        let mut content_ui = ui.new_child(UiBuilder::new().max_rect(content_rect));
-        add_contents(&mut content_ui);
-    });
+            // Add the contents:
+            let content_rect = {
+                let mut rect = app_rect;
+                rect.min.y = title_bar_rect.max.y;
+                rect
+            }
+            .shrink(4.0);
+            let mut content_ui = ui.new_child(UiBuilder::new().max_rect(content_rect));
+            add_contents(&mut content_ui);
+        });
 }
 
 fn title_bar_ui(ui: &mut egui::Ui, title_bar_rect: eframe::epaint::Rect, title: &str) {

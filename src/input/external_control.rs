@@ -79,10 +79,8 @@ impl ExternalControlState {
                 Err(_) => break,
             };
             if let Some(project) = project {
-                let grid_location = project.grid_location_from_continuous_index(
-                    i,
-                    &GridLocation { row: 0, col: 0 },
-                );
+                let grid_location = project
+                    .grid_location_from_continuous_index(i, &GridLocation { row: 0, col: 0 });
                 let scene_instance = project.scenes_instances_grid.get_mut(&grid_location);
 
                 let asset_id =

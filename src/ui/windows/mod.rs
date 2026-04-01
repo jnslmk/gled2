@@ -54,13 +54,8 @@ impl Windows {
         midi_learn_state: &mut crate::midi::learn::LearnState,
     ) {
         self.about.update(ctx);
-        self.animations.update(
-            ctx,
-            timing,
-            collections,
-            persistant_state,
-            sound_data,
-        );
+        self.animations
+            .update(ctx, timing, collections, persistant_state, sound_data);
         self.channel_overwrites.update(ctx, collections);
         self.curves.update(ctx, collections);
         self.errors.update(ctx);
@@ -75,13 +70,8 @@ impl Windows {
             .update(ctx, collections, extract_output);
         self.palettes.update(ctx, collections);
         self.projects.update(ctx, collections);
-        self.scenes.update(
-            ctx,
-            timing,
-            collections,
-            persistant_state,
-            sound_data,
-        );
+        self.scenes
+            .update(ctx, timing, collections, persistant_state, sound_data);
         self.shortcuts.update(ctx, project);
     }
 }

@@ -194,24 +194,24 @@ impl App {
                                 .pick_file()
                             {
                                 UiAction::SetSvg(match Svg::load(&path) {
-                                Ok(svg) => {
-                                    debug!("Loaded svg file \"{}\"", path.display());
-                                    Some(svg)
-                                }
-                                Err(err) => {
-                                    UiAction::Error(format!(
-                                        "Could not load svg file \"{}\": {err:?}",
-                                        path.display()
-                                    ))
-                                    .enqueue();
+                                    Ok(svg) => {
+                                        debug!("Loaded svg file \"{}\"", path.display());
+                                        Some(svg)
+                                    }
+                                    Err(err) => {
+                                        UiAction::Error(format!(
+                                            "Could not load svg file \"{}\": {err:?}",
+                                            path.display()
+                                        ))
+                                        .enqueue();
 
-                                    None
-                                }
-                            })
-                            .enqueue();
-                        }
-                    })
-                    .ok();
+                                        None
+                                    }
+                                })
+                                .enqueue();
+                            }
+                        })
+                        .ok();
                 }
                 if save_svg_file
                     && let (Some(svg), Some(path)) = (

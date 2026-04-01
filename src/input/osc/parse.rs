@@ -652,12 +652,8 @@ fn parse_target_action(
             target,
             parse_scene_palette_overwrite(msg, 0)?,
         )),
-        "delete" => {
-            Ok(UiAction::DeleteSceneInstancePath(target))
-        }
-        "clone" => {
-            Ok(UiAction::CloneSceneInstancePath(target))
-        }
+        "delete" => Ok(UiAction::DeleteSceneInstancePath(target)),
+        "clone" => Ok(UiAction::CloneSceneInstancePath(target)),
         _ => Err(()),
     }
 }
@@ -914,10 +910,7 @@ mod tests {
 
     #[test]
     fn parses_large_grid_location_without_static_bounds_check() {
-        let msg = msg(
-            "/scene/grid/999/777/opacity",
-            vec![OscType::Float(0.2)],
-        );
+        let msg = msg("/scene/grid/999/777/opacity", vec![OscType::Float(0.2)]);
         match parse_message(&msg).expect("large grid location should parse") {
             UiAction::SetSceneOpacity(SceneInstanceUnion::Grid(location), value) => {
                 assert_eq!(location.col, 999);

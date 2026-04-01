@@ -1,8 +1,8 @@
 pub mod scene_instance_path;
 
 use super::{
-    AssetTrait, animation::Animation, output_device::routing::OutputRoutings,
-    scene::instance::SceneInstance, midi_controller::MidiController,
+    AssetTrait, animation::Animation, midi_controller::MidiController,
+    output_device::routing::OutputRoutings, scene::instance::SceneInstance,
 };
 use crate::{
     app::{svg::Svg, timing::Timing},
@@ -341,7 +341,7 @@ impl Project {
             scene_instance.prepare(
                 queue,
                 palette.clone(),
-            always_render,
+                always_render,
                 &deck_groups,
                 timing,
                 main_dimmer,

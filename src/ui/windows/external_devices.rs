@@ -6,7 +6,9 @@ use crate::ui::action::UiAction;
 use crate::ui::asset::CollectionsChangeButton;
 use crate::{
     input::artnet::ARTNET_CONFIG,
-    storage::asset::{Asset, midi_controller::MidiController, output_device::routing::OutputRouting},
+    storage::asset::{
+        Asset, midi_controller::MidiController, output_device::routing::OutputRouting,
+    },
     ui::{
         window_common::{default_viewport_builder, gled_window_frame},
         windows::output_routings::HOVERED_OUTPUT_ROUTING,
@@ -14,8 +16,8 @@ use crate::{
 };
 use chrono::Local;
 use egui::{
-    Button, CentralPanel, ComboBox, Context, DragValue, Id, Layout, Response, RichText,
-    Slider, Ui, Vec2, ViewportId, Widget, WidgetText,
+    Button, CentralPanel, ComboBox, Context, DragValue, Id, Layout, Response, RichText, Slider, Ui,
+    Vec2, ViewportId, Widget, WidgetText,
 };
 use egui_phosphor_icons::icons;
 use std::collections::{BTreeMap, BTreeSet};
@@ -42,7 +44,10 @@ struct MidiControllerSelectionRow {
 
 #[derive(Clone)]
 struct MidiMappingAssetOptions {
-    options: Vec<(Option<crate::storage::asset_id::AssetId<MidiController>>, String)>,
+    options: Vec<(
+        Option<crate::storage::asset_id::AssetId<MidiController>>,
+        String,
+    )>,
 }
 
 impl ExternalDeviceSettings {
@@ -207,13 +212,11 @@ fn midi_mapping_settings(
                 let mut selected_index = options
                     .options
                     .iter()
-                    .position(|(controller_id, _)| {
-                        current.is_some_and(|c| c == controller_id)
-                    })
+                    .position(|(controller_id, _)| current.is_some_and(|c| c == controller_id))
                     .unwrap_or(0);
 
                 let original_index = selected_index;
-                
+
                 ComboBox::new(format!("midi_mapping_{}", controller.port_name), "")
                     .selected_text(options.options[selected_index].1.clone())
                     .show_ui(ui, |ui| {
@@ -229,24 +232,26 @@ fn midi_mapping_settings(
 
                 // Only update mapping if user explicitly changed the selection or removed mapping
                 let combobox_changed = selected_index != original_index;
-                
+
                 if combobox_changed || remove_clicked {
                     let (controller_id, _) = &options.options[selected_index];
-                    
+
                     // Always use exact port name as the key for specificity
                     // This ensures each port can have its own mapping
                     let exact_key = controller.port_name.clone();
-                    
+
                     // But also clean up any normalized-key entries for this device
                     let normalized_key = normalize_controller_key(&exact_key);
                     project
                         .midi_active_mappings
                         .retain(|key, _| normalize_controller_key(key) != normalized_key);
-                    
+
                     // Now set/update the exact mapping
                     match controller_id {
                         Some(controller_id) => {
-                            project.midi_active_mappings.insert(exact_key, Some(*controller_id));
+                            project
+                                .midi_active_mappings
+                                .insert(exact_key, Some(*controller_id));
                         }
                         None => {
                             // Removing mapping: ensure exact key is removed
@@ -271,14 +276,21 @@ fn collect_midi_mapping_options(collections: &Collections) -> MidiMappingAssetOp
     for controller in controllers {
         options.push((
             Some(controller.id),
-            format!("{} ({})", controller.name(), controller.data.controller_type),
+            format!(
+                "{} ({})",
+                controller.name(),
+                controller.data.controller_type
+            ),
         ));
     }
 
     MidiMappingAssetOptions { options }
 }
 
-fn collect_midi_controller_rows(project: &Project, diagnostics: &[monitor::MidiPortDiagnostics]) -> Vec<MidiControllerSelectionRow> {
+fn collect_midi_controller_rows(
+    project: &Project,
+    diagnostics: &[monitor::MidiPortDiagnostics],
+) -> Vec<MidiControllerSelectionRow> {
     let configured_ports = project
         .midi_active_mappings
         .keys()

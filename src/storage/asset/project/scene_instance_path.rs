@@ -12,7 +12,7 @@ pub enum SceneInstanceUnion {
 }
 
 pub fn quick_scene_instance_index(index: usize) -> SceneInstanceUnion {
-    SceneInstanceUnion::Quick(QuickSceneInstanceIndex {index} )
+    SceneInstanceUnion::Quick(QuickSceneInstanceIndex { index })
 }
 pub fn grid_scene_instance_index(location: GridLocation) -> SceneInstanceUnion {
     SceneInstanceUnion::Grid(location)

@@ -27,7 +27,9 @@ impl ProjectState {
 
 pub fn init() {
     let (sender, receiver) = unbounded();
-    SENDER.set(sender).expect("Could not set project state sender");
+    SENDER
+        .set(sender)
+        .expect("Could not set project state sender");
 
     std::thread::spawn(move || {
         #[cfg(feature = "profiling")]

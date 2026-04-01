@@ -52,4 +52,3 @@ pub fn push_event(port_name: &str, label: &str, bytes: &[u8]) {
         let _ = sender.send(event);
     }
 }
-

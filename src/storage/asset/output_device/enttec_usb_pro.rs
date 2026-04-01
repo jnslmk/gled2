@@ -29,69 +29,69 @@ pub fn start() {
             let mut devices = HashMap::<String, Box<dyn SerialPort>>::new();
             loop {
                 let now = Instant::now();
-            let mut data_per_serial_number = HashMap::new();
-            while let Ok(Some((serial_number, data))) = rx.try_recv() {
-                data_per_serial_number.insert(serial_number, data);
-            }
+                let mut data_per_serial_number = HashMap::new();
+                while let Ok(Some((serial_number, data))) = rx.try_recv() {
+                    data_per_serial_number.insert(serial_number, data);
+                }
 
-            for (serial_number, data) in data_per_serial_number {
-                let mut enttec_data = vec![
-                    0x7E, // Start of message
-                    6,    // DMX output message
-                    1,    // Data length LSB
-                    2,    // Data length MSB
-                    0,    // DMX start code
-                ];
-                enttec_data.extend_from_slice(&data);
-                enttec_data.push(0xE7); // End of message
+                for (serial_number, data) in data_per_serial_number {
+                    let mut enttec_data = vec![
+                        0x7E, // Start of message
+                        6,    // DMX output message
+                        1,    // Data length LSB
+                        2,    // Data length MSB
+                        0,    // DMX start code
+                    ];
+                    enttec_data.extend_from_slice(&data);
+                    enttec_data.push(0xE7); // End of message
 
-                log::trace!("Sending data to enttec dmx usb pro: {enttec_data:?}");
+                    log::trace!("Sending data to enttec dmx usb pro: {enttec_data:?}");
 
-                match devices.entry(serial_number) {
-                    Entry::Occupied(mut occupied_entry) => {
-                        if let Err(err) = occupied_entry.get_mut().write_all(&enttec_data) {
-                            warn!("Could not write to port: {err}");
-                            occupied_entry.remove();
-                        } else {
-                            trace!("Send data to enttec dmx usb pro");
-                        }
-                    }
-                    Entry::Vacant(vacant_entry) => {
-                        let Some(port) =
-                            SERIAL_NUMBERS_PORT.lock().get(vacant_entry.key()).cloned()
-                        else {
-                            warn!(
-                                "Could not find port for serial number {}",
-                                vacant_entry.key()
-                            );
-                            continue;
-                        };
-
-                        match serialport::new(port, 115_200).open() {
-                            Ok(mut port) => {
-                                if let Err(err) = port.set_timeout(Duration::from_millis(50)) {
-                                    warn!("Could not set timeout on port: {err:?}");
-                                    continue;
-                                }
-                                if let Err(err) = port.write_all(&enttec_data) {
-                                    warn!("Could not write to port: {err}");
-                                } else {
-                                    trace!("Send data to enttec dmx usb pro");
-                                    vacant_entry.insert(port);
-                                }
+                    match devices.entry(serial_number) {
+                        Entry::Occupied(mut occupied_entry) => {
+                            if let Err(err) = occupied_entry.get_mut().write_all(&enttec_data) {
+                                warn!("Could not write to port: {err}");
+                                occupied_entry.remove();
+                            } else {
+                                trace!("Send data to enttec dmx usb pro");
                             }
-                            Err(err) => {
-                                warn!("Could not open port: {err}");
+                        }
+                        Entry::Vacant(vacant_entry) => {
+                            let Some(port) =
+                                SERIAL_NUMBERS_PORT.lock().get(vacant_entry.key()).cloned()
+                            else {
+                                warn!(
+                                    "Could not find port for serial number {}",
+                                    vacant_entry.key()
+                                );
+                                continue;
+                            };
+
+                            match serialport::new(port, 115_200).open() {
+                                Ok(mut port) => {
+                                    if let Err(err) = port.set_timeout(Duration::from_millis(50)) {
+                                        warn!("Could not set timeout on port: {err:?}");
+                                        continue;
+                                    }
+                                    if let Err(err) = port.write_all(&enttec_data) {
+                                        warn!("Could not write to port: {err}");
+                                    } else {
+                                        trace!("Send data to enttec dmx usb pro");
+                                        vacant_entry.insert(port);
+                                    }
+                                }
+                                Err(err) => {
+                                    warn!("Could not open port: {err}");
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            std::thread::sleep(Duration::from_millis(1000 / 40).saturating_sub(now.elapsed()));
-        }
-    })
-    .expect("Could not spawn enttec usb pro thread");
+                std::thread::sleep(Duration::from_millis(1000 / 40).saturating_sub(now.elapsed()));
+            }
+        })
+        .expect("Could not spawn enttec usb pro thread");
 }
 
 fn find_devices() {
@@ -104,28 +104,28 @@ fn find_devices() {
 
             loop {
                 let mut serial_numbers_port = HashMap::new();
-            let ports = match serialport::available_ports() {
-                Ok(ports) => ports,
-                Err(err) => {
-                    warn!("Error listing serial ports: {err}");
-                    std::thread::sleep(Duration::from_secs(60));
-                    continue;
+                let ports = match serialport::available_ports() {
+                    Ok(ports) => ports,
+                    Err(err) => {
+                        warn!("Error listing serial ports: {err}");
+                        std::thread::sleep(Duration::from_secs(60));
+                        continue;
+                    }
+                };
+                for port in ports {
+                    if let serialport::SerialPortType::UsbPort(usb_port_info) = port.port_type
+                        && usb_port_info.manufacturer == Some("ENTTEC".to_owned())
+                        && usb_port_info.product == Some("DMX USB PRO".to_owned())
+                        && let Some(serial_number) = usb_port_info.serial_number
+                    {
+                        serial_numbers_port.insert(serial_number, port.port_name);
+                    }
                 }
-            };
-            for port in ports {
-                if let serialport::SerialPortType::UsbPort(usb_port_info) = port.port_type
-                    && usb_port_info.manufacturer == Some("ENTTEC".to_owned())
-                    && usb_port_info.product == Some("DMX USB PRO".to_owned())
-                    && let Some(serial_number) = usb_port_info.serial_number
-                {
-                    serial_numbers_port.insert(serial_number, port.port_name);
-                }
+                *SERIAL_NUMBERS_PORT.lock() = serial_numbers_port;
+                std::thread::sleep(Duration::from_secs(1));
             }
-            *SERIAL_NUMBERS_PORT.lock() = serial_numbers_port;
-            std::thread::sleep(Duration::from_secs(1));
-        }
-    })
-    .expect("Could not spawn enttec discovery thread");
+        })
+        .expect("Could not spawn enttec discovery thread");
 }
 
 pub fn serial_numbers() -> Vec<String> {

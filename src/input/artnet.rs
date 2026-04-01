@@ -1,3 +1,8 @@
+use crate::input::external_control::ArtnetControlConfig;
+use crate::{
+    pipeline::{constants::UNIVERSE_BUFFER_SIZE, output_sender::OutputPackage},
+    storage::{asset::output_device::routing::OutputRouting, collections::Collections},
+};
 use artnet_protocol::{ArtCommand, PollReply, PortAddress};
 use chrono::{DateTime, Utc};
 use egui::mutex::Mutex;
@@ -5,6 +10,8 @@ use kanal::{Receiver, Sender, unbounded};
 use log::{debug, trace, warn};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::net::IpAddr;
+use std::ops::Shl;
 use std::{
     collections::BTreeMap,
     net::{Ipv4Addr, UdpSocket},
@@ -12,14 +19,7 @@ use std::{
     thread,
     time::Duration,
 };
-use std::net::IpAddr;
-use std::ops::Shl;
 use sysinfo::Networks;
-use crate::input::external_control::ArtnetControlConfig;
-use crate::{
-    pipeline::{constants::UNIVERSE_BUFFER_SIZE, output_sender::OutputPackage},
-    storage::{asset::output_device::routing::OutputRouting, collections::Collections},
-};
 
 static ARTNET_PORT: u16 = 6454;
 pub static ARTNET_SOCKET: Lazy<Arc<UdpSocket>> = Lazy::new(|| {
@@ -114,79 +114,80 @@ pub fn start_thread(
                         debug!("Artnet poll from {src:?}");
 
                         let networks = Networks::new_with_refreshed_list();
-                        let bind_addr = &networks.iter().flat_map(|(_, network)| network.ip_networks().iter())
-                            .find_map(|ip_network| {
-                                match (ip_network.addr, src.ip()) {
-                                    (IpAddr::V4(interface_addr), IpAddr::V4(src_addr)) => {
-                                        let netmask = u32::MAX.shl(32 - ip_network.prefix);
-                                        ((interface_addr.to_bits() & netmask) == (src_addr.to_bits() & netmask))
-                                            .then_some(interface_addr)
-                                    }
-                                    _ => None,
+                        let bind_addr = &networks
+                            .iter()
+                            .flat_map(|(_, network)| network.ip_networks().iter())
+                            .find_map(|ip_network| match (ip_network.addr, src.ip()) {
+                                (IpAddr::V4(interface_addr), IpAddr::V4(src_addr)) => {
+                                    let netmask = u32::MAX.shl(32 - ip_network.prefix);
+                                    ((interface_addr.to_bits() & netmask)
+                                        == (src_addr.to_bits() & netmask))
+                                        .then_some(interface_addr)
                                 }
+                                _ => None,
                             });
 
                         if let Some(bind_addr) = bind_addr {
-                        let poll_reply = PollReply {
-                            address: match src.ip() {
-                                std::net::IpAddr::V4(ip) => ip,
-                                _ => Ipv4Addr::LOCALHOST,
-                            },
-                            port: ARTNET_PORT,
-                            version: [0, 0],
-                            port_address: [0, 0],
-                            oem: [0, 0],
-                            ubea_version: 0,
-                            status_1: 210,
-                            esta_code: 31344,
-                            short_name: {
-                                let mut bytes = [0; 18];
-                                bytes[..5].clone_from_slice("Gled2".as_bytes());
-                                bytes
-                            },
-                            long_name: {
-                                let mut bytes = [0; 64];
-                                bytes[..18].clone_from_slice("Gled2 Artnet Input".as_bytes());
-                                bytes
-                            },
-                            node_report: [0; 64],
-                            num_ports: [0, 4],
-                            port_types: [192; 4],
-                            good_input: [0, 8, 8, 8],
-                            good_output: [0, 0, 0, 0],
-                            swin: [0; 4],
-                            swout: [0; 4],
-                            sw_video: 0,
-                            sw_macro: 0,
-                            sw_remote: 0,
-                            spare: [0; 3],
-                            style: 0,
-                            mac: [0; 6],
-                            bind_ip: bind_addr.octets(),
-                            bind_index: 0,
-                            status_2: 0,
-                            filler: [0; 26],
-                        };
+                            let poll_reply = PollReply {
+                                address: match src.ip() {
+                                    std::net::IpAddr::V4(ip) => ip,
+                                    _ => Ipv4Addr::LOCALHOST,
+                                },
+                                port: ARTNET_PORT,
+                                version: [0, 0],
+                                port_address: [0, 0],
+                                oem: [0, 0],
+                                ubea_version: 0,
+                                status_1: 210,
+                                esta_code: 31344,
+                                short_name: {
+                                    let mut bytes = [0; 18];
+                                    bytes[..5].clone_from_slice("Gled2".as_bytes());
+                                    bytes
+                                },
+                                long_name: {
+                                    let mut bytes = [0; 64];
+                                    bytes[..18].clone_from_slice("Gled2 Artnet Input".as_bytes());
+                                    bytes
+                                },
+                                node_report: [0; 64],
+                                num_ports: [0, 4],
+                                port_types: [192; 4],
+                                good_input: [0, 8, 8, 8],
+                                good_output: [0, 0, 0, 0],
+                                swin: [0; 4],
+                                swout: [0; 4],
+                                sw_video: 0,
+                                sw_macro: 0,
+                                sw_remote: 0,
+                                spare: [0; 3],
+                                style: 0,
+                                mac: [0; 6],
+                                bind_ip: bind_addr.octets(),
+                                bind_index: 0,
+                                status_2: 0,
+                                filler: [0; 26],
+                            };
 
-                        let Ok(data) =
-                            ArtCommand::PollReply(Box::new(poll_reply)).write_to_buffer()
-                        else {
-                            warn!("Could not create poll reply");
-                            continue;
-                        };
+                            let Ok(data) =
+                                ArtCommand::PollReply(Box::new(poll_reply)).write_to_buffer()
+                            else {
+                                warn!("Could not create poll reply");
+                                continue;
+                            };
 
-                        crate::network_stats::add_outgoing_bytes(data.len());
-                        match ARTNET_SOCKET.send_to(&data, src) {
-                            Err(err) => {
-                                warn!("Could not send PollReply: {err:?}");
-                            }
-                            Ok(count) => {
-                                crate::network_stats::add_outgoing_bytes(count);
+                            crate::network_stats::add_outgoing_bytes(data.len());
+                            match ARTNET_SOCKET.send_to(&data, src) {
+                                Err(err) => {
+                                    warn!("Could not send PollReply: {err:?}");
+                                }
+                                Ok(count) => {
+                                    crate::network_stats::add_outgoing_bytes(count);
+                                }
                             }
                         }
-                    }
 
-                    continue;
+                        continue;
                     }
                     Ok(artnet) => {
                         debug!("Unhandeled ArtCommand: {artnet:?}");

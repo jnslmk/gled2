@@ -1,6 +1,5 @@
-use crate::{
-    storage::{asset::midi_controller::MidiTrigger, asset_id::AssetId},
-};
+use crate::storage::asset::midi_controller::MidiController;
+use crate::storage::{asset::midi_controller::MidiTrigger, asset_id::AssetId};
 use kanal::{Receiver, Sender, unbounded};
 use once_cell::sync::OnceCell;
 use std::{
@@ -8,7 +7,6 @@ use std::{
     sync::atomic::{AtomicBool, Ordering::Relaxed},
     time::{Duration, Instant},
 };
-use crate::storage::asset::midi_controller::MidiController;
 
 static STREAM_ENABLED: AtomicBool = AtomicBool::new(false);
 static LEARN_ACTIVE: AtomicBool = AtomicBool::new(false);
@@ -228,7 +226,9 @@ fn best_trigger(stats: &HashMap<(u8, u8), LearnStats>) -> Option<(u8, u8)> {
             data1
         };
 
-        let value_span = message_stats.max_value.saturating_sub(message_stats.min_value);
+        let value_span = message_stats
+            .max_value
+            .saturating_sub(message_stats.min_value);
         canonical
             .entry((status, canonical_data1))
             .and_modify(|(count, span)| {

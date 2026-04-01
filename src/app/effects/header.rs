@@ -27,15 +27,25 @@ impl App {
 
                     let max_col = project.grid_width() - 1;
                     let max_row = project.grid_height() - 1;
-                    self.selected_scene_instance.col = self.selected_scene_instance.col.min(max_col);
-                    self.selected_scene_instance.row = self.selected_scene_instance.row.min(max_row);
+                    self.selected_scene_instance.col =
+                        self.selected_scene_instance.col.min(max_col);
+                    self.selected_scene_instance.row =
+                        self.selected_scene_instance.row.min(max_row);
                 }
 
                 ui.separator();
                 ui.label("Highlight");
                 ui.horizontal(|ui| {
-                    ui.selectable_value(&mut project.grid_highlight, GridHighlight::Row, "Last Row");
-                    ui.selectable_value(&mut project.grid_highlight, GridHighlight::Column, "Last Column");
+                    ui.selectable_value(
+                        &mut project.grid_highlight,
+                        GridHighlight::Row,
+                        "Last Row",
+                    );
+                    ui.selectable_value(
+                        &mut project.grid_highlight,
+                        GridHighlight::Column,
+                        "Last Column",
+                    );
                     ui.selectable_value(&mut project.grid_highlight, GridHighlight::None, "None");
                 });
             });

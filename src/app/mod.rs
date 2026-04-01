@@ -23,9 +23,8 @@ use crate::{
         loading,
     },
     ui::{
-        action::UiAction, asset_tree::AssetTree,
-        scene_effect_editor::SceneEffectEditorState, window_common::default_viewport_builder,
-        windows::Windows,
+        action::UiAction, asset_tree::AssetTree, scene_effect_editor::SceneEffectEditorState,
+        window_common::default_viewport_builder, windows::Windows,
     },
 };
 use eframe::egui_wgpu::Callback;
@@ -215,39 +214,41 @@ impl App {
         );
         root_ui.set_clip_rect(ctx.content_rect());
 
-        CentralPanel::default().frame(panel_frame).show_inside(&mut root_ui, |ui| {
-            if viewport_id.is_none() {
-                let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
-                ui.painter().add(callback);
-            }
-            let mut ui = ui.new_child(UiBuilder::new().max_rect(ui.max_rect().shrink(4.0)));
+        CentralPanel::default()
+            .frame(panel_frame)
+            .show_inside(&mut root_ui, |ui| {
+                if viewport_id.is_none() {
+                    let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
+                    ui.painter().add(callback);
+                }
+                let mut ui = ui.new_child(UiBuilder::new().max_rect(ui.max_rect().shrink(4.0)));
 
-            self.menu(&mut ui, viewport_id);
-            self.status_bar(&mut ui, viewport_id);
+                self.menu(&mut ui, viewport_id);
+                self.status_bar(&mut ui, viewport_id);
 
-            if let Some(error) = crate::storage::error() {
-                show_storage_error(&mut ui, error);
-                return;
-            } else if let Some(loading) = crate::storage::loading() {
-                show_storage_loading(&mut ui, loading);
-                return;
-            }
+                if let Some(error) = crate::storage::error() {
+                    show_storage_error(&mut ui, error);
+                    return;
+                } else if let Some(loading) = crate::storage::loading() {
+                    show_storage_loading(&mut ui, loading);
+                    return;
+                }
 
-            if self.project.is_some() {
-                egui::Panel::left("config")
-                    .resizable(false)
-                    .exact_size(400.0)
-                    .show_inside(&mut ui, |ui| self.config(ui));
-                egui::Panel::top("preview")
-                    .resizable(true)
-                    .default_size(200.0)
-                    .min_size(200.0)
-                    .show_inside(&mut ui, |ui| self.preview(ui));
-                egui::CentralPanel::default().show_inside(&mut ui, |ui| self.scenes(ui));
-            } else {
-                self.no_project(&mut ui);
-            }
-        });
+                if self.project.is_some() {
+                    egui::Panel::left("config")
+                        .resizable(false)
+                        .exact_size(400.0)
+                        .show_inside(&mut ui, |ui| self.config(ui));
+                    egui::Panel::top("preview")
+                        .resizable(true)
+                        .default_size(200.0)
+                        .min_size(200.0)
+                        .show_inside(&mut ui, |ui| self.preview(ui));
+                    egui::CentralPanel::default().show_inside(&mut ui, |ui| self.scenes(ui));
+                } else {
+                    self.no_project(&mut ui);
+                }
+            });
     }
     pub fn new(
         ui_action_receiver: Receiver<UiAction>,
