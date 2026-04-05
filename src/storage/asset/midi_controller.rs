@@ -4,19 +4,11 @@ use serde::{Deserialize, Serialize};
 use crate::storage::asset::scene::color::SceneInstanceColor;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Default)]
 pub struct MidiController {
-    pub controller_type: String,
     pub mapping: MidiControllerMapping,
 }
 
-impl Default for MidiController {
-    fn default() -> Self {
-        Self {
-            controller_type: "Generic MIDI Controller".to_owned(),
-            mapping: MidiControllerMapping::default(),
-        }
-    }
-}
 
 impl AssetTrait for MidiController {
     const DIR_NAME: &'static str = "midi_controllers";
@@ -228,42 +220,48 @@ impl Default for MidiColorSource {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct MidiSceneColorValueOutput {
     pub source: MidiColorSource,
     pub mapping_name: String,
+    pub status: u8,
+    pub data1: u8,
+}
+
+impl Default for MidiSceneColorValueOutput {
+    fn default() -> Self {
+        Self {
+            source: MidiColorSource::default(),
+            mapping_name: String::new(),
+            status: 144,
+            data1: 0,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct MidiNamedSceneColorMapping {
     pub name: String,
-    pub mapping: MidiSceneColorMessageMap,
+    pub active: MidiSceneColorMessageMap,
+    pub inactive: MidiSceneColorMessageMap,
+    pub flashed: MidiSceneColorMessageMap,
 }
 
 impl Default for MidiNamedSceneColorMapping {
     fn default() -> Self {
+        let default_map = MidiSceneColorMessageMap::default();
         Self {
             name: "Color Mapping".to_owned(),
-            mapping: MidiSceneColorMessageMap::default(),
+            active: default_map.clone(),
+            inactive: default_map.clone(),
+            flashed: default_map,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
 pub struct MidiSceneColorMessage {
-    pub status: u8,
-    pub data1: u8,
     pub value: u8,
-}
-
-impl Default for MidiSceneColorMessage {
-    fn default() -> Self {
-        Self {
-            status: 144,
-            data1: 0,
-            value: 0,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -282,42 +280,15 @@ pub struct MidiSceneColorMessageMap {
 impl Default for MidiSceneColorMessageMap {
     fn default() -> Self {
         Self {
-            red: MidiSceneColorMessage {
-                value: 5,
-                ..MidiSceneColorMessage::default()
-            },
-            green: MidiSceneColorMessage {
-                value: 21,
-                ..MidiSceneColorMessage::default()
-            },
-            blue: MidiSceneColorMessage {
-                value: 45,
-                ..MidiSceneColorMessage::default()
-            },
-            white: MidiSceneColorMessage {
-                value: 3,
-                ..MidiSceneColorMessage::default()
-            },
-            orange: MidiSceneColorMessage {
-                value: 9,
-                ..MidiSceneColorMessage::default()
-            },
-            yellow: MidiSceneColorMessage {
-                value: 13,
-                ..MidiSceneColorMessage::default()
-            },
-            purple: MidiSceneColorMessage {
-                value: 49,
-                ..MidiSceneColorMessage::default()
-            },
-            pink: MidiSceneColorMessage {
-                value: 53,
-                ..MidiSceneColorMessage::default()
-            },
-            black: MidiSceneColorMessage {
-                value: 0,
-                ..MidiSceneColorMessage::default()
-            },
+            red: MidiSceneColorMessage { value: 5 },
+            green: MidiSceneColorMessage { value: 21 },
+            blue: MidiSceneColorMessage { value: 45 },
+            white: MidiSceneColorMessage { value: 3 },
+            orange: MidiSceneColorMessage { value: 9 },
+            yellow: MidiSceneColorMessage { value: 13 },
+            purple: MidiSceneColorMessage { value: 49 },
+            pink: MidiSceneColorMessage { value: 53 },
+            black: MidiSceneColorMessage { value: 0 },
         }
     }
 }

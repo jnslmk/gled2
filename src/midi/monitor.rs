@@ -35,7 +35,9 @@ pub fn set_streaming_enabled(enabled: bool) {
 }
 
 pub fn push_event(port_name: &str, label: &str, bytes: &[u8]) {
-    if !STREAM_ENABLED.load(Relaxed) {
+    // Keep lifecycle diagnostics (connect/fail) even when the live stream is off.
+    // Only raw midi traffic is gated to avoid filling the queue in the background.
+    if label == "midi" && !STREAM_ENABLED.load(Relaxed) {
         return;
     }
 

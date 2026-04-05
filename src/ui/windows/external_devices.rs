@@ -20,6 +20,7 @@ use egui::{
     Vec2, ViewportId, Widget, WidgetText,
 };
 use egui_phosphor_icons::icons;
+use midir::MidiOutput;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
@@ -240,12 +241,6 @@ fn midi_mapping_settings(
                     // This ensures each port can have its own mapping
                     let exact_key = controller.port_name.clone();
 
-                    // But also clean up any normalized-key entries for this device
-                    let normalized_key = normalize_controller_key(&exact_key);
-                    project
-                        .midi_active_mappings
-                        .retain(|key, _| normalize_controller_key(key) != normalized_key);
-
                     // Now set/update the exact mapping
                     match controller_id {
                         Some(controller_id) => {
@@ -266,22 +261,10 @@ fn midi_mapping_settings(
 fn collect_midi_mapping_options(collections: &Collections) -> MidiMappingAssetOptions {
     let mut options = vec![(None, "None".to_owned())];
     let mut controllers: Vec<_> = Asset::<MidiController>::all(collections);
-    controllers.sort_by(|a, b| {
-        a.data
-            .controller_type
-            .cmp(&b.data.controller_type)
-            .then_with(|| a.name().cmp(b.name()))
-    });
+    controllers.sort_by(|a, b| a.name().cmp(b.name()));
 
     for controller in controllers {
-        options.push((
-            Some(controller.id),
-            format!(
-                "{} ({})",
-                controller.name(),
-                controller.data.controller_type
-            ),
-        ));
+        options.push((Some(controller.id), controller.name().to_owned()));
     }
 
     MidiMappingAssetOptions { options }
@@ -299,6 +282,9 @@ fn collect_midi_controller_rows(
     let mut all_ports: BTreeSet<String> = BTreeSet::new();
     for diag in diagnostics {
         all_ports.insert(normalize_controller_key(&diag.port_name));
+    }
+    for output_port in list_midi_output_ports() {
+        all_ports.insert(normalize_controller_key(&output_port));
     }
     for configured in configured_ports {
         all_ports.insert(configured);
@@ -320,6 +306,19 @@ fn collect_midi_controller_rows(
                 output_connected,
             }
         })
+        .collect()
+}
+
+fn list_midi_output_ports() -> Vec<String> {
+    let Ok(output) = MidiOutput::new("gled_external_devices_scan") else {
+        return Vec::new();
+    };
+
+    output
+        .ports()
+        .into_iter()
+        .filter_map(|port| output.port_name(&port).ok())
+        .filter(|name| !name.trim().is_empty())
         .collect()
 }
 

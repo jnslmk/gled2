@@ -86,7 +86,7 @@ impl Clone for SceneInstance {
             groups_overwrite: self.groups_overwrite.clone(),
             palette_overwrite: self.palette_overwrite.clone(),
             transition: Default::default(),
-            flash: Default::default(),
+            flash: self.flash,
         }
     }
 }

@@ -22,7 +22,7 @@ use crate::{
 use egui::mutex::Mutex;
 use kanal::{Receiver, Sender, unbounded};
 use midir::MidiOutputConnection;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex as StdMutex, OnceLock};
 use std::thread::spawn;
 
@@ -30,7 +30,7 @@ use std::thread::spawn;
 pub struct RuntimeTestState {
     pub selected_output_port: Option<String>,
     pub value_output_overrides: HashMap<usize, u8>,
-    pub scene_color_overrides: HashMap<String, SceneInstanceColor>,
+    pub scene_color_value_overrides: HashMap<String, u8>,
 }
 
 static RUNTIME_TEST_STATES: OnceLock<StdMutex<HashMap<crate::storage::asset_id::AssetId<MidiController>, RuntimeTestState>>> = OnceLock::new();
@@ -54,6 +54,13 @@ pub fn set_controller_test_state(
     }
 }
 
+pub fn clear_all_test_states() {
+    runtime_test_states()
+        .lock()
+        .expect("runtime test states lock poisoned")
+        .clear();
+}
+
 #[derive(Clone)]
 pub struct RuntimeBus {
     subscribers: Arc<Mutex<Vec<Sender<MidiRuntimeSnapshot>>>>,
@@ -66,7 +73,13 @@ pub struct Runtime {
 
 #[derive(Default, Clone)]
 struct MidiRuntimeSnapshot {
-    mappings_by_controller: HashMap<String, ActiveRuntimeMapping>,
+    mappings_by_controller: HashMap<RuntimeControllerKey, ActiveRuntimeMapping>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum RuntimeControllerKey {
+    PortName(String),
+    TestOnly(crate::storage::asset_id::AssetId<MidiController>),
 }
 
 #[derive(Clone)]
@@ -155,6 +168,7 @@ fn handle_input_from_snapshot(
     let status = message[0];
     let data1 = message[1];
     let value = message[2];
+    let mut handled_any = false;
 
     for binding in &mapping.mapping.input_bindings {
         if !trigger_matches(&binding.trigger, status, data1) {
@@ -251,11 +265,11 @@ fn handle_input_from_snapshot(
 
         if let Some(action) = action {
             action.enqueue();
-            return true;
+            handled_any = true;
         }
     }
 
-    false
+    handled_any
 }
 
 fn send_output_from_snapshot(
@@ -276,7 +290,11 @@ fn send_output_from_snapshot(
             .selected_output_port
             .as_deref()
             .is_some_and(|port| port == port_name);
-        if controller_key != port_name && !selected_test_port {
+        let routed_to_port = matches!(
+            controller_key,
+            RuntimeControllerKey::PortName(name) if name == port_name
+        );
+        if !routed_to_port && !selected_test_port {
             continue;
         }
 
@@ -366,8 +384,8 @@ fn send_output_from_snapshot(
                 sent_any = true;
             }
             MidiOutputBindingKind::SceneColorValue(output) => {
-                let scene_color = match output.source {
-                    MidiColorSource::SceneColor { ref target } => scene_color(state, target),
+                let (target, scene_color) = match output.source {
+                    MidiColorSource::SceneColor { ref target } => (target, scene_color(state, target)),
                 };
                 let Some(active_mapping) = mapping
                     .mapping
@@ -376,17 +394,27 @@ fn send_output_from_snapshot(
                     .find(|named| named.name == output.mapping_name) else {
                     continue;
                 };
-                let effective_color = if selected_test_port {
+                let effective_color = scene_color;
+                let selected_map = if scene_is_flashed(state, target) {
+                    &active_mapping.flashed
+                } else if scene_is_active(state, target) {
+                    &active_mapping.active
+                } else {
+                    &active_mapping.inactive
+                };
+                let message = selected_map.message_for_color(effective_color);
+                let midi_value = if selected_test_port {
                     test_state
-                        .scene_color_overrides
+                        .scene_color_value_overrides
                         .get(&active_mapping.name)
                         .copied()
-                        .unwrap_or(scene_color)
+                        .unwrap_or(message.value)
                 } else {
-                    scene_color
+                    message.value
                 };
-                let message = active_mapping.mapping.message_for_color(effective_color);
-                if let Err(err) = connection.send(&[message.status, message.data1, message.value]) {
+                if let Err(err) =
+                    connection.send(&[output.status, output.data1, midi_value])
+                {
                     log::error!("Could not send scene color midi value output: {err:?}");
                 }
                 sent_any = true;
@@ -403,27 +431,41 @@ fn snapshot_from_project_state(
     collections: &Collections,
 ) -> MidiRuntimeSnapshot {
     let mut mappings_by_controller = HashMap::new();
+    let mut included_controller_ids = HashSet::new();
 
-    let Some(project) = state.project.as_ref() else {
-        return MidiRuntimeSnapshot {
-            mappings_by_controller,
-        };
-    };
+    if let Some(project) = state.project.as_ref() {
+        for (controller_key, selection) in &project.midi_active_mappings {
+            let Some(controller_id) = selection else {
+                continue;
+            };
+            let Some(controller) = Asset::<MidiController>::get(*controller_id, collections) else {
+                continue;
+            };
+            let mapping = controller.data.mapping.clone();
 
-    for (controller_key, selection) in &project.midi_active_mappings {
-        let Some(controller_id) = selection else {
+            mappings_by_controller.insert(
+                RuntimeControllerKey::PortName(controller_key.clone()),
+                ActiveRuntimeMapping {
+                    controller_id: *controller_id,
+                    mapping,
+                },
+            );
+            included_controller_ids.insert(*controller_id);
+        }
+    }
+
+    // Also include controllers that are not mapped in External Devices.
+    // They are ignored for normal output routing, but can still be used via Test Device.
+    for controller in Asset::<MidiController>::all(collections) {
+        if included_controller_ids.contains(&controller.id) {
             continue;
-        };
-        let Some(controller) = Asset::<MidiController>::get(*controller_id, collections) else {
-            continue;
-        };
-        let mapping = controller.data.mapping.clone();
+        }
 
         mappings_by_controller.insert(
-            controller_key.clone(),
+            RuntimeControllerKey::TestOnly(controller.id),
             ActiveRuntimeMapping {
-                controller_id: *controller_id,
-                mapping,
+                controller_id: controller.id,
+                mapping: controller.data.mapping.clone(),
             },
         );
     }
@@ -450,12 +492,18 @@ fn trigger_matches(
 }
 
 fn resolve_mapping_for_port(
-    mappings_by_controller: &HashMap<String, ActiveRuntimeMapping>,
+    mappings_by_controller: &HashMap<RuntimeControllerKey, ActiveRuntimeMapping>,
     port_name: &str,
 ) -> Option<ActiveRuntimeMapping> {
     // Require exact port name match to avoid unintended mappings between different ports
     // of the same multi-port device (e.g., iCON P1-X1 MIDI 1, 2, 3, 4)
-    mappings_by_controller.get(port_name).cloned()
+    mappings_by_controller.iter().find_map(|(key, mapping)| {
+        if matches!(key, RuntimeControllerKey::PortName(name) if name == port_name) {
+            Some(mapping.clone())
+        } else {
+            None
+        }
+    })
 }
 
 fn scale_to_range(value: f32, min: u8, max: u8) -> u8 {
