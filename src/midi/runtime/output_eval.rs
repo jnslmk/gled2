@@ -7,7 +7,7 @@ use midir::MidiOutputConnection;
 
 use super::{
     ActiveRuntimeMapping, RuntimeControllerKey, scene_state,
-    runtime_test_states,
+    runtime_test_execution_state,
 };
 
 pub(super) fn send_output_from_snapshot(
@@ -16,32 +16,26 @@ pub(super) fn send_output_from_snapshot(
     state: &MidiState,
     connection: &mut MidiOutputConnection,
 ) -> bool {
-    let test_states = runtime_test_states()
-        .lock()
-        .expect("runtime test states lock poisoned")
-        .clone();
     let normalized_port_name = normalize_controller_key(port_name);
     let mut sent_any = false;
 
+    // Send normal routed outputs
     for (controller_key, mapping) in mappings_by_controller {
-        let test_state = test_states.get(&mapping.controller_id).cloned().unwrap_or_default();
-        let selected_test_port = test_state
-            .selected_output_port
-            .as_deref()
-            .is_some_and(|port| port == port_name);
         let routed_to_port = matches!(
             controller_key,
             RuntimeControllerKey::PortName(name)
                 if name == port_name || normalize_controller_key(name) == normalized_port_name
         );
-        if !routed_to_port && !selected_test_port {
+        if !routed_to_port {
             continue;
         }
 
-        for (binding_index, binding) in mapping.mapping.output_bindings.iter().enumerate() {
+        let effective_mapping = &mapping.mapping;
+
+            for binding in &effective_mapping.output_bindings {
             match &binding.kind {
                 MidiOutputBindingKind::Value(output) => {
-                    let mut midi_value = match output.source {
+                    let midi_value = match output.source {
                         MidiValueSource::SelectedSceneOpacity => {
                             scale_to_range(state.selected_scene_opacity, output.min, output.max)
                         }
@@ -63,14 +57,16 @@ pub(super) fn send_output_from_snapshot(
                         MidiValueSource::BeatFlankPulse {
                             start_beat,
                             end_beat,
-                        } => binary_output_value(
-                            beat_range_contains(
-                                state.beat_progression.rem_euclid(4.0),
-                                start_beat,
-                                end_beat,
-                            ),
-                            output.active_value,
-                        ),
+                        } => {
+                            binary_output_value(
+                                beat_range_contains(
+                                    state.beat_progression.rem_euclid(4.0),
+                                    start_beat,
+                                    end_beat,
+                                ),
+                                output.active_value,
+                            )
+                        }
                         MidiValueSource::Blackout { inverted, blink } => {
                             binary_output_value(blackout_output_active(state, inverted, blink), output.active_value)
                         }
@@ -110,12 +106,6 @@ pub(super) fn send_output_from_snapshot(
                             output.max,
                         ),
                     };
-                    if selected_test_port && !value_source_uses_active_value(&output.source)
-                        && let Some(override_value) =
-                            test_state.value_output_overrides.get(&binding_index)
-                    {
-                        midi_value = *override_value;
-                    }
                     if let Err(err) = connection.send(&[output.status, output.data1, midi_value]) {
                         log::error!("Could not send generic midi value output: {err:?}");
                     }
@@ -127,8 +117,7 @@ pub(super) fn send_output_from_snapshot(
                             ref target,
                         } => (target, scene_state::scene_color(state, target)),
                     };
-                    let Some(active_mapping) = mapping
-                        .mapping
+                    let Some(active_mapping) = effective_mapping
                         .color_mappings
                         .iter()
                         .find(|named| named.name == output.mapping_name)
@@ -143,19 +132,34 @@ pub(super) fn send_output_from_snapshot(
                         &active_mapping.inactive
                     };
                     let message = selected_map.message_for_color(scene_color);
-                    let midi_value = if selected_test_port {
-                        test_state
-                            .scene_color_value_overrides
-                            .get(&active_mapping.name)
-                            .copied()
-                            .unwrap_or(message.value)
-                    } else {
-                        message.value
-                    };
-                    if let Err(err) = connection.send(&[output.status, output.data1, midi_value]) {
+                    if let Err(err) = connection.send(&[output.status, output.data1, message.value]) {
                         log::error!("Could not send scene color midi value output: {err:?}");
                     }
                     sent_any = true;
+                }
+            }
+        }
+    }
+
+    // Send active test outputs if test device is selected for this port
+    {
+        let exec_state = runtime_test_execution_state()
+            .lock()
+            .expect("test execution state lock poisoned");
+        
+        if let Some(test_port) = &exec_state.selected_test_device {
+            let test_port_normalized = normalize_controller_key(test_port);
+            let current_port_normalized = normalize_controller_key(port_name);
+            let is_test_port = test_port == port_name
+                || test_port_normalized == current_port_normalized;
+            
+            if is_test_port {
+                for ((status, data1), value) in &exec_state.active_outputs {
+                    if let Err(err) = connection.send(&[*status, *data1, *value]) {
+                        log::error!("Could not send test device output: {err:?}");
+                    } else {
+                        sent_any = true;
+                    }
                 }
             }
         }
@@ -169,20 +173,6 @@ fn scale_to_range(value: f32, min: u8, max: u8) -> u8 {
     let max = f32::from(max);
     let value = value.clamp(0.0, 1.0);
     (min + (max - min) * value).round() as u8
-}
-
-fn value_source_uses_active_value(source: &MidiValueSource) -> bool {
-    matches!(
-        source,
-        MidiValueSource::SelectedSceneIgnoreMainDimmer
-            | MidiValueSource::SelectedSceneSetOffsetOnFlash
-            | MidiValueSource::BeatFlankPulse { .. }
-            | MidiValueSource::Blackout { .. }
-            | MidiValueSource::SceneIgnoreMainDimmer { .. }
-            | MidiValueSource::SceneSetOffsetOnFlash { .. }
-            | MidiValueSource::SceneActive { .. }
-            | MidiValueSource::SceneFlashed { .. }
-    )
 }
 
 fn binary_output_value(active: bool, active_value: u8) -> u8 {

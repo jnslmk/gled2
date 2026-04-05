@@ -1,51 +1,20 @@
 use crate::{
-    midi::runtime::{self, RuntimeTestState},
-    storage::asset::{midi_controller::MidiController, midi_controller::MidiNamedSceneColorMapping},
+    midi::runtime::TestCommand,
+    storage::asset::midi_controller::MidiController,
 };
 use egui::{ComboBox, Ui};
 use egui_phosphor_icons::icons;
-use std::collections::HashMap;
 
 use super::{iconized, monitor, MidiControllerTestState};
-
-pub(super) fn sync_runtime_test_state(
-    controller_id: crate::storage::asset_id::AssetId<MidiController>,
-    color_mappings: &[MidiNamedSceneColorMapping],
-    test_state: &MidiControllerTestState,
-) {
-    let Some(selected_output_port) = test_state.selected_output_port.clone() else {
-        runtime::set_controller_test_state(controller_id, None);
-        return;
-    };
-
-    if selected_output_port.is_empty() {
-        runtime::set_controller_test_state(controller_id, None);
-        return;
-    }
-
-    let mut scene_color_value_overrides = HashMap::new();
-    for (&mapping_index, value) in &test_state.color_overrides_by_mapping_index {
-        if let Some(mapping) = color_mappings.get(mapping_index) {
-            scene_color_value_overrides.insert(mapping.name.clone(), *value);
-        }
-    }
-
-    runtime::set_controller_test_state(
-        controller_id,
-        Some(RuntimeTestState {
-            selected_output_port: Some(selected_output_port),
-            value_output_overrides: test_state.value_output_overrides.clone(),
-            scene_color_value_overrides,
-        }),
-    );
-}
 
 pub(super) fn render_test_device_box(
     ui: &mut Ui,
     test_state: &mut MidiControllerTestState,
     diagnostics: &[monitor::MidiPortDiagnostics],
     controller_id: crate::storage::asset_id::AssetId<MidiController>,
-) {
+    test_command_sender: &kanal::Sender<TestCommand>,
+) -> Option<String> {
+    let mut selected_test_port = None;
     egui::Frame::group(ui.style())
         .fill(ui.visuals().extreme_bg_color)
         .show(ui, |ui| {
@@ -63,6 +32,7 @@ pub(super) fn render_test_device_box(
                             .clicked()
                         {
                             test_state.selected_output_port = None;
+                            let _ = test_command_sender.send(TestCommand::UnsetTestDevice);
                         }
                         for diag in diagnostics {
                             if !diag.output_connected {
@@ -79,9 +49,15 @@ pub(super) fn render_test_device_box(
                                 .clicked()
                             {
                                 test_state.selected_output_port = Some(diag.port_name.clone());
+                                selected_test_port = Some(diag.port_name.clone());
+                                let _ = test_command_sender.send(TestCommand::SetTestDevice {
+                                    port_name: diag.port_name.clone(),
+                                });
                             }
                         }
                     });
             });
         });
+
+    selected_test_port
 }

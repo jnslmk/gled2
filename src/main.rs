@@ -80,7 +80,7 @@ fn main() {
     RendererCallback::init();
     storage::start_thread();
     ui::temperature::start_thread();
-    let midi_monitor_receiver = midi::start_thread();
+    let (midi_monitor_receiver, test_command_sender) = midi::start_threads();
     let midi_learn_receiver = midi::learn::init();
     let network_stats_receiver = network_stats::start_thread();
     let (extract_output, output_receiver) = extract_output::ExtractOutput::new();
@@ -188,6 +188,7 @@ fn main() {
                     ui_action_receiver,
                     network_stats_receiver,
                     midi_monitor_receiver,
+                    test_command_sender,
                     midi_learn_receiver,
                     extract_output,
                     artnet_control_receiver,

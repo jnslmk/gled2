@@ -21,13 +21,16 @@ pub fn normalize_controller_key(port_name: &str) -> String {
     trimmed.to_owned()
 }
 
-pub fn start_thread() -> kanal::Receiver<monitor::MidiMonitorEvent> {
+pub fn start_threads() -> (
+    kanal::Receiver<monitor::MidiMonitorEvent>,
+    kanal::Sender<runtime::TestCommand>,
+) {
     let receiver = monitor::init();
-    let runtime_bus = runtime::RuntimeBus::default();
+    let (runtime_bus, test_command_sender) = runtime::RuntimeBus::new();
     let input_runtime_bus = runtime_bus.clone();
     let output_runtime_bus = runtime_bus.clone();
     spawn(state::start);
     spawn(move || input::discover(input_runtime_bus));
     spawn(move || output::discover(output_runtime_bus));
-    receiver
+    (receiver, test_command_sender)
 }

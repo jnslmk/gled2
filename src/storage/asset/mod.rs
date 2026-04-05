@@ -86,6 +86,7 @@ impl<T: AssetTrait> Asset<T> {
     pub fn save(self, collections: &mut Collections) {
         log::info!("Setting asset in cache: {:?}", self.id);
         collections.get_mut::<T>().set_asset(self.clone());
+        collections.save();
 
         log::info!("Saving asset: {:?}", self.id);
         let uuid = self.id.id;

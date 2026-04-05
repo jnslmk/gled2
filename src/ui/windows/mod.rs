@@ -51,6 +51,7 @@ impl Windows {
         extract_output: &mut ExtractOutput,
         sound_data: &mut SoundData,
         midi_monitor_receiver: &kanal::Receiver<crate::midi::monitor::MidiMonitorEvent>,
+        test_command_sender: &kanal::Sender<crate::midi::runtime::TestCommand>,
         midi_learn_state: &mut crate::midi::learn::LearnState,
     ) {
         self.about.update(ctx);
@@ -61,7 +62,14 @@ impl Windows {
         self.errors.update(ctx);
         self.git_config.update(ctx, persistant_state);
         self.midi_controllers
-            .update(ctx, collections, midi_monitor_receiver, midi_learn_state);
+            .update(
+                ctx,
+                project,
+                collections,
+                midi_monitor_receiver,
+                test_command_sender,
+                midi_learn_state,
+            );
         let midi_diagnostics = self.midi_controllers.diagnostics();
         self.external_device_settings
             .update(ctx, project, collections, &midi_diagnostics);

@@ -1,10 +1,11 @@
 use crate::storage::asset::midi_controller::{
     MidiNamedSceneColorMapping, MidiSceneColorMessage, MidiSceneColorMessageMap,
-    MidiSceneColorValueOutput,
+    MidiSceneColorValueOutput, MidiOutputBinding, MidiOutputBindingKind,
 };
+use crate::midi::runtime::TestCommand;
 use egui::{ComboBox, DragValue, Ui};
 use egui_phosphor_icons::icons;
-use std::collections::HashMap;
+use kanal::Sender;
 
 use super::{action_converters::scene_target_editor, iconized};
 
@@ -64,10 +65,11 @@ pub(super) fn scene_color_value_output_editor(
 pub(super) fn render_color_mappings_section(
     ui: &mut Ui,
     mappings: &mut Vec<MidiNamedSceneColorMapping>,
+    bindings: &[MidiOutputBinding],
+    test_command_sender: &Sender<TestCommand>,
     dirty: &mut bool,
     _controller_id: crate::storage::asset_id::AssetId<crate::storage::asset::midi_controller::MidiController>,
-) -> HashMap<usize, u8> {
-    let mut preview_overrides = HashMap::new();
+) {
     egui::CollapsingHeader::new(iconized(ui, icons::PALETTE, " Color Mappings"))
         .default_open(true)
         .show(ui, |ui| {
@@ -100,39 +102,45 @@ pub(super) fn render_color_mappings_section(
                     });
 
                     let mut preview_value = None;
-                    egui::CollapsingHeader::new("Inactive")
-                        .default_open(true)
-                        .show(ui, |ui| {
-                            scene_color_message_map_editor(
-                                ui,
-                                &mut mapping.inactive,
-                                &mut preview_value,
-                                dirty,
-                            );
-                        });
-                    egui::CollapsingHeader::new("Active")
-                        .default_open(false)
-                        .show(ui, |ui| {
-                            scene_color_message_map_editor(
-                                ui,
-                                &mut mapping.active,
-                                &mut preview_value,
-                                dirty,
-                            );
-                        });
-                    egui::CollapsingHeader::new("Flashed")
-                        .default_open(false)
-                        .show(ui, |ui| {
-                            scene_color_message_map_editor(
-                                ui,
-                                &mut mapping.flashed,
-                                &mut preview_value,
-                                dirty,
-                            );
-                        });
+                    ui.columns(3, |cols| {
+                        cols[0].label("Inactive");
+                        scene_color_message_map_editor(
+                            &mut cols[0],
+                            &mut mapping.inactive,
+                            &mut preview_value,
+                            dirty,
+                        );
+
+                        cols[1].label("Active");
+                        scene_color_message_map_editor(
+                            &mut cols[1],
+                            &mut mapping.active,
+                            &mut preview_value,
+                            dirty,
+                        );
+
+                        cols[2].label("Flashed");
+                        scene_color_message_map_editor(
+                            &mut cols[2],
+                            &mut mapping.flashed,
+                            &mut preview_value,
+                            dirty,
+                        );
+                    });
 
                     if let Some(value) = preview_value {
-                        preview_overrides.insert(index, value);
+                        // Emit SendOutput commands for all bindings that use this mapping
+                        for binding in bindings {
+                            if let MidiOutputBindingKind::SceneColorValue(color_output) = &binding.kind
+                                && color_output.mapping_name == mapping.name
+                            {
+                                let _ = test_command_sender.send(TestCommand::SendOutput {
+                                    status: color_output.status,
+                                    data1: color_output.data1,
+                                    value,
+                                });
+                            }
+                        }
                     }
                 });
             }
@@ -142,8 +150,6 @@ pub(super) fn render_color_mappings_section(
                 *dirty = true;
             }
         });
-
-    preview_overrides
 }
 
 fn scene_color_message_map_editor(

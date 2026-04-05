@@ -7,6 +7,7 @@ use crate::{
 };
 use egui::{ComboBox, DragValue, Ui};
 use egui_phosphor_icons::icons;
+use std::collections::HashSet;
 
 use super::{
     binding_helpers::{
@@ -15,18 +16,17 @@ use super::{
     color_editor::scene_color_value_output_editor,
     iconized,
     value_editor::value_output_editor,
-    MidiControllerTestState,
 };
 
 pub(super) fn render_output_column(
     ui: &mut Ui,
     bindings: &mut Vec<MidiOutputBinding>,
     color_mappings: &mut [MidiNamedSceneColorMapping],
-    test_state: &mut MidiControllerTestState,
     test_device_selected: bool,
     filter: &str,
     hovered_status_data1: Option<(u8, u8)>,
     hovered_status_data1_next: &mut Option<(u8, u8)>,
+    value_preview_binding_indices: &mut HashSet<usize>,
     dirty: &mut bool,
     controller_id: crate::storage::asset_id::AssetId<MidiController>,
     learn_state: &mut LearnState,
@@ -50,6 +50,7 @@ pub(super) fn render_output_column(
         if !output_binding_matches_filter(binding, filter) {
             continue;
         }
+        let mut value_binding_preview_active = false;
         let status_data1 = output_binding_status_data1(binding, color_mappings);
         let highlight = hovered_status_data1
             .zip(status_data1)
@@ -98,11 +99,12 @@ pub(super) fn render_output_column(
 
                 let mut status_data1 =
                     output_binding_status_data1(binding, color_mappings).unwrap_or((176, 0));
+                let mut status_d1_hovered = false;
+                let mut status_d1_dragged = false;
                 ui.horizontal(|ui| {
                     ui.label("Status");
-                    if ui
-                        .add(DragValue::new(&mut status_data1.0).range(0..=255))
-                        .changed()
+                    let r = ui.add(DragValue::new(&mut status_data1.0).range(0..=255));
+                    if r.changed()
                         && set_output_binding_status_data1(
                             binding,
                             color_mappings,
@@ -112,10 +114,11 @@ pub(super) fn render_output_column(
                     {
                         *dirty = true;
                     }
+                    status_d1_hovered |= r.hovered();
+                    status_d1_dragged |= r.dragged();
                     ui.label("Data1");
-                    if ui
-                        .add(DragValue::new(&mut status_data1.1).range(0..=127))
-                        .changed()
+                    let r = ui.add(DragValue::new(&mut status_data1.1).range(0..=127));
+                    if r.changed()
                         && set_output_binding_status_data1(
                             binding,
                             color_mappings,
@@ -125,7 +128,11 @@ pub(super) fn render_output_column(
                     {
                         *dirty = true;
                     }
+                    status_d1_hovered |= r.hovered();
+                    status_d1_dragged |= r.dragged();
                 });
+                value_binding_preview_active =
+                    value_binding_preview_active || status_d1_hovered || status_d1_dragged;
 
                 let mut kind = match binding.kind {
                     MidiOutputBindingKind::Value(_) => 0,
@@ -156,15 +163,16 @@ pub(super) fn render_output_column(
                             *dirty = true;
                         }
                         if let MidiOutputBindingKind::Value(value) = &mut binding.kind {
-                            value_output_editor(
+                            let preview_active = value_output_editor(
                                 ui,
                                 value,
-                                test_state,
-                                test_device_selected,
                                 dirty,
                                 controller_id,
                                 index,
                             );
+                            if preview_active || value_binding_preview_active {
+                                value_preview_binding_indices.insert(index);
+                            }
                         }
                     }
                     _ => {

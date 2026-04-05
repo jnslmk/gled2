@@ -1,28 +1,25 @@
 use crate::storage::asset::{
     midi_controller::{MidiController, MidiValueOutput, MidiValueSource},
 };
-use egui::{ComboBox, DragValue, Slider, Ui};
-use egui_phosphor_icons::icons;
+use egui::{ComboBox, DragValue, Ui};
 
 use super::{
     action_converters::scene_target_editor,
-    iconized,
     value_source_converters::{
         value_source_from_kind, value_source_kind, value_source_label,
         value_source_uses_active_value, MidiValueSourceKind,
     },
-    MidiControllerTestState,
 };
 
 pub(super) fn value_output_editor(
     ui: &mut Ui,
     value: &mut MidiValueOutput,
-    test_state: &mut MidiControllerTestState,
-    test_device_selected: bool,
     dirty: &mut bool,
     controller_id: crate::storage::asset_id::AssetId<MidiController>,
     index: usize,
-) {
+) -> bool {
+    let mut preview_active = false;
+
     ComboBox::new(format!("{}_value_source_{index}", controller_id), "")
         .selected_text(value_source_label(&value.source))
         .show_ui(ui, |ui| {
@@ -130,26 +127,38 @@ pub(super) fn value_output_editor(
         });
 
     if value_source_uses_active_value(&value.source) {
+        let mut r = None;
         ui.horizontal(|ui| {
             ui.label("Value");
-            if ui
-                .add(DragValue::new(&mut value.active_value).range(0..=127))
-                .changed()
-            {
+            let drag = ui.add(DragValue::new(&mut value.active_value).range(0..=127));
+            if drag.changed() {
                 *dirty = true;
             }
+            r = Some(drag);
         });
+        if let Some(r) = r {
+            preview_active = preview_active || r.hovered() || r.dragged() || r.changed();
+        }
     } else {
+        let mut any_hovered = false;
+        let mut any_dragged = false;
         ui.horizontal(|ui| {
             ui.label("Min");
-            if ui.add(DragValue::new(&mut value.min).range(0..=127)).changed() {
+            let r = ui.add(DragValue::new(&mut value.min).range(0..=127));
+            if r.changed() {
                 *dirty = true;
             }
+            any_hovered |= r.hovered();
+            any_dragged |= r.dragged();
             ui.label("Max");
-            if ui.add(DragValue::new(&mut value.max).range(0..=127)).changed() {
+            let r = ui.add(DragValue::new(&mut value.max).range(0..=127));
+            if r.changed() {
                 *dirty = true;
             }
+            any_hovered |= r.hovered();
+            any_dragged |= r.dragged();
         });
+        preview_active = preview_active || any_hovered || any_dragged;
     }
 
     match &mut value.source {
@@ -157,31 +166,41 @@ pub(super) fn value_output_editor(
             start_beat,
             end_beat,
         } => {
+            let mut any_hovered = false;
+            let mut any_dragged = false;
             ui.horizontal(|ui| {
                 ui.label("Start Beat");
-                if ui
-                    .add(DragValue::new(start_beat).speed(0.01).range(0.0..=4.0))
-                    .changed()
-                {
+                let r = ui.add(DragValue::new(start_beat).speed(0.01).range(0.0..=4.0));
+                if r.changed() {
                     *dirty = true;
                 }
+                any_hovered |= r.hovered();
+                any_dragged |= r.dragged();
                 ui.label("End Beat");
-                if ui
-                    .add(DragValue::new(end_beat).speed(0.01).range(0.0..=4.0))
-                    .changed()
-                {
+                let r = ui.add(DragValue::new(end_beat).speed(0.01).range(0.0..=4.0));
+                if r.changed() {
                     *dirty = true;
                 }
+                any_hovered |= r.hovered();
+                any_dragged |= r.dragged();
             });
+            preview_active = preview_active || any_hovered || any_dragged;
             ui.small("Inclusive beat range on 0.0..4.0, wrap supported");
         }
         MidiValueSource::Blackout { inverted, blink } => {
-            if ui.checkbox(inverted, "Invert (On when blackout is off)").changed() {
+            let invert_response = ui.checkbox(inverted, "Invert (On when blackout is off)");
+            if invert_response.changed() {
                 *dirty = true;
             }
-            if ui.checkbox(blink, "Blink at 2 Hz when active").changed() {
+            let blink_response = ui.checkbox(blink, "Blink at 2 Hz when active");
+            if blink_response.changed() {
                 *dirty = true;
             }
+            preview_active = preview_active
+                || invert_response.hovered()
+                || invert_response.changed()
+                || blink_response.hovered()
+                || blink_response.changed();
         }
         MidiValueSource::SceneOpacity { target }
         | MidiValueSource::SceneInputDimmer { target }
@@ -208,27 +227,28 @@ pub(super) fn value_output_editor(
                 dirty,
                 format!("{}_value_target_{index}", controller_id),
             );
+            let mut any_hovered = false;
+            let mut any_dragged = false;
             ui.horizontal(|ui| {
                 ui.label("Effect Index");
-                if ui.add(DragValue::new(effect_index).range(0..=255)).changed() {
+                let r = ui.add(DragValue::new(effect_index).range(0..=255));
+                if r.changed() {
                     *dirty = true;
                 }
+                any_hovered |= r.hovered();
+                any_dragged |= r.dragged();
                 ui.label("Setting Index");
-                if ui.add(DragValue::new(setting_index).range(0..=255)).changed() {
+                let r = ui.add(DragValue::new(setting_index).range(0..=255));
+                if r.changed() {
                     *dirty = true;
                 }
+                any_hovered |= r.hovered();
+                any_dragged |= r.dragged();
             });
+            preview_active = preview_active || any_hovered || any_dragged;
         }
         _ => {}
     }
 
-    if test_device_selected && !value_source_uses_active_value(&value.source) {
-        let test_value = test_state.value_output_overrides.entry(index).or_insert(value.max);
-        ui.horizontal(|ui| {
-            ui.label(iconized(ui, icons::FLASK, " Test Output"));
-            ui.add(Slider::new(test_value, 0..=127).show_value(true));
-        });
-    } else {
-        test_state.value_output_overrides.remove(&index);
-    }
+    preview_active
 }

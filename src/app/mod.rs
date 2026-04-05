@@ -29,7 +29,7 @@ use crate::{
 };
 use eframe::egui_wgpu::Callback;
 use egui::{CentralPanel, Id, LayerId, Rect, Ui, UiBuilder, ViewportId, ahash::HashSet};
-use kanal::Receiver;
+use kanal::{Receiver, Sender};
 use persistant_state::PersistantState;
 use std::sync::Arc;
 use std::time::Instant;
@@ -51,6 +51,7 @@ pub struct App {
     pub git_commit_message: String,
     pub ui_action_receiver: Receiver<UiAction>,
     pub midi_monitor_receiver: kanal::Receiver<crate::midi::monitor::MidiMonitorEvent>,
+    pub test_command_sender: Sender<crate::midi::runtime::TestCommand>,
     pub midi_learn_state: crate::midi::learn::LearnState,
     pub last_title: String,
     pub midi_output_active: bool,
@@ -186,6 +187,7 @@ impl eframe::App for App {
             &mut self.extract_output,
             &mut self.sound_data,
             &self.midi_monitor_receiver,
+            &self.test_command_sender,
             &mut self.midi_learn_state,
         );
 
@@ -254,6 +256,7 @@ impl App {
         ui_action_receiver: Receiver<UiAction>,
         network_stats_receiver: Receiver<(f64, f64)>,
         midi_monitor_receiver: kanal::Receiver<crate::midi::monitor::MidiMonitorEvent>,
+        test_command_sender: Sender<crate::midi::runtime::TestCommand>,
         midi_learn_receiver: Receiver<[u8; 3]>,
         extract_output: ExtractOutput,
         artnet_control_receiver: Receiver<Vec<u8>>,
@@ -274,6 +277,7 @@ impl App {
             git_commit_message: Default::default(),
             ui_action_receiver,
             midi_monitor_receiver,
+            test_command_sender,
             midi_learn_state: crate::midi::learn::LearnState::new(midi_learn_receiver),
             last_title: Default::default(),
             midi_output_active: false,
