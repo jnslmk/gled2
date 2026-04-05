@@ -144,11 +144,9 @@ impl Runtime {
                     value,
                 } => {
                     let old = exec_state.active_outputs.insert((status, data1), value);
-                    if old != Some(value) {
-                        let port = exec_state
-                            .selected_test_device
-                            .as_deref()
-                            .unwrap_or("(no test device)");
+                    if old != Some(value)
+                        && let Some(port) = exec_state.selected_test_device.as_deref()
+                    {
                         crate::midi::monitor::push_event(
                             port,
                             "test output",
@@ -157,11 +155,9 @@ impl Runtime {
                     }
                 }
                 TestCommand::ClearOutput { status, data1 } => {
-                    if exec_state.active_outputs.remove(&(status, data1)).is_some() {
-                        let port = exec_state
-                            .selected_test_device
-                            .as_deref()
-                            .unwrap_or("(no test device)");
+                    if exec_state.active_outputs.remove(&(status, data1)).is_some()
+                        && let Some(port) = exec_state.selected_test_device.as_deref()
+                    {
                         crate::midi::monitor::push_event(
                             port,
                             "test clear",

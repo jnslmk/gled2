@@ -62,11 +62,12 @@ fn emit_test_output_commands(
     test_state: &mut MidiControllerTestState,
     test_command_sender: &Sender<TestCommand>,
 ) {
+    use crate::storage::asset::midi_controller::{MidiOutputBindingKind, MidiValueSource};
+
     // Send active preview values for all currently previewed value bindings.
     for &index in &test_state.value_preview_binding_indices {
         if let Some(binding) = bindings.get(index)
-            && let crate::storage::asset::midi_controller::MidiOutputBindingKind::Value(value_output) =
-                &binding.kind
+            && let MidiOutputBindingKind::Value(value_output) = &binding.kind
         {
             let _ = test_command_sender.send(TestCommand::SendOutput {
                 status: value_output.status,
@@ -78,23 +79,49 @@ fn emit_test_output_commands(
 
     // Detect newly inactive bindings (in previous but not in current)
     for &index in &test_state.value_preview_binding_indices_previous {
-        if !test_state.value_preview_binding_indices.contains(&index) {
-            // This binding is no longer active
-            if let Some(binding) = bindings.get(index)
-                && let crate::storage::asset::midi_controller::MidiOutputBindingKind::Value(value_output) =
-                    &binding.kind
-            {
-                let _ = test_command_sender.send(TestCommand::ClearOutput {
-                    status: value_output.status,
-                    data1: value_output.data1,
-                });
-            }
+        if !test_state.value_preview_binding_indices.contains(&index)
+            && let Some(binding) = bindings.get(index)
+            && let MidiOutputBindingKind::Value(value_output) = &binding.kind
+        {
+            let _ = test_command_sender.send(TestCommand::ClearOutput {
+                status: value_output.status,
+                data1: value_output.data1,
+            });
         }
     }
 
-    // Update previous state for next frame
     test_state.value_preview_binding_indices_previous =
         test_state.value_preview_binding_indices.clone();
+
+    // Send blackout blink preview values.
+    for &index in &test_state.blackout_blink_preview_binding_indices {
+        if let Some(binding) = bindings.get(index)
+            && let MidiOutputBindingKind::Value(value_output) = &binding.kind
+            && let MidiValueSource::BeatFlankPulse { blackout_blink_value: Some(v), .. } = &value_output.source
+        {
+            let _ = test_command_sender.send(TestCommand::SendOutput {
+                status: value_output.status,
+                data1: value_output.data1,
+                value: *v,
+            });
+        }
+    }
+
+    // Clear blackout blink previews that became inactive.
+    for &index in &test_state.blackout_blink_preview_binding_indices_previous {
+        if !test_state.blackout_blink_preview_binding_indices.contains(&index)
+            && let Some(binding) = bindings.get(index)
+            && let MidiOutputBindingKind::Value(value_output) = &binding.kind
+        {
+            let _ = test_command_sender.send(TestCommand::ClearOutput {
+                status: value_output.status,
+                data1: value_output.data1,
+            });
+        }
+    }
+
+    test_state.blackout_blink_preview_binding_indices_previous =
+        test_state.blackout_blink_preview_binding_indices.clone();
 }
 
 #[derive(Default)]
@@ -114,6 +141,8 @@ struct MidiControllerTestState {
     selected_output_port: Option<String>,
     value_preview_binding_indices: HashSet<usize>,
     value_preview_binding_indices_previous: HashSet<usize>,
+    blackout_blink_preview_binding_indices: HashSet<usize>,
+    blackout_blink_preview_binding_indices_previous: HashSet<usize>,
     hovered_status_data1: Option<(u8, u8)>,
 }
 
@@ -286,6 +315,7 @@ fn midi_controller_editor(
         ui.add_space(6.0);
 
         test_state.value_preview_binding_indices.clear();
+        test_state.blackout_blink_preview_binding_indices.clear();
 
         let mut remove_input = None;
         let mut pending_matching_output = Vec::new();
@@ -314,6 +344,7 @@ fn midi_controller_editor(
                 hovered_status_data1,
                 &mut hovered_status_data1_next,
                 &mut test_state.value_preview_binding_indices,
+                &mut test_state.blackout_blink_preview_binding_indices,
                 dirty,
                 controller_id,
                 learn_state,
@@ -346,7 +377,9 @@ fn midi_controller_editor(
         if let Some(index) = remove_output {
             // If this output was being previewed, clear it
             if (test_state.value_preview_binding_indices.contains(&index)
-                || test_state.value_preview_binding_indices_previous.contains(&index))
+                || test_state.value_preview_binding_indices_previous.contains(&index)
+                || test_state.blackout_blink_preview_binding_indices.contains(&index)
+                || test_state.blackout_blink_preview_binding_indices_previous.contains(&index))
                 && let Some((status, data1)) = output_binding_status_data1(
                     &mapping.output_bindings.get(index).cloned().unwrap_or_default(),
                     &mapping.color_mappings,

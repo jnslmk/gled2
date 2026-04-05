@@ -27,6 +27,7 @@ pub(super) fn render_output_column(
     hovered_status_data1: Option<(u8, u8)>,
     hovered_status_data1_next: &mut Option<(u8, u8)>,
     value_preview_binding_indices: &mut HashSet<usize>,
+    blackout_blink_preview_binding_indices: &mut HashSet<usize>,
     dirty: &mut bool,
     controller_id: crate::storage::asset_id::AssetId<MidiController>,
     learn_state: &mut LearnState,
@@ -163,7 +164,7 @@ pub(super) fn render_output_column(
                             *dirty = true;
                         }
                         if let MidiOutputBindingKind::Value(value) = &mut binding.kind {
-                            let preview_active = value_output_editor(
+                            let (preview_active, blackout_blink_preview_active) = value_output_editor(
                                 ui,
                                 value,
                                 dirty,
@@ -172,6 +173,9 @@ pub(super) fn render_output_column(
                             );
                             if preview_active || value_binding_preview_active {
                                 value_preview_binding_indices.insert(index);
+                            }
+                            if blackout_blink_preview_active {
+                                blackout_blink_preview_binding_indices.insert(index);
                             }
                         }
                     }

@@ -57,15 +57,30 @@ pub(super) fn send_output_from_snapshot(
                         MidiValueSource::BeatFlankPulse {
                             start_beat,
                             end_beat,
+                            blackout_blink_value,
                         } => {
-                            binary_output_value(
-                                beat_range_contains(
-                                    state.beat_progression.rem_euclid(4.0),
-                                    start_beat,
-                                    end_beat,
-                                ),
-                                output.active_value,
-                            )
+                            if state.blackout {
+                                if let Some(blink_value) = blackout_blink_value {
+                                    let bps = (state.beats_per_minute / 60.0).max(f32::EPSILON);
+                                    let elapsed = state.beat_progression / bps;
+                                    if (elapsed * 4.0).rem_euclid(1.0) < 0.5 {
+                                        blink_value
+                                    } else {
+                                        0
+                                    }
+                                } else {
+                                    0
+                                }
+                            } else {
+                                binary_output_value(
+                                    beat_range_contains(
+                                        state.beat_progression.rem_euclid(4.0),
+                                        start_beat,
+                                        end_beat,
+                                    ),
+                                    output.active_value,
+                                )
+                            }
                         }
                         MidiValueSource::Blackout { inverted, blink } => {
                             binary_output_value(blackout_output_active(state, inverted, blink), output.active_value)

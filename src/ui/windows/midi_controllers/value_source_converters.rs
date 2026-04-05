@@ -54,12 +54,13 @@ pub(super) fn value_source_from_kind(kind: MidiValueSourceKind, current: MidiVal
         MidiValueSourceKind::SelectedSceneSetOffsetOnFlash => MidiValueSource::SelectedSceneSetOffsetOnFlash,
         MidiValueSourceKind::MainDimmer => MidiValueSource::MainDimmer,
         MidiValueSourceKind::BeatFlank => match current {
-            MidiValueSource::BeatFlankPulse { start_beat, end_beat } => {
-                MidiValueSource::BeatFlankPulse { start_beat, end_beat }
+            MidiValueSource::BeatFlankPulse { start_beat, end_beat, blackout_blink_value } => {
+                MidiValueSource::BeatFlankPulse { start_beat, end_beat, blackout_blink_value }
             }
             _ => MidiValueSource::BeatFlankPulse {
                 start_beat: 0.0,
                 end_beat: 0.0,
+                blackout_blink_value: None,
             },
         },
         MidiValueSourceKind::Blackout => match current {

@@ -323,7 +323,8 @@ fn list_midi_output_ports() -> Vec<String> {
 }
 
 fn is_gled_midi_port(port_name: &str) -> bool {
-    port_name.contains("gled_read_input") || port_name.contains("gled_write_output")
+    port_name.contains("gled_read_input")
+    || port_name.contains("gled_write_output")
 }
 
 fn artnet_control_input_settings(ui: &mut Ui, project: &mut Project) {

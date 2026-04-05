@@ -170,6 +170,7 @@ pub enum MidiValueSource {
     BeatFlankPulse {
         start_beat: f32,
         end_beat: f32,
+        blackout_blink_value: Option<u8>,
     },
     Blackout {
         inverted: bool,

@@ -17,8 +17,9 @@ pub(super) fn value_output_editor(
     dirty: &mut bool,
     controller_id: crate::storage::asset_id::AssetId<MidiController>,
     index: usize,
-) -> bool {
+) -> (bool, bool) {
     let mut preview_active = false;
+    let mut blackout_blink_preview_active = false;
 
     ComboBox::new(format!("{}_value_source_{index}", controller_id), "")
         .selected_text(value_source_label(&value.source))
@@ -165,6 +166,7 @@ pub(super) fn value_output_editor(
         MidiValueSource::BeatFlankPulse {
             start_beat,
             end_beat,
+            blackout_blink_value,
         } => {
             let mut any_hovered = false;
             let mut any_dragged = false;
@@ -186,6 +188,26 @@ pub(super) fn value_output_editor(
             });
             preview_active = preview_active || any_hovered || any_dragged;
             ui.small("Inclusive beat range on 0.0..4.0, wrap supported");
+
+            let mut blink_enabled = blackout_blink_value.is_some();
+            if ui.checkbox(&mut blink_enabled, "Blink at 4 Hz on blackout").changed() {
+                *blackout_blink_value = if blink_enabled { Some(127) } else { None };
+                *dirty = true;
+            }
+            if let Some(v) = blackout_blink_value {
+                let mut blink_hovered = false;
+                let mut blink_dragged = false;
+                ui.horizontal(|ui| {
+                    ui.label("Blackout blink value");
+                    let r = ui.add(DragValue::new(v).range(1..=127));
+                    if r.changed() {
+                        *dirty = true;
+                    }
+                    blink_hovered |= r.hovered();
+                    blink_dragged |= r.dragged();
+                });
+                blackout_blink_preview_active = blink_hovered || blink_dragged;
+            }
         }
         MidiValueSource::Blackout { inverted, blink } => {
             let invert_response = ui.checkbox(inverted, "Invert (On when blackout is off)");
@@ -250,5 +272,5 @@ pub(super) fn value_output_editor(
         _ => {}
     }
 
-    preview_active
+    (preview_active, blackout_blink_preview_active)
 }
