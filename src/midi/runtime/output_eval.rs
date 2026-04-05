@@ -1,4 +1,5 @@
 use crate::{
+    midi::normalize_controller_key,
     midi::state::MidiState,
     storage::asset::midi_controller::{MidiOutputBindingKind, MidiValueSource},
 };
@@ -19,6 +20,7 @@ pub(super) fn send_output_from_snapshot(
         .lock()
         .expect("runtime test states lock poisoned")
         .clone();
+    let normalized_port_name = normalize_controller_key(port_name);
     let mut sent_any = false;
 
     for (controller_key, mapping) in mappings_by_controller {
@@ -29,7 +31,8 @@ pub(super) fn send_output_from_snapshot(
             .is_some_and(|port| port == port_name);
         let routed_to_port = matches!(
             controller_key,
-            RuntimeControllerKey::PortName(name) if name == port_name
+            RuntimeControllerKey::PortName(name)
+                if name == port_name || normalize_controller_key(name) == normalized_port_name
         );
         if !routed_to_port && !selected_test_port {
             continue;

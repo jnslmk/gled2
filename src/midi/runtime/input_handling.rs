@@ -1,4 +1,5 @@
 use crate::{
+    midi::normalize_controller_key,
     storage::asset::midi_controller::{MidiInputAction, MidiSceneTarget},
     ui::action::UiAction,
 };
@@ -130,10 +131,14 @@ fn resolve_mapping_for_port(
     mappings_by_controller: &HashMap<RuntimeControllerKey, ActiveRuntimeMapping>,
     port_name: &str,
 ) -> Option<ActiveRuntimeMapping> {
-    // Require exact port name match to avoid unintended mappings between different ports
-    // of the same multi-port device (e.g., iCON P1-X1 MIDI 1, 2, 3, 4)
+    // Prefer exact match, then fall back to normalized match (e.g. ALSA names with numeric suffixes).
+    let normalized_port_name = normalize_controller_key(port_name);
     mappings_by_controller.iter().find_map(|(key, mapping)| {
-        if matches!(key, RuntimeControllerKey::PortName(name) if name == port_name) {
+        if matches!(
+            key,
+            RuntimeControllerKey::PortName(name)
+                if name == port_name || normalize_controller_key(name) == normalized_port_name
+        ) {
             Some(mapping.clone())
         } else {
             None
