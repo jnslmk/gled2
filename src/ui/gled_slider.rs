@@ -72,11 +72,14 @@ impl Widget for GledSlider<'_> {
                         left.right_bottom() + Vec2::new(corner_radius as f32, 0.0),
                     )
                 };
+                let (selected_left, _) = rect.split_left_right_at_fraction(*self.value);
 
-                ui.painter_at(left)
-                    .rect_filled(rect, corner_radius, ACTUAL_VALUE_COLOR);
                 ui.painter_at(right)
                     .rect_filled(rect, corner_radius, TOP_COLOR);
+                ui.painter_at(selected_left)
+                    .rect_filled(rect, corner_radius, SELECTED_VALUE_COLOR);
+                ui.painter_at(left)
+                    .rect_filled(rect, corner_radius, ACTUAL_VALUE_COLOR);
                 ui.painter()
                     .rect_filled(handle_rect, corner_radius, HANDLE_COLOR);
                 ui.painter().rect_stroke(
