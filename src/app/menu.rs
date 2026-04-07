@@ -14,7 +14,6 @@ use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
 };
-use std::cmp::min;
 
 impl App {
     pub fn menu(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
@@ -375,6 +374,38 @@ impl App {
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     window_buttons(ui);
+
+                    let underlined = TextFormat {
+                        underline: Stroke::new(1.0, Color32::GRAY),
+                        ..Default::default()
+                    };
+                    let mut blackout_text = LayoutJob::default();
+                    blackout_text.append("B", 0.0, underlined);
+                    blackout_text.append("lackout", 0.0, TextFormat::default());
+                    let mut blackout = Button::new(blackout_text);
+                    if self.blackout
+                        && SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .map(|d| d.as_millis() / 200 % 2 == 0)
+                            .unwrap_or_default()
+                    {
+                        blackout = blackout.fill(Color32::DARK_RED);
+                    }
+                    if ui.add_sized(menu_button_size, blackout).clicked()
+                        || self
+                            .project
+                            .as_ref()
+                            .map(|project| project.blackout_input_is_new())
+                            .unwrap_or_default()
+                    {
+                        self.blackout = !self.blackout;
+                    }
+
+                    self.blackout_hold = self
+                        .project
+                        .as_ref()
+                        .map(|project| project.blackout_hold_input_is_live())
+                        .unwrap_or_default();
 
                     if CONNECTED_PEERS.load(Relaxed) > 0 {
                         ui.painter().rect_filled(
