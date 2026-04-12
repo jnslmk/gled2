@@ -8,16 +8,18 @@ use crate::{
         windows::channel_overwrites::ChannelOverwrites,
     },
 };
-use egui::{Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2, ViewportId, text::LayoutJob, ViewportCommand, PointerButton, Sense, Frame};
+use egui::{Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2, ViewportId, text::LayoutJob, ViewportCommand, PointerButton, Sense, Frame, Context, Separator};
 use log::debug;
 use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
 };
+use emath::Rect;
+use epaint::{RectShape, StrokeKind};
 
 impl App {
-    pub fn menu(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
-        egui::TopBottomPanel::top(format!("{viewport_id:?} menu")).show_inside(ui, |ui| {
+    pub fn menu(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
+        egui::TopBottomPanel::top(format!("{viewport_id:?} menu")).show(ctx, |ui| {
             if crate::storage::loading().is_some() {
                 ui.disable();
             }
@@ -26,7 +28,6 @@ impl App {
                 Id::new("title_bar"),
                 Sense::click_and_drag(),
             );
-            ui.add_space(10.0);
 
             // Interact with the title bar (drag to move window):
             if title_bar_response.double_clicked() {
@@ -40,29 +41,44 @@ impl App {
                     }
 
             egui::MenuBar::new().ui(ui, |ui| {
+                Frame::new()
+                    .show(ui, |ui| {
+                        ui.set_height(32.0);
 
-
-                let menu_button_size = Vec2::new(100.0, ui.available_height());
-
-                if ui.add(Button::image(Image::new(logo_image()))).clicked() {
-                    self.windows.about.open();
-                };
-
-                ui.separator();
-
-                let mut open_project = ui
-                    .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::O));
-                let mut save_project = ui
-                    .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::S));
-                let mut open_svg_file = ui.ctx().input_mut(|i| {
-                    i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::O)
+                        ui.columns_const(|[menu_col, bpm_col, window_col]| {
+                            self.menus(menu_col);
+                            self.bpm_settings(bpm_col);
+                            self.window_buttons(window_col);
+                        });
                 });
-                let mut save_svg_file = ui.ctx().input_mut(|i| {
-                    i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::S)
-                });
+            });
+        });
+    }
 
+    fn menus(&mut self, ui: &mut Ui) {
+        ui.horizontal_centered(|ui| {
+            ui.take_available_height();
+
+            if ui.add(Button::image(Image::new(logo_image()))).clicked() {
+                self.windows.about.open();
+            };
+
+            ui.separator();
+
+            let mut open_project = ui
+                .ctx()
+                .input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::O));
+            let mut save_project = ui
+                .ctx()
+                .input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::S));
+            let mut open_svg_file = ui.ctx().input_mut(|i| {
+                i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::O)
+            });
+            let mut save_svg_file = ui.ctx().input_mut(|i| {
+                i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::S)
+            });
+
+            ui.horizontal(|ui| {
                 ui.menu_button("Project", |ui| {
                     ui.set_min_width(300.0);
 
@@ -187,11 +203,11 @@ impl App {
                 }
                 if save_project
                     && let (Some(project), Some(mut asset)) = (
-                        self.project.as_ref(),
-                        self.project_id
-                            .and_then(|id| Asset::get(id, &self.collections))
-                            .map(Arc::unwrap_or_clone),
-                    )
+                    self.project.as_ref(),
+                    self.project_id
+                        .and_then(|id| Asset::get(id, &self.collections))
+                        .map(Arc::unwrap_or_clone),
+                )
                 {
                     asset.data = project.to_owned();
                     asset.data.artnet_config = ARTNET_CONFIG.lock().clone();
@@ -210,33 +226,33 @@ impl App {
                                 .pick_file()
                             {
                                 UiAction::SetSvg(match Svg::load(&path) {
-                                Ok(svg) => {
-                                    debug!("Loaded svg file \"{}\"", path.display());
-                                    Some(svg)
-                                }
-                                Err(err) => {
-                                    UiAction::Error(format!(
-                                        "Could not load svg file \"{}\": {err:?}",
-                                        path.display()
-                                    ))
-                                    .enqueue();
+                                    Ok(svg) => {
+                                        debug!("Loaded svg file \"{}\"", path.display());
+                                        Some(svg)
+                                    }
+                                    Err(err) => {
+                                        UiAction::Error(format!(
+                                            "Could not load svg file \"{}\": {err:?}",
+                                            path.display()
+                                        ))
+                                            .enqueue();
 
-                                    None
-                                }
-                            })
-                            .enqueue();
-                        }
-                    })
-                    .ok();
+                                        None
+                                    }
+                                })
+                                    .enqueue();
+                            }
+                        })
+                        .ok();
                 }
                 if save_svg_file
                     && let (Some(svg), Some(path)) = (
-                        self.svg(),
-                        rfd::FileDialog::new()
-                            .set_title("Save SVG file")
-                            .add_filter("svg", &["svg"])
-                            .save_file(),
-                    )
+                    self.svg(),
+                    rfd::FileDialog::new()
+                        .set_title("Save SVG file")
+                        .add_filter("svg", &["svg"])
+                        .save_file(),
+                )
                 {
                     match svg.save(&path) {
                         Ok(_) => {
@@ -247,7 +263,7 @@ impl App {
                                 "Could not save svg file \"{}\": {err:?}",
                                 path.display()
                             ))
-                            .enqueue();
+                                .enqueue();
                         }
                     };
                 }
@@ -372,63 +388,86 @@ impl App {
                         ViewportId(Id::new(format!("Second Window {}", rand::random::<u64>())));
                     self.other_main_windows.insert(viewport_id);
                 }
+            });
+        });
+    }
 
-                ui.separator();
+    fn  window_buttons(&mut self, ui: &mut Ui) {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            window_buttons(ui);
 
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    window_buttons(ui);
+            let underlined = TextFormat {
+                underline: Stroke::new(1.0, Color32::GRAY),
+                ..Default::default()
+            };
+            let mut blackout_text = LayoutJob::default();
+            blackout_text.append("B", 0.0, underlined);
+            blackout_text.append("lackout", 0.0, TextFormat::default());
+            let mut blackout = Button::new(blackout_text);
+            if self.blackout
+                && SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_millis() / 200 % 2 == 0)
+                .unwrap_or_default()
+            {
+                blackout = blackout.fill(Color32::DARK_RED);
+            }
+            if ui.add_sized(Vec2::new(100.0, 20.0), blackout).clicked()
+                || self
+                .project
+                .as_ref()
+                .map(|project| project.blackout_input_is_new())
+                .unwrap_or_default()
+            {
+                self.blackout = !self.blackout;
+            }
 
-                    let underlined = TextFormat {
-                        underline: Stroke::new(1.0, Color32::GRAY),
-                        ..Default::default()
-                    };
-                    let mut blackout_text = LayoutJob::default();
-                    blackout_text.append("B", 0.0, underlined);
-                    blackout_text.append("lackout", 0.0, TextFormat::default());
-                    let mut blackout = Button::new(blackout_text);
-                    if self.blackout
-                        && SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .map(|d| d.as_millis() / 200 % 2 == 0)
-                            .unwrap_or_default()
-                    {
-                        blackout = blackout.fill(Color32::DARK_RED);
-                    }
-                    if ui.add_sized(menu_button_size, blackout).clicked()
-                        || self
-                            .project
-                            .as_ref()
-                            .map(|project| project.blackout_input_is_new())
-                            .unwrap_or_default()
-                    {
-                        self.blackout = !self.blackout;
-                    }
+            self.blackout_hold = self
+                .project
+                .as_ref()
+                .map(|project| project.blackout_hold_input_is_live())
+                .unwrap_or_default();
 
-                    self.blackout_hold = self
-                        .project
-                        .as_ref()
-                        .map(|project| project.blackout_hold_input_is_live())
-                        .unwrap_or_default();
+        });
+    }
 
-                    if CONNECTED_PEERS.load(Relaxed) > 0 {
-                        ui.painter().rect_filled(
-                            ui.available_rect_before_wrap().shrink2(Vec2::new(0.0, 2.0)),
-                            3.0,
-                            LINK_ACTIVE_COLOR,
-                        );
-                    }
+    fn bpm_settings(&mut self, ui: &mut Ui) {
+        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+            let rect = ui.available_rect_before_wrap();
+            ui.painter().vline(
+                rect.left(),
+                rect.top()..=rect.bottom(),
+                ui.style().visuals.widgets.noninteractive.bg_stroke
+            );
+            if CONNECTED_PEERS.load(Relaxed) > 0 {
+                ui.painter().rect_stroke(
+                    ui.available_rect_before_wrap(),
+                    0.0,
+                    Stroke::new(1.0, LINK_ACTIVE_COLOR),
+                    StrokeKind::Outside,
+                );
+            }
+            Frame::new()
+                .fill(Color32::from_gray(20))
+                .inner_margin(3.0)
+                .show(ui, |ui| {
+                    ui.take_available_space();
 
-                    ui.add_space(5.0);
-                    self.timing.tap_button(
-                        ui,
-                        menu_button_size,
-                        self.project
-                            .as_ref()
-                            .map(|project| project.tap_input_is_new())
-                            .unwrap_or_default(),
+                    // add background shadow
+                    ui.painter().add(
+                        RectShape::filled(ui.available_rect_before_wrap().expand(1.0),
+                                          ui.ctx().style().visuals.widgets.active.corner_radius,
+                                          Color32::from_white_alpha(10))
+                            .with_blur_width(15.0),
                     );
 
-                    ui.separator();
+                    let slider_width = 300.0;
+                    ui.spacing_mut().slider_width = slider_width;
+                    ui.add(
+                        Slider::new(&mut self.timing.change_beats_per_minute, 20.0..=999.0)
+                            .custom_formatter(|n, _| format!("{n:.1} bpm")),
+                    );
+
                     self.timing.half_button(
                         ui,
                         self.project
@@ -443,18 +482,21 @@ impl App {
                             .map(|project| project.double_input_is_new())
                             .unwrap_or_default(),
                     );
-                    ui.separator();
-
-                    let slider_width = (ui.available_width() - 70.0).min(400.0);
-                    if slider_width > 5.0 {
-                        ui.spacing_mut().slider_width = slider_width;
-                    }
-                    ui.add(
-                        Slider::new(&mut self.timing.change_beats_per_minute, 20.0..=999.0)
-                            .custom_formatter(|n, _| format!("{n:.1} bpm")),
+                    self.timing.tap_button(
+                        ui,
+                        Vec2::new(50.0, 20.0),
+                        self.project
+                            .as_ref()
+                            .map(|project| project.tap_input_is_new())
+                            .unwrap_or_default(),
                     );
+
                 });
-            });
+            ui.painter().vline(
+                rect.right(),
+                rect.top()..=rect.bottom(),
+                ui.style().visuals.widgets.noninteractive.bg_stroke
+            );
         });
     }
 }

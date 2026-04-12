@@ -7,7 +7,7 @@ use std::{
 };
 
 pub static CONNECTED_PEERS: AtomicU64 = AtomicU64::new(0);
-pub static LINK_ACTIVE_COLOR: Color32 = Color32::from_rgb(120, 110, 30);
+pub static LINK_ACTIVE_COLOR: Color32 = Color32::from_rgb(41, 116, 145);
 
 pub struct Timing {
     link: AblLink,

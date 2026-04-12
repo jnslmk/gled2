@@ -11,12 +11,12 @@ pub mod svg;
 pub mod timing;
 
 use crate::{
-    audio::{AudioPool, sound_data::SoundData},
-    input::{Input, external_control::ExternalControlState},
+    audio::{sound_data::SoundData, AudioPool},
+    input::{external_control::ExternalControlState, Input},
     midi::state::MidiState,
     pipeline::{extract_output::ExtractOutput, renderer_callback::RendererCallback},
     storage::{
-        asset::{Asset, palette::Palette, project::Project, scene::grid::GridLocation},
+        asset::{palette::Palette, project::Project, scene::grid::GridLocation, Asset},
         asset_id::AssetId,
         collections::Collections,
         loading,
@@ -27,7 +27,7 @@ use crate::{
     },
 };
 use eframe::egui_wgpu::Callback;
-use egui::{CentralPanel, Id, Rect, UiBuilder, ViewportId, ahash::HashSet};
+use egui::{ahash::HashSet, CentralPanel, Id, Rect, UiBuilder, ViewportId};
 use kanal::Receiver;
 use persistant_state::PersistantState;
 use std::time::Instant;
@@ -245,8 +245,8 @@ impl App {
     #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn draw_main_window(&mut self, ctx: &egui::Context, viewport_id: Option<ViewportId>) {
         let panel_frame = egui::Frame::new()
-            .fill(ctx.style().visuals.window_fill())
-            .stroke(ctx.style().visuals.widgets.noninteractive.fg_stroke);
+            .fill(ctx.style().visuals.window_fill());
+        self.menu(ctx, viewport_id);
 
         CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
             if viewport_id.is_none() {
@@ -255,7 +255,6 @@ impl App {
             }
             let mut ui = ui.new_child(UiBuilder::new().max_rect(ui.max_rect().shrink(4.0)));
 
-            self.menu(&mut ui, viewport_id);
             self.status_bar(&mut ui, viewport_id);
 
             if let Some(error) = crate::storage::error() {
