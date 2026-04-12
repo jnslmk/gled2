@@ -8,13 +8,12 @@ use crate::{
         windows::channel_overwrites::ChannelOverwrites,
     },
 };
-use egui::{Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2, ViewportId, text::LayoutJob, ViewportCommand, PointerButton, Sense, Frame, Context, Separator};
+use egui::{Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2, ViewportId, text::LayoutJob, ViewportCommand, PointerButton, Sense, Frame, Context};
 use log::debug;
 use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
 };
-use emath::Rect;
 use epaint::{RectShape, StrokeKind};
 
 impl App {
