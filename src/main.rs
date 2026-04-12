@@ -174,6 +174,10 @@ fn main() {
             Input::init(&cc.egui_ctx, artnet_bridge_receiver);
             output_state::init();
 
+            cc.wgpu_render_state.as_ref().expect("wgpu render state is not available").device.on_uncaptured_error(Arc::new(|error| {
+                log::error!("WGPU error: {:?}", error);
+            }));
+
             WGPU_RENDER_STATE
                 .set(
                     cc.wgpu_render_state
