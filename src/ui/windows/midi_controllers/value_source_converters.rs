@@ -3,6 +3,7 @@ use crate::storage::asset::midi_controller::{MidiColorSource, MidiSceneTarget, M
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum MidiValueSourceKind {
     SelectedSceneOpacity,
+    SelectedSceneDistributed,
     SelectedSceneInputDimmer,
     SelectedSceneBeatOffset,
     SelectedSceneIgnoreMainDimmer,
@@ -23,6 +24,7 @@ pub(super) enum MidiValueSourceKind {
 pub(super) fn value_source_kind(source: &MidiValueSource) -> MidiValueSourceKind {
     match source {
         MidiValueSource::SelectedSceneOpacity => MidiValueSourceKind::SelectedSceneOpacity,
+        MidiValueSource::SelectedSceneDistributed => MidiValueSourceKind::SelectedSceneDistributed,
         MidiValueSource::SelectedSceneInputDimmer => MidiValueSourceKind::SelectedSceneInputDimmer,
         MidiValueSource::SelectedSceneBeatOffset => MidiValueSourceKind::SelectedSceneBeatOffset,
         MidiValueSource::SelectedSceneIgnoreMainDimmer => {
@@ -48,6 +50,7 @@ pub(super) fn value_source_kind(source: &MidiValueSource) -> MidiValueSourceKind
 pub(super) fn value_source_from_kind(kind: MidiValueSourceKind, current: MidiValueSource) -> MidiValueSource {
     match kind {
         MidiValueSourceKind::SelectedSceneOpacity => MidiValueSource::SelectedSceneOpacity,
+        MidiValueSourceKind::SelectedSceneDistributed => MidiValueSource::SelectedSceneDistributed,
         MidiValueSourceKind::SelectedSceneInputDimmer => MidiValueSource::SelectedSceneInputDimmer,
         MidiValueSourceKind::SelectedSceneBeatOffset => MidiValueSource::SelectedSceneBeatOffset,
         MidiValueSourceKind::SelectedSceneIgnoreMainDimmer => MidiValueSource::SelectedSceneIgnoreMainDimmer,
@@ -133,6 +136,7 @@ fn current_effect_setting_from_value_source(source: &MidiValueSource) -> (u8, u8
 pub(super) fn value_source_label(source: &MidiValueSource) -> &'static str {
     match source {
         MidiValueSource::SelectedSceneOpacity => "Selected Scene Opacity",
+        MidiValueSource::SelectedSceneDistributed => "Selected Scene (Distributed 0-127)",
         MidiValueSource::SelectedSceneInputDimmer => "Selected Scene Input Dimmer",
         MidiValueSource::SelectedSceneBeatOffset => "Selected Scene Beat Offset",
         MidiValueSource::SelectedSceneIgnoreMainDimmer => "Selected Scene Ignore Main Dimmer",
@@ -162,6 +166,7 @@ pub(super) fn value_source_uses_active_value(source: &MidiValueSource) -> bool {
         | MidiValueSource::SceneActive { .. }
         | MidiValueSource::SceneFlashed { .. } => true,
         MidiValueSource::SelectedSceneOpacity
+        | MidiValueSource::SelectedSceneDistributed
         | MidiValueSource::SelectedSceneInputDimmer
         | MidiValueSource::SelectedSceneBeatOffset
         | MidiValueSource::MainDimmer

@@ -148,6 +148,11 @@ pub(super) fn render_input_column(
                         );
                         ui.selectable_value(
                             &mut action_kind,
+                            MidiInputActionKind::SelectSceneDistributed,
+                            "Select Scene (Distributed 0-127)",
+                        );
+                        ui.selectable_value(
+                            &mut action_kind,
                             MidiInputActionKind::SelectScene,
                             "Select Scene",
                         );
@@ -248,6 +253,13 @@ pub(super) fn render_input_column(
                             *dirty = true;
                         }
                     });
+                }
+
+                if matches!(
+                    binding.action,
+                    crate::storage::asset::midi_controller::MidiInputAction::SelectSceneDistributed
+                ) {
+                    ui.small("Maps value 0..127 evenly across existing scenes in row-major order.");
                 }
 
                 if ui

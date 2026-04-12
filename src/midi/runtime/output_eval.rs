@@ -6,16 +6,19 @@ use crate::{
 use midir::MidiOutputConnection;
 
 use super::{
-    ActiveRuntimeMapping, RuntimeControllerKey, scene_state,
+    MidiRuntimeSnapshot, RuntimeControllerKey, scene_state,
     runtime_test_execution_state,
 };
 
 pub(super) fn send_output_from_snapshot(
-    mappings_by_controller: &std::collections::HashMap<RuntimeControllerKey, ActiveRuntimeMapping>,
+    snapshot: &MidiRuntimeSnapshot,
     port_name: &str,
     state: &MidiState,
     connection: &mut MidiOutputConnection,
+    last_sent_outputs: &mut std::collections::HashMap<(u8, u8), u8>,
+    last_input_values: &std::collections::HashMap<(u8, u8), u8>,
 ) -> bool {
+    let mappings_by_controller = &snapshot.mappings_by_controller;
     let normalized_port_name = normalize_controller_key(port_name);
     let mut sent_any = false;
 
@@ -38,6 +41,22 @@ pub(super) fn send_output_from_snapshot(
                     let midi_value = match output.source {
                         MidiValueSource::SelectedSceneOpacity => {
                             scale_to_range(state.selected_scene_opacity, output.min, output.max)
+                        }
+                        MidiValueSource::SelectedSceneDistributed => {
+                            let value = last_input_values
+                                .get(&(output.status, output.data1))
+                                .copied()
+                                .unwrap_or_else(|| {
+                                    let scene_count = snapshot.scene_locations_row_major.len();
+                                    let selected_index = snapshot
+                                        .scene_locations_row_major
+                                        .iter()
+                                        .position(|location| *location == state.selected_scene_location)
+                                        .unwrap_or(0);
+
+                                    value_for_distributed_scene_index(selected_index, scene_count)
+                                });
+                            scale_to_range(f32::from(value) / 127.0, output.min, output.max)
                         }
                         MidiValueSource::SelectedSceneInputDimmer => {
                             scale_to_range(state.selected_scene_input_dimmer, output.min, output.max)
@@ -121,10 +140,16 @@ pub(super) fn send_output_from_snapshot(
                             output.max,
                         ),
                     };
-                    if let Err(err) = connection.send(&[output.status, output.data1, midi_value]) {
-                        log::error!("Could not send generic midi value output: {err:?}");
+                    if send_if_changed(
+                        connection,
+                        last_sent_outputs,
+                        output.status,
+                        output.data1,
+                        midi_value,
+                        "generic midi value output",
+                    ) {
+                        sent_any = true;
                     }
-                    sent_any = true;
                 }
                 MidiOutputBindingKind::SceneColorValue(output) => {
                     let (target, scene_color) = match output.source {
@@ -147,10 +172,16 @@ pub(super) fn send_output_from_snapshot(
                         &active_mapping.inactive
                     };
                     let message = selected_map.message_for_color(scene_color);
-                    if let Err(err) = connection.send(&[output.status, output.data1, message.value]) {
-                        log::error!("Could not send scene color midi value output: {err:?}");
+                    if send_if_changed(
+                        connection,
+                        last_sent_outputs,
+                        output.status,
+                        output.data1,
+                        message.value,
+                        "scene color midi value output",
+                    ) {
+                        sent_any = true;
                     }
-                    sent_any = true;
                 }
             }
         }
@@ -170,9 +201,14 @@ pub(super) fn send_output_from_snapshot(
             
             if is_test_port {
                 for ((status, data1), value) in &exec_state.active_outputs {
-                    if let Err(err) = connection.send(&[*status, *data1, *value]) {
-                        log::error!("Could not send test device output: {err:?}");
-                    } else {
+                    if send_if_changed(
+                        connection,
+                        last_sent_outputs,
+                        *status,
+                        *data1,
+                        *value,
+                        "test device output",
+                    ) {
                         sent_any = true;
                     }
                 }
@@ -188,6 +224,28 @@ fn scale_to_range(value: f32, min: u8, max: u8) -> u8 {
     let max = f32::from(max);
     let value = value.clamp(0.0, 1.0);
     (min + (max - min) * value).round() as u8
+}
+
+fn send_if_changed(
+    connection: &mut MidiOutputConnection,
+    last_sent_outputs: &mut std::collections::HashMap<(u8, u8), u8>,
+    status: u8,
+    data1: u8,
+    value: u8,
+    label: &str,
+) -> bool {
+    let key = (status, data1);
+    if last_sent_outputs.get(&key).copied() == Some(value) {
+        return false;
+    }
+
+    if let Err(err) = connection.send(&[status, data1, value]) {
+        log::error!("Could not send {label}: {err:?}");
+        return false;
+    }
+
+    last_sent_outputs.insert(key, value);
+    true
 }
 
 fn binary_output_value(active: bool, active_value: u8) -> u8 {
@@ -218,4 +276,58 @@ fn blackout_output_active(state: &MidiState, inverted: bool, blink: bool) -> boo
     let beats_per_second = (state.beats_per_minute / 60.0).max(f32::EPSILON);
     let elapsed_seconds = state.beat_progression / beats_per_second;
     (elapsed_seconds * 2.0).rem_euclid(1.0) < 0.5
+}
+
+fn distributed_scene_index_from_midi(value: u8, scene_count: usize) -> Option<usize> {
+    if scene_count == 0 {
+        return None;
+    }
+
+    Some((((usize::from(value) + 1) * scene_count).saturating_sub(1)) / 128)
+}
+
+fn value_for_distributed_scene_index(index: usize, scene_count: usize) -> u8 {
+    if scene_count == 0 {
+        return 0;
+    }
+
+    for value in 0u8..=127u8 {
+        if distributed_scene_index_from_midi(value, scene_count) == Some(index) {
+            let mut last = value;
+            for candidate in value..=127u8 {
+                if distributed_scene_index_from_midi(candidate, scene_count) == Some(index) {
+                    last = candidate;
+                } else {
+                    break;
+                }
+            }
+            return ((u16::from(value) + u16::from(last)) / 2) as u8;
+        }
+    }
+
+    // More scenes than values can make some indices unreachable; use monotonic fallback.
+    if scene_count <= 1 {
+        return 0;
+    }
+    ((index.min(scene_count - 1) * 127) / (scene_count - 1)) as u8
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{distributed_scene_index_from_midi, value_for_distributed_scene_index};
+
+    #[test]
+    fn distributed_index_covers_first_and_last_scene() {
+        assert_eq!(distributed_scene_index_from_midi(0, 5), Some(0));
+        assert_eq!(distributed_scene_index_from_midi(127, 5), Some(4));
+    }
+
+    #[test]
+    fn distributed_value_round_trips_for_reachable_indices() {
+        let scene_count = 24;
+        for index in 0..scene_count {
+            let value = value_for_distributed_scene_index(index, scene_count);
+            assert_eq!(distributed_scene_index_from_midi(value, scene_count), Some(index));
+        }
+    }
 }

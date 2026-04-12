@@ -64,6 +64,7 @@ pub enum MidiInputAction {
     SetBlackout,
     SetSpeedAdd,
     SetSpeedMultiply,
+    SelectSceneDistributed,
     SelectScene {
         target: MidiSceneTarget,
     },
@@ -162,6 +163,7 @@ impl Default for MidiValueOutput {
 pub enum MidiValueSource {
     #[default]
     SelectedSceneOpacity,
+    SelectedSceneDistributed,
     SelectedSceneInputDimmer,
     SelectedSceneBeatOffset,
     SelectedSceneIgnoreMainDimmer,

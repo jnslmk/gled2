@@ -12,6 +12,7 @@ pub(super) fn input_action_label(action: &MidiInputAction) -> &'static str {
         MidiInputAction::SetBlackout => "Set Blackout",
         MidiInputAction::SetSpeedAdd => "Set Speed Add",
         MidiInputAction::SetSpeedMultiply => "Set Speed Multiply",
+        MidiInputAction::SelectSceneDistributed => "Select Scene (Distributed 0-127)",
         MidiInputAction::SelectScene { .. } => "Select Scene",
         MidiInputAction::ToggleSceneActive { .. } => "Toggle Scene Active",
         MidiInputAction::SetSceneActive { .. } => "Set Scene Active",
@@ -67,6 +68,7 @@ fn output_source_from_input_action(action: &MidiInputAction) -> Option<MidiValue
             inverted: false,
             blink: false,
         }),
+        MidiInputAction::SelectSceneDistributed => Some(MidiValueSource::SelectedSceneDistributed),
         MidiInputAction::SetSceneActive { target } => Some(MidiValueSource::SceneActive {
             target: target.clone(),
         }),

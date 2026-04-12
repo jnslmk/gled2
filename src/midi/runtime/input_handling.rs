@@ -10,6 +10,14 @@ use super::{
     scene_state::scene_target_to_union,
 };
 
+fn distributed_scene_index_from_midi(value: u8, scene_count: usize) -> Option<usize> {
+    if scene_count == 0 {
+        return None;
+    }
+
+    Some((((usize::from(value) + 1) * scene_count).saturating_sub(1)) / 128)
+}
+
 pub(super) fn handle_input_from_snapshot(
     snapshot: &MidiRuntimeSnapshot,
     port_name: &str,
@@ -49,6 +57,12 @@ pub(super) fn handle_input_from_snapshot(
             MidiInputAction::SetSpeedMultiply => {
                 Some(UiAction::SpeedMultiply(if value > 63 { 2.0 } else { 0.5 }))
             }
+            MidiInputAction::SelectSceneDistributed => distributed_scene_index_from_midi(
+                value,
+                snapshot.scene_locations_row_major.len(),
+            )
+            .and_then(|index| snapshot.scene_locations_row_major.get(index).copied())
+            .map(UiAction::SelectSceneByLocation),
             MidiInputAction::SelectScene { ref target } => match target {
                 MidiSceneTarget::Selected => None,
                 _ => scene_target_to_union(target).map(UiAction::SelectScene),
@@ -144,4 +158,22 @@ fn resolve_mapping_for_port(
             None
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::distributed_scene_index_from_midi;
+
+    #[test]
+    fn distributed_scene_index_spans_full_range() {
+        assert_eq!(distributed_scene_index_from_midi(0, 8), Some(0));
+        assert_eq!(distributed_scene_index_from_midi(63, 8), Some(3));
+        assert_eq!(distributed_scene_index_from_midi(64, 8), Some(4));
+        assert_eq!(distributed_scene_index_from_midi(127, 8), Some(7));
+    }
+
+    #[test]
+    fn distributed_scene_index_handles_empty_scene_list() {
+        assert_eq!(distributed_scene_index_from_midi(0, 0), None);
+    }
 }

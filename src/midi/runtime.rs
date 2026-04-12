@@ -104,11 +104,14 @@ pub struct Runtime {
     receiver: Receiver<MidiRuntimeSnapshot>,
     snapshot: MidiRuntimeSnapshot,
     test_command_receiver: Arc<Mutex<Receiver<TestCommand>>>,
+    last_sent_outputs: HashMap<(u8, u8), u8>,
+    last_input_values: HashMap<(u8, u8), u8>,
 }
 
 #[derive(Default, Clone)]
 pub(super) struct MidiRuntimeSnapshot {
     pub(super) mappings_by_controller: HashMap<RuntimeControllerKey, ActiveRuntimeMapping>,
+    pub(super) scene_locations_row_major: Vec<crate::storage::asset::scene::grid::GridLocation>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -178,7 +181,12 @@ impl Runtime {
 
     pub fn handle_input(&mut self, port_name: &str, message: &[u8]) -> bool {
         self.refresh_snapshot();
-        input_handling::handle_input_from_snapshot(&self.snapshot, port_name, message)
+        let handled = input_handling::handle_input_from_snapshot(&self.snapshot, port_name, message);
+        if handled && message.len() == 3 {
+            self.last_input_values
+                .insert((message[0], message[1]), message[2]);
+        }
+        handled
     }
 
     pub fn send_output(
@@ -190,10 +198,12 @@ impl Runtime {
         self.refresh_snapshot();
         self.process_test_commands();
         output_eval::send_output_from_snapshot(
-            &self.snapshot.mappings_by_controller,
+            &self.snapshot,
             port_name,
             state,
             connection,
+            &mut self.last_sent_outputs,
+            &self.last_input_values,
         )
     }
 }
@@ -241,6 +251,8 @@ impl RuntimeBus {
             receiver,
             snapshot: MidiRuntimeSnapshot::default(),
             test_command_receiver: Arc::clone(&self.test_command_receiver),
+            last_sent_outputs: HashMap::new(),
+            last_input_values: HashMap::new(),
         }
     }
 }
@@ -255,6 +267,12 @@ impl Default for RuntimeBus {
 fn snapshot_from_project_state(state: &ProjectState, collections: &Collections) -> MidiRuntimeSnapshot {
     let mut mappings_by_controller = HashMap::new();
     let mut included_controller_ids = HashSet::new();
+    let mut scene_locations_row_major = Vec::new();
+
+    if let Some(project) = state.project.as_ref() {
+        scene_locations_row_major = project.scenes_instances_grid.keys().copied().collect();
+        scene_locations_row_major.sort_by_key(|location| (location.row, location.col));
+    }
 
     if let Some(project) = state.project.as_ref() {
         for (controller_key, selection) in &project.midi_active_mappings {
@@ -293,6 +311,7 @@ fn snapshot_from_project_state(state: &ProjectState, collections: &Collections) 
 
     MidiRuntimeSnapshot {
         mappings_by_controller,
+        scene_locations_row_major,
     }
 }
 

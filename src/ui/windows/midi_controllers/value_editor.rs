@@ -35,6 +35,13 @@ pub(super) fn value_output_editor(
                 || ui
                     .selectable_value(
                         &mut kind,
+                        MidiValueSourceKind::SelectedSceneDistributed,
+                        "Selected Scene (Distributed 0-127)",
+                    )
+                    .changed()
+                || ui
+                    .selectable_value(
+                        &mut kind,
                         MidiValueSourceKind::SelectedSceneInputDimmer,
                         "Selected Scene Input Dimmer",
                     )

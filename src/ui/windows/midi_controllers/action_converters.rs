@@ -8,6 +8,7 @@ pub(super) enum MidiInputActionKind {
     SetBlackout,
     SetSpeedAdd,
     SetSpeedMultiply,
+    SelectSceneDistributed,
     SelectScene,
     ToggleSceneActive,
     SetSceneActive,
@@ -33,6 +34,7 @@ pub(super) fn input_action_kind(action: &MidiInputAction) -> MidiInputActionKind
         MidiInputAction::SetBlackout => MidiInputActionKind::SetBlackout,
         MidiInputAction::SetSpeedAdd => MidiInputActionKind::SetSpeedAdd,
         MidiInputAction::SetSpeedMultiply => MidiInputActionKind::SetSpeedMultiply,
+        MidiInputAction::SelectSceneDistributed => MidiInputActionKind::SelectSceneDistributed,
         MidiInputAction::SelectScene { .. } => MidiInputActionKind::SelectScene,
         MidiInputAction::ToggleSceneActive { .. } => MidiInputActionKind::ToggleSceneActive,
         MidiInputAction::SetSceneActive { .. } => MidiInputActionKind::SetSceneActive,
@@ -61,6 +63,7 @@ pub(super) fn input_action_from_kind(
         MidiInputActionKind::SetBlackout => MidiInputAction::SetBlackout,
         MidiInputActionKind::SetSpeedAdd => MidiInputAction::SetSpeedAdd,
         MidiInputActionKind::SetSpeedMultiply => MidiInputAction::SetSpeedMultiply,
+        MidiInputActionKind::SelectSceneDistributed => MidiInputAction::SelectSceneDistributed,
         MidiInputActionKind::SelectScene => MidiInputAction::SelectScene {
             target: current_target_from_action(&current),
         },
