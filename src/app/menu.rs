@@ -8,7 +8,7 @@ use crate::{
         windows::channel_overwrites::ChannelOverwrites,
     },
 };
-use egui::{Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2, ViewportId, text::LayoutJob, ViewportCommand, PointerButton, Sense};
+use egui::{Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2, ViewportId, text::LayoutJob, ViewportCommand, PointerButton, Sense, Frame};
 use log::debug;
 use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
@@ -21,23 +21,26 @@ impl App {
             if crate::storage::loading().is_some() {
                 ui.disable();
             }
+            let title_bar_response = ui.interact(
+                ui.available_rect_before_wrap(),
+                Id::new("title_bar"),
+                Sense::click_and_drag(),
+            );
+            ui.add_space(10.0);
+
+            // Interact with the title bar (drag to move window):
+            if title_bar_response.double_clicked() {
+                let is_maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
+                ui.ctx()
+                    .send_viewport_cmd(ViewportCommand::Maximized(!is_maximized));
+            }
+
+            if title_bar_response.drag_started_by(PointerButton::Primary) {
+                ui.ctx().send_viewport_cmd(ViewportCommand::StartDrag);
+                    }
 
             egui::MenuBar::new().ui(ui, |ui| {
-                let title_bar_response = ui.interact(
-                    ui.available_rect_before_wrap(),
-                    Id::new("title_bar"),
-                    Sense::click_and_drag(),
-                );
-                // Interact with the title bar (drag to move window):
-                if title_bar_response.double_clicked() {
-                    let is_maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
-                    ui.ctx()
-                        .send_viewport_cmd(ViewportCommand::Maximized(!is_maximized));
-                }
 
-                if title_bar_response.drag_started_by(PointerButton::Primary) {
-                    ui.ctx().send_viewport_cmd(ViewportCommand::StartDrag);
-                }
 
                 let menu_button_size = Vec2::new(100.0, ui.available_height());
 
