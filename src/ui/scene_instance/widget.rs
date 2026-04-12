@@ -179,13 +179,6 @@ impl SceneInstanceWidget<'_> {
                         ),
                 ));
             }
-            if !self.scene_instance.active && !self.scene_instance.flash {
-                ui.painter().rect_filled(
-                    preview_rect.expand(1.),
-                    0.,
-                    Color32::from_black_alpha(100),
-                );
-            }
         });
     }
 
