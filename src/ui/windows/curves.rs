@@ -38,8 +38,8 @@ impl CurvesWindow {
                 });
 
                 gled_window_frame(ctx, "Curves", |ui| {
-                    egui::SidePanel::left("curves tree")
-                        .exact_width(TREE_WIDTH)
+                    egui::Panel::left("curves tree")
+                        .exact_size(TREE_WIDTH)
                         .resizable(false)
                         .show_inside(ui, |ui| {
                             if self

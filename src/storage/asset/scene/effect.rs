@@ -94,7 +94,7 @@ impl Effect {
     pub fn prepare(
         &mut self,
         queue: &Queue,
-        palette: Option<Arc<Asset<Palette>>>,
+        palette: Option<Palette>,
         groups: &Groups,
         main_opacity: f32,
         collections: &Collections,

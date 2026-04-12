@@ -238,7 +238,7 @@ pub fn start_thread(
                 }
             }
         })
-        .expect("Could not spawn artnet receive thread for {addr}");
+        .expect("Could not spawn artnet receive thread");
 
     (bridge_receiver, control_receiver)
 }

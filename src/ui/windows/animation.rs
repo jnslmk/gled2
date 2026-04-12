@@ -98,7 +98,8 @@ impl AnimationWindow {
                 queue,
                 persistant_state
                     .preview_palette()
-                    .and_then(|id| Asset::get(id, collections)),
+                    .and_then(|id| Asset::get(id, collections))
+                    .map(|palette| palette.data.clone()),
                 &Default::default(),
                 1.0,
                 collections,
@@ -133,8 +134,8 @@ impl AnimationWindow {
                 });
 
                 gled_window_frame(ctx, "Animations", |ui| {
-                    egui::SidePanel::left("animations tree")
-                        .exact_width(TREE_WIDTH)
+                    egui::Panel::left("animations tree")
+                        .exact_size(TREE_WIDTH)
                         .resizable(false)
                         .show_inside(ui, |ui| {
                             if self.tree.show(
@@ -147,8 +148,8 @@ impl AnimationWindow {
                             }
                         });
 
-                    egui::SidePanel::right("animation editor")
-                        .exact_width(300.0)
+                    egui::Panel::right("animation editor")
+                        .exact_size(300.0)
                         .resizable(false)
                         .show_inside(ui, |ui| {
                             if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
@@ -243,8 +244,8 @@ impl AnimationWindow {
 
                 gled_window_frame(ctx, "Animation Preview", |ui| {
                     if let Some(effect) = &mut self.effect {
-                        egui::SidePanel::right("animation preview right side")
-                            .exact_width(300.0)
+                        egui::Panel::right("animation preview right side")
+                            .exact_size(300.0)
                             .resizable(false)
                             .show_inside(ui, |ui| {
                                 ScrollArea::vertical()

@@ -1,4 +1,4 @@
-use crate::audio::{AUDIO_DEVICES, audio_device_info_loop};
+use crate::audio::{AUDIO_DEVICES, audio_device_info_loop, audio_device_labels};
 use crate::storage::asset::project::Project;
 use crate::storage::collections::Collections;
 use crate::ui::action::UiAction;
@@ -13,7 +13,7 @@ use crate::{
 };
 use chrono::Local;
 use egui::{
-    Button, CentralPanel, ComboBox, Context, DragValue, Id, Layout, Response, RichText, SidePanel,
+    Button, CentralPanel, ComboBox, Context, DragValue, Id, Layout, Response, RichText,
     Slider, Ui, Vec2, ViewportId, Widget, WidgetText,
 };
 use egui_phosphor_icons::icons;
@@ -113,10 +113,10 @@ fn audio_input_settings(ui: &mut Ui, state: &mut Project) {
     let mut selected = project.audio_input_device.clone();
     let old_selected = selected.clone();
 
-    let devices = AUDIO_DEVICES.lock().unwrap().clone();
+    let devices = audio_device_labels(&AUDIO_DEVICES.lock().unwrap().clone());
     ui.selectable_value(&mut selected, None, "None");
-    for (id, desc) in devices {
-        ui.selectable_value(&mut selected, Some(id), desc.name());
+    for (id, label) in devices {
+        ui.selectable_value(&mut selected, Some(id), label);
     }
 
     if selected != old_selected {
@@ -259,10 +259,10 @@ impl<'a, S> SettingsMenu<'a, S> {
 impl<'a, S> Widget for SettingsMenu<'a, S> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         debug_assert!(!self.submenus.is_empty());
-        SidePanel::left("artnet_input_config")
+        egui::Panel::left("artnet_input_config")
             .resizable(true)
-            .width_range(100.0..=200.0)
-            .default_width(150.0)
+            .size_range(100.0..=200.0)
+            .default_size(150.0)
             .show_inside(ui, |ui| {
                 ui.take_available_space();
                 self.submenus.keys().for_each(|key| {

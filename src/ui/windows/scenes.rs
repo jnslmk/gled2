@@ -6,7 +6,7 @@ use crate::{
         asset::{
             Asset,
             animation::Animation,
-            scene::{Scene, effect::Effect},
+            scene::Scene,
         },
         asset_id::AssetId,
         collections::Collections,
@@ -14,13 +14,15 @@ use crate::{
     ui::{
         asset::CollectionsChangeButton,
         asset_tree::{AssetTree, TREE_WIDTH, TreeSelection},
-        effect::widget::EffectWidget,
+        scene_effect_editor::{
+            SceneEffectEditorState, scene_effect_list_ui, selected_effect_editor_ui,
+        },
         window_common::{default_viewport_builder, gled_window_frame},
     },
     wgpu_render_state,
 };
 use egui::{
-    Button, Color32, Context, Id, Margin, ScrollArea, Stroke, Vec2, ViewportId,
+    Color32, Context, Id, Margin, ScrollArea, Stroke, Vec2, ViewportId,
     scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
 use wgpu::CommandEncoderDescriptor;
@@ -30,7 +32,7 @@ pub struct ScenesWindow {
     open: bool,
     dirty: bool,
     tree: AssetTree<Scene>,
-    selected_effect: usize,
+    effect_editor: SceneEffectEditorState,
 }
 
 impl ScenesWindow {
@@ -63,8 +65,8 @@ impl ScenesWindow {
                 });
 
                 gled_window_frame(ctx, "Scenes", |ui| {
-                    egui::SidePanel::left("scenes tree")
-                        .exact_width(TREE_WIDTH)
+                    egui::Panel::left("scenes tree")
+                        .exact_size(TREE_WIDTH)
                         .resizable(false)
                         .show_inside(ui, |ui| {
                             if self
@@ -72,12 +74,12 @@ impl ScenesWindow {
                                 .show(ui, ui.make_persistent_id("scenes_tree"), collections)
                             {
                                 self.dirty = false;
-                                self.selected_effect = 0;
+                                self.effect_editor.reset();
                             }
                         });
 
-                    egui::SidePanel::right("scene editor")
-                        .exact_width(300.0)
+                    egui::Panel::right("scene editor")
+                        .exact_size(300.0)
                         .resizable(false)
                         .show_inside(ui, |ui| {
                             let TreeSelection::Asset(scene) = self.tree.selected() else {
@@ -88,60 +90,16 @@ impl ScenesWindow {
                                 .id_salt("scene_editor_scroll")
                                 .scroll_bar_visibility(AlwaysVisible)
                                 .show(ui, |ui| {
-                                    if let Some(effect) = scene.data.effect(self.selected_effect) {
-                                        self.dirty |= effect.config_ui(
-                                            ui,
-                                            true,
-                                            None,
-                                            1.0,
-                                            collections,
-                                            sound_data,
-                                        );
-                                    }
-
-                                    ui.separator();
-
-                                    ui.vertical_centered_justified(|ui| {
-                                        if ui
-                                            .add(
-                                                Button::new("+ Add Animation")
-                                                    .fill(Color32::DARK_GREEN),
-                                            )
-                                            .clicked()
-                                        {
-                                            self.selected_effect =
-                                                scene.data.add_effect(Effect::default());
-                                            self.dirty = true;
-                                        }
-                                    });
-                                    ui.vertical_centered_justified(|ui| {
-                                        if ui
-                                            .add(
-                                                Button::new("🗐 Duplicate Animation")
-                                                    .fill(Color32::DARK_BLUE),
-                                            )
-                                            .clicked()
-                                            && let Some(effect) =
-                                                scene.data.effect(self.selected_effect).cloned()
-                                        {
-                                            self.selected_effect = scene.data.add_effect(effect);
-                                            self.dirty = true;
-                                        }
-                                    });
-                                    ui.vertical_centered_justified(|ui| {
-                                        if ui
-                                            .add(
-                                                Button::new("🗑 Remove Animation")
-                                                    .fill(Color32::DARK_RED),
-                                            )
-                                            .clicked()
-                                        {
-                                            scene.data.remove_effect(self.selected_effect);
-                                            self.selected_effect =
-                                                self.selected_effect.saturating_sub(1);
-                                            self.dirty = true;
-                                        }
-                                    });
+                                    self.dirty |= selected_effect_editor_ui(
+                                        ui,
+                                        &mut scene.data,
+                                        &mut self.effect_editor,
+                                        true,
+                                        None,
+                                        1.0,
+                                        collections,
+                                        sound_data,
+                                    );
                                 });
                         });
 
@@ -154,7 +112,8 @@ impl ScenesWindow {
                         if let TreeSelection::Asset(asset) = &mut self.tree.selected() {
                             let mut scene = asset.data.clone();
                             if asset_changed
-                                && let Some(effect) = scene.effect(self.selected_effect)
+                                && let Some(effect) =
+                                    scene.effect(self.effect_editor.selected_effect)
                             {
                                 effect
                                     .state
@@ -192,7 +151,8 @@ impl ScenesWindow {
                                     queue,
                                     persistant_state
                                         .preview_palette()
-                                        .and_then(|id| Asset::get(id, collections)),
+                                        .and_then(|id| Asset::get(id, collections))
+                                        .map(|palette| palette.data.clone()),
                                     &Default::default(),
                                     1.0,
                                     collections,
@@ -212,31 +172,20 @@ impl ScenesWindow {
                                 .scroll_bar_visibility(AlwaysVisible)
                                 .show(ui, |ui| {
                                     ui.set_max_width(ui.available_width() - 30.0);
-                                    ui.horizontal_wrapped(|ui| {
-                                        if let TreeSelection::Asset(scene) = self.tree.selected() {
-                                            for (index, effect) in
-                                                scene.data.effects().iter().enumerate()
-                                            {
-                                                ui.add_sized(
-                                                    Vec2::splat(100.0),
-                                                    EffectWidget {
-                                                        show_group: true,
-                                                        selectable: Some((
-                                                            &mut self.selected_effect,
-                                                            index,
-                                                        )),
-                                                        effect,
-                                                        svg: None,
-                                                        groups: None,
-                                                        groups_show_index: false,
-                                                        beat_progression: None,
-                                                        collections,
-                                                        sound_data,
-                                                    },
-                                                );
-                                            }
-                                        }
-                                    });
+                                    if let TreeSelection::Asset(scene) = self.tree.selected() {
+                                        scene_effect_list_ui(
+                                            ui,
+                                            &scene.data,
+                                            &mut self.effect_editor,
+                                            true,
+                                            None,
+                                            None,
+                                            false,
+                                            None,
+                                            collections,
+                                            sound_data,
+                                        );
+                                    }
                                 });
                         }
                     });

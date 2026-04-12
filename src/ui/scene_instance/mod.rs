@@ -6,16 +6,25 @@ use crate::{
     app::timing::Timing,
     audio::sound_data::SoundData,
     pipeline::group::Groups,
-    storage::{asset::scene::instance::SceneInstance, collections::Collections},
-    ui::{asset::CollectionsChangeButton, effect::widget::EffectWidget},
+    storage::{
+        asset::{AssetTrait, palette::Palette, scene::instance::SceneInstance},
+        collections::Collections,
+    },
+    ui::{
+        asset_tree::AssetTree,
+        scene_effect_editor::{
+            SceneEffectEditorState, scene_effect_list_ui, selected_effect_editor_ui,
+        },
+    },
 };
-use egui::{Checkbox, Margin, ScrollArea, Vec2, scroll_area::ScrollBarVisibility::AlwaysVisible};
-use egui_modal::Modal;
+use egui::{Checkbox, Margin, ScrollArea, UiKind, scroll_area::ScrollBarVisibility::AlwaysVisible};
+use egui_ltreeview::TreeViewState;
 
 impl SceneInstance {
     pub fn config_ui(
         &mut self,
         ui: &mut egui::Ui,
+        effect_editor: &mut SceneEffectEditorState,
         svg: Option<egui::TextureHandle>,
         groups: Groups,
         timing: &Timing,
@@ -106,70 +115,86 @@ impl SceneInstance {
                     .inner_margin(Margin::from(6.0))
                     .show(ui, |ui| {
                         ui.set_min_width(ui.available_width());
-                        self.palette_overwrite
-                            .collections_change_button(ui, collections);
+                        let mut overwrite = self.palette_overwrite.is_some();
+                        ui.checkbox(&mut overwrite, "Overwrite Palette");
+                        if self.palette_overwrite.is_none() && overwrite {
+                            self.palette_overwrite = Some(None);
+                        } else if self.palette_overwrite.is_some() && !overwrite {
+                            self.palette_overwrite = None;
+                        }
+
+                        if let Some(palette_overwrite) = self.palette_overwrite.as_mut() {
+                            let response = ui.menu_button("📂 Palette", |ui| {
+                                if ui.button("No Palette").clicked() {
+                                    *palette_overwrite = None;
+                                    ui.close_kind(UiKind::Menu);
+                                }
+
+                                if let Some(palette_id) = AssetTree::<Palette>::show_asset_selection(
+                                    ui,
+                                    ui.make_persistent_id(Palette::NAME),
+                                    collections,
+                                ) {
+                                    *palette_overwrite = crate::storage::asset::Asset::get(
+                                        palette_id,
+                                        collections,
+                                    )
+                                    .map(|palette| palette.data.clone());
+                                    ui.data_mut(|data| {
+                                        data.remove::<TreeViewState<usize>>(
+                                            ui.make_persistent_id(Palette::NAME),
+                                        )
+                                    });
+                                    ui.close_kind(UiKind::Menu);
+                                }
+                            }).response;
+
+                            if let Some(palette) = palette_overwrite.as_ref() {
+                                palette.show(ui, response.rect);
+                            }
+                        }
                     });
 
                 ui.separator();
 
                 ui.label("Animations");
 
-                ui.horizontal_wrapped(|ui| {
-                    for (index, effect) in self.scene.effects.iter_mut().enumerate() {
-                        let mut selected = 0;
-                        ui.add_sized(
-                            Vec2::splat(100.0),
-                            EffectWidget {
-                                show_group: true,
-                                selectable: Some((&mut selected, 1)),
-                                effect,
-                                svg: svg.clone(),
-                                groups: Some(&groups),
-                                groups_show_index: false,
-                                beat_progression: Some(beat_progression),
+                egui::Frame::default()
+                    .inner_margin(Margin::from(6.0))
+                    .stroke(egui::Stroke::new(1.0, egui::Color32::DARK_GRAY))
+                    .show(ui, |ui| {
+                        ui.vertical(|ui| {
+                            ui.label(egui::RichText::new("Animations").size(12.0).color(egui::Color32::GRAY));
+                            scene_effect_list_ui(
+                                ui,
+                                &self.scene,
+                                effect_editor,
+                                true,
+                                svg.clone(),
+                                Some(&groups),
+                                false,
+                                Some(beat_progression),
                                 collections,
                                 sound_data,
-                            },
-                        );
+                            );
 
-                        let modal = Modal::new(ui.ctx(), format!("effect settings {index}"))
-                            .with_close_on_outside_click(true);
-                        let svg = svg.clone();
-                        modal.show(|ui| {
-                            modal.title(ui, "Overwrite Effect Settings");
-                            ui.set_width(500.0);
-                            ui.horizontal(|ui| {
-                                ui.add_sized(
-                                    Vec2::splat(100.0),
-                                    EffectWidget {
-                                        show_group: true,
-                                        selectable: None,
-                                        effect,
-                                        svg: svg.clone(),
-                                        groups: Some(&groups),
-                                        groups_show_index: true,
-                                        beat_progression: Some(beat_progression),
-                                        collections,
-                                        sound_data,
-                                    },
-                                );
-                                ui.vertical(|ui| {
-                                    effect.config_ui(
-                                        ui,
-                                        false,
-                                        svg.clone(),
-                                        beat_progression,
-                                        collections,
-                                        sound_data,
-                                    );
-                                });
-                            });
+                            ui.add_space(8.0);
+                            ui.separator();
+                            ui.add_space(8.0);
+
+                            ui.label(egui::RichText::new("Effect Settings").size(12.0).color(egui::Color32::GRAY));
+                            selected_effect_editor_ui(
+                                ui,
+                                &mut self.scene,
+                                effect_editor,
+                                true,
+                                svg.clone(),
+                                beat_progression,
+                                collections,
+                                sound_data,
+                            );
                         });
-                        if selected == 1 {
-                            modal.open();
-                        }
-                    }
-                });
+                    });
             });
     }
 }

@@ -8,7 +8,7 @@ use crate::{
         windows::channel_overwrites::ChannelOverwrites,
     },
 };
-use egui::{Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2, ViewportId, text::LayoutJob, ViewportCommand, PointerButton, Sense, Frame, Context};
+use egui::{Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Slider, Stroke, TextFormat, Ui, UiKind, Vec2, ViewportId, text::LayoutJob, ViewportCommand, PointerButton, Sense, Frame};
 use log::debug;
 use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
@@ -17,8 +17,8 @@ use std::{
 use epaint::{RectShape, StrokeKind};
 
 impl App {
-    pub fn menu(&mut self, ctx: &Context, viewport_id: Option<ViewportId>) {
-        egui::TopBottomPanel::top(format!("{viewport_id:?} menu")).show(ctx, |ui| {
+    pub fn menu(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
+        egui::Panel::top(format!("{viewport_id:?} menu")).show_inside(ui, |ui| {
             if crate::storage::loading().is_some() {
                 ui.disable();
             }
@@ -455,7 +455,7 @@ impl App {
                     // add background shadow
                     ui.painter().add(
                         RectShape::filled(ui.available_rect_before_wrap().expand(1.0),
-                                          ui.ctx().style().visuals.widgets.active.corner_radius,
+                                          ui.ctx().global_style().visuals.widgets.active.corner_radius,
                                           Color32::from_white_alpha(10))
                             .with_blur_width(15.0),
                     );

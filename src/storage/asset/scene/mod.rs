@@ -4,7 +4,7 @@ pub mod effect_state;
 pub(crate) mod grid;
 pub mod instance;
 
-use super::{Asset, AssetTrait, animation::Animation, palette::Palette};
+use super::{AssetTrait, animation::Animation, palette::Palette};
 use crate::{
     audio::sound_data::SoundData,
     pipeline::group::{GroupIndices, Groups},
@@ -14,7 +14,6 @@ use crate::{
 use effect::Effect;
 use egui::{Color32, Vec2};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use wgpu::{CommandEncoder, Queue};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
@@ -77,7 +76,7 @@ impl Scene {
     pub fn prepare(
         &mut self,
         queue: &Queue,
-        palette: Option<Arc<Asset<Palette>>>,
+        palette: Option<Palette>,
         groups: &Groups,
         main_opacity: f32,
         collections: &Collections,

@@ -63,8 +63,8 @@ impl OutputDevicesWindow {
                 });
 
                 gled_window_frame(ctx, "Output Devices", |ui| {
-                    egui::SidePanel::left("output devices tree")
-                        .exact_width(200.0)
+                    egui::Panel::left("output devices tree")
+                        .exact_size(200.0)
                         .resizable(false)
                         .show_inside(ui, |ui| {
                             if self.tree.show(

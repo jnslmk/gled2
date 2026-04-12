@@ -18,7 +18,6 @@ use crate::{
 use egui::TextureId;
 use egui_dnd::DragDropItem;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use uuid::Uuid;
 use wgpu::{CommandEncoder, Queue};
 
@@ -54,7 +53,7 @@ pub struct SceneInstance {
     #[serde(default)]
     pub groups_overwrite: Option<Groups>,
     #[serde(default)]
-    pub palette_overwrite: Option<Option<AssetId<Palette>>>,
+    pub palette_overwrite: Option<Option<Palette>>,
 
     #[serde(skip)]
     transition: Option<Transition>,
@@ -85,7 +84,7 @@ impl Clone for SceneInstance {
             scene_id: self.scene_id,
             scene: self.scene.clone(),
             groups_overwrite: self.groups_overwrite.clone(),
-            palette_overwrite: self.palette_overwrite,
+            palette_overwrite: self.palette_overwrite.clone(),
             transition: Default::default(),
             flash: Default::default(),
         }
@@ -140,27 +139,39 @@ impl SceneInstance {
         self.scene.reload_shader_code(animation, collections);
     }
 
+    fn update_input_state(&mut self, beat_progression: f32) {
+        if let Some(event) = self.activation_input.as_ref()
+            && event.is_new()
+        {
+            self.active = !self.active;
+        }
+
+        if let Some(event) = self.flash_input.as_ref() {
+            let flash_active = event.is_live();
+            if !self.flash && flash_active && self.set_offset_on_flash {
+                self.beat_progression_offset =
+                    MultipliedCurve::new_multiplier(4.0 - beat_progression % 4.0);
+            }
+            self.flash = flash_active;
+        }
+
+        if let Some(event) = self.dimmer_input.as_ref() {
+            self.input_dimmer = event.dimmer()
+        }
+    }
+
     pub fn prepare(
         &mut self,
         queue: &Queue,
+        palette: Option<Palette>,
         always_render: bool,
-        palette: Option<Arc<Asset<Palette>>>,
         deck_groups: &Groups,
         timing: &Timing,
         main_dimmer: f32,
         collections: &Collections,
         sound_data: &SoundData,
     ) {
-        if let Some(event) = self.flash_input.as_ref() {
-            if !self.flash && event.is_live() && self.set_offset_on_flash {
-                self.beat_progression_offset =
-                    MultipliedCurve::new_multiplier(4.0 - timing.beat_progression() % 4.0);
-            }
-            self.flash = event.is_live();
-        }
-        if let Some(event) = self.dimmer_input.as_ref() {
-            self.input_dimmer = event.dimmer();
-        }
+        self.update_input_state(timing.beat_progression());
 
         let mut beat_progression = timing.beat_progression();
         beat_progression +=
@@ -188,7 +199,7 @@ impl SceneInstance {
         if always_render || self.active || self.flash {
             let groups = self.groups_overwrite.as_ref().unwrap_or(deck_groups);
             let palette = match self.palette_overwrite.as_ref() {
-                Some(id) => id.and_then(|id| Asset::get(id, collections)),
+                Some(palette) => palette.clone(),
                 None => palette,
             };
             let main_opacity = if self.ignore_main_dimmer {

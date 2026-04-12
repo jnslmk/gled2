@@ -10,6 +10,7 @@ pub mod storage;
 pub mod svg;
 pub mod timing;
 
+use crate::input::osc::{OSCHandler, OscStateSnapshot};
 use crate::{
     audio::{sound_data::SoundData, AudioPool},
     input::{external_control::ExternalControlState, Input},
@@ -22,14 +23,16 @@ use crate::{
         loading,
     },
     ui::{
-        action::UiAction, asset_tree::AssetTree, window_common::default_viewport_builder,
+        action::UiAction, asset_tree::AssetTree,
+        scene_effect_editor::SceneEffectEditorState, window_common::default_viewport_builder,
         windows::Windows,
     },
 };
 use eframe::egui_wgpu::Callback;
-use egui::{ahash::HashSet, CentralPanel, Id, Rect, UiBuilder, ViewportId};
+use egui::{CentralPanel, Id, LayerId, Rect, Ui, UiBuilder, ViewportId, ahash::HashSet};
 use kanal::Receiver;
 use persistant_state::PersistantState;
+use std::sync::Arc;
 use std::time::Instant;
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
@@ -45,6 +48,7 @@ pub struct App {
     pub blackout: bool,
     pub blackout_hold: bool,
     pub selected_scene_instance: GridLocation,
+    pub selected_scene_effect_editor: SceneEffectEditorState,
     pub git_commit_message: String,
     pub ui_action_receiver: Receiver<UiAction>,
     pub last_title: String,
@@ -59,11 +63,12 @@ pub struct App {
     pub external_control_state: ExternalControlState,
     pub audio_pool: AudioPool,
     pub sound_data: SoundData,
+    pub osc_handler: Option<Arc<OSCHandler>>,
 }
 
 impl eframe::App for App {
     #[cfg_attr(feature = "profiling", profiling::function)]
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         #[cfg(feature = "profiling")]
         {
             crate::WGPU_PROFILER
@@ -113,6 +118,7 @@ impl eframe::App for App {
             self.last_title = title;
         }
 
+        // update the program state from network signals
         self.external_control_state
             .process_events(&mut self.project, &self.collections);
 
@@ -133,6 +139,18 @@ impl eframe::App for App {
                 &self.extract_output,
                 &self.sound_data,
             );
+        }
+
+        if let Some(osc_handler) = &self.osc_handler
+            && osc_handler.has_subscribers()
+        {
+            osc_handler.enqueue_state_snapshot(OscStateSnapshot {
+                project: self.project.clone(),
+                selected_scene_instance: self.selected_scene_instance,
+                blackout: self.blackout || self.blackout_hold,
+                beats_per_minute: self.timing.beats_per_minute(),
+                beat_progression: self.timing.beat_progression(),
+            });
         }
 
         if self.midi_output_active {
@@ -204,8 +222,12 @@ impl eframe::App for App {
             }
             .enqueue();
         }
+    }
 
-        self.draw_main_window(ctx, None);
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = ui.ctx().clone();
+
+        self.draw_main_window(&ctx, None);
 
         let viewport_ids = self.other_main_windows.clone();
         for viewport_id in viewport_ids {
@@ -215,20 +237,20 @@ impl eframe::App for App {
                     .with_inner_size([1300.0, 1024.0])
                     .with_drag_and_drop(true)
                     .with_min_inner_size([300.0, 200.0]),
-                |ctx, _viewport_class| {
-                    ctx.input(|input| {
+                |ui, _viewport_class| {
+                    ui.ctx().input(|input| {
                         if input.viewport().close_requested() {
                             UiAction::CloseWindow(viewport_id).enqueue();
                         }
                     });
 
-                    self.draw_main_window(ctx, Some(viewport_id));
+                    self.draw_main_window(ui.ctx(), Some(viewport_id));
                 },
             );
         }
 
         self.windows.update(
-            ctx,
+            &ctx,
             &self.timing,
             &mut self.project,
             &mut self.collections,
@@ -242,19 +264,34 @@ impl eframe::App for App {
 }
 
 impl App {
+    pub(crate) fn set_selected_scene_instance(&mut self, location: GridLocation) {
+        self.selected_scene_instance = location;
+        self.selected_scene_effect_editor.reset();
+    }
+
     #[cfg_attr(feature = "profiling", profiling::function)]
     pub fn draw_main_window(&mut self, ctx: &egui::Context, viewport_id: Option<ViewportId>) {
         let panel_frame = egui::Frame::new()
-            .fill(ctx.style().visuals.window_fill());
-        self.menu(ctx, viewport_id);
+            .fill(ctx.global_style().visuals.window_fill())
+            .stroke(ctx.global_style().visuals.widgets.noninteractive.fg_stroke);
 
-        CentralPanel::default().frame(panel_frame).show(ctx, |ui| {
+        let mut root_ui = Ui::new(
+            ctx.clone(),
+            Id::new((ctx.viewport_id(), "main_window_panel")),
+            UiBuilder::new()
+                .layer_id(LayerId::background())
+                .max_rect(ctx.content_rect()),
+        );
+        root_ui.set_clip_rect(ctx.content_rect());
+
+        CentralPanel::default().frame(panel_frame).show_inside(&mut root_ui, |ui| {
             if viewport_id.is_none() {
                 let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
                 ui.painter().add(callback);
             }
             let mut ui = ui.new_child(UiBuilder::new().max_rect(ui.max_rect().shrink(4.0)));
 
+            self.menu(&mut ui, viewport_id);
             self.status_bar(&mut ui, viewport_id);
 
             if let Some(error) = crate::storage::error() {
@@ -266,14 +303,14 @@ impl App {
             }
 
             if self.project.is_some() {
-                egui::SidePanel::left("config")
+                egui::Panel::left("config")
                     .resizable(false)
-                    .exact_width(400.0)
+                    .exact_size(400.0)
                     .show_inside(&mut ui, |ui| self.config(ui));
-                egui::TopBottomPanel::top("preview")
+                egui::Panel::top("preview")
                     .resizable(true)
-                    .default_height(200.0)
-                    .min_height(200.0)
+                    .default_size(200.0)
+                    .min_size(200.0)
                     .show_inside(&mut ui, |ui| self.preview(ui));
                 egui::CentralPanel::default().show_inside(&mut ui, |ui| self.scenes(ui));
             } else {
@@ -295,6 +332,7 @@ impl App {
             blackout: true,
             blackout_hold: false,
             selected_scene_instance: Default::default(),
+            selected_scene_effect_editor: Default::default(),
             project: Default::default(),
             project_id: Default::default(),
             windows: Default::default(),
@@ -316,6 +354,7 @@ impl App {
             external_control_state: ExternalControlState::new(artnet_control_receiver),
             audio_pool,
             sound_data: Default::default(),
+            osc_handler: OSCHandler::start().ok(),
         };
 
         Some(app)

@@ -2,13 +2,10 @@
 use crate::{
     audio::sound_data::SoundData,
     pipeline::constants::TEXTURE_SIZE,
-    storage::{Asset, Palette, collections::Collections, scene::effect_state::EffectState},
+    storage::{Palette, collections::Collections, scene::effect_state::EffectState},
     wgpu_render_state,
 };
-use std::{
-    num::{NonZero, NonZeroU64},
-    sync::Arc,
-};
+use std::num::{NonZero, NonZeroU64};
 use wgpu::{util::DeviceExt, *};
 
 #[derive(Debug, PartialEq)]
@@ -73,8 +70,8 @@ impl AnimationRenderer {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("animation pipeline layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&bind_group_layout)],
+            immediate_size: 0,
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -96,7 +93,7 @@ impl AnimationRenderer {
             primitive: PrimitiveState::default(),
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
         });
 
         let contents = [0u8; EffectState::size() + Palette::size()];
@@ -129,13 +126,13 @@ impl AnimationRenderer {
         queue: &Queue,
         state: &EffectState,
         beat_progression: f32,
-        palette: Option<Arc<Asset<Palette>>>,
+        palette: Option<Palette>,
         collections: &Collections,
         sound_data: &SoundData,
     ) {
         let mut contents = [0; Palette::size() + EffectState::size()];
         if let Some(palette) = palette {
-            palette.data.write_data(&mut contents[..Palette::size()]);
+            palette.write_data(&mut contents[..Palette::size()]);
         }
         state.write_data(
             beat_progression,
@@ -174,6 +171,7 @@ impl AnimationRenderer {
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
 
         render_pass.set_pipeline(&self.pipeline);

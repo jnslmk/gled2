@@ -130,13 +130,15 @@ fn main() {
                 scale: 1.0,
                 y_offset_factor: 0.15,
                 y_offset: 0.0,
+                hinting_override: None,
+                coords: Default::default(),
             };
             // Register the font by name
             fonts.font_data.insert(
                 "Oxanium_Regular".to_owned(),
                 Arc::from(
                     FontData::from_static(include_bytes!("../assets/Oxanium-Regular.ttf"))
-                        .tweak(oxanium_tweak),
+                        .tweak(oxanium_tweak.clone()),
                 ),
             );
             fonts.font_data.insert(
@@ -162,7 +164,7 @@ fn main() {
 
             cc.egui_ctx
                 .options_mut(|options| options.theme_preference = ThemePreference::Dark);
-            cc.egui_ctx.style_mut(|style| {
+            cc.egui_ctx.global_style_mut(|style| {
                 style.always_scroll_the_only_direction = true;
                 style.visuals.panel_fill = Color32::from_gray(5);
             });

@@ -1,11 +1,11 @@
 use crate::storage::asset::scene::grid::GridLocation;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct QuickSceneInstanceIndex {
     pub index: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum SceneInstanceUnion {
     Grid(GridLocation),
     Quick(QuickSceneInstanceIndex),

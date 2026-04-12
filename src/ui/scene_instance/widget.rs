@@ -36,6 +36,7 @@ const INNER_MARGIN: f32 = 6.0;
 impl Widget for SceneInstanceWidget<'_> {
     fn ui(mut self, ui: &mut Ui) -> Response {
         let name = self.scene_instance.name.clone();
+        let scene_visible = self.scene_instance.active || self.scene_instance.flash;
         let rect = Rect::from_min_size(ui.cursor().min, Vec2::splat(self.effects_size));
         ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| {
             self.draw_background(ui, &rect);
@@ -44,7 +45,7 @@ impl Widget for SceneInstanceWidget<'_> {
                 self.preview(ui);
                 self.dimmer(ui, self.collections, self.sound_data);
             });
-            if !self.scene_instance.active {
+            if !scene_visible {
                 ui.painter()
                     .rect_filled(rect.expand(1.), 0., Color32::from_black_alpha(200));
             }
@@ -178,7 +179,7 @@ impl SceneInstanceWidget<'_> {
                         ),
                 ));
             }
-            if !self.scene_instance.active {
+            if !self.scene_instance.active && !self.scene_instance.flash {
                 ui.painter().rect_filled(
                     preview_rect.expand(1.),
                     0.,
@@ -204,11 +205,13 @@ impl SceneInstanceWidget<'_> {
 
                     ui.add(
                         GledSlider::new(&mut self.scene_instance.opacity.multiplier, 100.0)
-                            .preview_value(if self.scene_instance.active {
-                                dimmer
-                            } else {
-                                0.0
-                            })
+                            .preview_value(
+                                if self.scene_instance.active || self.scene_instance.flash {
+                                    dimmer
+                                } else {
+                                    0.0
+                                },
+                            )
                             .size(20.0),
                     );
                 });
