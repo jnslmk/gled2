@@ -7,7 +7,9 @@ use crate::{
     ui::temperature::temperature,
 };
 use egui::{
-    Button, DragValue, FontSelection, Label, Layout, Margin, RichText, Slider, Spinner, TextEdit, Ui, ViewportId
+    Button, DragValue, FontSelection, Label, Layout, Margin, RichText, Slider, Spinner, TextEdit,
+    Ui, UiKind, ViewportId,
+    containers::menu::{MenuButton, MenuConfig},
 };
 use egui_flex::{Flex, item};
 use egui_phosphor_icons::icons;
@@ -226,9 +228,13 @@ impl App {
             TextFormat::default(),
         );
 
-        ui.menu_button(layout_job, |ui| {
-            self.git_menu(ui);
-        });
+        MenuButton::from_button(Button::new(layout_job))
+            .config(
+                MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
+            )
+            .ui(ui, |ui| {
+                self.git_menu(ui);
+            });
     }
 
     fn git_menu(&mut self, ui: &mut Ui) {
@@ -245,6 +251,7 @@ impl App {
             .inner_margin(Margin::from(6.0))
             .show(ui, |ui| {
                 let mut commit = false;
+                let mut close_menu = false;
                 ui.add_enabled_ui(staged_files > 0 && !working(), |ui| {
                     ui.label(if staged_files == 1 {
                         "Commit message for 1 change:".to_owned()
@@ -263,14 +270,17 @@ impl App {
                 Flex::horizontal().show(ui, |flex| {
                     if flex.add(item().grow(1.0), Button::new("Commit")).clicked() {
                         commit = true;
+                        close_menu = true;
                     }
 
                     if flex.add(item().grow(1.0), Button::new("⬆Push")).clicked() {
                         StorageAction::Push.enqueue();
+                        close_menu = true;
                     }
 
                     if flex.add(item().grow(1.0), Button::new("⬇Pull")).clicked() {
                         StorageAction::Pull.enqueue();
+                        close_menu = true;
                     }
                 });
 
@@ -280,6 +290,11 @@ impl App {
                     }
                     .enqueue();
                     self.git_commit_message.clear();
+                    close_menu = true;
+                }
+
+                if close_menu {
+                    ui.close_kind(UiKind::Menu);
                 }
             });
     }

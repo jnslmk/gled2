@@ -159,12 +159,12 @@ impl App {
                                                     .show(&mut widget_response, location);
 
                                                 // also handle backspace as delete action for MacOS
-                                                if ui.ctx().input_mut(|i| {
-                                                    i.consume_key(
-                                                        Modifiers::default(),
-                                                        egui::Key::Backspace,
-                                                    )
-                                                }) {
+                                                if !ui.ctx().egui_wants_keyboard_input() && ui.ctx().input_mut(|i| {
+                                                        i.consume_key(
+                                                            Modifiers::default(),
+                                                            egui::Key::Backspace,
+                                                        )
+                                                    }) {
                                                     UiAction::DeleteSelectedSceneInstance.enqueue();
                                                 }
 
