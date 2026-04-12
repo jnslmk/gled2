@@ -42,7 +42,7 @@ pub static STORAGE_DIR: Lazy<PathBuf> = Lazy::new(|| {
 static STORAGE_VERSION_FILE: Lazy<PathBuf> = Lazy::new(|| STORAGE_DIR.join("version"));
 static WORKING: AtomicBool = AtomicBool::new(true);
 static ERROR: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
-static LOADING: Lazy<Mutex<Option<Loading>>> = Lazy::new(|| Mutex::new(None));
+static LOADING: AtomicLoading = AtomicLoading::new(Loading::No);
 static BRANCHES: Lazy<Mutex<Option<Branches>>> = Lazy::new(|| Mutex::new(None));
 static STAGED_FILES: AtomicUsize = AtomicUsize::new(0);
 #[derive(Debug, Clone)]
@@ -51,8 +51,12 @@ pub struct Branches {
     pub current: String,
 }
 
-#[derive(Debug, Clone, Copy, Display)]
+#[derive(Display, Default, PartialEq, Eq)]
+#[atomic_enum::atomic_enum]
 pub enum Loading {
+    #[default]
+    #[strum(serialize = "Idling")]
+    No,
     #[strum(serialize = "Nuking storage")]
     Nuking,
     #[strum(serialize = "Loading git repository")]
@@ -75,15 +79,13 @@ pub enum Loading {
     Projects,
     #[strum(serialize = "Loading scenes")]
     Scenes,
+    #[strum(serialize = "Synchronizing")]
+    Synchronizing,
 }
 
 impl Loading {
     pub fn set(self) {
-        *LOADING.lock() = Some(self);
-    }
-
-    pub fn unset() {
-        LOADING.lock().take();
+        LOADING.store(self, Relaxed);
     }
 }
 
@@ -95,8 +97,12 @@ pub fn staged_files() -> usize {
     STAGED_FILES.load(Relaxed)
 }
 
-pub fn loading() -> Option<Loading> {
-    *LOADING.lock()
+pub fn loading() -> Loading {
+    LOADING.load(Relaxed)
+}
+
+pub fn is_loading() -> bool {
+    loading() != Loading::No
 }
 
 pub fn error() -> Option<String> {
@@ -139,7 +145,6 @@ pub fn start_thread() {
 
                 StorageAction::LoadBranches.enqueue();
                 StorageAction::CountStagedFiles.enqueue();
-                StorageAction::LoadAssets.enqueue();
                 StorageAction::LoadAssets.enqueue();
 
                 while let Ok(action) = actions.recv() {
@@ -287,9 +292,10 @@ pub fn start_thread() {
                             Loading::Scenes.set();
                             collections.insert::<Scene>(Collection::<Scene>::load());
 
+                            Loading::Synchronizing.set();
                             collections.save();
 
-                            Loading::unset();
+                            Loading::No.set();
                         }
                         StorageAction::SwitchBranch(branch) => match git.switch_branch(&branch) {
                             Ok(_) => {

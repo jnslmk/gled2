@@ -12,6 +12,7 @@ license = "GPL-3.0-or-later"
 anyhow = "1"
 arboard = "3"
 artnet_protocol = "0.4"
+atomic_enum = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 cpal = "0.17"

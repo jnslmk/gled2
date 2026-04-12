@@ -11,6 +11,7 @@ pub mod svg;
 pub mod timing;
 
 use crate::input::osc::OSCHandler;
+use crate::storage::is_loading;
 use crate::{
     audio::{AudioPool, sound_data::SoundData},
     input::{Input, external_control::ExternalControlState},
@@ -20,7 +21,6 @@ use crate::{
         asset::{Asset, palette::Palette, project::Project, scene::grid::GridLocation},
         asset_id::AssetId,
         collections::Collections,
-        loading,
     },
     ui::{
         action::UiAction, asset_tree::AssetTree, scene_effect_editor::SceneEffectEditorState,
@@ -90,18 +90,18 @@ impl eframe::App for App {
         if let Ok(Some(network_stats)) = self.network_stats_receiver.try_recv() {
             self.network_stats = network_stats;
         }
-        self.collections.update();
         self.persistant_state.update();
         self.sound_data.update();
+        self.timing.tick(self.persistant_state.fps_limit());
+        self.collections.update();
 
-        if loading().is_none() && self.startup {
+        if !is_loading() && self.startup {
             self.startup = false;
             if let Some(project) = self.persistant_state.last_project_id() {
                 UiAction::SetProject(project).enqueue();
             }
         }
 
-        self.timing.tick(self.persistant_state.fps_limit());
         Input::tick();
         self.handle_ui_actions();
 
@@ -230,8 +230,8 @@ impl App {
                 if let Some(error) = crate::storage::error() {
                     show_storage_error(&mut ui, error);
                     return;
-                } else if let Some(loading) = crate::storage::loading() {
-                    show_storage_loading(&mut ui, loading);
+                } else if is_loading() {
+                    show_storage_loading(&mut ui);
                     return;
                 }
 
