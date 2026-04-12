@@ -320,19 +320,6 @@ impl App {
                     ui.separator();
 
                     egui::gui_zoom::zoom_menu_buttons(ui);
-
-                    ui.separator();
-
-                    ui.label("Scene preview size");
-                    if ui
-                        .add(
-                            Slider::new(self.persistant_state.effects_size_mut(), 50.0..=500.0)
-                                .show_value(false),
-                        )
-                        .changed()
-                    {
-                        self.persistant_state.save();
-                    }
                 });
 
                 let mut open_new_window = ui.ctx().input_mut(|i| {

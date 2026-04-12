@@ -103,15 +103,6 @@ impl App {
                 (Some(project), UiAction::SetMainDimmer(dimmer)) => {
                     project.main_dimmer = dimmer;
                 }
-                (Some(project), UiAction::SetProjectAutoModeActive(active)) => {
-                    project.auto_mode_active = active;
-                }
-                (Some(project), UiAction::SetProjectAutoModeSeconds(seconds)) => {
-                    project.auto_mode_seconds = seconds;
-                }
-                (Some(project), UiAction::SetProjectAutoModeMaxScenes(max_scenes)) => {
-                    project.auto_mode_max_scenes = max_scenes;
-                }
                 (Some(project), UiAction::SetProjectArtnetControlActive(active)) => {
                     project.artnet_control_config(|config| config.active = active);
                 }

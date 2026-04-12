@@ -19,7 +19,6 @@ use crate::{
         preview::Preview,
         preview_indices::PreviewIndices,
         renderer_callback::RendererCallback,
-        transition::{Transition, TransitionGoal},
     },
     storage::{
         asset::{
@@ -34,12 +33,10 @@ use crate::{
     wgpu_render_state,
 };
 use cpal::DeviceId;
-use rand::prelude::IndexedMutRandom;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap},
     sync::Arc,
-    time::{Duration, Instant},
 };
 use wgpu::CommandEncoderDescriptor;
 
@@ -55,9 +52,6 @@ pub enum GridHighlight {
 #[serde(default)]
 pub struct Project {
     pub palette: Option<Palette>,
-    pub auto_mode_active: bool,
-    pub auto_mode_seconds: u64,
-    pub auto_mode_max_scenes: usize,
     pub groups: Groups,
     #[serde(default = "Project::default_grid_width")]
     pub grid_width: usize,
@@ -66,8 +60,6 @@ pub struct Project {
     #[serde(default = "Project::default_grid_highlight")]
     pub grid_highlight: GridHighlight,
     pub scenes_instances_grid: HashMap<GridLocation, SceneInstance>,
-    #[serde(skip)]
-    pub auto_mode_last_change: Option<Instant>,
     pub svg: Option<Svg>,
     pub channel_overwrites: ChannelOverwrites,
     pub output_routings: Arc<OutputRoutings>,
@@ -93,15 +85,11 @@ impl Default for Project {
         puffin::profile_function!("Project::default");
         Self {
             palette: None,
-            auto_mode_active: false,
-            auto_mode_seconds: 10,
-            auto_mode_max_scenes: 2,
             groups: Groups::default(),
             grid_width: Self::DEFAULT_GRID_WIDTH,
             grid_height: Self::DEFAULT_GRID_HEIGHT,
             grid_highlight: Self::DEFAULT_GRID_HIGHLIGHT,
             scenes_instances_grid: HashMap::new(),
-            auto_mode_last_change: None,
             svg: Default::default(),
             channel_overwrites: Default::default(),
             output_routings: Default::default(),
@@ -276,7 +264,6 @@ impl Project {
         timing: &Timing,
         blackout: bool,
         always_render: bool,
-        fade_duration: Duration,
         collections: &Collections,
         extract_output: &ExtractOutput,
         sound_data: &SoundData,
@@ -284,55 +271,6 @@ impl Project {
         let wgpu_render_state = wgpu_render_state();
         let device = wgpu_render_state.device;
         let queue = &wgpu_render_state.queue;
-        if self.auto_mode_active {
-            if self
-                .auto_mode_last_change
-                .get_or_insert_with(Instant::now)
-                .elapsed()
-                .as_secs()
-                > self.auto_mode_seconds
-            {
-                let auto_mode_max_scenes = self.auto_mode_max_scenes;
-                let mut prev = HashSet::new();
-                {
-                    let mut indices = self
-                        .scenes_instances_grid
-                        .iter()
-                        .filter(|(_index, scene)| scene.active)
-                        .map(|(location, _scene)| *location)
-                        .collect::<Vec<_>>();
-
-                    let mut disable_count =
-                        (indices.len() + 1).saturating_sub(auto_mode_max_scenes);
-                    while disable_count > 0 {
-                        if let Some(location) = indices.choose_mut(&mut rand::rng()).copied()
-                            && prev.insert(location)
-                        {
-                            disable_count -= 1;
-                            if let Some(scene) = self.scenes_instances_grid.get_mut(&location) {
-                                scene.set_transition(Transition::new(
-                                    TransitionGoal::TurnOff,
-                                    fade_duration,
-                                ));
-                            }
-                        }
-                    }
-                }
-
-                let mut scenes = self
-                    .scenes_instances_grid
-                    .iter_mut()
-                    .filter(|(location, _scene)| !prev.contains(location))
-                    .collect::<Vec<_>>();
-                if let Some((_index, scene)) = scenes.choose_mut(&mut rand::rng()) {
-                    scene.set_transition(Transition::new(TransitionGoal::TurnOn, fade_duration));
-                }
-
-                self.auto_mode_last_change.take();
-            }
-        } else {
-            self.auto_mode_last_change.take();
-        }
 
         let palette = self.palette.clone();
         let deck_groups = self.groups.clone();

@@ -162,29 +162,6 @@ fn broadcast_snapshot(
         );
 
         if let Some(project) = snapshot.project.as_ref() {
-            send_feedback(
-                socket,
-                subscriber,
-                "/project/auto_mode/active",
-                vec![OscType::Bool(project.auto_mode_active)],
-            );
-            send_feedback(
-                socket,
-                subscriber,
-                "/project/auto_mode/seconds",
-                vec![OscType::Long(
-                    i64::try_from(project.auto_mode_seconds).unwrap_or(i64::MAX),
-                )],
-            );
-            send_feedback(
-                socket,
-                subscriber,
-                "/project/auto_mode/max_scenes",
-                vec![OscType::Int(
-                    i32::try_from(project.auto_mode_max_scenes).unwrap_or(i32::MAX),
-                )],
-            );
-
             // Project palette
             send_feedback(
                 socket,

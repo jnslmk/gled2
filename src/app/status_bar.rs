@@ -2,12 +2,12 @@ use super::App;
 use crate::{
     app::timing::LINK_ACTIVE_COLOR,
     storage::{
-        action::StorageAction, asset::curve::polynomial::polynomials_fitting, staged_files, working,
+        action::StorageAction, asset::{curve::polynomial::polynomials_fitting, project::{GridHighlight}}, staged_files, working,
     },
     ui::temperature::temperature,
 };
 use egui::{
-    Button, FontSelection, Label, Layout, Margin, RichText, Spinner, TextEdit, Ui, ViewportId,
+    Button, DragValue, FontSelection, Label, Layout, Margin, RichText, Slider, Spinner, TextEdit, Ui, ViewportId
 };
 use egui_flex::{Flex, item};
 use egui_phosphor_icons::icons;
@@ -120,6 +120,7 @@ impl App {
                             ui.add_space(4.0);
                             self.git_button(ui);
                             ui.add_space(4.0);
+                            self.grid_button(ui);
                             match polynomials_fitting() {
                                 0 => (),
                                 n => {
@@ -139,6 +140,76 @@ impl App {
                     });
                 });
         });
+    }
+
+    fn grid_button(&mut self, ui: &mut Ui) {
+        if let Some(project) = self.project.as_mut() {
+            let mut layout_job = LayoutJob::default();
+            icons::SQUARES_FOUR.fill().append_to(
+                &mut layout_job,
+                ui.style(),
+                egui::FontSelection::Default,
+                egui::Align::Center,
+            );
+            layout_job.append(" Grid", 0.0, TextFormat::default());
+
+            ui.menu_button(layout_job, |ui| {
+                ui.label("Grid Size");
+
+                let mut grid_width = project.grid_width();
+                let mut grid_height = project.grid_height();
+
+                ui.horizontal(|ui| {
+                    ui.label("Width");
+                    ui.add(DragValue::new(&mut grid_width).range(2..=64));
+                    ui.label("Height");
+                    ui.add(DragValue::new(&mut grid_height).range(2..=64));
+                });
+
+                if grid_width != project.grid_width() || grid_height != project.grid_height() {
+                    project.set_grid_size(grid_width, grid_height);
+
+                    let max_col = project.grid_width() - 1;
+                    let max_row = project.grid_height() - 1;
+                    self.selected_scene_instance.col =
+                        self.selected_scene_instance.col.min(max_col);
+                    self.selected_scene_instance.row =
+                        self.selected_scene_instance.row.min(max_row);
+                }
+
+                ui.separator();
+                ui.label("Highlight");
+                ui.horizontal(|ui| {
+                    ui.selectable_value(
+                        &mut project.grid_highlight,
+                        GridHighlight::Row,
+                        "Last Row",
+                    );
+                    ui.selectable_value(
+                        &mut project.grid_highlight,
+                        GridHighlight::Column,
+                        "Last Column",
+                    );
+                    ui.selectable_value(&mut project.grid_highlight, GridHighlight::None, "None");
+                });
+
+                ui.separator();
+
+                ui.spacing_mut().slider_width = 195.0;
+
+                ui.label("Scene preview size");
+                    if ui
+                        .add(
+                            Slider::new(self.persistant_state.effects_size_mut(), 50.0..=500.0)
+                                .show_value(false),
+                        )
+                        .changed()
+                    {
+                        self.persistant_state.save();
+                    }
+            });
+            ui.add_space(4.0);
+        }
     }
 
     fn git_button(&mut self, ui: &mut Ui) {

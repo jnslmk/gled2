@@ -22,15 +22,6 @@ pub(super) fn parse_message(msg: &OscMessage) -> Result<UiAction, ()> {
         .collect();
     match path.as_slice() {
         ["project", "main_dimmer"] => Ok(UiAction::SetMainDimmer(parse_f32(msg, 0)?)),
-        ["project", "auto_mode", "active"] => {
-            Ok(UiAction::SetProjectAutoModeActive(parse_bool(msg, 0)?))
-        }
-        ["project", "auto_mode", "seconds"] => {
-            Ok(UiAction::SetProjectAutoModeSeconds(parse_u64(msg, 0)?))
-        }
-        ["project", "auto_mode", "max_scenes"] => {
-            Ok(UiAction::SetProjectAutoModeMaxScenes(parse_usize(msg, 0)?))
-        }
         ["project", "blackout"] => Ok(UiAction::SetBlackout(parse_bool(msg, 0)?)),
         ["project", "palette"] => Ok(UiAction::SetProjectPaletteFromAsset(
             parse_optional_palette_id(msg, 0)?,
@@ -769,14 +760,6 @@ fn parse_f32(msg: &OscMessage, index: usize) -> Result<f32, ()> {
         OscType::Double(value) => Ok(*value as f32),
         OscType::Int(value) => Ok(*value as f32),
         OscType::Long(value) => Ok(*value as f32),
-        _ => Err(()),
-    }
-}
-
-fn parse_u64(msg: &OscMessage, index: usize) -> Result<u64, ()> {
-    match arg_at(msg, index)? {
-        OscType::Int(value) => u64::try_from(*value).map_err(|_| ()),
-        OscType::Long(value) => u64::try_from(*value).map_err(|_| ()),
         _ => Err(()),
     }
 }

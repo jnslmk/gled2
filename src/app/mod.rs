@@ -136,7 +136,6 @@ impl eframe::App for App {
                 } else {
                     false
                 },
-                self.timing.fade_duration(),
                 &self.collections,
                 &self.extract_output,
                 &self.sound_data,
