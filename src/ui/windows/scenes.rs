@@ -3,11 +3,7 @@ use crate::{
     audio::sound_data::SoundData,
     pipeline::renderer_callback::RendererCallback,
     storage::{
-        asset::{
-            Asset,
-            animation::Animation,
-            scene::Scene,
-        },
+        asset::{Asset, animation::Animation, scene::Scene},
         asset_id::AssetId,
         collections::Collections,
     },

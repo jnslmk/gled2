@@ -1,14 +1,20 @@
 use crate::audio::audio_device_label;
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{DeviceId, SampleFormat, StreamConfig};
+use cpal::{
+    DeviceId, SampleFormat, StreamConfig,
+    traits::{DeviceTrait, HostTrait, StreamTrait},
+};
 use kanal::Sender;
 use log::debug;
 use rtrb::{Consumer, Producer, RingBuffer};
 use rustfft::{FftPlanner, num_complex::Complex};
-use std::clone::Clone;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::time::Duration;
+use std::{
+    clone::Clone,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicU64, Ordering},
+    },
+    time::Duration,
+};
 
 pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;

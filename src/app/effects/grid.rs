@@ -1,15 +1,15 @@
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::Relaxed;
-
 use super::App;
-use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
-use crate::storage::asset::scene::grid::GridLocation;
-use crate::ui::ContextMenuAction;
-use crate::ui::ContextMenuBuilder;
-use crate::ui::action::UiAction;
-use crate::ui::scene_instance::dnd::{dnd_drag_source, dnd_drop_zone};
-use crate::ui::scene_instance::widget::EmptyGridSpot;
-use crate::ui::scene_instance::widget::SceneInstanceWidget;
+use crate::{
+    storage::asset::{project::GridHighlight, scene::grid::GridLocation},
+    ui::{
+        ContextMenuAction, ContextMenuBuilder,
+        action::UiAction,
+        scene_instance::{
+            dnd::{dnd_drag_source, dnd_drop_zone},
+            widget::{EmptyGridSpot, SceneInstanceWidget},
+        },
+    },
+};
 use egui::{
     Color32, Frame, Id, KeyboardShortcut, Modifiers, TextureHandle, Ui, UiBuilder, Vec2,
     scroll_area::ScrollBarVisibility::AlwaysVisible,
@@ -18,6 +18,7 @@ use egui::{DragAndDrop, Label, LayerId, Order, Response, Sense, Widget};
 use egui_phosphor_icons::icons;
 use emath::{Rect, vec2};
 use epaint::{Stroke, StrokeKind};
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 
 impl App {
     pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
@@ -29,9 +30,14 @@ impl App {
                 let Some(project) = self.project.as_mut() else {
                     return;
                 };
+                let grid_width = project.grid_width();
+                let grid_height = project.grid_height();
+                let quick_row = project.quick_row_index();
+                let quick_col = grid_width.saturating_sub(1);
+                let grid_highlight = project.grid_highlight;
                 let effects_size = self.persistant_state.effects_size();
-                ui.set_width(GRID_WIDTH as f32 * (effects_size + 20.) + 20.);
-                ui.set_height(GRID_HEIGHT as f32 * (effects_size + 20.) + 20.);
+                ui.set_width(grid_width as f32 * (effects_size + 20.) + 20.);
+                ui.set_height(grid_height as f32 * (effects_size + 20.) + 20.);
 
                 let to_global = ui
                     .ctx()
@@ -44,11 +50,30 @@ impl App {
 
                 let mut dropped = None;
                 let mut clicked_selection = None;
-                for row in 0..GRID_HEIGHT {
-                    if row == GRID_HEIGHT - 1 {
+
+                // Draw column highlight if configured (before rows)
+                if grid_highlight == GridHighlight::Column {
+                    let quick_scene_rect = Rect::from_min_size(
+                        start_pos + vec2(20. + quick_col as f32 * (effects_size + 20.), 20.),
+                        vec2(
+                            effects_size,
+                            (effects_size + 20.) * grid_height as f32 - 20.,
+                        ),
+                    )
+                    .expand(10.);
+                    ui.painter().rect_filled(
+                        quick_scene_rect,
+                        5.,
+                        Color32::GOLD.blend(Color32::from_black_alpha(200)),
+                    );
+                }
+
+                for row in 0..grid_height {
+                    // Highlight last row if configured
+                    if grid_highlight == GridHighlight::Row && row == quick_row {
                         let quick_scene_rect = Rect::from_min_size(
                             start_pos + vec2(20., 20. + row as f32 * (effects_size + 20.)),
-                            vec2((effects_size + 20.) * GRID_WIDTH as f32 - 20., effects_size),
+                            vec2((effects_size + 20.) * grid_width as f32 - 20., effects_size),
                         )
                         .expand(10.);
                         ui.painter().rect_filled(
@@ -58,7 +83,7 @@ impl App {
                         );
                     }
 
-                    for col in 0..GRID_WIDTH {
+                    for col in 0..grid_width {
                         let location = GridLocation { col, row };
 
                         let rect = to_global.mul_rect(Rect::from_min_size(
@@ -134,12 +159,12 @@ impl App {
                                                     .show(&mut widget_response, location);
 
                                                 // also handle backspace as delete action for MacOS
-                                                if ui.ctx().input_mut(|i| {
-                                                    i.consume_key(
-                                                        Modifiers::default(),
-                                                        egui::Key::Backspace,
-                                                    )
-                                                }) {
+                                                if !ui.ctx().egui_wants_keyboard_input() && ui.ctx().input_mut(|i| {
+                                                        i.consume_key(
+                                                            Modifiers::default(),
+                                                            egui::Key::Backspace,
+                                                        )
+                                                    }) {
                                                     UiAction::DeleteSelectedSceneInstance.enqueue();
                                                 }
 

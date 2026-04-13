@@ -2,12 +2,14 @@ use super::App;
 use crate::{
     app::timing::LINK_ACTIVE_COLOR,
     storage::{
-        action::StorageAction, asset::curve::polynomial::polynomials_fitting, staged_files, working,
+        action::StorageAction, asset::{curve::polynomial::polynomials_fitting, project::{GridHighlight}}, staged_files, working,
     },
     ui::temperature::temperature,
 };
 use egui::{
-    Button, FontSelection, Label, Layout, Margin, RichText, Spinner, TextEdit, Ui, ViewportId,
+    Button, DragValue, FontSelection, Label, Layout, Margin, RichText, Slider, Spinner, TextEdit,
+    Ui, UiKind, ViewportId,
+    containers::menu::{MenuButton, MenuConfig},
 };
 use egui_flex::{Flex, item};
 use egui_phosphor_icons::icons;
@@ -120,6 +122,7 @@ impl App {
                             ui.add_space(4.0);
                             self.git_button(ui);
                             ui.add_space(4.0);
+                            self.grid_button(ui);
                             match polynomials_fitting() {
                                 0 => (),
                                 n => {
@@ -141,6 +144,76 @@ impl App {
         });
     }
 
+    fn grid_button(&mut self, ui: &mut Ui) {
+        if let Some(project) = self.project.as_mut() {
+            let mut layout_job = LayoutJob::default();
+            icons::SQUARES_FOUR.fill().append_to(
+                &mut layout_job,
+                ui.style(),
+                egui::FontSelection::Default,
+                egui::Align::Center,
+            );
+            layout_job.append(" Grid", 0.0, TextFormat::default());
+
+            ui.menu_button(layout_job, |ui| {
+                ui.label("Grid Size");
+
+                let mut grid_width = project.grid_width();
+                let mut grid_height = project.grid_height();
+
+                ui.horizontal(|ui| {
+                    ui.label("Width");
+                    ui.add(DragValue::new(&mut grid_width).range(2..=64));
+                    ui.label("Height");
+                    ui.add(DragValue::new(&mut grid_height).range(2..=64));
+                });
+
+                if grid_width != project.grid_width() || grid_height != project.grid_height() {
+                    project.set_grid_size(grid_width, grid_height);
+
+                    let max_col = project.grid_width() - 1;
+                    let max_row = project.grid_height() - 1;
+                    self.selected_scene_instance.col =
+                        self.selected_scene_instance.col.min(max_col);
+                    self.selected_scene_instance.row =
+                        self.selected_scene_instance.row.min(max_row);
+                }
+
+                ui.separator();
+                ui.label("Highlight");
+                ui.horizontal(|ui| {
+                    ui.selectable_value(
+                        &mut project.grid_highlight,
+                        GridHighlight::Row,
+                        "Last Row",
+                    );
+                    ui.selectable_value(
+                        &mut project.grid_highlight,
+                        GridHighlight::Column,
+                        "Last Column",
+                    );
+                    ui.selectable_value(&mut project.grid_highlight, GridHighlight::None, "None");
+                });
+
+                ui.separator();
+
+                ui.spacing_mut().slider_width = 195.0;
+
+                ui.label("Scene preview size");
+                    if ui
+                        .add(
+                            Slider::new(self.persistant_state.effects_size_mut(), 50.0..=500.0)
+                                .show_value(false),
+                        )
+                        .changed()
+                    {
+                        self.persistant_state.save();
+                    }
+            });
+            ui.add_space(4.0);
+        }
+    }
+
     fn git_button(&mut self, ui: &mut Ui) {
         let mut layout_job = LayoutJob::default();
         icons::GIT_BRANCH.regular().append_to(
@@ -155,9 +228,13 @@ impl App {
             TextFormat::default(),
         );
 
-        ui.menu_button(layout_job, |ui| {
-            self.git_menu(ui);
-        });
+        MenuButton::from_button(Button::new(layout_job))
+            .config(
+                MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
+            )
+            .ui(ui, |ui| {
+                self.git_menu(ui);
+            });
     }
 
     fn git_menu(&mut self, ui: &mut Ui) {
@@ -174,6 +251,7 @@ impl App {
             .inner_margin(Margin::from(6.0))
             .show(ui, |ui| {
                 let mut commit = false;
+                let mut close_menu = false;
                 ui.add_enabled_ui(staged_files > 0 && !working(), |ui| {
                     ui.label(if staged_files == 1 {
                         "Commit message for 1 change:".to_owned()
@@ -192,14 +270,17 @@ impl App {
                 Flex::horizontal().show(ui, |flex| {
                     if flex.add(item().grow(1.0), Button::new("Commit")).clicked() {
                         commit = true;
+                        close_menu = true;
                     }
 
                     if flex.add(item().grow(1.0), Button::new("⬆Push")).clicked() {
                         StorageAction::Push.enqueue();
+                        close_menu = true;
                     }
 
                     if flex.add(item().grow(1.0), Button::new("⬇Pull")).clicked() {
                         StorageAction::Pull.enqueue();
+                        close_menu = true;
                     }
                 });
 
@@ -209,6 +290,11 @@ impl App {
                     }
                     .enqueue();
                     self.git_commit_message.clear();
+                    close_menu = true;
+                }
+
+                if close_menu {
+                    ui.close_kind(UiKind::Menu);
                 }
             });
     }

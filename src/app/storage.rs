@@ -1,5 +1,5 @@
 use crate::{
-    storage::{Loading, STORAGE_DIR},
+    storage::{STORAGE_DIR},
     ui::{action::UiAction, logo::logo_image},
 };
 use egui::{Color32, Image, Label, Margin, Pos2, Rect, RichText, Spinner, Stroke, Ui, Vec2};
@@ -16,7 +16,7 @@ fn draw_background_logo(ui: &mut Ui) {
     });
 }
 
-pub fn show_storage_loading(ui: &mut Ui, loading: Loading) {
+pub fn show_storage_loading(ui: &mut Ui) {
     let rect = ui.available_rect_before_wrap();
     let mut spinner_size = 300.0;
     let mut x = rect.center().x;
@@ -36,7 +36,7 @@ pub fn show_storage_loading(ui: &mut Ui, loading: Loading) {
     ui.put(center_rect, Spinner::new().size(spinner_size));
     ui.put(
         center_rect,
-        Label::new(RichText::new(format!("{loading}")).heading()),
+        Label::new(RichText::new(format!("{}", crate::storage::loading())).heading()),
     );
 }
 

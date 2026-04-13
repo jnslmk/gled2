@@ -1,4 +1,3 @@
-use kanal::Receiver;
 use log::{debug, trace, warn};
 use rosc::{OscMessage, OscPacket, OscType};
 use std::collections::HashMap;
@@ -8,7 +7,7 @@ use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 use std::{io, thread};
 
-use crate::midi::akai_apc40_mk2::GRID_HEIGHT;
+use crate::storage::asset::project::GridHighlight;
 use crate::storage::asset::scene::color::SceneInstanceColor;
 use crate::storage::asset::scene::instance::SceneInstance;
 use crate::ui::action::UiAction;
@@ -25,16 +24,16 @@ enum ClientInterestCommand {
     Heartbeat,
 }
 
-pub(super) fn start_network_loop(
-    handler: Arc<OSCHandler>,
-    state_receiver: Receiver<OscStateSnapshot>,
-) {
+pub(super) fn start_network_loop(handler: Arc<OSCHandler>) {
     thread::Builder::new()
         .name("gled:artnet:osc".to_string())
         .spawn(move || {
             let mut buf = [0u8; rosc::decoder::MTU];
             let mut subscribers: HashMap<SocketAddr, Instant> = HashMap::new();
             trace!("Starting osc network receiving loop");
+
+            let state_receiver = crate::output_state::new_receiver();
+
             loop {
                 subscribers.retain(|_, last_seen| last_seen.elapsed() < SUBSCRIBER_TTL);
                 handler
@@ -42,8 +41,14 @@ pub(super) fn start_network_loop(
                     .store(!subscribers.is_empty(), Ordering::Relaxed);
 
                 let mut latest_snapshot = None;
-                while let Ok(Some(snapshot)) = state_receiver.try_recv() {
-                    latest_snapshot = Some(snapshot);
+                while let Ok(Some(state)) = state_receiver.try_recv() {
+                    latest_snapshot = Some(OscStateSnapshot {
+                        project: state.project,
+                        selected_scene_instance: state.selected_scene_instance,
+                        blackout: state.blackout,
+                        beats_per_minute: state.beats_per_minute,
+                        beat_progression: state.beat_progression,
+                    });
                 }
                 if let Some(snapshot) = latest_snapshot
                     && !subscribers.is_empty()
@@ -157,29 +162,6 @@ fn broadcast_snapshot(
         );
 
         if let Some(project) = snapshot.project.as_ref() {
-            send_feedback(
-                socket,
-                subscriber,
-                "/project/auto_mode/active",
-                vec![OscType::Bool(project.auto_mode_active)],
-            );
-            send_feedback(
-                socket,
-                subscriber,
-                "/project/auto_mode/seconds",
-                vec![OscType::Long(
-                    i64::try_from(project.auto_mode_seconds).unwrap_or(i64::MAX),
-                )],
-            );
-            send_feedback(
-                socket,
-                subscriber,
-                "/project/auto_mode/max_scenes",
-                vec![OscType::Int(
-                    i32::try_from(project.auto_mode_max_scenes).unwrap_or(i32::MAX),
-                )],
-            );
-
             // Project palette
             send_feedback(
                 socket,
@@ -232,13 +214,24 @@ fn broadcast_snapshot(
                     &format!("/scene/grid/{col}/{row}"),
                     scene_instance,
                 );
-                if row == GRID_HEIGHT - 1 {
-                    send_scene_instance_feedback(
-                        socket,
-                        subscriber,
-                        &format!("/scene/quick/{col}"),
-                        scene_instance,
-                    );
+                match project.grid_highlight {
+                    GridHighlight::Row if row == project.quick_row_index() => {
+                        send_scene_instance_feedback(
+                            socket,
+                            subscriber,
+                            &format!("/scene/quick/{col}"),
+                            scene_instance,
+                        );
+                    }
+                    GridHighlight::Column if col == project.grid_width().saturating_sub(1) => {
+                        send_scene_instance_feedback(
+                            socket,
+                            subscriber,
+                            &format!("/scene/quick/{row}"),
+                            scene_instance,
+                        );
+                    }
+                    GridHighlight::None | GridHighlight::Row | GridHighlight::Column => {}
                 }
             }
 

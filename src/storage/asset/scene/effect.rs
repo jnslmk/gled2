@@ -113,9 +113,9 @@ impl Effect {
             .opacity
             .value(beat_progression, collections, sound_data)
             * main_opacity;
-        self.state.color_shift =
-            self.color_shift
-                .value(beat_progression, collections, sound_data);
+        self.state.color_shift = self
+            .color_shift
+            .value(beat_progression, collections, sound_data);
         self.state.speed_exponent = self.speed_exponent;
         self.state.animation_config = self.animation_config.clone();
 

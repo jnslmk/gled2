@@ -5,7 +5,6 @@ use crate::{
     input::event::InputEvent,
     pipeline::{
         group::{GroupIndices, Groups},
-        transition::Transition,
     },
     storage::{
         Asset, AssetId,
@@ -56,9 +55,6 @@ pub struct SceneInstance {
     pub palette_overwrite: Option<Option<Palette>>,
 
     #[serde(skip)]
-    transition: Option<Transition>,
-
-    #[serde(skip)]
     pub flash: bool,
 }
 
@@ -85,8 +81,7 @@ impl Clone for SceneInstance {
             scene: self.scene.clone(),
             groups_overwrite: self.groups_overwrite.clone(),
             palette_overwrite: self.palette_overwrite.clone(),
-            transition: Default::default(),
-            flash: Default::default(),
+            flash: self.flash,
         }
     }
 }
@@ -122,7 +117,6 @@ impl SceneInstance {
             flash_input: Default::default(),
             set_offset_on_flash: Default::default(),
             dimmer_input: Default::default(),
-            transition: Default::default(),
             flash: Default::default(),
             groups_overwrite: Default::default(),
             palette_overwrite: Default::default(),
@@ -183,19 +177,6 @@ impl SceneInstance {
             effect.state.framerate = timing.framerate().unwrap_or_default();
         }
 
-        let mut opacity_factor = 1.0;
-        if let Some(transition) = self.transition.as_ref() {
-            match transition.opacity_factor() {
-                Some(factor) => opacity_factor = factor,
-                None => {
-                    if transition.goal().turning_off() {
-                        self.active = false;
-                    }
-                    self.transition.take();
-                }
-            }
-        }
-
         if always_render || self.active || self.flash {
             let groups = self.groups_overwrite.as_ref().unwrap_or(deck_groups);
             let palette = match self.palette_overwrite.as_ref() {
@@ -206,7 +187,7 @@ impl SceneInstance {
                 1.0
             } else {
                 main_dimmer
-            } * opacity_factor
+            } 
                 * self
                     .opacity
                     .value(beat_progression, collections, sound_data)
@@ -230,22 +211,6 @@ impl SceneInstance {
 
         let send_output = !blackout && (self.active || self.flash);
         self.scene.render(encoder, send_output);
-    }
-
-    pub fn set_transition(&mut self, transition: Transition) {
-        self.active = true;
-        self.transition = Some(transition);
-    }
-
-    pub fn has_transition(&self) -> bool {
-        self.transition.is_some()
-    }
-
-    pub fn transition_factor(&self) -> f32 {
-        self.transition
-            .as_ref()
-            .and_then(|transition| transition.opacity_factor())
-            .unwrap_or(1.0)
     }
 
     pub fn send_positions(&mut self) {

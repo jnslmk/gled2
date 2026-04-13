@@ -33,9 +33,6 @@ This implementation introduces hierarchical addresses for project and scene cont
 * `/osc/state/subscribe`
 * `/osc/state/unsubscribe`
 * `/project/main_dimmer <float>`
-* `/project/auto_mode/active <bool|0|1>`
-* `/project/auto_mode/seconds <int>`
-* `/project/auto_mode/max_scenes <int>`
 * `/project/blackout <bool|0|1>`
 * `/project/palette <palette_uuid_string|none>`
 * `/project/palette/primary <r> <g> <b>`

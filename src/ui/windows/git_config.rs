@@ -1,6 +1,12 @@
-use crate::{app::{GitUiState, persistant_state::{ PersistantState}}, storage::{Branches, action::StorageAction, branches}, ui::window_common::{default_viewport_builder, gled_window_frame}};
-use egui::{Button, Color32, ComboBox, Context, Id, Layout, RichText, TextEdit, UiKind, Vec2, ViewportId};
-use egui_flex::{item, Flex};
+use crate::{
+    app::{GitUiState, persistant_state::PersistantState},
+    storage::{Branches, action::StorageAction, branches},
+    ui::window_common::{default_viewport_builder, gled_window_frame},
+};
+use egui::{
+    Button, Color32, ComboBox, Context, Id, Layout, RichText, TextEdit, UiKind, Vec2, ViewportId,
+};
+use egui_flex::{Flex, item};
 use home::home_dir;
 
 #[derive(Default)]
@@ -15,7 +21,7 @@ impl GitConfigWindow {
         if !self.open {
             return;
         }
-        
+
         ctx.show_viewport_immediate(
             ViewportId(Id::new("git config window")),
             default_viewport_builder()

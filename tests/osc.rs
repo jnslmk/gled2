@@ -198,9 +198,6 @@ fn test_osc_integration() {
             osc("/timing/tap", vec![]);
             short_delay();
         }
-        send("/project/auto_mode/active", vec![b(true)]);
-        delay();
-        send("/project/auto_mode/max_scenes", vec![i(10)]);
     });
 
     suite("4: Edge Cases & Boundary Values", &gled, || {

@@ -19,7 +19,7 @@ use epaint::{RectShape, StrokeKind};
 impl App {
     pub fn menu(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
         egui::Panel::top(format!("{viewport_id:?} menu")).show_inside(ui, |ui| {
-            if crate::storage::loading().is_some() {
+            if crate::storage::is_loading() {
                 ui.disable();
             }
             let title_bar_response = ui.interact(
@@ -206,7 +206,7 @@ impl App {
                     self.project_id
                         .and_then(|id| Asset::get(id, &self.collections))
                         .map(Arc::unwrap_or_clone),
-                )
+                    )
                 {
                     asset.data = project.to_owned();
                     asset.data.artnet_config = ARTNET_CONFIG.lock().clone();
@@ -234,12 +234,12 @@ impl App {
                                             "Could not load svg file \"{}\": {err:?}",
                                             path.display()
                                         ))
-                                            .enqueue();
+                                        .enqueue();
 
                                         None
                                     }
                                 })
-                                    .enqueue();
+                                .enqueue();
                             }
                         })
                         .ok();
@@ -280,6 +280,10 @@ impl App {
                     }
                     if ui.button("Output Devices").clicked() {
                         self.windows.output_devices.open();
+                        ui.close_kind(UiKind::Menu);
+                    }
+                    if ui.button("MIDI Controllers").clicked() {
+                        self.windows.midi_controllers.open();
                         ui.close_kind(UiKind::Menu);
                     }
                     if ui.button("Palettes").clicked() {
@@ -347,19 +351,6 @@ impl App {
                     ui.separator();
 
                     egui::gui_zoom::zoom_menu_buttons(ui);
-
-                    ui.separator();
-
-                    ui.label("Scene preview size");
-                    if ui
-                        .add(
-                            Slider::new(self.persistant_state.effects_size_mut(), 50.0..=500.0)
-                                .show_value(false),
-                        )
-                        .changed()
-                    {
-                        self.persistant_state.save();
-                    }
                 });
 
                 let mut open_new_window = ui.ctx().input_mut(|i| {

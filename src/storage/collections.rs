@@ -18,7 +18,7 @@ pub struct Collections {
 
 impl Default for Collections {
     fn default() -> Self {
-        let (sender, receiver) = bounded(1);
+        let (sender, receiver) = bounded(8);
         let id = COLLECTION_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         SENDERS.lock().insert(id, sender);
 

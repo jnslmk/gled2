@@ -76,6 +76,8 @@ impl<T: AssetTrait> AssetTree<T> {
                                 })
                                 .unwrap_or_default();
                             selection_changed = true;
+                            // we do not want keyboard focus so that keyboard bindings still work
+                            ui.memory_mut(|memory|memory.stop_text_input());
                         }
                         Action::Move(DragAndDrop { source, target, .. }) => {
                             for source in source {

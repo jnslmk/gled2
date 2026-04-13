@@ -1,7 +1,7 @@
 use crate::storage::{
     asset::{
         Asset,
-        project::{Project, grid_location_from_continuous_index},
+        project::Project,
         scene::{Scene, grid::GridLocation, instance::SceneInstance},
     },
     asset_id::AssetId,
@@ -79,7 +79,8 @@ impl ExternalControlState {
                 Err(_) => break,
             };
             if let Some(project) = project {
-                let grid_location = location(i);
+                let grid_location = project
+                    .grid_location_from_continuous_index(i, &GridLocation { row: 0, col: 0 });
                 let scene_instance = project.scenes_instances_grid.get_mut(&grid_location);
 
                 let asset_id =
@@ -144,8 +145,4 @@ fn update_scene_instance(
     //    .for_each(|effect_state| {
     //        effect_state.speed_exponent = scene_state.speed_multiplier as i32;
     //    })
-}
-
-fn location(i: usize) -> GridLocation {
-    grid_location_from_continuous_index(i, &GridLocation { row: 0, col: 0 })
 }

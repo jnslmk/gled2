@@ -1,4 +1,4 @@
-use super::{App, timing::FadeMode};
+use super::{App};
 use crate::ui::ChangeButton;
 use egui::{CentralPanel, Color32, Margin, RichText};
 
@@ -32,16 +32,6 @@ impl App {
                 }
                 ui.horizontal(|ui| {
                     project.groups.change_button(ui);
-                });
-
-                ui.add_space(4.0);
-
-                ui.horizontal(|ui| {
-                    ui.label("Fade duration:");
-                    ui.radio_value(&mut self.timing.fade_mode, FadeMode::Instant, "Instant");
-                    ui.radio_value(&mut self.timing.fade_mode, FadeMode::Beat, "1 Beat");
-                    ui.radio_value(&mut self.timing.fade_mode, FadeMode::Beats4, "4 Beats");
-                    ui.radio_value(&mut self.timing.fade_mode, FadeMode::Beats16, "16 Beats");
                 });
             });
 

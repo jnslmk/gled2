@@ -10,27 +10,26 @@ pub mod storage;
 pub mod svg;
 pub mod timing;
 
-use crate::input::osc::{OSCHandler, OscStateSnapshot};
+use crate::input::osc::OSCHandler;
+use crate::storage::is_loading;
 use crate::{
-    audio::{sound_data::SoundData, AudioPool},
-    input::{external_control::ExternalControlState, Input},
-    midi::state::MidiState,
+    audio::{AudioPool, sound_data::SoundData},
+    input::{Input, external_control::ExternalControlState},
+    output_state::ProjectState,
     pipeline::{extract_output::ExtractOutput, renderer_callback::RendererCallback},
     storage::{
-        asset::{palette::Palette, project::Project, scene::grid::GridLocation, Asset},
+        asset::{Asset, palette::Palette, project::Project, scene::grid::GridLocation},
         asset_id::AssetId,
         collections::Collections,
-        loading,
     },
     ui::{
-        action::UiAction, asset_tree::AssetTree,
-        scene_effect_editor::SceneEffectEditorState, window_common::default_viewport_builder,
-        windows::Windows,
+        action::UiAction, asset_tree::AssetTree, scene_effect_editor::SceneEffectEditorState,
+        window_common::default_viewport_builder, windows::Windows,
     },
 };
 use eframe::egui_wgpu::Callback;
 use egui::{CentralPanel, Id, LayerId, Rect, Ui, UiBuilder, ViewportId, ahash::HashSet};
-use kanal::Receiver;
+use kanal::{Receiver, Sender};
 use persistant_state::PersistantState;
 use std::sync::Arc;
 use std::time::Instant;
@@ -51,6 +50,9 @@ pub struct App {
     pub selected_scene_effect_editor: SceneEffectEditorState,
     pub git_commit_message: String,
     pub ui_action_receiver: Receiver<UiAction>,
+    pub midi_monitor_receiver: kanal::Receiver<crate::midi::monitor::MidiMonitorEvent>,
+    pub test_command_sender: Sender<crate::midi::runtime::TestCommand>,
+    pub midi_learn_state: crate::midi::learn::LearnState,
     pub last_title: String,
     pub midi_output_active: bool,
     pub palette_asset_tree: AssetTree<Palette>,
@@ -88,18 +90,18 @@ impl eframe::App for App {
         if let Ok(Some(network_stats)) = self.network_stats_receiver.try_recv() {
             self.network_stats = network_stats;
         }
-        self.collections.update();
         self.persistant_state.update();
         self.sound_data.update();
+        self.timing.tick(self.persistant_state.fps_limit());
+        self.collections.update();
 
-        if loading().is_none() && self.startup {
+        if !is_loading() && self.startup {
             self.startup = false;
             if let Some(project) = self.persistant_state.last_project_id() {
                 UiAction::SetProject(project).enqueue();
             }
         }
 
-        self.timing.tick(self.persistant_state.fps_limit());
         Input::tick();
         self.handle_ui_actions();
 
@@ -134,94 +136,20 @@ impl eframe::App for App {
                 } else {
                     false
                 },
-                self.timing.fade_duration(),
                 &self.collections,
                 &self.extract_output,
                 &self.sound_data,
             );
         }
 
-        if let Some(osc_handler) = &self.osc_handler
-            && osc_handler.has_subscribers()
-        {
-            osc_handler.enqueue_state_snapshot(OscStateSnapshot {
-                project: self.project.clone(),
-                selected_scene_instance: self.selected_scene_instance,
-                blackout: self.blackout || self.blackout_hold,
-                beats_per_minute: self.timing.beats_per_minute(),
-                beat_progression: self.timing.beat_progression(),
-            });
+        ProjectState {
+            project: self.project.clone(),
+            selected_scene_instance: self.selected_scene_instance,
+            blackout: self.blackout || self.blackout_hold,
+            beats_per_minute: self.timing.beats_per_minute(),
+            beat_progression: self.timing.beat_progression(),
         }
-
-        if self.midi_output_active {
-            MidiState {
-                blackout: self.blackout || self.blackout_hold,
-                beat_flank: self.timing.beat_flank(),
-                active_scenes: self
-                    .project
-                    .as_mut()
-                    .map_or_else(Default::default, |project| {
-                        project
-                            .scenes_instances_grid
-                            .iter_mut()
-                            .filter_map(
-                                |(location, scene)| {
-                                    if scene.active { Some(*location) } else { None }
-                                },
-                            )
-                            .collect()
-                    }),
-                flashed_scenes: self
-                    .project
-                    .as_mut()
-                    .map_or_else(Default::default, |project| {
-                        project
-                            .scenes_instances_grid
-                            .iter_mut()
-                            .filter_map(
-                                |(location, scene)| {
-                                    if scene.flash { Some(*location) } else { None }
-                                },
-                            )
-                            .collect()
-                    }),
-                available_scenes_grid: self.project.as_mut().map_or_else(
-                    Default::default,
-                    |project| {
-                        project
-                            .scenes_instances_grid
-                            .iter()
-                            .map(|(location, scene_instance)| (*location, scene_instance.color))
-                            .collect()
-                    },
-                ),
-                selected_scene_opacity: {
-                    let mut beat_progression = self.timing.beat_progression();
-
-                    self.project
-                        .as_mut()
-                        .and_then(|project| {
-                            project
-                                .get_scenes_instance(&self.selected_scene_instance)
-                                .map(|scene_instance| {
-                                    beat_progression +=
-                                        scene_instance.beat_progression_offset.value(
-                                            beat_progression,
-                                            &self.collections,
-                                            &self.sound_data,
-                                        );
-                                    scene_instance.opacity.value(
-                                        beat_progression,
-                                        &self.collections,
-                                        &self.sound_data,
-                                    )
-                                })
-                        })
-                        .unwrap_or(1.0)
-                },
-            }
-            .enqueue();
-        }
+        .enqueue();
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
@@ -257,6 +185,9 @@ impl eframe::App for App {
             &mut self.persistant_state,
             &mut self.extract_output,
             &mut self.sound_data,
+            &self.midi_monitor_receiver,
+            &self.test_command_sender,
+            &mut self.midi_learn_state,
         );
 
         ctx.request_repaint();
@@ -284,43 +215,48 @@ impl App {
         );
         root_ui.set_clip_rect(ctx.content_rect());
 
-        CentralPanel::default().frame(panel_frame).show_inside(&mut root_ui, |ui| {
-            if viewport_id.is_none() {
-                let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
-                ui.painter().add(callback);
-            }
-            let mut ui = ui.new_child(UiBuilder::new().max_rect(ui.max_rect().shrink(4.0)));
+        CentralPanel::default()
+            .frame(panel_frame)
+            .show_inside(&mut root_ui, |ui| {
+                if viewport_id.is_none() {
+                    let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
+                    ui.painter().add(callback);
+                }
+                let mut ui = ui.new_child(UiBuilder::new().max_rect(ui.max_rect().shrink(4.0)));
 
-            self.menu(&mut ui, viewport_id);
-            self.status_bar(&mut ui, viewport_id);
+                self.menu(&mut ui, viewport_id);
+                self.status_bar(&mut ui, viewport_id);
 
-            if let Some(error) = crate::storage::error() {
-                show_storage_error(&mut ui, error);
-                return;
-            } else if let Some(loading) = crate::storage::loading() {
-                show_storage_loading(&mut ui, loading);
-                return;
-            }
+                if let Some(error) = crate::storage::error() {
+                    show_storage_error(&mut ui, error);
+                    return;
+                } else if is_loading() {
+                    show_storage_loading(&mut ui);
+                    return;
+                }
 
-            if self.project.is_some() {
-                egui::Panel::left("config")
-                    .resizable(false)
-                    .exact_size(400.0)
-                    .show_inside(&mut ui, |ui| self.config(ui));
-                egui::Panel::top("preview")
-                    .resizable(true)
-                    .default_size(200.0)
-                    .min_size(200.0)
-                    .show_inside(&mut ui, |ui| self.preview(ui));
-                egui::CentralPanel::default().show_inside(&mut ui, |ui| self.scenes(ui));
-            } else {
-                self.no_project(&mut ui);
-            }
-        });
+                if self.project.is_some() {
+                    egui::Panel::left("config")
+                        .resizable(false)
+                        .exact_size(400.0)
+                        .show_inside(&mut ui, |ui| self.config(ui));
+                    egui::Panel::top("preview")
+                        .resizable(true)
+                        .default_size(200.0)
+                        .min_size(200.0)
+                        .show_inside(&mut ui, |ui| self.preview(ui));
+                    egui::CentralPanel::default().show_inside(&mut ui, |ui| self.scenes(ui));
+                } else {
+                    self.no_project(&mut ui);
+                }
+            });
     }
     pub fn new(
         ui_action_receiver: Receiver<UiAction>,
         network_stats_receiver: Receiver<(f64, f64)>,
+        midi_monitor_receiver: kanal::Receiver<crate::midi::monitor::MidiMonitorEvent>,
+        test_command_sender: Sender<crate::midi::runtime::TestCommand>,
+        midi_learn_receiver: Receiver<[u8; 3]>,
         extract_output: ExtractOutput,
         artnet_control_receiver: Receiver<Vec<u8>>,
         audio_pool: AudioPool,
@@ -339,6 +275,9 @@ impl App {
             other_main_windows: Default::default(),
             git_commit_message: Default::default(),
             ui_action_receiver,
+            midi_monitor_receiver,
+            test_command_sender,
+            midi_learn_state: crate::midi::learn::LearnState::new(midi_learn_receiver),
             last_title: Default::default(),
             midi_output_active: false,
             palette_asset_tree: AssetTree {

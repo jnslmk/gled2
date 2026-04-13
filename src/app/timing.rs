@@ -21,7 +21,6 @@ pub struct Timing {
     frame_count: usize,
     taps: [Option<Instant>; 4],
     tap_count: usize,
-    pub fade_mode: FadeMode,
 }
 
 impl Default for Timing {
@@ -41,18 +40,8 @@ impl Default for Timing {
             frame_count: 0,
             taps: [None; 4],
             tap_count: 0,
-            fade_mode: Default::default(),
         }
     }
-}
-
-#[derive(Default, PartialEq, Eq)]
-pub enum FadeMode {
-    Instant,
-    #[default]
-    Beat,
-    Beats4,
-    Beats16,
 }
 
 impl Timing {
@@ -111,23 +100,6 @@ impl Timing {
         session_state.set_tempo(self.change_beats_per_minute as f64, now);
         self.link.commit_app_session_state(&session_state);
         self.previous_change_beats_per_minute = self.change_beats_per_minute;
-    }
-
-    #[inline]
-    fn beat_duration_nanoseconds(&self) -> f64 {
-        60e+9f64 / self.beats_per_minute as f64
-    }
-
-    pub fn fade_duration(&self) -> Duration {
-        Duration::from_nanos(
-            match self.fade_mode {
-                FadeMode::Instant => 0.0,
-                FadeMode::Beat => self.beat_duration_nanoseconds(),
-                FadeMode::Beats4 => self.beat_duration_nanoseconds() * 4.0,
-                FadeMode::Beats16 => self.beat_duration_nanoseconds() * 16.0,
-            }
-            .round() as u64,
-        )
     }
 
     fn calculate_avg_fps(&mut self) {

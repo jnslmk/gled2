@@ -124,30 +124,34 @@ impl SceneInstance {
                         }
 
                         if let Some(palette_overwrite) = self.palette_overwrite.as_mut() {
-                            let response = ui.menu_button("📂 Palette", |ui| {
-                                if ui.button("No Palette").clicked() {
-                                    *palette_overwrite = None;
-                                    ui.close_kind(UiKind::Menu);
-                                }
+                            let response = ui
+                                .menu_button("📂 Palette", |ui| {
+                                    if ui.button("No Palette").clicked() {
+                                        *palette_overwrite = None;
+                                        ui.close_kind(UiKind::Menu);
+                                    }
 
-                                if let Some(palette_id) = AssetTree::<Palette>::show_asset_selection(
-                                    ui,
-                                    ui.make_persistent_id(Palette::NAME),
-                                    collections,
-                                ) {
-                                    *palette_overwrite = crate::storage::asset::Asset::get(
-                                        palette_id,
-                                        collections,
-                                    )
-                                    .map(|palette| palette.data.clone());
-                                    ui.data_mut(|data| {
-                                        data.remove::<TreeViewState<usize>>(
+                                    if let Some(palette_id) =
+                                        AssetTree::<Palette>::show_asset_selection(
+                                            ui,
                                             ui.make_persistent_id(Palette::NAME),
+                                            collections,
                                         )
-                                    });
-                                    ui.close_kind(UiKind::Menu);
-                                }
-                            }).response;
+                                    {
+                                        *palette_overwrite = crate::storage::asset::Asset::get(
+                                            palette_id,
+                                            collections,
+                                        )
+                                        .map(|palette| palette.data.clone());
+                                        ui.data_mut(|data| {
+                                            data.remove::<TreeViewState<usize>>(
+                                                ui.make_persistent_id(Palette::NAME),
+                                            )
+                                        });
+                                        ui.close_kind(UiKind::Menu);
+                                    }
+                                })
+                                .response;
 
                             if let Some(palette) = palette_overwrite.as_ref() {
                                 palette.show(ui, response.rect);
@@ -164,7 +168,11 @@ impl SceneInstance {
                     .stroke(egui::Stroke::new(1.0, egui::Color32::DARK_GRAY))
                     .show(ui, |ui| {
                         ui.vertical(|ui| {
-                            ui.label(egui::RichText::new("Animations").size(12.0).color(egui::Color32::GRAY));
+                            ui.label(
+                                egui::RichText::new("Animations")
+                                    .size(12.0)
+                                    .color(egui::Color32::GRAY),
+                            );
                             scene_effect_list_ui(
                                 ui,
                                 &self.scene,
@@ -182,7 +190,11 @@ impl SceneInstance {
                             ui.separator();
                             ui.add_space(8.0);
 
-                            ui.label(egui::RichText::new("Effect Settings").size(12.0).color(egui::Color32::GRAY));
+                            ui.label(
+                                egui::RichText::new("Effect Settings")
+                                    .size(12.0)
+                                    .color(egui::Color32::GRAY),
+                            );
                             selected_effect_editor_ui(
                                 ui,
                                 &mut self.scene,

@@ -23,12 +23,12 @@ impl<'a> GledSlider<'a> {
             horizontal: false,
         }
     }
-    
+
     pub fn preview_value(mut self, preview_value: f32) -> Self {
         self.preview_value = Some(preview_value);
         self
     }
-    
+
     pub fn size(mut self, size: f32) -> Self {
         self.size = size;
         self
@@ -51,7 +51,7 @@ impl Widget for GledSlider<'_> {
         const ACTUAL_VALUE_COLOR: Color32 = Color32::from_rgb(255, 176, 100);
 
         let preview_value = self.preview_value.unwrap_or(*self.value);
-        
+
         if self.horizontal {
             let height: f32 = self.size;
             let mut width = ui.available_width();
@@ -130,8 +130,12 @@ impl Widget for GledSlider<'_> {
                 let (_, selected_bottom) = rect.split_top_bottom_at_fraction(1.0 - *self.value);
 
                 ui.painter().add(
-                    RectShape::filled(rect.expand(2.0), corner_radius, Color32::from_black_alpha(60))
-                        .with_blur_width(6.0),
+                    RectShape::filled(
+                        rect.expand(2.0),
+                        corner_radius,
+                        Color32::from_black_alpha(60),
+                    )
+                    .with_blur_width(6.0),
                 );
                 ui.painter_at(top)
                     .rect_filled(rect, corner_radius, TOP_COLOR);

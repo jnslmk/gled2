@@ -1,15 +1,24 @@
-use std::collections::{BTreeMap};
 use crate::{
     storage::{
-        asset::{Asset, output_device::{OutputDevice, routing::OutputRouting}},
-        asset_id::AssetId, collections::Collections,
+        asset::{
+            Asset,
+            output_device::{OutputDevice, routing::OutputRouting},
+        },
+        asset_id::AssetId,
+        collections::Collections,
     },
-    ui::{asset::CollectionsChangeButton, window_common::{default_viewport_builder, gled_window_frame}, windows::channel_overwrites},
+    ui::{
+        asset::CollectionsChangeButton,
+        window_common::{default_viewport_builder, gled_window_frame},
+        windows::channel_overwrites,
+    },
 };
 use egui::{
-    mutex::Mutex, scroll_area::ScrollBarVisibility::AlwaysVisible, Color32, ComboBox, Context, Id, RichText, Vec2, ViewportId
+    Color32, ComboBox, Context, Id, RichText, Vec2, ViewportId, mutex::Mutex,
+    scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
 use once_cell::sync::Lazy;
+use std::collections::BTreeMap;
 
 pub struct ChannelOverwritesWindow {
     open: bool,
@@ -153,8 +162,7 @@ impl ChannelOverwritesWindow {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct ChannelOverwrites(
-    #[serde(with = "serde_channel_overwrites_map")]
-    BTreeMap<ChannelIdentifier, u8>
+    #[serde(with = "serde_channel_overwrites_map")] BTreeMap<ChannelIdentifier, u8>,
 );
 
 static CHANNEL_OVERWRITES: Lazy<Mutex<ChannelOverwrites>> =
@@ -171,7 +179,12 @@ impl ChannelOverwrites {
 
     /// Overwrite data for given device/universe tuple.
     /// Removes the entry from the channel overwrites so we know which universes we need to send extra
-    pub fn overwrite_data(&mut self, device: AssetId<OutputDevice>, universe: Option<u16>, data: &mut[u8]) {
+    pub fn overwrite_data(
+        &mut self,
+        device: AssetId<OutputDevice>,
+        universe: Option<u16>,
+        data: &mut [u8],
+    ) {
         self.0.retain(|channel_identifier, value| {
             if channel_identifier.device == device && channel_identifier.universe == universe {
                 data[channel_identifier.channel as usize - 1] = *value;
@@ -185,7 +198,12 @@ impl ChannelOverwrites {
     pub fn overwritten_universes(self) -> Vec<(OutputRouting, [u8; 512])> {
         let mut overwritten_universes = BTreeMap::new();
         for (channel_identifier, value) in self.0.into_iter() {
-            overwritten_universes.entry(OutputRouting { device: Some(channel_identifier.device), universe: channel_identifier.universe}).or_insert([0; 512])[channel_identifier.channel as usize - 1] = value;
+            overwritten_universes
+                .entry(OutputRouting {
+                    device: Some(channel_identifier.device),
+                    universe: channel_identifier.universe,
+                })
+                .or_insert([0; 512])[channel_identifier.channel as usize - 1] = value;
         }
         overwritten_universes.into_iter().collect()
     }

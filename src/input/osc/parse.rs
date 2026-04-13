@@ -3,7 +3,6 @@ use rosc::{OscMessage, OscType};
 use uuid::Uuid;
 
 use crate::input::event::InputEvent;
-use crate::midi::akai_apc40_mk2::{GRID_HEIGHT, GRID_WIDTH};
 use crate::storage::asset::animation::argument::ArgumentKindId;
 use crate::storage::asset::project::scene_instance_path::{
     QuickSceneInstanceIndex, SceneInstanceUnion,
@@ -23,15 +22,6 @@ pub(super) fn parse_message(msg: &OscMessage) -> Result<UiAction, ()> {
         .collect();
     match path.as_slice() {
         ["project", "main_dimmer"] => Ok(UiAction::SetMainDimmer(parse_f32(msg, 0)?)),
-        ["project", "auto_mode", "active"] => {
-            Ok(UiAction::SetProjectAutoModeActive(parse_bool(msg, 0)?))
-        }
-        ["project", "auto_mode", "seconds"] => {
-            Ok(UiAction::SetProjectAutoModeSeconds(parse_u64(msg, 0)?))
-        }
-        ["project", "auto_mode", "max_scenes"] => {
-            Ok(UiAction::SetProjectAutoModeMaxScenes(parse_usize(msg, 0)?))
-        }
         ["project", "blackout"] => Ok(UiAction::SetBlackout(parse_bool(msg, 0)?)),
         ["project", "palette"] => Ok(UiAction::SetProjectPaletteFromAsset(
             parse_optional_palette_id(msg, 0)?,
@@ -653,26 +643,8 @@ fn parse_target_action(
             target,
             parse_scene_palette_overwrite(msg, 0)?,
         )),
-        "delete" => {
-            let location = match target {
-                SceneInstanceUnion::Grid(location) => location,
-                SceneInstanceUnion::Quick(index) => GridLocation {
-                    row: GRID_HEIGHT - 1,
-                    col: index.index,
-                },
-            };
-            Ok(UiAction::DeleteSceneInstance { location })
-        }
-        "clone" => {
-            let location = match target {
-                SceneInstanceUnion::Grid(location) => location,
-                SceneInstanceUnion::Quick(index) => GridLocation {
-                    row: GRID_HEIGHT - 1,
-                    col: index.index,
-                },
-            };
-            Ok(UiAction::CloneSceneInstance(location))
-        }
+        "delete" => Ok(UiAction::DeleteSceneInstancePath(target)),
+        "clone" => Ok(UiAction::CloneSceneInstancePath(target)),
         _ => Err(()),
     }
 }
@@ -713,17 +685,11 @@ fn parse_scene_palette_overwrite(
 fn parse_grid_location(col: &str, row: &str) -> Result<GridLocation, ()> {
     let col = col.parse::<usize>().map_err(|_| ())?;
     let row = row.parse::<usize>().map_err(|_| ())?;
-    if col >= GRID_WIDTH || row >= GRID_HEIGHT {
-        return Err(());
-    }
     Ok(GridLocation::new(col, row))
 }
 
 fn parse_quick_index(index: &str) -> Result<usize, ()> {
     let index = index.parse::<usize>().map_err(|_| ())?;
-    if index >= GRID_WIDTH {
-        return Err(());
-    }
     Ok(index)
 }
 
@@ -794,14 +760,6 @@ fn parse_f32(msg: &OscMessage, index: usize) -> Result<f32, ()> {
         OscType::Double(value) => Ok(*value as f32),
         OscType::Int(value) => Ok(*value as f32),
         OscType::Long(value) => Ok(*value as f32),
-        _ => Err(()),
-    }
-}
-
-fn parse_u64(msg: &OscMessage, index: usize) -> Result<u64, ()> {
-    match arg_at(msg, index)? {
-        OscType::Int(value) => u64::try_from(*value).map_err(|_| ()),
-        OscType::Long(value) => u64::try_from(*value).map_err(|_| ()),
         _ => Err(()),
     }
 }
@@ -934,12 +892,16 @@ mod tests {
     }
 
     #[test]
-    fn rejects_out_of_bounds_grid_location() {
-        let msg = msg(
-            &format!("/scene/grid/{}/{}/opacity", GRID_WIDTH, GRID_HEIGHT),
-            vec![OscType::Float(0.2)],
-        );
-        assert!(parse_message(&msg).is_err());
+    fn parses_large_grid_location_without_static_bounds_check() {
+        let msg = msg("/scene/grid/999/777/opacity", vec![OscType::Float(0.2)]);
+        match parse_message(&msg).expect("large grid location should parse") {
+            UiAction::SetSceneOpacity(SceneInstanceUnion::Grid(location), value) => {
+                assert_eq!(location.col, 999);
+                assert_eq!(location.row, 777);
+                assert_eq!(value, 0.2);
+            }
+            _ => panic!("wrong action variant"),
+        }
     }
 
     #[test]

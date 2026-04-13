@@ -56,7 +56,7 @@ impl Default for PersistantStateInner {
     fn default() -> Self {
         Self {
             effects_size: 100.0,
-            effects_always_render: false,
+            effects_always_render: true,
             fps_limit: 120.0,
             preview_palette: Default::default(),
             last_project_id: Default::default(),

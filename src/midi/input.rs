@@ -1,8 +1,19 @@
-use crate::{midi::akai_apc40_mk2, ui::action::UiAction};
+use crate::{
+    midi::{learn, monitor, runtime::RuntimeBus},
+    ui::action::UiAction,
+};
 use midir::MidiInput;
 use std::{collections::HashMap, thread::sleep, time::Duration};
 
-pub fn discover() {
+fn is_own_port(name: &str) -> bool {
+    name.contains("gled_read_input") || name.contains("gled_write_output")
+}
+
+fn is_midi_through(name: &str) -> bool {
+    name.contains("Midi Through")
+}
+
+pub fn discover(runtime_bus: RuntimeBus) {
     #[cfg(feature = "profiling")]
     profiling::register_thread!("midi:input:discover");
 
@@ -18,13 +29,14 @@ pub fn discover() {
                 .ports()
                 .into_iter()
                 .filter_map(|port| match input.port_name(&port) {
-                    Ok(name) => match name.split(':').next() {
-                        Some(name) => Some((port, name.to_owned())),
-                        None => {
+                    Ok(name) => {
+                        if name.trim().is_empty() {
                             UiAction::Error("Midi port name is empty".to_string()).enqueue();
                             None
+                        } else {
+                            Some((port, name))
                         }
-                    },
+                    }
                     Err(err) => {
                         UiAction::Error(format!("Could not get midi port name: {err:?}")).enqueue();
                         None
@@ -32,48 +44,54 @@ pub fn discover() {
                 })
                 .collect::<Vec<_>>()
         };
-        connections.retain(|id, _| ports.iter().any(|(port, _)| port.id() == *id));
+        connections.retain(|name, _| ports.iter().any(|(_, port_name)| port_name == name));
 
         for (port, name) in ports {
             let id = port.id();
-            if connections.contains_key(&id) {
+            if connections.contains_key(&name) {
+                continue;
+            }
+
+            if is_own_port(&name) {
+                continue;
+            }
+            if is_midi_through(&name) {
                 continue;
             }
 
             log::trace!("Discovered midi input device \"{name}\" at \"{id}\"");
-            match name.as_str() {
-                "APC40 mkII" | "APC40 mkII [0]" | "APC40 mkII [1]" => {
-                    log::info!("Connecting to input of \"{name}\" at \"{id}\"");
-                    if let Some(input) = input.take() {
-                        let connection = {
-                            let id = id.clone();
-                            match input.connect(
-                                &port,
-                                "gled_read_input",
-                                move |stamp, message, _| {
-                                    log::trace!(
-                                        "Midi message from \"{name}\" at \"{id}\": {message:?}"
-                                    );
-                                    akai_apc40_mk2::handle_input(stamp, message);
-                                },
-                                (),
-                            ) {
-                                Ok(connection) => connection,
-                                Err(err) => {
-                                    UiAction::Error(format!(
-                                        "Could not connect to midi input: {err:?}"
-                                    ))
-                                    .enqueue();
-                                    continue;
-                                }
-                            }
-                        };
-                        connections.insert(id, connection);
+            log::info!("Connecting to input of \"{name}\" at \"{id}\"");
+            monitor::push_event(&name, "input connected", &[]);
+            if let Some(input) = input.take() {
+                let mut runtime = runtime_bus.runtime();
+                let connection = {
+                    let id = id.clone();
+                    let port_name = name.clone();
+                    match input.connect(
+                        &port,
+                        "gled_read_input",
+                        move |_stamp, message, _| {
+                            log::trace!(
+                                "Midi message from \"{port_name}\" at \"{id}\": {message:?}"
+                            );
+
+                            monitor::push_event(&port_name, "midi", message);
+
+                            let _handled = learn::capture(message)
+                                || runtime.handle_input(&port_name, message);
+                        },
+                        (),
+                    ) {
+                        Ok(connection) => connection,
+                        Err(err) => {
+                            UiAction::Error(format!("Could not connect to midi input: {err:?}"))
+                                .enqueue();
+                            monitor::push_event(&name, "input connect failed", &[]);
+                            continue;
+                        }
                     }
-                }
-                name => {
-                    log::trace!("Ignoring \"{name}\" at \"{id}\"")
-                }
+                };
+                connections.insert(name, connection);
             }
         }
         sleep(Duration::from_secs(1));
