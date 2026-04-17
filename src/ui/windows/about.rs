@@ -19,7 +19,7 @@ impl AboutWindow {
         ctx.show_viewport_immediate(
             ViewportId(Id::new("about window")),
             default_viewport_builder()
-                .with_inner_size(Vec2::new(250.0, 220.0))
+                .with_inner_size(Vec2::new(280.0, 250.0))
                 .with_minimize_button(false)
                 .with_maximize_button(false)
                 .with_resizable(false),
@@ -58,7 +58,7 @@ impl AboutWindow {
         );
     }
 
-    pub fn open(&mut self) {
-        self.open = true;
+    pub fn toggle(&mut self) {
+        self.open = !self.open;
     }
 }

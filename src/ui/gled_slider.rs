@@ -45,9 +45,10 @@ impl<'a> GledSlider<'a> {
 
 impl Widget for GledSlider<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        const TOP_COLOR: Color32 = Color32::from_rgb(103, 103, 94);
+        const TOP_COLOR: Color32 = Color32::from_rgb(53, 53, 49);
         const HANDLE_COLOR: Color32 = Color32::from_rgb(59, 255, 0);
-        const BOTTOM_COLOR: Color32 = Color32::from_rgb(255, 176, 100);
+        const SELECTED_VALUE_COLOR: Color32 = Color32::from_rgb(103, 103, 94);
+        const ACTUAL_VALUE_COLOR: Color32 = Color32::from_rgb(255, 176, 100);
 
         let preview_value = self.preview_value.unwrap_or(*self.value);
 
@@ -71,11 +72,14 @@ impl Widget for GledSlider<'_> {
                         left.right_bottom() + Vec2::new(corner_radius as f32, 0.0),
                     )
                 };
+                let (selected_left, _) = rect.split_left_right_at_fraction(*self.value);
 
-                ui.painter_at(left)
-                    .rect_filled(rect, corner_radius, BOTTOM_COLOR);
                 ui.painter_at(right)
                     .rect_filled(rect, corner_radius, TOP_COLOR);
+                ui.painter_at(selected_left)
+                    .rect_filled(rect, corner_radius, SELECTED_VALUE_COLOR);
+                ui.painter_at(left)
+                    .rect_filled(rect, corner_radius, ACTUAL_VALUE_COLOR);
                 ui.painter()
                     .rect_filled(handle_rect, corner_radius, HANDLE_COLOR);
                 ui.painter().rect_stroke(
@@ -123,6 +127,7 @@ impl Widget for GledSlider<'_> {
                         top.right_bottom() + Vec2::new(0.0, corner_radius as f32),
                     )
                 };
+                let (_, selected_bottom) = rect.split_top_bottom_at_fraction(1.0 - *self.value);
 
                 ui.painter().add(
                     RectShape::filled(
@@ -134,8 +139,10 @@ impl Widget for GledSlider<'_> {
                 );
                 ui.painter_at(top)
                     .rect_filled(rect, corner_radius, TOP_COLOR);
+                ui.painter_at(selected_bottom)
+                    .rect_filled(rect, corner_radius, SELECTED_VALUE_COLOR);
                 ui.painter_at(bottom)
-                    .rect_filled(rect, corner_radius, BOTTOM_COLOR);
+                    .rect_filled(rect, corner_radius, ACTUAL_VALUE_COLOR);
                 ui.painter()
                     .rect_filled(handle_rect, corner_radius, HANDLE_COLOR);
                 ui.painter().rect_stroke(

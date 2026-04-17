@@ -7,7 +7,7 @@ use std::{
 };
 
 pub static CONNECTED_PEERS: AtomicU64 = AtomicU64::new(0);
-pub static LINK_ACTIVE_COLOR: Color32 = Color32::from_rgb(120, 110, 30);
+pub static LINK_ACTIVE_COLOR: Color32 = Color32::from_rgb(41, 116, 145);
 
 pub struct Timing {
     link: AblLink,
@@ -153,93 +153,99 @@ impl Timing {
     }
 
     pub fn tap_button(&mut self, ui: &mut Ui, menu_button_size: Vec2, tap_input: bool) {
-        let underlined = TextFormat {
-            underline: Stroke::new(1.0, Color32::GRAY),
-            ..Default::default()
-        };
-        let mut tap_text = LayoutJob::default();
-        tap_text.append("T", 0.0, underlined);
-        tap_text.append(
-            &format!(
-                "ap{}",
-                match (self.tap_count, self.tap_count % 4) {
-                    (0, _) => "",
-                    (_, 0) => "/",
-                    (_, 1) => "–",
-                    (_, 2) => "\\",
-                    _ => "|",
-                }
-            ),
-            0.0,
-            TextFormat::default(),
-        );
-        let response = ui.add_sized(menu_button_size, Button::new(tap_text));
+        ui.scope(|ui| {
+            ui.style_mut().visuals.widgets.inactive.bg_stroke =
+                ui.style().visuals.widgets.noninteractive.bg_stroke;
 
-        let mut alpha = None;
-        let bar_progression = self.beat_progression % 1.0;
-        if bar_progression < 0.10 {
-            alpha = Some(30.0);
-        } else if bar_progression < 0.20 {
-            alpha = Some(20.0 - ((bar_progression - 0.1) * 200.0));
-        } else if bar_progression > 0.9 {
-            alpha = Some((bar_progression - 0.9) * 200.0);
-        }
-        if let Some(alpha) = alpha {
-            ui.painter().rect_filled(
-                match self.beat_flank() {
-                    0 =>
-                    // top left
-                    {
-                        response
-                            .rect
-                            .split_left_right_at_fraction(0.5)
-                            .0
-                            .split_top_bottom_at_fraction(0.5)
-                            .0
+
+            let underlined = TextFormat {
+                underline: Stroke::new(1.0, Color32::GRAY),
+                ..Default::default()
+            };
+            let mut tap_text = LayoutJob::default();
+            tap_text.append("T", 0.0, underlined);
+            tap_text.append(
+                &format!(
+                    "ap{}",
+                    match (self.tap_count, self.tap_count % 4) {
+                        (0, _) => "",
+                        (_, 0) => "/",
+                        (_, 1) => "–",
+                        (_, 2) => "\\",
+                        _ => "|",
                     }
-                    1 =>
-                    // top right
-                    {
-                        response
-                            .rect
-                            .split_left_right_at_fraction(0.5)
-                            .1
-                            .split_top_bottom_at_fraction(0.5)
-                            .0
-                    }
-                    2 =>
-                    // bottom left
-                    {
-                        response
-                            .rect
-                            .split_left_right_at_fraction(0.5)
-                            .0
-                            .split_top_bottom_at_fraction(0.5)
-                            .1
-                    }
-                    3 =>
-                    // bottom right
-                    {
-                        response
-                            .rect
-                            .split_left_right_at_fraction(0.5)
-                            .1
-                            .split_top_bottom_at_fraction(0.5)
-                            .1
-                    }
-                    _ => unreachable!(),
-                }
-                .shrink(1.0),
-                CornerRadius::default(),
-                Color32::from_white_alpha(alpha as u8),
+                ),
+                0.0,
+                TextFormat::default(),
             );
-        }
+            let response = ui.add_sized(menu_button_size, Button::new(tap_text));
 
-        let tapped = response.clicked() || tap_input;
+            let mut alpha = None;
+            let bar_progression = self.beat_progression % 1.0;
+            if bar_progression < 0.10 {
+                alpha = Some(30.0);
+            } else if bar_progression < 0.20 {
+                alpha = Some(20.0 - ((bar_progression - 0.1) * 200.0));
+            } else if bar_progression > 0.9 {
+                alpha = Some((bar_progression - 0.9) * 200.0);
+            }
+            if let Some(alpha) = alpha {
+                ui.painter().rect_filled(
+                    match self.beat_flank() {
+                        0 =>
+                        // top left
+                            {
+                                response
+                                    .rect
+                                    .split_left_right_at_fraction(0.5)
+                                    .0
+                                    .split_top_bottom_at_fraction(0.5)
+                                    .0
+                            }
+                        1 =>
+                        // top right
+                            {
+                                response
+                                    .rect
+                                    .split_left_right_at_fraction(0.5)
+                                    .1
+                                    .split_top_bottom_at_fraction(0.5)
+                                    .0
+                            }
+                        2 =>
+                        // bottom left
+                            {
+                                response
+                                    .rect
+                                    .split_left_right_at_fraction(0.5)
+                                    .0
+                                    .split_top_bottom_at_fraction(0.5)
+                                    .1
+                            }
+                        3 =>
+                        // bottom right
+                            {
+                                response
+                                    .rect
+                                    .split_left_right_at_fraction(0.5)
+                                    .1
+                                    .split_top_bottom_at_fraction(0.5)
+                                    .1
+                            }
+                        _ => unreachable!(),
+                    }
+                        .shrink(1.0),
+                    CornerRadius::default(),
+                    Color32::from_white_alpha(alpha as u8),
+                );
+            }
 
-        if tapped {
-            self.tap();
-        }
+            let tapped = response.clicked() || tap_input;
+
+            if tapped {
+                self.tap();
+            }
+        });
     }
 
     pub fn beat_flank(&self) -> u8 {
