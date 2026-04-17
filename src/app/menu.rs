@@ -20,7 +20,6 @@ use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
 };
-use egui::containers::menu::MenuButton;
 
 const BPM_BAR_WIDTH: f32 = 500.0;
 
