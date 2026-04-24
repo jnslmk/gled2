@@ -58,6 +58,7 @@ pub enum UiAction {
     SetSceneOpacity(SceneInstanceUnion, f32),
     ToggleSceneActive(SceneInstanceUnion),
     SetSceneActive(SceneInstanceUnion, bool),
+    SetSceneFlash(SceneInstanceUnion, bool),
     SetMainDimmer(f32),
     MidiOutputActive(bool),
     SwapScenes(GridLocation, GridLocation),

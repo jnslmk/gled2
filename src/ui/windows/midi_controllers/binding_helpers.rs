@@ -16,6 +16,7 @@ pub(super) fn input_action_label(action: &MidiInputAction) -> &'static str {
         MidiInputAction::SelectScene { .. } => "Select Scene",
         MidiInputAction::ToggleSceneActive { .. } => "Toggle Scene Active",
         MidiInputAction::SetSceneActive { .. } => "Set Scene Active",
+        MidiInputAction::FlashScene { .. } => "Flash Scene",
         MidiInputAction::SetSceneOpacity { .. } => "Set Scene Opacity",
         MidiInputAction::SetSceneInputDimmer { .. } => "Set Scene Input Dimmer",
         MidiInputAction::SetSceneBeatOffset { .. } => "Set Scene Beat Offset",
@@ -76,6 +77,9 @@ fn output_source_from_input_action(action: &MidiInputAction) -> Option<MidiValue
         }),
         MidiInputAction::SelectSceneDistributed => Some(MidiValueSource::SelectedSceneDistributed),
         MidiInputAction::SetSceneActive { target } => Some(MidiValueSource::SceneActive {
+            target: target.clone(),
+        }),
+        MidiInputAction::FlashScene { target } => Some(MidiValueSource::SceneFlashed {
             target: target.clone(),
         }),
         MidiInputAction::SetSceneOpacity { target } => Some(match target {
@@ -176,7 +180,7 @@ pub(super) fn add_matching_output_binding(
         return false;
     }
 
-    mapping.output_bindings.push(MidiOutputBinding {
+    mapping.output_bindings.insert(0, MidiOutputBinding {
         name: if input_name.is_empty() {
             "Output".to_owned()
         } else {

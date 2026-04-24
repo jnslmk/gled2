@@ -179,6 +179,15 @@ impl App {
                         scene_instance.active = active;
                     }
                 }
+                (Some(project), UiAction::SetSceneFlash(location, flash)) => {
+                    if let Some(scene_instance) = scene_instance_by_target(
+                        project,
+                        location,
+                        self.selected_scene_instance,
+                    ) {
+                        scene_instance.flash = flash;
+                    }
+                }
                 (Some(project), UiAction::SelectScene(location)) => {
                     if let Some(pos) = location_by_target(project, location, self.selected_scene_instance) {
                         self.set_selected_scene_instance(pos);

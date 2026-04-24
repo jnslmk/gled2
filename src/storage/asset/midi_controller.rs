@@ -74,6 +74,9 @@ pub enum MidiInputAction {
     SetSceneActive {
         target: MidiSceneTarget,
     },
+    FlashScene {
+        target: MidiSceneTarget,
+    },
     SetSceneOpacity {
         target: MidiSceneTarget,
     },

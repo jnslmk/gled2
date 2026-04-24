@@ -168,6 +168,11 @@ pub(super) fn render_input_column(
                         );
                         ui.selectable_value(
                             &mut action_kind,
+                            MidiInputActionKind::FlashScene,
+                            "Flash Scene",
+                        );
+                        ui.selectable_value(
+                            &mut action_kind,
                             MidiInputActionKind::SetSceneOpacity,
                             "Set Scene Opacity",
                         );
@@ -240,6 +245,7 @@ pub(super) fn render_input_column(
                         target
                     }
                     | crate::storage::asset::midi_controller::MidiInputAction::SetSceneActive { target }
+                    | crate::storage::asset::midi_controller::MidiInputAction::FlashScene { target }
                     | crate::storage::asset::midi_controller::MidiInputAction::SetSceneOpacity { target }
                     | crate::storage::asset::midi_controller::MidiInputAction::SetSceneInputDimmer {
                         target

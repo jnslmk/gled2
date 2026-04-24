@@ -72,6 +72,8 @@ pub(super) fn handle_input_from_snapshot(
             }
             MidiInputAction::SetSceneActive { ref target } => scene_target_to_union(target)
                 .map(|target| UiAction::SetSceneActive(target, value > 0)),
+            MidiInputAction::FlashScene { ref target } => scene_target_to_union(target)
+                .map(|target| UiAction::SetSceneFlash(target, value > 0)),
             MidiInputAction::SetSceneOpacity { ref target } => scene_target_to_union(target)
                 .map(|target| UiAction::SetSceneOpacity(target, f32::from(value) / 127.0)),
             MidiInputAction::SetSceneInputDimmer { ref target } => scene_target_to_union(target)

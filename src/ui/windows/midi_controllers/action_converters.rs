@@ -12,6 +12,7 @@ pub(super) enum MidiInputActionKind {
     SelectScene,
     ToggleSceneActive,
     SetSceneActive,
+    FlashScene,
     SetSceneOpacity,
     SetSceneInputDimmer,
     SetSceneBeatOffset,
@@ -44,6 +45,7 @@ pub(super) fn input_action_kind(action: &MidiInputAction) -> MidiInputActionKind
         MidiInputAction::SelectScene { .. } => MidiInputActionKind::SelectScene,
         MidiInputAction::ToggleSceneActive { .. } => MidiInputActionKind::ToggleSceneActive,
         MidiInputAction::SetSceneActive { .. } => MidiInputActionKind::SetSceneActive,
+        MidiInputAction::FlashScene { .. } => MidiInputActionKind::FlashScene,
         MidiInputAction::SetSceneOpacity { .. } => MidiInputActionKind::SetSceneOpacity,
         MidiInputAction::SetSceneInputDimmer { .. } => MidiInputActionKind::SetSceneInputDimmer,
         MidiInputAction::SetSceneBeatOffset { .. } => MidiInputActionKind::SetSceneBeatOffset,
@@ -83,6 +85,9 @@ pub(super) fn input_action_from_kind(
             target: current_target_from_action(&current),
         },
         MidiInputActionKind::SetSceneActive => MidiInputAction::SetSceneActive {
+            target: current_target_from_action(&current),
+        },
+        MidiInputActionKind::FlashScene => MidiInputAction::FlashScene {
             target: current_target_from_action(&current),
         },
         MidiInputActionKind::SetSceneOpacity => MidiInputAction::SetSceneOpacity {
@@ -151,6 +156,7 @@ fn current_target_from_action(action: &MidiInputAction) -> MidiSceneTarget {
         MidiInputAction::SelectScene { target }
         | MidiInputAction::ToggleSceneActive { target }
         | MidiInputAction::SetSceneActive { target }
+        | MidiInputAction::FlashScene { target }
         | MidiInputAction::SetSceneOpacity { target }
         | MidiInputAction::SetSceneInputDimmer { target }
         | MidiInputAction::SetSceneBeatOffset { target }
