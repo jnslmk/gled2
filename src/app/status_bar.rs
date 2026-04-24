@@ -78,11 +78,30 @@ impl App {
 
                         let connected_ableton_peers = crate::app::timing::CONNECTED_PEERS
                             .load(std::sync::atomic::Ordering::Relaxed);
-                        if connected_ableton_peers > 0 {
+                        let show_link_read_only_toggle =
+                            connected_ableton_peers > 0 || self.timing.ableton_link_read_only();
+
+                        if show_link_read_only_toggle {
                             ui.add_space(8.0);
-                            let mut layout_job = LayoutJob::default();
-                            icons::METRONOME
-                                .regular()
+                            if connected_ableton_peers > 0 {
+                                let mut layout_job = LayoutJob::default();
+                                icons::METRONOME
+                                    .regular()
+                                    .color(LINK_ACTIVE_COLOR)
+                                    .append_to(
+                                        &mut layout_job,
+                                        ui.style(),
+                                        egui::FontSelection::Default,
+                                        egui::Align::Center,
+                                    );
+                                RichText::new(format!(
+                                    " {connected_ableton_peers} Ableton Link peer{} ",
+                                    if connected_ableton_peers == 1 {
+                                        ""
+                                    } else {
+                                        "s"
+                                    }
+                                ))
                                 .color(LINK_ACTIVE_COLOR)
                                 .append_to(
                                     &mut layout_job,
@@ -90,23 +109,35 @@ impl App {
                                     egui::FontSelection::Default,
                                     egui::Align::Center,
                                 );
-                            RichText::new(format!(
-                                " {connected_ableton_peers} Ableton Link peer{} ",
-                                if connected_ableton_peers == 1 {
-                                    ""
-                                } else {
-                                    "s"
-                                }
-                            ))
-                            .color(LINK_ACTIVE_COLOR)
-                            .append_to(
-                                &mut layout_job,
-                                ui.style(),
-                                egui::FontSelection::Default,
-                                egui::Align::Center,
-                            );
 
-                            ui.add(Label::new(layout_job).selectable(false));
+                                ui.add(Label::new(layout_job).selectable(false));
+                            }
+
+                            let mut read_only = self.timing.ableton_link_read_only();
+                            let changed = ui
+                                .scope(|ui| {
+                                    let visuals = &mut ui.style_mut().visuals;
+                                    visuals.widgets.inactive.bg_stroke.color = LINK_ACTIVE_COLOR;
+                                    visuals.widgets.hovered.bg_stroke.color = LINK_ACTIVE_COLOR;
+                                    visuals.widgets.active.bg_stroke.color = LINK_ACTIVE_COLOR;
+                                    visuals.widgets.inactive.fg_stroke.color = LINK_ACTIVE_COLOR;
+                                    visuals.widgets.hovered.fg_stroke.color = LINK_ACTIVE_COLOR;
+                                    visuals.widgets.active.fg_stroke.color = LINK_ACTIVE_COLOR;
+
+                                    ui.checkbox(
+                                        &mut read_only,
+                                        RichText::new("Read-only").color(LINK_ACTIVE_COLOR),
+                                    )
+                                    .on_hover_text(
+                                        "Ignore local tempo changes (tap, x1/2, x2, slider, OSC, MIDI).",
+                                    )
+                                    .changed()
+                                })
+                                .inner;
+
+                            if changed {
+                                self.timing.set_ableton_link_read_only(read_only);
+                            }
                         }
 
                         #[cfg(not(debug_assertions))]

@@ -485,7 +485,8 @@ impl Widget for BpmBar<'_> {
                 );
 
                 ui.spacing_mut().slider_width = ui.available_width() - 80.0;
-                ui.add(
+                ui.add_enabled(
+                    !app.timing.ableton_link_read_only(),
                     Slider::new(&mut app.timing.change_beats_per_minute, 20.0..=999.0)
                         .custom_formatter(|n, _| format!("{n:.1} bpm")),
                 );
