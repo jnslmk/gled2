@@ -638,13 +638,13 @@ impl App {
                     });
                 }
                 (_, UiAction::Tap) => {
-                    self.timing.tap();
+                    self.timing.tap(&self.persistant_state);
                 }
                 (_, UiAction::SpeedAdd(delta)) => {
-                    self.timing.add_speed(delta);
+                    self.timing.add_speed(delta, &self.persistant_state);
                 }
                 (_, UiAction::SpeedMultiply(multiplier)) => {
-                    self.timing.multiply_speed(multiplier);
+                    self.timing.multiply_speed(multiplier, &self.persistant_state);
                 }
                 (_, UiAction::SetBlackout(blackout)) => {
                     self.blackout = blackout;

@@ -45,6 +45,7 @@ pub struct PersistantStateInner {
     effects_size: f32,
     effects_always_render: bool,
     fps_limit: f32,
+    ableton_link_read_only: bool,
     preview_palette: Option<AssetId<Palette>>,
     last_project_id: Option<AssetId<Project>>,
     git_url: String,
@@ -58,6 +59,7 @@ impl Default for PersistantStateInner {
             effects_size: 100.0,
             effects_always_render: true,
             fps_limit: 120.0,
+            ableton_link_read_only: false,
             preview_palette: Default::default(),
             last_project_id: Default::default(),
             git_url: "https://gitlab.com/photonenkollektiv/gled2_assets.git".to_string(),
@@ -124,6 +126,14 @@ impl PersistantState {
 
     pub fn effects_always_render(&self) -> bool {
         self.current.effects_always_render
+    }
+
+    pub fn ableton_link_read_only(&self) -> bool {
+        self.current.ableton_link_read_only
+    }
+
+    pub fn set_ableton_link_read_only(&mut self, read_only: bool) {
+        self.current.ableton_link_read_only = read_only;
     }
 
     pub fn effects_always_render_mut(&mut self) -> &mut bool {

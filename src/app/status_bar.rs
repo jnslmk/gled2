@@ -79,7 +79,8 @@ impl App {
                         let connected_ableton_peers = crate::app::timing::CONNECTED_PEERS
                             .load(std::sync::atomic::Ordering::Relaxed);
                         let show_link_read_only_toggle =
-                            connected_ableton_peers > 0 || self.timing.ableton_link_read_only();
+                            connected_ableton_peers > 0
+                                || self.persistant_state.ableton_link_read_only();
 
                         if show_link_read_only_toggle {
                             ui.add_space(8.0);
@@ -113,7 +114,7 @@ impl App {
                                 ui.add(Label::new(layout_job).selectable(false));
                             }
 
-                            let mut read_only = self.timing.ableton_link_read_only();
+                            let mut read_only = self.persistant_state.ableton_link_read_only();
                             let changed = ui
                                 .scope(|ui| {
                                     let visuals = &mut ui.style_mut().visuals;
@@ -136,7 +137,8 @@ impl App {
                                 .inner;
 
                             if changed {
-                                self.timing.set_ableton_link_read_only(read_only);
+                                self.persistant_state.set_ableton_link_read_only(read_only);
+                                self.persistant_state.save();
                             }
                         }
 

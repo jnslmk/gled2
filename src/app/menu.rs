@@ -467,6 +467,7 @@ impl Widget for BpmBar<'_> {
                         .as_ref()
                         .map(|project| project.tap_input_is_new())
                         .unwrap_or_default(),
+                    &app.persistant_state,
                 );
 
                 app.timing.double_button(
@@ -475,6 +476,7 @@ impl Widget for BpmBar<'_> {
                         .as_ref()
                         .map(|project| project.double_input_is_new())
                         .unwrap_or_default(),
+                    &app.persistant_state,
                 );
                 app.timing.half_button(
                     ui,
@@ -482,11 +484,12 @@ impl Widget for BpmBar<'_> {
                         .as_ref()
                         .map(|project| project.half_input_is_new())
                         .unwrap_or_default(),
+                    &app.persistant_state,
                 );
 
                 ui.spacing_mut().slider_width = ui.available_width() - 80.0;
                 ui.add_enabled(
-                    !app.timing.ableton_link_read_only(),
+                    !app.persistant_state.ableton_link_read_only(),
                     Slider::new(&mut app.timing.change_beats_per_minute, 20.0..=999.0)
                         .custom_formatter(|n, _| format!("{n:.1} bpm")),
                 );

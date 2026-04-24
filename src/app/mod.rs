@@ -92,7 +92,8 @@ impl eframe::App for App {
         }
         self.persistant_state.update();
         self.sound_data.update();
-        self.timing.tick(self.persistant_state.fps_limit());
+        self.timing
+            .tick(self.persistant_state.fps_limit(), &self.persistant_state);
         self.collections.update();
 
         if !is_loading() && self.startup {
