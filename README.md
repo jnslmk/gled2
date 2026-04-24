@@ -70,10 +70,11 @@ This implementation introduces hierarchical addresses for project and scene cont
 
 Grid uses `0 <= col < 8` and `0 <= row < 5`.
 Quick index uses `0 <= index < 8`.
+The selected-scene alias resolves against the currently selected scene when the command is handled.
 
 ## Scene Commands
 
-Supported for `grid` and `quick` selectors:
+Supported for `grid`, `quick`, and `selected` selectors:
 
 * `.../opacity <float>`
 * `.../active <bool|0|1>`
@@ -101,36 +102,11 @@ Supported for `grid` and `quick` selectors:
 * `.../clone`
 * `.../delete`
 
+Setting `.../opacity` also activates the targeted scene instance.
+
 Additional grid-only commands:
 
 * `/scene/grid/{col}/{row}/add <scene_uuid_string>`
-
-Selected-scene commands:
-
-* `/scene/selected/opacity <float>`
-* `/scene/selected/active <bool|0|1>`
-* `/scene/selected/toggle`
-* `/scene/selected/clone`
-* `/scene/selected/delete`
-* `/scene/selected/name <string>`
-* `/scene/selected/color <red|green|blue|white|orange|yellow|purple|pink|black>`
-* `/scene/selected/input_dimmer <float>`
-* `/scene/selected/ignore_main_dimmer <bool|0|1>`
-* `/scene/selected/beat_offset <float>`
-* `/scene/selected/set_offset_on_flash <bool|0|1>`
-* `/scene/selected/activation_input/clear`
-* `/scene/selected/activation_input/artnet <channel>`
-* `/scene/selected/flash_input/clear`
-* `/scene/selected/flash_input/artnet <channel>`
-* `/scene/selected/dimmer_input/clear`
-* `/scene/selected/dimmer_input/artnet <channel>`
-* `/scene/selected/palette_overwrite <inherit|none|palette_uuid_string>`
-* `/scene/selected/palette_overwrite/primary <r> <g> <b>`
-* `/scene/selected/palette_overwrite/secondary <r> <g> <b>`
-* `/scene/selected/palette_overwrite/gradient/{gradient_index} <r> <g> <b>`
-* `/scene/selected/groups_overwrite/clear`
-* `/scene/selected/groups_overwrite/{group_index} <group_name>`
-* `/scene/selected/groups_overwrite/remove/{group_index}`
 
 Scene reorder command:
 
@@ -171,6 +147,7 @@ Direct scene palette overwrite color edits create or replace the scene-local ove
 
 OSC feedback synchronization is only active for clients that explicitly subscribe.
 `/osc/state/subscribe` and `/osc/state/unsubscribe` use the UDP source address/port of the client message as feedback destination.
+For scene feedback, subscribed clients receive the same field families on `/scene/grid/{col}/{row}/...` and `/scene/quick/{index}/...` as on `/scene/selected/...` for overlapping scene/effect state (`input_dimmer`, `ignore_main_dimmer`, `beat_offset`, `set_offset_on_flash`, `effect/count`, and effect parameter fields).
 
 ## Animation Asset Editing
 

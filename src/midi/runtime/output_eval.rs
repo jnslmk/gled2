@@ -139,6 +139,48 @@ pub(super) fn send_output_from_snapshot(
                             output.min,
                             output.max,
                         ),
+                        MidiValueSource::SceneEffectOpacity { ref target, effect_index } => {
+                            scale_to_range(
+                                scene_state::scene_effect_opacity(state, target, effect_index as usize),
+                                output.min,
+                                output.max,
+                            )
+                        }
+                        MidiValueSource::SceneEffectColorShift { ref target, effect_index } => {
+                            scale_to_range(
+                                scene_state::scene_effect_color_shift(state, target, effect_index as usize),
+                                output.min,
+                                output.max,
+                            )
+                        }
+                        MidiValueSource::SceneEffectBeatProgression { ref target, effect_index } => {
+                            scale_to_range(
+                                scene_state::scene_effect_beat_progression(state, target, effect_index as usize),
+                                output.min,
+                                output.max,
+                            )
+                        }
+                        MidiValueSource::SceneEffectBeatOffset { ref target, effect_index } => {
+                            scale_to_range(
+                                scene_state::scene_effect_beat_offset(state, target, effect_index as usize),
+                                output.min,
+                                output.max,
+                            )
+                        }
+                        MidiValueSource::SceneEffectSpeedExponent { ref target, effect_index } => {
+                            scale_to_range(
+                                scene_state::scene_effect_speed_exponent(state, target, effect_index as usize),
+                                output.min,
+                                output.max,
+                            )
+                        }
+                        MidiValueSource::SceneEffectGroupIndex { ref target, effect_index } => {
+                            scale_to_range(
+                                scene_state::scene_effect_group_index(state, target, effect_index as usize),
+                                output.min,
+                                output.max,
+                            )
+                        }
                     };
                     if send_if_changed(
                         connection,

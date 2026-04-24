@@ -240,109 +240,7 @@ fn broadcast_snapshot(
                 .scenes_instances_grid
                 .get(&snapshot.selected_scene_instance)
             {
-                send_feedback(
-                    socket,
-                    subscriber,
-                    "/scene/selected/active",
-                    vec![OscType::Bool(scene_instance.active)],
-                );
-                send_feedback(
-                    socket,
-                    subscriber,
-                    "/scene/selected/opacity",
-                    vec![OscType::Float(scene_instance.opacity.multiplier)],
-                );
-                send_feedback(
-                    socket,
-                    subscriber,
-                    "/scene/selected/name",
-                    vec![OscType::String(scene_instance.name.clone())],
-                );
-                send_feedback(
-                    socket,
-                    subscriber,
-                    "/scene/selected/color",
-                    vec![OscType::String(
-                        scene_color_name(scene_instance.color).to_string(),
-                    )],
-                );
-                send_feedback(
-                    socket,
-                    subscriber,
-                    "/scene/selected/input_dimmer",
-                    vec![OscType::Float(scene_instance.input_dimmer)],
-                );
-                send_feedback(
-                    socket,
-                    subscriber,
-                    "/scene/selected/ignore_main_dimmer",
-                    vec![OscType::Bool(scene_instance.ignore_main_dimmer)],
-                );
-                send_feedback(
-                    socket,
-                    subscriber,
-                    "/scene/selected/beat_offset",
-                    vec![OscType::Float(
-                        scene_instance.beat_progression_offset.multiplier,
-                    )],
-                );
-                send_feedback(
-                    socket,
-                    subscriber,
-                    "/scene/selected/set_offset_on_flash",
-                    vec![OscType::Bool(scene_instance.set_offset_on_flash)],
-                );
-
-                // Effects of selected scene
-                let effects = &scene_instance.scene.effects;
-                send_feedback(
-                    socket,
-                    subscriber,
-                    "/scene/selected/effect/count",
-                    vec![OscType::Int(
-                        i32::try_from(effects.len()).unwrap_or(i32::MAX),
-                    )],
-                );
-                for (i, effect) in effects.iter().enumerate() {
-                    send_feedback(
-                        socket,
-                        subscriber,
-                        &format!("/scene/selected/effect/{i}/opacity"),
-                        vec![OscType::Float(effect.opacity.multiplier)],
-                    );
-                    send_feedback(
-                        socket,
-                        subscriber,
-                        &format!("/scene/selected/effect/{i}/color_shift"),
-                        vec![OscType::Float(effect.color_shift.multiplier)],
-                    );
-                    send_feedback(
-                        socket,
-                        subscriber,
-                        &format!("/scene/selected/effect/{i}/beat_progression"),
-                        vec![OscType::Float(effect.beat_progression.multiplier)],
-                    );
-                    send_feedback(
-                        socket,
-                        subscriber,
-                        &format!("/scene/selected/effect/{i}/beat_offset"),
-                        vec![OscType::Float(effect.beat_progression_offset.multiplier)],
-                    );
-                    send_feedback(
-                        socket,
-                        subscriber,
-                        &format!("/scene/selected/effect/{i}/speed_exponent"),
-                        vec![OscType::Int(effect.speed_exponent)],
-                    );
-                    send_feedback(
-                        socket,
-                        subscriber,
-                        &format!("/scene/selected/effect/{i}/group_index"),
-                        vec![OscType::Int(
-                            i32::try_from(effect.group_index).unwrap_or(i32::MAX),
-                        )],
-                    );
-                }
+                send_scene_instance_feedback(socket, subscriber, "/scene/selected", scene_instance);
             }
         }
     }
@@ -378,6 +276,78 @@ fn send_scene_instance_feedback(
         &format!("{prefix}/color"),
         vec![OscType::String(scene_color_name(scene.color).to_string())],
     );
+    send_feedback(
+        socket,
+        addr,
+        &format!("{prefix}/input_dimmer"),
+        vec![OscType::Float(scene.input_dimmer)],
+    );
+    send_feedback(
+        socket,
+        addr,
+        &format!("{prefix}/ignore_main_dimmer"),
+        vec![OscType::Bool(scene.ignore_main_dimmer)],
+    );
+    send_feedback(
+        socket,
+        addr,
+        &format!("{prefix}/beat_offset"),
+        vec![OscType::Float(scene.beat_progression_offset.multiplier)],
+    );
+    send_feedback(
+        socket,
+        addr,
+        &format!("{prefix}/set_offset_on_flash"),
+        vec![OscType::Bool(scene.set_offset_on_flash)],
+    );
+
+    let effects = &scene.scene.effects;
+    send_feedback(
+        socket,
+        addr,
+        &format!("{prefix}/effect/count"),
+        vec![OscType::Int(i32::try_from(effects.len()).unwrap_or(i32::MAX))],
+    );
+    for (i, effect) in effects.iter().enumerate() {
+        send_feedback(
+            socket,
+            addr,
+            &format!("{prefix}/effect/{i}/opacity"),
+            vec![OscType::Float(effect.opacity.multiplier)],
+        );
+        send_feedback(
+            socket,
+            addr,
+            &format!("{prefix}/effect/{i}/color_shift"),
+            vec![OscType::Float(effect.color_shift.multiplier)],
+        );
+        send_feedback(
+            socket,
+            addr,
+            &format!("{prefix}/effect/{i}/beat_progression"),
+            vec![OscType::Float(effect.beat_progression.multiplier)],
+        );
+        send_feedback(
+            socket,
+            addr,
+            &format!("{prefix}/effect/{i}/beat_offset"),
+            vec![OscType::Float(effect.beat_progression_offset.multiplier)],
+        );
+        send_feedback(
+            socket,
+            addr,
+            &format!("{prefix}/effect/{i}/speed_exponent"),
+            vec![OscType::Int(effect.speed_exponent)],
+        );
+        send_feedback(
+            socket,
+            addr,
+            &format!("{prefix}/effect/{i}/group_index"),
+            vec![OscType::Int(
+                i32::try_from(effect.group_index).unwrap_or(i32::MAX),
+            )],
+        );
+    }
 }
 
 fn send_feedback(socket: &UdpSocket, addr: SocketAddr, path: &str, args: Vec<OscType>) {
@@ -420,7 +390,11 @@ mod tests {
 
     use rosc::{OscPacket, OscType};
 
+    use crate::storage::asset::scene::effect::Effect;
     use crate::storage::asset::scene::grid::GridLocation;
+    use crate::storage::asset::{project::Project, scene::instance::SceneInstance};
+    use crate::storage::collections::Collections;
+    use crate::storage::asset_id::AssetId;
 
     use super::*;
 
@@ -507,7 +481,6 @@ mod tests {
     #[test]
     fn broadcast_snapshot_sends_palette_fields() {
         use crate::storage::asset::palette::Palette;
-        use crate::storage::asset::project::Project;
 
         let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
         let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
@@ -555,6 +528,98 @@ mod tests {
         assert!(
             found_primary,
             "/project/palette/primary packet not received"
+        );
+    }
+
+    #[test]
+    fn broadcast_snapshot_sends_extended_scene_fields_for_grid_and_quick() {
+        let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
+        receiver
+            .set_read_timeout(Some(Duration::from_millis(300)))
+            .unwrap();
+        let receiver_addr = receiver.local_addr().unwrap();
+
+        let mut subscribers = HashMap::new();
+        subscribers.insert(receiver_addr, Instant::now());
+
+        let mut project = Project::default();
+        let location = GridLocation {
+            col: 2,
+            row: project.quick_row_index(),
+        };
+        let mut scene_instance = SceneInstance::from_scene_id(
+            AssetId::default(),
+            &Collections::default(),
+        );
+        scene_instance.input_dimmer = 0.42;
+        scene_instance.ignore_main_dimmer = true;
+        scene_instance.scene.effects.push(Effect::default());
+        project.add_scene_instance(location, scene_instance);
+
+        let snapshot = OscStateSnapshot {
+            project: Some(project),
+            selected_scene_instance: location,
+            blackout: false,
+            beats_per_minute: 90.0,
+            beat_progression: 0.0,
+        };
+        broadcast_snapshot(&sender, &subscribers, &snapshot);
+
+        let grid_input_dimmer_path = format!("/scene/grid/{}/{}/input_dimmer", location.col, location.row);
+        let grid_effect_count_path = format!("/scene/grid/{}/{}/effect/count", location.col, location.row);
+        let quick_ignore_main_dimmer_path = format!("/scene/quick/{}/ignore_main_dimmer", location.col);
+        let quick_effect_opacity_path = format!("/scene/quick/{}/effect/0/opacity", location.col);
+
+        let mut found_grid_input_dimmer = false;
+        let mut found_grid_effect_count = false;
+        let mut found_quick_ignore_main_dimmer = false;
+        let mut found_quick_effect_opacity = false;
+
+        let mut buf = [0u8; rosc::decoder::MTU];
+        while let Ok((size, _)) = receiver.recv_from(&mut buf) {
+            if let Ok((_, OscPacket::Message(m))) = rosc::decoder::decode_udp(&buf[..size]) {
+                if m.addr == grid_input_dimmer_path {
+                    assert_eq!(m.args, vec![OscType::Float(0.42)]);
+                    found_grid_input_dimmer = true;
+                }
+                if m.addr == grid_effect_count_path {
+                    assert_eq!(m.args, vec![OscType::Int(1)]);
+                    found_grid_effect_count = true;
+                }
+                if m.addr == quick_ignore_main_dimmer_path {
+                    assert_eq!(m.args, vec![OscType::Bool(true)]);
+                    found_quick_ignore_main_dimmer = true;
+                }
+                if m.addr == quick_effect_opacity_path {
+                    assert_eq!(m.args, vec![OscType::Float(1.0)]);
+                    found_quick_effect_opacity = true;
+                }
+            }
+            if found_grid_input_dimmer
+                && found_grid_effect_count
+                && found_quick_ignore_main_dimmer
+                && found_quick_effect_opacity
+            {
+                break;
+            }
+        }
+
+        assert!(
+            found_grid_input_dimmer,
+            "{grid_input_dimmer_path} packet not received"
+        );
+        assert!(
+            found_grid_effect_count,
+            "{grid_effect_count_path} packet not received"
+        );
+        assert!(
+            found_quick_ignore_main_dimmer,
+            "{quick_ignore_main_dimmer_path} packet not received"
+        );
+        assert!(
+            found_quick_effect_opacity,
+            "{quick_effect_opacity_path} packet not received"
         );
     }
 }

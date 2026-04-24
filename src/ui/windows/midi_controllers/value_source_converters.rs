@@ -19,6 +19,12 @@ pub(super) enum MidiValueSourceKind {
     SceneActive,
     SceneFlashed,
     SceneEffectSettingF32,
+    SceneEffectOpacity,
+    SceneEffectColorShift,
+    SceneEffectBeatProgression,
+    SceneEffectBeatOffset,
+    SceneEffectSpeedExponent,
+    SceneEffectGroupIndex,
 }
 
 pub(super) fn value_source_kind(source: &MidiValueSource) -> MidiValueSourceKind {
@@ -44,6 +50,12 @@ pub(super) fn value_source_kind(source: &MidiValueSource) -> MidiValueSourceKind
         MidiValueSource::SceneActive { .. } => MidiValueSourceKind::SceneActive,
         MidiValueSource::SceneFlashed { .. } => MidiValueSourceKind::SceneFlashed,
         MidiValueSource::SceneEffectSettingF32 { .. } => MidiValueSourceKind::SceneEffectSettingF32,
+        MidiValueSource::SceneEffectOpacity { .. } => MidiValueSourceKind::SceneEffectOpacity,
+        MidiValueSource::SceneEffectColorShift { .. } => MidiValueSourceKind::SceneEffectColorShift,
+        MidiValueSource::SceneEffectBeatProgression { .. } => MidiValueSourceKind::SceneEffectBeatProgression,
+        MidiValueSource::SceneEffectBeatOffset { .. } => MidiValueSourceKind::SceneEffectBeatOffset,
+        MidiValueSource::SceneEffectSpeedExponent { .. } => MidiValueSourceKind::SceneEffectSpeedExponent,
+        MidiValueSource::SceneEffectGroupIndex { .. } => MidiValueSourceKind::SceneEffectGroupIndex,
     }
 }
 
@@ -105,6 +117,30 @@ pub(super) fn value_source_from_kind(kind: MidiValueSourceKind, current: MidiVal
                 setting_index,
             }
         }
+        MidiValueSourceKind::SceneEffectOpacity => MidiValueSource::SceneEffectOpacity {
+            target: current_target_from_value_source(&current),
+            effect_index: current_effect_index_from_value_source(&current),
+        },
+        MidiValueSourceKind::SceneEffectColorShift => MidiValueSource::SceneEffectColorShift {
+            target: current_target_from_value_source(&current),
+            effect_index: current_effect_index_from_value_source(&current),
+        },
+        MidiValueSourceKind::SceneEffectBeatProgression => MidiValueSource::SceneEffectBeatProgression {
+            target: current_target_from_value_source(&current),
+            effect_index: current_effect_index_from_value_source(&current),
+        },
+        MidiValueSourceKind::SceneEffectBeatOffset => MidiValueSource::SceneEffectBeatOffset {
+            target: current_target_from_value_source(&current),
+            effect_index: current_effect_index_from_value_source(&current),
+        },
+        MidiValueSourceKind::SceneEffectSpeedExponent => MidiValueSource::SceneEffectSpeedExponent {
+            target: current_target_from_value_source(&current),
+            effect_index: current_effect_index_from_value_source(&current),
+        },
+        MidiValueSourceKind::SceneEffectGroupIndex => MidiValueSource::SceneEffectGroupIndex {
+            target: current_target_from_value_source(&current),
+            effect_index: current_effect_index_from_value_source(&current),
+        },
     }
 }
 
@@ -117,8 +153,27 @@ fn current_target_from_value_source(source: &MidiValueSource) -> MidiSceneTarget
         | MidiValueSource::SceneSetOffsetOnFlash { target }
         | MidiValueSource::SceneActive { target }
         | MidiValueSource::SceneFlashed { target }
-        | MidiValueSource::SceneEffectSettingF32 { target, .. } => target.clone(),
+        | MidiValueSource::SceneEffectSettingF32 { target, .. }
+        | MidiValueSource::SceneEffectOpacity { target, .. }
+        | MidiValueSource::SceneEffectColorShift { target, .. }
+        | MidiValueSource::SceneEffectBeatProgression { target, .. }
+        | MidiValueSource::SceneEffectBeatOffset { target, .. }
+        | MidiValueSource::SceneEffectSpeedExponent { target, .. }
+        | MidiValueSource::SceneEffectGroupIndex { target, .. } => target.clone(),
         _ => MidiSceneTarget::Selected,
+    }
+}
+
+fn current_effect_index_from_value_source(source: &MidiValueSource) -> u8 {
+    match source {
+        MidiValueSource::SceneEffectSettingF32 { effect_index, .. }
+        | MidiValueSource::SceneEffectOpacity { effect_index, .. }
+        | MidiValueSource::SceneEffectColorShift { effect_index, .. }
+        | MidiValueSource::SceneEffectBeatProgression { effect_index, .. }
+        | MidiValueSource::SceneEffectBeatOffset { effect_index, .. }
+        | MidiValueSource::SceneEffectSpeedExponent { effect_index, .. }
+        | MidiValueSource::SceneEffectGroupIndex { effect_index, .. } => *effect_index,
+        _ => 0,
     }
 }
 
@@ -152,6 +207,12 @@ pub(super) fn value_source_label(source: &MidiValueSource) -> &'static str {
         MidiValueSource::SceneActive { .. } => "Scene Active",
         MidiValueSource::SceneFlashed { .. } => "Scene Flashed",
         MidiValueSource::SceneEffectSettingF32 { .. } => "Scene Effect Setting (n,n) f32",
+        MidiValueSource::SceneEffectOpacity { .. } => "Effect Opacity",
+        MidiValueSource::SceneEffectColorShift { .. } => "Effect Color Shift",
+        MidiValueSource::SceneEffectBeatProgression { .. } => "Effect Beat Progression",
+        MidiValueSource::SceneEffectBeatOffset { .. } => "Effect Beat Offset",
+        MidiValueSource::SceneEffectSpeedExponent { .. } => "Effect Speed Exponent",
+        MidiValueSource::SceneEffectGroupIndex { .. } => "Effect Group Index",
     }
 }
 
@@ -173,7 +234,13 @@ pub(super) fn value_source_uses_active_value(source: &MidiValueSource) -> bool {
         | MidiValueSource::SceneOpacity { .. }
         | MidiValueSource::SceneInputDimmer { .. }
         | MidiValueSource::SceneBeatOffset { .. }
-        | MidiValueSource::SceneEffectSettingF32 { .. } => false,
+        | MidiValueSource::SceneEffectSettingF32 { .. }
+        | MidiValueSource::SceneEffectOpacity { .. }
+        | MidiValueSource::SceneEffectColorShift { .. }
+        | MidiValueSource::SceneEffectBeatProgression { .. }
+        | MidiValueSource::SceneEffectBeatOffset { .. }
+        | MidiValueSource::SceneEffectSpeedExponent { .. }
+        | MidiValueSource::SceneEffectGroupIndex { .. } => false,
     }
 }
 

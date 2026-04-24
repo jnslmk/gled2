@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::input::event::InputEvent;
 use crate::storage::asset::animation::argument::ArgumentKindId;
 use crate::storage::asset::project::scene_instance_path::{
-    QuickSceneInstanceIndex, SceneInstanceUnion,
+    QuickSceneInstanceIndex, SceneInstanceUnion, selected_scene_instance_index,
 };
 use crate::storage::asset::scene::Scene;
 use crate::storage::asset::scene::color::SceneInstanceColor;
@@ -106,141 +106,12 @@ pub(super) fn parse_message(msg: &OscMessage) -> Result<UiAction, ()> {
         ["timing", "speed", "add"] => Ok(UiAction::SpeedAdd(parse_f32(msg, 0)?)),
         ["timing", "speed", "multiply"] => Ok(UiAction::SpeedMultiply(parse_f32(msg, 0)?)),
 
-        ["scene", "selected", "opacity"] => {
-            Ok(UiAction::SetSelectedSceneOpacity(parse_f32(msg, 0)?))
+        ["scene", "selected", "effect", "add"] => {
+            Ok(UiAction::AddSceneEffect(selected_scene_instance_index()))
         }
-        ["scene", "selected", "active"] => {
-            Ok(UiAction::SetSelectedSceneActive(parse_bool(msg, 0)?))
-        }
-        ["scene", "selected", "toggle"] => Ok(UiAction::ToggleSelectedSceneActive),
-        ["scene", "selected", "clone"] => Ok(UiAction::CloneSelectedSceneInstance),
-        ["scene", "selected", "delete"] => Ok(UiAction::DeleteSelectedSceneInstance),
-        ["scene", "selected", "name"] => Ok(UiAction::SetSelectedSceneName(parse_string(msg, 0)?)),
-        ["scene", "selected", "color"] => {
-            Ok(UiAction::SetSelectedSceneColor(parse_scene_color(msg, 0)?))
-        }
-        ["scene", "selected", "input_dimmer"] => {
-            Ok(UiAction::SetSelectedSceneInputDimmer(parse_f32(msg, 0)?))
-        }
-        ["scene", "selected", "ignore_main_dimmer"] => Ok(
-            UiAction::SetSelectedSceneIgnoreMainDimmer(parse_bool(msg, 0)?),
-        ),
-        ["scene", "selected", "beat_offset"] => {
-            Ok(UiAction::SetSelectedSceneBeatOffset(parse_f32(msg, 0)?))
-        }
-        ["scene", "selected", "set_offset_on_flash"] => Ok(
-            UiAction::SetSelectedSceneSetOffsetOnFlash(parse_bool(msg, 0)?),
-        ),
-        ["scene", "selected", "activation_input", "clear"] => {
-            Ok(UiAction::SetSelectedSceneActivationInput(None))
-        }
-        ["scene", "selected", "activation_input", "artnet"] => Ok(
-            UiAction::SetSelectedSceneActivationInput(Some(InputEvent::Artnet(parse_u16(msg, 0)?))),
-        ),
-        ["scene", "selected", "flash_input", "clear"] => {
-            Ok(UiAction::SetSelectedSceneFlashInput(None))
-        }
-        ["scene", "selected", "flash_input", "artnet"] => Ok(UiAction::SetSelectedSceneFlashInput(
-            Some(InputEvent::Artnet(parse_u16(msg, 0)?)),
-        )),
-        ["scene", "selected", "dimmer_input", "clear"] => {
-            Ok(UiAction::SetSelectedSceneDimmerInput(None))
-        }
-        ["scene", "selected", "dimmer_input", "artnet"] => Ok(
-            UiAction::SetSelectedSceneDimmerInput(Some(InputEvent::Artnet(parse_u16(msg, 0)?))),
-        ),
-        ["scene", "selected", "palette_overwrite"] => {
-            Ok(UiAction::SetSelectedScenePaletteOverwriteFromAsset(
-                parse_scene_palette_overwrite(msg, 0)?,
-            ))
-        }
-        ["scene", "selected", "palette_overwrite", "primary"] => Ok(
-            UiAction::SetSelectedScenePaletteOverwritePrimary(parse_rgb(msg)?),
-        ),
-        ["scene", "selected", "palette_overwrite", "secondary"] => Ok(
-            UiAction::SetSelectedScenePaletteOverwriteSecondary(parse_rgb(msg)?),
-        ),
-        [
-            "scene",
-            "selected",
-            "palette_overwrite",
-            "gradient",
-            gradient_index,
-        ] => Ok(UiAction::SetSelectedScenePaletteOverwriteGradient(
-            parse_index(gradient_index)?,
-            parse_rgb(msg)?,
-        )),
-        ["scene", "selected", "groups_overwrite", "clear"] => {
-            Ok(UiAction::ClearSelectedSceneGroupsOverwrite)
-        }
-        [
-            "scene",
-            "selected",
-            "groups_overwrite",
-            "remove",
-            group_index,
-        ] => Ok(UiAction::RemoveSelectedSceneGroupsOverwriteEntry(
-            parse_index(group_index)?,
-        )),
-        ["scene", "selected", "groups_overwrite", group_index] => {
-            Ok(UiAction::SetSelectedSceneGroupsOverwriteEntry(
-                parse_index(group_index)?,
-                parse_string(msg, 0)?,
-            ))
-        }
-        ["scene", "selected", "effect", "add"] => Ok(UiAction::AddSelectedSceneEffect),
-        ["scene", "selected", "effect", effect_index, "delete"] => Ok(
-            UiAction::RemoveSelectedSceneEffect(parse_index(effect_index)?),
-        ),
-        ["scene", "selected", "effect", effect_index, "clone"] => Ok(
-            UiAction::CloneSelectedSceneEffect(parse_index(effect_index)?),
-        ),
-        ["scene", "selected", "effect", effect_index, "opacity"] => Ok(
-            UiAction::SetSelectedSceneEffectOpacity(parse_index(effect_index)?, parse_f32(msg, 0)?),
-        ),
-        ["scene", "selected", "effect", effect_index, "color_shift"] => {
-            Ok(UiAction::SetSelectedSceneEffectColorShift(
-                parse_index(effect_index)?,
-                parse_f32(msg, 0)?,
-            ))
-        }
-        [
-            "scene",
-            "selected",
-            "effect",
-            effect_index,
-            "beat_progression",
-        ] => Ok(UiAction::SetSelectedSceneEffectBeatProgression(
-            parse_index(effect_index)?,
-            parse_f32(msg, 0)?,
-        )),
-        ["scene", "selected", "effect", effect_index, "beat_offset"] => {
-            Ok(UiAction::SetSelectedSceneEffectBeatOffset(
-                parse_index(effect_index)?,
-                parse_f32(msg, 0)?,
-            ))
-        }
-        [
-            "scene",
-            "selected",
-            "effect",
-            effect_index,
-            "speed_exponent",
-        ] => Ok(UiAction::SetSelectedSceneEffectSpeedExponent(
-            parse_index(effect_index)?,
-            parse_i32(msg, 0)?,
-        )),
-        ["scene", "selected", "effect", effect_index, "group_index"] => {
-            Ok(UiAction::SetSelectedSceneEffectGroupIndex(
-                parse_index(effect_index)?,
-                parse_usize(msg, 0)?,
-            ))
-        }
-        ["scene", "selected", "effect", effect_index, "animation"] => {
-            Ok(UiAction::SetSelectedSceneEffectAnimation(
-                parse_index(effect_index)?,
-                parse_optional_animation_id(msg, 0)?,
-            ))
+        ["scene", "selected", "effect", effect_index, action] => {
+            let effect_index = parse_index(effect_index)?;
+            parse_target_effect_action(msg, selected_scene_instance_index(), effect_index, action)
         }
         [
             "scene",
@@ -250,7 +121,8 @@ pub(super) fn parse_message(msg: &OscMessage) -> Result<UiAction, ()> {
             "config",
             "u32",
             config_index,
-        ] => Ok(UiAction::SetSelectedSceneEffectAnimationConfigU32(
+        ] => Ok(UiAction::SetSceneEffectAnimationConfigU32(
+            selected_scene_instance_index(),
             parse_index(effect_index)?,
             parse_index(config_index)?,
             parse_u32(msg, 0)?,
@@ -263,11 +135,57 @@ pub(super) fn parse_message(msg: &OscMessage) -> Result<UiAction, ()> {
             "config",
             "f32",
             config_index,
-        ] => Ok(UiAction::SetSelectedSceneEffectAnimationConfigF32(
+        ] => Ok(UiAction::SetSceneEffectAnimationConfigF32(
+            selected_scene_instance_index(),
             parse_index(effect_index)?,
             parse_index(config_index)?,
             parse_f32(msg, 0)?,
         )),
+        ["scene", "selected", "groups_overwrite", "clear"] => {
+            Ok(UiAction::ClearSceneGroupsOverwrite(selected_scene_instance_index()))
+        }
+        [
+            "scene",
+            "selected",
+            "groups_overwrite",
+            "remove",
+            group_index,
+        ] => Ok(UiAction::RemoveSceneGroupsOverwriteEntry(
+            selected_scene_instance_index(),
+            parse_index(group_index)?,
+        )),
+        ["scene", "selected", "groups_overwrite", group_index] => {
+            Ok(UiAction::SetSceneGroupsOverwriteEntry(
+                selected_scene_instance_index(),
+                parse_index(group_index)?,
+                parse_string(msg, 0)?,
+            ))
+        }
+        ["scene", "selected", "palette_overwrite", action] => {
+            parse_target_palette_overwrite_action(msg, selected_scene_instance_index(), action)
+        }
+        [
+            "scene",
+            "selected",
+            "palette_overwrite",
+            "gradient",
+            gradient_index,
+        ] => Ok(UiAction::SetScenePaletteOverwriteGradient(
+            selected_scene_instance_index(),
+            parse_index(gradient_index)?,
+            parse_rgb(msg)?,
+        )),
+        ["scene", "selected", input_kind, mode]
+            if matches!(
+                *input_kind,
+                "activation_input" | "flash_input" | "dimmer_input"
+            ) =>
+        {
+            parse_target_input_action(msg, selected_scene_instance_index(), input_kind, mode)
+        }
+        ["scene", "selected", action] => {
+            parse_target_action(msg, selected_scene_instance_index(), action)
+        }
 
         ["scene", "grid", col, row, "add"] => {
             let location = parse_grid_location(col, row)?;
@@ -888,7 +806,10 @@ mod tests {
     fn parses_selected_scene_toggle() {
         let msg = msg("/scene/selected/toggle", vec![]);
         let action = parse_message(&msg).expect("selected toggle should parse");
-        assert!(matches!(action, UiAction::ToggleSelectedSceneActive));
+        assert!(matches!(
+            action,
+            UiAction::ToggleSceneActive(SceneInstanceUnion::Selected)
+        ));
     }
 
     #[test]
@@ -949,7 +870,11 @@ mod tests {
         );
         let action = parse_message(&msg).expect("selected effect speed should parse");
         match action {
-            UiAction::SetSelectedSceneEffectSpeedExponent(effect_index, value) => {
+            UiAction::SetSceneEffectSpeedExponent(
+                SceneInstanceUnion::Selected,
+                effect_index,
+                value,
+            ) => {
                 assert_eq!(effect_index, 2);
                 assert_eq!(value, -1);
             }
@@ -995,7 +920,9 @@ mod tests {
         let msg = msg("/scene/selected/effect/5/delete", vec![]);
         let action = parse_message(&msg).expect("effect delete should parse");
         match action {
-            UiAction::RemoveSelectedSceneEffect(index) => assert_eq!(index, 5),
+            UiAction::RemoveSceneEffect(SceneInstanceUnion::Selected, index) => {
+                assert_eq!(index, 5)
+            }
             _ => panic!("wrong action variant"),
         }
     }
@@ -1028,7 +955,7 @@ mod tests {
         );
         let action = parse_message(&msg).expect("palette overwrite should parse");
         match action {
-            UiAction::SetSelectedScenePaletteOverwriteFromAsset(value) => {
+            UiAction::SetScenePaletteOverwriteFromAsset(SceneInstanceUnion::Selected, value) => {
                 assert!(matches!(value, Some(None)));
             }
             _ => panic!("wrong action variant"),
@@ -1047,7 +974,7 @@ mod tests {
         );
         let action = parse_message(&msg).expect("selected palette primary should parse");
         match action {
-            UiAction::SetSelectedScenePaletteOverwritePrimary(rgb) => {
+            UiAction::SetScenePaletteOverwritePrimary(SceneInstanceUnion::Selected, rgb) => {
                 assert_eq!(rgb, [0.2, 0.4, 0.6]);
             }
             _ => panic!("wrong action variant"),
@@ -1100,7 +1027,7 @@ mod tests {
         );
         let action = parse_message(&msg).expect("groups overwrite set should parse");
         match action {
-            UiAction::SetSelectedSceneGroupsOverwriteEntry(index, group_name) => {
+            UiAction::SetSceneGroupsOverwriteEntry(SceneInstanceUnion::Selected, index, group_name) => {
                 assert_eq!(index, 2);
                 assert_eq!(group_name, "front");
             }

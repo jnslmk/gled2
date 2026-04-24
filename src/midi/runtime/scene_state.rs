@@ -11,7 +11,7 @@ use crate::{
 
 pub(super) fn scene_target_to_union(target: &MidiSceneTarget) -> Option<SceneInstanceUnion> {
     match target {
-        MidiSceneTarget::Selected => None,
+        MidiSceneTarget::Selected => Some(SceneInstanceUnion::Selected),
         MidiSceneTarget::Quick { index } => Some(quick_scene_instance_index(*index as usize)),
         MidiSceneTarget::Grid { row, col } => Some(grid_scene_instance_index(
             crate::storage::asset::scene::grid::GridLocation::new(*col as usize, *row as usize),
@@ -61,11 +61,11 @@ pub(super) fn scene_opacity(state: &MidiState, target: &MidiSceneTarget) -> f32 
         return state.selected_scene_opacity;
     }
 
-    if scene_is_active(state, target) {
-        1.0
-    } else {
-        0.0
-    }
+    state
+        .scene_opacity
+        .get(&target_location(state, target))
+        .copied()
+        .unwrap_or(0.0)
 }
 
 pub(super) fn scene_input_dimmer(state: &MidiState, target: &MidiSceneTarget) -> f32 {
@@ -125,6 +125,54 @@ pub(super) fn scene_effect_setting_f32(
     state
         .scene_effect_setting_f32
         .get(&(target_location(state, target), effect_index, setting_index))
+        .copied()
+        .unwrap_or(0.0)
+}
+
+pub(super) fn scene_effect_opacity(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+    state
+        .scene_effect_opacity
+        .get(&(target_location(state, target), effect_index))
+        .copied()
+        .unwrap_or(0.0)
+}
+
+pub(super) fn scene_effect_color_shift(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+    state
+        .scene_effect_color_shift
+        .get(&(target_location(state, target), effect_index))
+        .copied()
+        .unwrap_or(0.0)
+}
+
+pub(super) fn scene_effect_beat_progression(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+    state
+        .scene_effect_beat_progression
+        .get(&(target_location(state, target), effect_index))
+        .copied()
+        .unwrap_or(0.0)
+}
+
+pub(super) fn scene_effect_beat_offset(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+    state
+        .scene_effect_beat_offset
+        .get(&(target_location(state, target), effect_index))
+        .copied()
+        .unwrap_or(0.0)
+}
+
+pub(super) fn scene_effect_speed_exponent(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+    state
+        .scene_effect_speed_exponent
+        .get(&(target_location(state, target), effect_index))
+        .copied()
+        .unwrap_or(0.5)
+}
+
+pub(super) fn scene_effect_group_index(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+    state
+        .scene_effect_group_index
+        .get(&(target_location(state, target), effect_index))
         .copied()
         .unwrap_or(0.0)
 }

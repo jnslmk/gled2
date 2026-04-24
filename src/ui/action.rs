@@ -41,8 +41,6 @@ pub enum UiAction {
         location: GridLocation,
     },
     DeleteSceneInstancePath(SceneInstanceUnion),
-    DeleteSelectedSceneInstance,
-    CloneSelectedSceneInstance,
     CloneSceneInstance(GridLocation),
     CloneSceneInstancePath(SceneInstanceUnion),
     SendPositions,
@@ -58,48 +56,28 @@ pub enum UiAction {
     ///
     /// This also activates the scene instance
     SetSceneOpacity(SceneInstanceUnion, f32),
-    SetSelectedSceneOpacity(f32),
     ToggleSceneActive(SceneInstanceUnion),
     SetSceneActive(SceneInstanceUnion, bool),
     SetMainDimmer(f32),
     MidiOutputActive(bool),
     SwapScenes(GridLocation, GridLocation),
     SetSceneName(SceneInstanceUnion, String),
-    SetSelectedSceneName(String),
     SetSceneColor(SceneInstanceUnion, SceneInstanceColor),
-    SetSelectedSceneColor(SceneInstanceColor),
     SetSceneInputDimmer(SceneInstanceUnion, f32),
-    SetSelectedSceneInputDimmer(f32),
     SetSceneIgnoreMainDimmer(SceneInstanceUnion, bool),
-    SetSelectedSceneIgnoreMainDimmer(bool),
     SetSceneBeatOffset(SceneInstanceUnion, f32),
-    SetSelectedSceneBeatOffset(f32),
     SetSceneSetOffsetOnFlash(SceneInstanceUnion, bool),
-    SetSelectedSceneSetOffsetOnFlash(bool),
     SetSceneActivationInput(SceneInstanceUnion, Option<InputEvent>),
-    SetSelectedSceneActivationInput(Option<InputEvent>),
     SetSceneFlashInput(SceneInstanceUnion, Option<InputEvent>),
-    SetSelectedSceneFlashInput(Option<InputEvent>),
     SetSceneDimmerInput(SceneInstanceUnion, Option<InputEvent>),
-    SetSelectedSceneDimmerInput(Option<InputEvent>),
     SetScenePaletteOverwrite(SceneInstanceUnion, Option<Option<Palette>>),
-    SetSelectedScenePaletteOverwrite(Option<Option<Palette>>),
     SetScenePaletteOverwriteFromAsset(SceneInstanceUnion, Option<Option<AssetId<Palette>>>),
-    SetSelectedScenePaletteOverwriteFromAsset(Option<Option<AssetId<Palette>>>),
     SetScenePaletteOverwritePrimary(SceneInstanceUnion, [f32; 3]),
-    SetSelectedScenePaletteOverwritePrimary([f32; 3]),
     SetScenePaletteOverwriteSecondary(SceneInstanceUnion, [f32; 3]),
-    SetSelectedScenePaletteOverwriteSecondary([f32; 3]),
     SetScenePaletteOverwriteGradient(SceneInstanceUnion, usize, [f32; 3]),
-    SetSelectedScenePaletteOverwriteGradient(usize, [f32; 3]),
     ClearSceneGroupsOverwrite(SceneInstanceUnion),
-    ClearSelectedSceneGroupsOverwrite,
     SetSceneGroupsOverwriteEntry(SceneInstanceUnion, usize, String),
-    SetSelectedSceneGroupsOverwriteEntry(usize, String),
     RemoveSceneGroupsOverwriteEntry(SceneInstanceUnion, usize),
-    RemoveSelectedSceneGroupsOverwriteEntry(usize),
-    SetSelectedSceneActive(bool),
-    ToggleSelectedSceneActive,
     SetProjectPalette(Option<Palette>),
     SetProjectPaletteFromAsset(Option<AssetId<Palette>>),
     SetProjectPalettePrimary([f32; 3]),
@@ -126,29 +104,17 @@ pub enum UiAction {
     RemoveProjectDoubleInputArtnet(u16),
     ClearProjectDoubleInput,
     SetSceneEffectOpacity(SceneInstanceUnion, usize, f32),
-    SetSelectedSceneEffectOpacity(usize, f32),
     SetSceneEffectColorShift(SceneInstanceUnion, usize, f32),
-    SetSelectedSceneEffectColorShift(usize, f32),
     SetSceneEffectBeatProgression(SceneInstanceUnion, usize, f32),
-    SetSelectedSceneEffectBeatProgression(usize, f32),
     SetSceneEffectBeatOffset(SceneInstanceUnion, usize, f32),
-    SetSelectedSceneEffectBeatOffset(usize, f32),
     SetSceneEffectSpeedExponent(SceneInstanceUnion, usize, i32),
-    SetSelectedSceneEffectSpeedExponent(usize, i32),
     SetSceneEffectGroupIndex(SceneInstanceUnion, usize, usize),
-    SetSelectedSceneEffectGroupIndex(usize, usize),
     SetSceneEffectAnimation(SceneInstanceUnion, usize, Option<AssetId<Animation>>),
-    SetSelectedSceneEffectAnimation(usize, Option<AssetId<Animation>>),
     SetSceneEffectAnimationConfigU32(SceneInstanceUnion, usize, usize, u32),
-    SetSelectedSceneEffectAnimationConfigU32(usize, usize, u32),
     SetSceneEffectAnimationConfigF32(SceneInstanceUnion, usize, usize, f32),
-    SetSelectedSceneEffectAnimationConfigF32(usize, usize, f32),
     AddSceneEffect(SceneInstanceUnion),
-    AddSelectedSceneEffect,
     RemoveSceneEffect(SceneInstanceUnion, usize),
-    RemoveSelectedSceneEffect(usize),
     CloneSceneEffect(SceneInstanceUnion, usize),
-    CloneSelectedSceneEffect(usize),
     SetAnimationShaderCode(AssetId<Animation>, String),
     AddAnimationArgument(AssetId<Animation>),
     RemoveAnimationArgument(AssetId<Animation>, usize),
@@ -161,23 +127,40 @@ pub enum UiAction {
 fn scene_effect_by_target(
     project: &mut Project,
     target: SceneInstanceUnion,
+    selected_scene_location: GridLocation,
     effect_index: usize,
 ) -> Option<&mut Effect> {
-    project
-        .scene_instance_by_location_or_quick_index(target)?
+    scene_instance_by_target(project, target, selected_scene_location)?
         .scene
         .effect(effect_index)
 }
 
-fn selected_scene_effect(
+fn location_by_target(
     project: &mut Project,
+    target: SceneInstanceUnion,
     selected_scene_location: GridLocation,
-    effect_index: usize,
-) -> Option<&mut Effect> {
-    project
-        .get_scenes_instance(&selected_scene_location)?
-        .scene
-        .effect(effect_index)
+) -> Option<GridLocation> {
+    match target {
+        SceneInstanceUnion::Selected => Some(selected_scene_location),
+        SceneInstanceUnion::Grid(location) => Some(location),
+        SceneInstanceUnion::Quick(index) => {
+            project.location_by_location_or_quick_index(SceneInstanceUnion::Quick(index))
+        }
+    }
+}
+
+fn scene_instance_by_target(
+    project: &mut Project,
+    target: SceneInstanceUnion,
+    selected_scene_location: GridLocation,
+) -> Option<&mut SceneInstance> {
+    let location = location_by_target(project, target, selected_scene_location)?;
+    project.get_scenes_instance(&location)
+}
+
+fn set_scene_opacity(scene_instance: &mut SceneInstance, opacity: f32) {
+    scene_instance.active = true;
+    scene_instance.opacity = MultipliedCurve::new_multiplier(opacity);
 }
 
 fn apply_palette_action(
@@ -214,29 +197,17 @@ fn apply_palette_action(
             true
         }
         UiAction::SetScenePaletteOverwrite(path, palette_overwrite) => {
-            if let Some(scene_instance) = project.scene_instance_by_location_or_quick_index(*path) {
-                scene_instance.palette_overwrite = palette_overwrite.clone();
-            }
-            true
-        }
-        UiAction::SetSelectedScenePaletteOverwrite(palette_overwrite) => {
-            if let Some(scene_instance) = project.get_scenes_instance(&selected_scene_instance) {
+            if let Some(scene_instance) =
+                scene_instance_by_target(project, *path, selected_scene_instance)
+            {
                 scene_instance.palette_overwrite = palette_overwrite.clone();
             }
             true
         }
         UiAction::SetScenePaletteOverwriteFromAsset(path, palette_overwrite) => {
-            if let Some(scene_instance) = project.scene_instance_by_location_or_quick_index(*path) {
-                scene_instance.palette_overwrite = palette_overwrite.map(|palette_overwrite| {
-                    palette_overwrite.and_then(|palette_id| {
-                        Asset::get(palette_id, collections).map(|palette| palette.data.clone())
-                    })
-                });
-            }
-            true
-        }
-        UiAction::SetSelectedScenePaletteOverwriteFromAsset(palette_overwrite) => {
-            if let Some(scene_instance) = project.get_scenes_instance(&selected_scene_instance) {
+            if let Some(scene_instance) =
+                scene_instance_by_target(project, *path, selected_scene_instance)
+            {
                 scene_instance.palette_overwrite = palette_overwrite.map(|palette_overwrite| {
                     palette_overwrite.and_then(|palette_id| {
                         Asset::get(palette_id, collections).map(|palette| palette.data.clone())
@@ -246,41 +217,25 @@ fn apply_palette_action(
             true
         }
         UiAction::SetScenePaletteOverwritePrimary(path, rgb) => {
-            if let Some(scene_instance) = project.scene_instance_by_location_or_quick_index(*path) {
-                set_palette_primary(scene_palette_overwrite_mut(scene_instance), *rgb);
-            }
-            true
-        }
-        UiAction::SetSelectedScenePaletteOverwritePrimary(rgb) => {
-            if let Some(scene_instance) = project.get_scenes_instance(&selected_scene_instance) {
+            if let Some(scene_instance) =
+                scene_instance_by_target(project, *path, selected_scene_instance)
+            {
                 set_palette_primary(scene_palette_overwrite_mut(scene_instance), *rgb);
             }
             true
         }
         UiAction::SetScenePaletteOverwriteSecondary(path, rgb) => {
-            if let Some(scene_instance) = project.scene_instance_by_location_or_quick_index(*path) {
-                set_palette_secondary(scene_palette_overwrite_mut(scene_instance), *rgb);
-            }
-            true
-        }
-        UiAction::SetSelectedScenePaletteOverwriteSecondary(rgb) => {
-            if let Some(scene_instance) = project.get_scenes_instance(&selected_scene_instance) {
+            if let Some(scene_instance) =
+                scene_instance_by_target(project, *path, selected_scene_instance)
+            {
                 set_palette_secondary(scene_palette_overwrite_mut(scene_instance), *rgb);
             }
             true
         }
         UiAction::SetScenePaletteOverwriteGradient(path, gradient_index, rgb) => {
-            if let Some(scene_instance) = project.scene_instance_by_location_or_quick_index(*path) {
-                set_palette_gradient(
-                    scene_palette_overwrite_mut(scene_instance),
-                    *gradient_index,
-                    *rgb,
-                );
-            }
-            true
-        }
-        UiAction::SetSelectedScenePaletteOverwriteGradient(gradient_index, rgb) => {
-            if let Some(scene_instance) = project.get_scenes_instance(&selected_scene_instance) {
+            if let Some(scene_instance) =
+                scene_instance_by_target(project, *path, selected_scene_instance)
+            {
                 set_palette_gradient(
                     scene_palette_overwrite_mut(scene_instance),
                     *gradient_index,
@@ -373,6 +328,28 @@ mod tests {
     }
 
     #[test]
+    fn location_by_target_resolves_selected_scene() {
+        let mut project = Project::default();
+        let selected = GridLocation::new(1, 1);
+
+        assert_eq!(
+            location_by_target(&mut project, SceneInstanceUnion::Selected, selected),
+            Some(selected)
+        );
+    }
+
+    #[test]
+    fn set_scene_opacity_activates_scene_instance() {
+        let mut scene_instance = test_scene_instance();
+
+        assert!(!scene_instance.active);
+        set_scene_opacity(&mut scene_instance, 0.35);
+
+        assert!(scene_instance.active);
+        assert_eq!(scene_instance.opacity.multiplier, 0.35);
+    }
+
+    #[test]
     fn selected_scene_palette_actions_create_local_override() {
         let mut project = Project::default();
         let selected = GridLocation::new(1, 1);
@@ -382,13 +359,20 @@ mod tests {
             &mut project,
             selected,
             &Collections::default(),
-            &UiAction::SetSelectedScenePaletteOverwritePrimary([0.2, 0.3, 0.4]),
+            &UiAction::SetScenePaletteOverwritePrimary(
+                SceneInstanceUnion::Selected,
+                [0.2, 0.3, 0.4],
+            ),
         ));
         assert!(apply_palette_action(
             &mut project,
             selected,
             &Collections::default(),
-            &UiAction::SetSelectedScenePaletteOverwriteGradient(5, [0.7, 0.8, 0.9]),
+            &UiAction::SetScenePaletteOverwriteGradient(
+                SceneInstanceUnion::Selected,
+                5,
+                [0.7, 0.8, 0.9],
+            ),
         ));
 
         let scene_instance = project

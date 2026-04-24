@@ -22,6 +22,12 @@ pub(super) fn input_action_label(action: &MidiInputAction) -> &'static str {
         MidiInputAction::SetSceneIgnoreMainDimmer { .. } => "Set Scene Ignore Main Dimmer",
         MidiInputAction::SetSceneSetOffsetOnFlash { .. } => "Set Scene Set Offset On Flash",
         MidiInputAction::SetSceneEffectSettingF32 { .. } => "Set Effect Setting (n,n) f32",
+        MidiInputAction::SetSceneEffectOpacity { .. } => "Set Effect Opacity",
+        MidiInputAction::SetSceneEffectColorShift { .. } => "Set Effect Color Shift",
+        MidiInputAction::SetSceneEffectBeatProgression { .. } => "Set Effect Beat Progression",
+        MidiInputAction::SetSceneEffectBeatOffset { .. } => "Set Effect Beat Offset",
+        MidiInputAction::SetSceneEffectSpeedExponent { .. } => "Set Effect Speed Exponent",
+        MidiInputAction::SetSceneEffectGroupIndex { .. } => "Set Effect Group Index",
     }
 }
 
@@ -121,6 +127,24 @@ fn output_source_from_input_action(action: &MidiInputAction) -> Option<MidiValue
             effect_index: *effect_index,
             setting_index: *setting_index,
         }),
+        MidiInputAction::SetSceneEffectOpacity { target, effect_index } => {
+            Some(MidiValueSource::SceneEffectOpacity { target: target.clone(), effect_index: *effect_index })
+        }
+        MidiInputAction::SetSceneEffectColorShift { target, effect_index } => {
+            Some(MidiValueSource::SceneEffectColorShift { target: target.clone(), effect_index: *effect_index })
+        }
+        MidiInputAction::SetSceneEffectBeatProgression { target, effect_index } => {
+            Some(MidiValueSource::SceneEffectBeatProgression { target: target.clone(), effect_index: *effect_index })
+        }
+        MidiInputAction::SetSceneEffectBeatOffset { target, effect_index } => {
+            Some(MidiValueSource::SceneEffectBeatOffset { target: target.clone(), effect_index: *effect_index })
+        }
+        MidiInputAction::SetSceneEffectSpeedExponent { target, effect_index } => {
+            Some(MidiValueSource::SceneEffectSpeedExponent { target: target.clone(), effect_index: *effect_index })
+        }
+        MidiInputAction::SetSceneEffectGroupIndex { target, effect_index } => {
+            Some(MidiValueSource::SceneEffectGroupIndex { target: target.clone(), effect_index: *effect_index })
+        }
         MidiInputAction::Tap
         | MidiInputAction::SetSpeedAdd
         | MidiInputAction::SetSpeedMultiply

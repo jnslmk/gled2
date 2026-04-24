@@ -43,7 +43,7 @@ pub(super) fn render_output_column(
         .button(iconized(ui, icons::PLUS, " Add Output Binding"))
         .clicked()
     {
-        bindings.push(MidiOutputBinding::default());
+        bindings.insert(0, MidiOutputBinding::default());
         *dirty = true;
     }
 

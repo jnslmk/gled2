@@ -94,6 +94,30 @@ pub enum MidiInputAction {
         effect_index: u8,
         setting_index: u8,
     },
+    SetSceneEffectOpacity {
+        target: MidiSceneTarget,
+        effect_index: u8,
+    },
+    SetSceneEffectColorShift {
+        target: MidiSceneTarget,
+        effect_index: u8,
+    },
+    SetSceneEffectBeatProgression {
+        target: MidiSceneTarget,
+        effect_index: u8,
+    },
+    SetSceneEffectBeatOffset {
+        target: MidiSceneTarget,
+        effect_index: u8,
+    },
+    SetSceneEffectSpeedExponent {
+        target: MidiSceneTarget,
+        effect_index: u8,
+    },
+    SetSceneEffectGroupIndex {
+        target: MidiSceneTarget,
+        effect_index: u8,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
@@ -203,6 +227,30 @@ pub enum MidiValueSource {
         target: MidiSceneTarget,
         effect_index: u8,
         setting_index: u8,
+    },
+    SceneEffectOpacity {
+        target: MidiSceneTarget,
+        effect_index: u8,
+    },
+    SceneEffectColorShift {
+        target: MidiSceneTarget,
+        effect_index: u8,
+    },
+    SceneEffectBeatProgression {
+        target: MidiSceneTarget,
+        effect_index: u8,
+    },
+    SceneEffectBeatOffset {
+        target: MidiSceneTarget,
+        effect_index: u8,
+    },
+    SceneEffectSpeedExponent {
+        target: MidiSceneTarget,
+        effect_index: u8,
+    },
+    SceneEffectGroupIndex {
+        target: MidiSceneTarget,
+        effect_index: u8,
     },
 }
 

@@ -18,6 +18,12 @@ pub(super) enum MidiInputActionKind {
     SetSceneIgnoreMainDimmer,
     SetSceneSetOffsetOnFlash,
     SetSceneEffectSettingF32,
+    SetSceneEffectOpacity,
+    SetSceneEffectColorShift,
+    SetSceneEffectBeatProgression,
+    SetSceneEffectBeatOffset,
+    SetSceneEffectSpeedExponent,
+    SetSceneEffectGroupIndex,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -50,6 +56,12 @@ pub(super) fn input_action_kind(action: &MidiInputAction) -> MidiInputActionKind
         MidiInputAction::SetSceneEffectSettingF32 { .. } => {
             MidiInputActionKind::SetSceneEffectSettingF32
         }
+        MidiInputAction::SetSceneEffectOpacity { .. } => MidiInputActionKind::SetSceneEffectOpacity,
+        MidiInputAction::SetSceneEffectColorShift { .. } => MidiInputActionKind::SetSceneEffectColorShift,
+        MidiInputAction::SetSceneEffectBeatProgression { .. } => MidiInputActionKind::SetSceneEffectBeatProgression,
+        MidiInputAction::SetSceneEffectBeatOffset { .. } => MidiInputActionKind::SetSceneEffectBeatOffset,
+        MidiInputAction::SetSceneEffectSpeedExponent { .. } => MidiInputActionKind::SetSceneEffectSpeedExponent,
+        MidiInputAction::SetSceneEffectGroupIndex { .. } => MidiInputActionKind::SetSceneEffectGroupIndex,
     }
 }
 
@@ -107,6 +119,30 @@ pub(super) fn input_action_from_kind(
                 setting_index,
             }
         }
+        MidiInputActionKind::SetSceneEffectOpacity => {
+            let effect_index = current_effect_index_from_action(&current);
+            MidiInputAction::SetSceneEffectOpacity { target: current_target_from_action(&current), effect_index }
+        }
+        MidiInputActionKind::SetSceneEffectColorShift => {
+            let effect_index = current_effect_index_from_action(&current);
+            MidiInputAction::SetSceneEffectColorShift { target: current_target_from_action(&current), effect_index }
+        }
+        MidiInputActionKind::SetSceneEffectBeatProgression => {
+            let effect_index = current_effect_index_from_action(&current);
+            MidiInputAction::SetSceneEffectBeatProgression { target: current_target_from_action(&current), effect_index }
+        }
+        MidiInputActionKind::SetSceneEffectBeatOffset => {
+            let effect_index = current_effect_index_from_action(&current);
+            MidiInputAction::SetSceneEffectBeatOffset { target: current_target_from_action(&current), effect_index }
+        }
+        MidiInputActionKind::SetSceneEffectSpeedExponent => {
+            let effect_index = current_effect_index_from_action(&current);
+            MidiInputAction::SetSceneEffectSpeedExponent { target: current_target_from_action(&current), effect_index }
+        }
+        MidiInputActionKind::SetSceneEffectGroupIndex => {
+            let effect_index = current_effect_index_from_action(&current);
+            MidiInputAction::SetSceneEffectGroupIndex { target: current_target_from_action(&current), effect_index }
+        }
     }
 }
 
@@ -120,8 +156,27 @@ fn current_target_from_action(action: &MidiInputAction) -> MidiSceneTarget {
         | MidiInputAction::SetSceneBeatOffset { target }
         | MidiInputAction::SetSceneIgnoreMainDimmer { target }
         | MidiInputAction::SetSceneSetOffsetOnFlash { target }
-        | MidiInputAction::SetSceneEffectSettingF32 { target, .. } => target.clone(),
+        | MidiInputAction::SetSceneEffectSettingF32 { target, .. }
+        | MidiInputAction::SetSceneEffectOpacity { target, .. }
+        | MidiInputAction::SetSceneEffectColorShift { target, .. }
+        | MidiInputAction::SetSceneEffectBeatProgression { target, .. }
+        | MidiInputAction::SetSceneEffectBeatOffset { target, .. }
+        | MidiInputAction::SetSceneEffectSpeedExponent { target, .. }
+        | MidiInputAction::SetSceneEffectGroupIndex { target, .. } => target.clone(),
         _ => MidiSceneTarget::Selected,
+    }
+}
+
+fn current_effect_index_from_action(action: &MidiInputAction) -> u8 {
+    match action {
+        MidiInputAction::SetSceneEffectSettingF32 { effect_index, .. }
+        | MidiInputAction::SetSceneEffectOpacity { effect_index, .. }
+        | MidiInputAction::SetSceneEffectColorShift { effect_index, .. }
+        | MidiInputAction::SetSceneEffectBeatProgression { effect_index, .. }
+        | MidiInputAction::SetSceneEffectBeatOffset { effect_index, .. }
+        | MidiInputAction::SetSceneEffectSpeedExponent { effect_index, .. }
+        | MidiInputAction::SetSceneEffectGroupIndex { effect_index, .. } => *effect_index,
+        _ => 0,
     }
 }
 

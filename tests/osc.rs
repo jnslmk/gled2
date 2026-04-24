@@ -1,4 +1,5 @@
 // OSC integration test – single gled instance, RAII cleanup, crash monitoring.
+// Exercises every OSC parse path at least once against a live gled process.
 
 use std::io::{BufRead, BufReader};
 use std::net::UdpSocket;
@@ -6,6 +7,11 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+
+// A stable fake UUID used as a placeholder wherever a real asset UUID is not
+// available in the fresh integration instance.  All asset-lookup handlers
+// treat an unknown UUID as a silent no-op, so this is safe.
+const FAKE_UUID: &str = "00000000-0000-0000-0000-000000000001";
 
 // ── OscType shorthands ───────────────────────────────────────────────────────
 
@@ -246,6 +252,268 @@ fn test_osc_integration() {
         send("/osc/state/unsubscribe", vec![]);
         thread::sleep(Duration::from_millis(500));
     });
+
+    suite("6: Remaining scene properties (grid + quick + selected)", &gled, || {
+        // set_offset_on_flash, select
+        for addr in [
+            "/scene/grid/0/0/set_offset_on_flash",
+            "/scene/quick/0/set_offset_on_flash",
+            "/scene/selected/set_offset_on_flash",
+        ] {
+            send(addr, vec![b(true)]);
+            delay();
+            send(addr, vec![b(false)]);
+            delay();
+        }
+        send("/scene/grid/1/1/select", vec![]);
+        delay();
+        send("/scene/quick/2/select", vec![]);
+        delay();
+        // clone / delete on grid (result is a no-op on an empty cell – safe)
+        send("/scene/grid/6/4/clone", vec![]);
+        delay();
+        send("/scene/grid/6/4/delete", vec![]);
+        delay();
+        // add a scene placeholder (unknown UUID → silent no-op)
+        send(
+            "/scene/grid/7/4/add",
+            vec![s(FAKE_UUID)],
+        );
+        delay();
+        // reorder two cells
+        send("/scene/reorder/0/0/1/0", vec![]);
+        delay();
+        send("/scene/reorder/1/0/0/0", vec![]);
+        delay();
+    });
+
+    suite("7: Scene input bindings (activation / flash / dimmer)", &gled, || {
+        for input_kind in ["activation_input", "flash_input", "dimmer_input"] {
+            for selector in ["/scene/grid/0/0", "/scene/quick/0", "/scene/selected"] {
+                send(&format!("{}/{}/artnet", selector, input_kind), vec![i(42)]);
+                delay();
+                send(&format!("{}/{}/clear", selector, input_kind), vec![]);
+                delay();
+            }
+        }
+    });
+
+    suite("8: Scene palette overwrite", &gled, || {
+        // inherit / none / primary / secondary / gradient – via grid, quick, selected
+        for selector in ["/scene/grid/0/0", "/scene/quick/0", "/scene/selected"] {
+            send(&format!("{}/palette_overwrite", selector), vec![s("inherit")]);
+            delay();
+            send(&format!("{}/palette_overwrite", selector), vec![s("none")]);
+            delay();
+            send(
+                &format!("{}/palette_overwrite", selector),
+                vec![s(FAKE_UUID)],
+            );
+            delay();
+            send(
+                &format!("{}/palette_overwrite/primary", selector),
+                vec![f(0.1), f(0.2), f(0.3)],
+            );
+            delay();
+            send(
+                &format!("{}/palette_overwrite/secondary", selector),
+                vec![f(0.4), f(0.5), f(0.6)],
+            );
+            delay();
+            send(
+                &format!("{}/palette_overwrite/gradient/2", selector),
+                vec![f(0.7), f(0.8), f(0.9)],
+            );
+            delay();
+        }
+    });
+
+    suite("9: Scene groups overwrite", &gled, || {
+        for selector in ["/scene/grid/0/0", "/scene/quick/0", "/scene/selected"] {
+            send(&format!("{}/groups_overwrite/0", selector), vec![s("wash")]);
+            delay();
+            send(&format!("{}/groups_overwrite/1", selector), vec![s("spot")]);
+            delay();
+            send(&format!("{}/groups_overwrite/remove/1", selector), vec![]);
+            delay();
+            send(&format!("{}/groups_overwrite/clear", selector), vec![]);
+            delay();
+        }
+    });
+
+    suite("10: Effect commands (add, properties, config, clone, delete)", &gled, || {
+        // effect/add across all selectors
+        for selector in ["/scene/grid/0/0", "/scene/quick/0", "/scene/selected"] {
+            send(&format!("{}/effect/add", selector), vec![]);
+            delay();
+        }
+        // grid effect property setters on effect index 0
+        let base = "/scene/grid/0/0/effect/0";
+        for (addr, args) in [
+            (format!("{base}/opacity"), vec![f(0.5)]),
+            (format!("{base}/color_shift"), vec![f(0.25)]),
+            (format!("{base}/beat_progression"), vec![f(0.1)]),
+            (format!("{base}/beat_offset"), vec![f(0.5)]),
+            (format!("{base}/speed_exponent"), vec![i(1)]),
+            (format!("{base}/group_index"), vec![i(0)]),
+            (format!("{base}/animation"), vec![s("none")]),
+            (format!("{base}/animation"), vec![s(FAKE_UUID)]),
+            (format!("{base}/config/u32/0"), vec![i(3)]),
+            (format!("{base}/config/f32/0"), vec![f(0.3)]),
+        ] {
+            send(&addr, args);
+            delay();
+        }
+        // quick effect properties
+        let base_q = "/scene/quick/0/effect/0";
+        for (addr, args) in [
+            (format!("{base_q}/opacity"), vec![f(0.8)]),
+            (format!("{base_q}/speed_exponent"), vec![i(-1)]),
+            (format!("{base_q}/config/u32/1"), vec![i(7)]),
+            (format!("{base_q}/config/f32/1"), vec![f(0.7)]),
+            (format!("{base_q}/clone"), vec![]),
+            (format!("{base_q}/delete"), vec![]),
+        ] {
+            send(&addr, args);
+            delay();
+        }
+        // selected effect
+        let base_s = "/scene/selected/effect/0";
+        for (addr, args) in [
+            (format!("{base_s}/opacity"), vec![f(0.6)]),
+            (format!("{base_s}/color_shift"), vec![f(0.5)]),
+            (format!("{base_s}/beat_progression"), vec![f(0.2)]),
+            (format!("{base_s}/beat_offset"), vec![f(0.3)]),
+            (format!("{base_s}/speed_exponent"), vec![i(2)]),
+            (format!("{base_s}/group_index"), vec![i(1)]),
+            (format!("{base_s}/animation"), vec![s("none")]),
+            (format!("{base_s}/config/u32/0"), vec![i(5)]),
+            (format!("{base_s}/config/f32/0"), vec![f(0.55)]),
+            (format!("{base_s}/clone"), vec![]),
+            (format!("{base_s}/delete"), vec![]),
+        ] {
+            send(&addr, args);
+            delay();
+        }
+        // grid effect clone/delete
+        send("/scene/grid/0/0/effect/0/clone", vec![]);
+        delay();
+        send("/scene/grid/0/0/effect/0/delete", vec![]);
+        delay();
+    });
+
+    suite("11: Project palette", &gled, || {
+        send("/project/palette", vec![s("none")]);
+        delay();
+        send("/project/palette", vec![s("inherit")]);
+        delay();
+        send("/project/palette", vec![s(FAKE_UUID)]);
+        delay();
+        send("/project/palette/primary", vec![f(0.9), f(0.1), f(0.1)]);
+        delay();
+        send("/project/palette/secondary", vec![f(0.1), f(0.9), f(0.1)]);
+        delay();
+        for idx in 0..4 {
+            send(
+                &format!("/project/palette/gradient/{idx}"),
+                vec![f(0.5), f(0.5), f(0.5)],
+            );
+            delay();
+        }
+    });
+
+    suite("12: Project artnet control and groups", &gled, || {
+        send("/project/artnet_control/active", vec![b(false)]);
+        delay();
+        send("/project/artnet_control/active", vec![b(true)]);
+        delay();
+        send("/project/artnet_control/universe", vec![i(0)]);
+        delay();
+        // groups
+        send("/project/groups/0", vec![s("wash")]);
+        delay();
+        send("/project/groups/1", vec![s("spot")]);
+        delay();
+        send("/project/groups/remove/1", vec![]);
+        delay();
+        send("/project/groups/clear", vec![]);
+        delay();
+    });
+
+    suite("13: Project input bindings", &gled, || {
+        for event_kind in ["tap", "blackout", "blackout_hold", "half", "double"] {
+            let ch = 10_i32;
+            send(
+                &format!("/project/input/{event_kind}/add/artnet"),
+                vec![i(ch)],
+            );
+            delay();
+            send(
+                &format!("/project/input/{event_kind}/remove/artnet"),
+                vec![i(ch)],
+            );
+            delay();
+            send(&format!("/project/input/{event_kind}/clear"), vec![]);
+            delay();
+        }
+    });
+
+    suite("14: Animation asset edits (fake UUID – silent no-op)", &gled, || {
+        let base = format!("/asset/animation/{FAKE_UUID}");
+        send(&format!("{base}/shader_code"), vec![s("void main() {}")]);
+        delay();
+        send(&format!("{base}/argument/add"), vec![]);
+        delay();
+        for kind in ["center", "selection", "slider", "checkbox", "percentage", "degrees"] {
+            send(&format!("{base}/argument/0/kind"), vec![s(kind)]);
+            delay();
+        }
+        send(&format!("{base}/argument/0/name"), vec![s("speed")]);
+        delay();
+        send(&format!("{base}/argument/0/remove"), vec![]);
+        delay();
+    });
+
+    suite(
+        "15: Scene scalar setters — grid, quick, and selected",
+        &gled,
+        || {
+            // Each property is sent to all three target families with distinct values,
+            // confirming that every parse path is live.
+            for (selector, opacity, color, input_dimmer, beat_offset) in [
+                ("/scene/grid/0/0", 0.3_f32, "red", 0.4_f32, 0.1_f32),
+                ("/scene/quick/0", 0.6, "green", 0.7, 0.3),
+                ("/scene/selected", 0.9, "blue", 0.95, 0.5),
+            ] {
+                send(&format!("{selector}/opacity"), vec![f(opacity)]);
+                delay();
+                send(&format!("{selector}/color"), vec![s(color)]);
+                delay();
+                send(&format!("{selector}/name"), vec![s("Suite15")]);
+                delay();
+                send(&format!("{selector}/input_dimmer"), vec![f(input_dimmer)]);
+                delay();
+                send(
+                    &format!("{selector}/ignore_main_dimmer"),
+                    vec![b(true)],
+                );
+                delay();
+                send(
+                    &format!("{selector}/ignore_main_dimmer"),
+                    vec![b(false)],
+                );
+                delay();
+                send(&format!("{selector}/beat_offset"), vec![f(beat_offset)]);
+                delay();
+                send(&format!("{selector}/active"), vec![b(true)]);
+                delay();
+                send(&format!("{selector}/active"), vec![b(false)]);
+                delay();
+                send(&format!("{selector}/toggle"), vec![]);
+                delay();
+            }
+        },
+    );
 
     // Final error report (gled is dropped/killed after this scope).
     let errors = gled.errors.lock().unwrap();

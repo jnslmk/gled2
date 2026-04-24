@@ -191,6 +191,7 @@ impl Project {
         index_or_grid: SceneInstanceUnion,
     ) -> Option<GridLocation> {
         match index_or_grid {
+            SceneInstanceUnion::Selected => None,
             SceneInstanceUnion::Grid(location) => Some(location),
             SceneInstanceUnion::Quick(quick_scene_instance_index) => match self.grid_highlight {
                 GridHighlight::Row => {

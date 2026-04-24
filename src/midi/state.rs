@@ -29,10 +29,19 @@ pub struct MidiState {
     pub selected_scene_ignore_main_dimmer: bool,
     pub selected_scene_set_offset_on_flash: bool,
     pub scene_input_dimmer: HashMap<GridLocation, f32>,
+    pub scene_opacity: HashMap<GridLocation, f32>,
     pub scene_beat_offset: HashMap<GridLocation, f32>,
     pub scene_ignore_main_dimmer: HashMap<GridLocation, bool>,
     pub scene_set_offset_on_flash: HashMap<GridLocation, bool>,
     pub scene_effect_setting_f32: HashMap<(GridLocation, usize, usize), f32>,
+    pub scene_effect_opacity: HashMap<(GridLocation, usize), f32>,
+    pub scene_effect_color_shift: HashMap<(GridLocation, usize), f32>,
+    pub scene_effect_beat_progression: HashMap<(GridLocation, usize), f32>,
+    pub scene_effect_beat_offset: HashMap<(GridLocation, usize), f32>,
+    /// Speed exponent normalized to 0.0–1.0 (maps i32 -63..+64 → 0.0..1.0 via (v+63)/127).
+    pub scene_effect_speed_exponent: HashMap<(GridLocation, usize), f32>,
+    /// Group index stored as f32 (raw usize, not normalized — use as-is for round-trip).
+    pub scene_effect_group_index: HashMap<(GridLocation, usize), f32>,
 }
 impl Eq for MidiState {}
 
@@ -57,10 +66,17 @@ impl MidiState {
 
     fn from_project_state(state: &ProjectState) -> Self {
         let mut scene_input_dimmer = HashMap::new();
+        let mut scene_opacity = HashMap::new();
         let mut scene_beat_offset = HashMap::new();
         let mut scene_ignore_main_dimmer = HashMap::new();
         let mut scene_set_offset_on_flash = HashMap::new();
         let mut scene_effect_setting_f32 = HashMap::new();
+        let mut scene_effect_opacity = HashMap::new();
+        let mut scene_effect_color_shift = HashMap::new();
+        let mut scene_effect_beat_progression = HashMap::new();
+        let mut scene_effect_beat_offset = HashMap::new();
+        let mut scene_effect_speed_exponent = HashMap::new();
+        let mut scene_effect_group_index = HashMap::new();
 
         let project = state.project.as_ref();
         let (highlighted_row, highlighted_col) = if let Some(project) = project {
@@ -80,6 +96,7 @@ impl MidiState {
         if let Some(project) = project {
             for (location, scene_instance) in &project.scenes_instances_grid {
                 scene_input_dimmer.insert(*location, scene_instance.input_dimmer);
+                scene_opacity.insert(*location, scene_instance.opacity.multiplier);
                 scene_beat_offset
                     .insert(*location, scene_instance.beat_progression_offset.multiplier);
                 scene_ignore_main_dimmer.insert(*location, scene_instance.ignore_main_dimmer);
@@ -100,6 +117,13 @@ impl MidiState {
                             Self::float_value_to_f32(value),
                         );
                     }
+                    scene_effect_opacity.insert((*location, effect_index), effect.opacity.multiplier);
+                    scene_effect_color_shift.insert((*location, effect_index), effect.color_shift.multiplier);
+                    scene_effect_beat_progression.insert((*location, effect_index), effect.beat_progression.multiplier);
+                    scene_effect_beat_offset.insert((*location, effect_index), effect.beat_progression_offset.multiplier);
+                    let speed_exp_norm = ((effect.speed_exponent as f32) + 63.0) / 127.0;
+                    scene_effect_speed_exponent.insert((*location, effect_index), speed_exp_norm.clamp(0.0, 1.0));
+                    scene_effect_group_index.insert((*location, effect_index), effect.group_index as f32);
                 }
             }
         }
@@ -155,10 +179,17 @@ impl MidiState {
             selected_scene_set_offset_on_flash: selected_scene
                 .is_some_and(|scene| scene.set_offset_on_flash),
             scene_input_dimmer,
+            scene_opacity,
             scene_beat_offset,
             scene_ignore_main_dimmer,
             scene_set_offset_on_flash,
             scene_effect_setting_f32,
+            scene_effect_opacity,
+            scene_effect_color_shift,
+            scene_effect_beat_progression,
+            scene_effect_beat_offset,
+            scene_effect_speed_exponent,
+            scene_effect_group_index,
         }
     }
 }

@@ -1,6 +1,9 @@
 use super::App;
 use crate::{
-    storage::asset::{project::GridHighlight, scene::grid::GridLocation},
+    storage::asset::{
+        project::{GridHighlight, scene_instance_path::selected_scene_instance_index},
+        scene::grid::GridLocation,
+    },
     ui::{
         ContextMenuAction, ContextMenuBuilder,
         action::UiAction,
@@ -135,8 +138,10 @@ impl App {
                                                                 .enqueue();
                                                         },
                                                         key_action: || {
-                                                            UiAction::CloneSelectedSceneInstance
-                                                                .enqueue();
+                                                            UiAction::CloneSceneInstancePath(
+                                                                selected_scene_instance_index(),
+                                                            )
+                                                            .enqueue();
                                                         },
                                                     })
                                                     .add_action(ContextMenuAction {
@@ -152,8 +157,10 @@ impl App {
                                                             .enqueue();
                                                         },
                                                         key_action: || {
-                                                            UiAction::DeleteSelectedSceneInstance
-                                                                .enqueue();
+                                                            UiAction::DeleteSceneInstancePath(
+                                                                selected_scene_instance_index(),
+                                                            )
+                                                            .enqueue();
                                                         },
                                                     })
                                                     .show(&mut widget_response, location);
@@ -165,7 +172,10 @@ impl App {
                                                             egui::Key::Backspace,
                                                         )
                                                     }) {
-                                                    UiAction::DeleteSelectedSceneInstance.enqueue();
+                                                    UiAction::DeleteSceneInstancePath(
+                                                        selected_scene_instance_index(),
+                                                    )
+                                                    .enqueue();
                                                 }
 
                                                 if ui.ctx().is_being_dragged(item_id) {

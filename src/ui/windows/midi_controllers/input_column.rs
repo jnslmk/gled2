@@ -36,7 +36,7 @@ pub(super) fn render_input_column(
             .button(iconized(ui, icons::PLUS, " Add Input Binding"))
             .clicked()
         {
-            bindings.push(MidiInputBinding::default());
+            bindings.insert(0, MidiInputBinding::default());
             *dirty = true;
         }
     });
@@ -196,6 +196,36 @@ pub(super) fn render_input_column(
                             MidiInputActionKind::SetSceneEffectSettingF32,
                             "Set Effect Setting (n,n) f32",
                         );
+                        ui.selectable_value(
+                            &mut action_kind,
+                            MidiInputActionKind::SetSceneEffectOpacity,
+                            "Set Effect Opacity",
+                        );
+                        ui.selectable_value(
+                            &mut action_kind,
+                            MidiInputActionKind::SetSceneEffectColorShift,
+                            "Set Effect Color Shift",
+                        );
+                        ui.selectable_value(
+                            &mut action_kind,
+                            MidiInputActionKind::SetSceneEffectBeatProgression,
+                            "Set Effect Beat Progression",
+                        );
+                        ui.selectable_value(
+                            &mut action_kind,
+                            MidiInputActionKind::SetSceneEffectBeatOffset,
+                            "Set Effect Beat Offset",
+                        );
+                        ui.selectable_value(
+                            &mut action_kind,
+                            MidiInputActionKind::SetSceneEffectSpeedExponent,
+                            "Set Effect Speed Exponent",
+                        );
+                        ui.selectable_value(
+                            &mut action_kind,
+                            MidiInputActionKind::SetSceneEffectGroupIndex,
+                            "Set Effect Group Index",
+                        );
                     });
 
                 let before = binding.action.clone();
@@ -226,7 +256,13 @@ pub(super) fn render_input_column(
                     | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectSettingF32 {
                         target,
                         ..
-                    } => {
+                    }
+                    | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectOpacity { target, .. }
+                    | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectColorShift { target, .. }
+                    | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectBeatProgression { target, .. }
+                    | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectBeatOffset { target, .. }
+                    | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectSpeedExponent { target, .. }
+                    | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectGroupIndex { target, .. } => {
                         scene_target_editor(
                             ui,
                             target,
@@ -253,6 +289,24 @@ pub(super) fn render_input_column(
                             *dirty = true;
                         }
                     });
+                }
+
+                // effect_index editor for the 6 new effect property actions
+                match &mut binding.action {
+                    crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectOpacity { effect_index, .. }
+                    | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectColorShift { effect_index, .. }
+                    | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectBeatProgression { effect_index, .. }
+                    | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectBeatOffset { effect_index, .. }
+                    | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectSpeedExponent { effect_index, .. }
+                    | crate::storage::asset::midi_controller::MidiInputAction::SetSceneEffectGroupIndex { effect_index, .. } => {
+                        ui.horizontal(|ui| {
+                            ui.label("Effect Index");
+                            if ui.add(DragValue::new(effect_index).range(0..=255)).changed() {
+                                *dirty = true;
+                            }
+                        });
+                    }
+                    _ => {}
                 }
 
                 if matches!(
