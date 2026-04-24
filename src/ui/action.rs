@@ -8,7 +8,7 @@ use crate::{
             Asset,
             animation::argument::{Argument, ArgumentKind, ArgumentKindId},
             animation::{Animation, config::float_value::FloatValue},
-            curve::multiplied_curve::MultipliedCurve,
+            curve::{Curve, multiplied_curve::MultipliedCurve},
             palette::{Color as PaletteColor, Palette},
             project::{Project, scene_instance_path::SceneInstanceUnion},
             scene::{
@@ -68,6 +68,14 @@ pub enum UiAction {
     SetSceneIgnoreMainDimmer(SceneInstanceUnion, bool),
     SetSceneBeatOffset(SceneInstanceUnion, f32),
     SetSceneSetOffsetOnFlash(SceneInstanceUnion, bool),
+    /// Set only the multiplier of the opacity curve (preserves the curve asset)
+    SetSceneOpacityMultiplier(SceneInstanceUnion, f32),
+    /// Set only the curve asset for the opacity (preserves the multiplier)
+    SetSceneOpacityCurve(SceneInstanceUnion, Option<AssetId<Curve>>),
+    /// Set only the multiplier of the beat_offset curve (preserves the curve asset)
+    SetSceneBeatOffsetMultiplier(SceneInstanceUnion, f32),
+    /// Set only the curve asset for beat_offset (preserves the multiplier)
+    SetSceneBeatOffsetCurve(SceneInstanceUnion, Option<AssetId<Curve>>),
     SetSceneActivationInput(SceneInstanceUnion, Option<InputEvent>),
     SetSceneFlashInput(SceneInstanceUnion, Option<InputEvent>),
     SetSceneDimmerInput(SceneInstanceUnion, Option<InputEvent>),
@@ -105,9 +113,17 @@ pub enum UiAction {
     RemoveProjectDoubleInputArtnet(u16),
     ClearProjectDoubleInput,
     SetSceneEffectOpacity(SceneInstanceUnion, usize, f32),
+    SetSceneEffectOpacityMultiplier(SceneInstanceUnion, usize, f32),
+    SetSceneEffectOpacityCurve(SceneInstanceUnion, usize, Option<AssetId<Curve>>),
     SetSceneEffectColorShift(SceneInstanceUnion, usize, f32),
+    SetSceneEffectColorShiftMultiplier(SceneInstanceUnion, usize, f32),
+    SetSceneEffectColorShiftCurve(SceneInstanceUnion, usize, Option<AssetId<Curve>>),
     SetSceneEffectBeatProgression(SceneInstanceUnion, usize, f32),
+    SetSceneEffectBeatProgressionMultiplier(SceneInstanceUnion, usize, f32),
+    SetSceneEffectBeatProgressionCurve(SceneInstanceUnion, usize, Option<AssetId<Curve>>),
     SetSceneEffectBeatOffset(SceneInstanceUnion, usize, f32),
+    SetSceneEffectBeatOffsetMultiplier(SceneInstanceUnion, usize, f32),
+    SetSceneEffectBeatOffsetCurve(SceneInstanceUnion, usize, Option<AssetId<Curve>>),
     SetSceneEffectSpeedExponent(SceneInstanceUnion, usize, i32),
     SetSceneEffectGroupIndex(SceneInstanceUnion, usize, usize),
     SetSceneEffectAnimation(SceneInstanceUnion, usize, Option<AssetId<Animation>>),

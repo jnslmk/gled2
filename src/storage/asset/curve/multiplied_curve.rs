@@ -40,6 +40,18 @@ impl<R: Range> MultipliedCurve<R> {
         }
     }
 
+    pub fn set_multiplier(&mut self, multiplier: f32) {
+        self.multiplier = multiplier;
+    }
+
+    pub fn set_curve(&mut self, curve: Option<AssetId<Curve>>) {
+        self.curve = curve;
+    }
+
+    pub fn curve(&self) -> Option<AssetId<Curve>> {
+        self.curve
+    }
+
     pub const fn new_curve(bytes: [u8; 16]) -> Self {
         Self {
             multiplier: 1.0,

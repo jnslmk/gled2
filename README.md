@@ -77,6 +77,9 @@ The selected-scene alias resolves against the currently selected scene when the 
 Supported for `grid`, `quick`, and `selected` selectors:
 
 * `.../opacity <float>`
+* `.../opacity/value <float>` — set the multiplier only (preserves any selected curve)
+* `.../opacity/static <float>` — set a static value (replaces curve with multiplier-only)
+* `.../opacity/curve <curve_uuid_string|none>` — set or clear the curve (preserves the multiplier)
 * `.../active <bool|0|1>`
 * `.../toggle`
 * `.../select`
@@ -85,6 +88,9 @@ Supported for `grid`, `quick`, and `selected` selectors:
 * `.../input_dimmer <float>`
 * `.../ignore_main_dimmer <bool|0|1>`
 * `.../beat_offset <float>`
+* `.../beat_offset/value <float>` — set the multiplier only (preserves any selected curve)
+* `.../beat_offset/static <float>` — set a static value (replaces curve with multiplier-only)
+* `.../beat_offset/curve <curve_uuid_string|none>` — set or clear the curve (preserves the multiplier)
 * `.../set_offset_on_flash <bool|0|1>`
 * `.../activation_input/clear`
 * `.../activation_input/artnet <channel>`
@@ -103,6 +109,8 @@ Supported for `grid`, `quick`, and `selected` selectors:
 * `.../delete`
 
 Setting `.../opacity` also activates the targeted scene instance.
+Setting `.../opacity/value` and `.../opacity/curve` do **not** activate the scene.
+`.../opacity/static` behaves like `.../opacity` and activates the targeted scene instance.
 
 Additional grid-only commands:
 
@@ -126,9 +134,21 @@ Supported effect commands:
 
 * `.../add` (for `/effect/add` path)
 * `.../opacity <float>`
+* `.../opacity/value <float>` — set the multiplier only (preserves any selected curve)
+* `.../opacity/static <float>` — set a static value (replaces curve with multiplier-only)
+* `.../opacity/curve <curve_uuid_string|none>` — set or clear the curve (preserves the multiplier)
 * `.../color_shift <float>`
+* `.../color_shift/value <float>`
+* `.../color_shift/static <float>`
+* `.../color_shift/curve <curve_uuid_string|none>`
 * `.../beat_progression <float>`
+* `.../beat_progression/value <float>`
+* `.../beat_progression/static <float>`
+* `.../beat_progression/curve <curve_uuid_string|none>`
 * `.../beat_offset <float>`
+* `.../beat_offset/value <float>`
+* `.../beat_offset/static <float>`
+* `.../beat_offset/curve <curve_uuid_string|none>`
 * `.../speed_exponent <int>`
 * `.../group_index <int>`
 * `.../animation <animation_uuid_string|none>`

@@ -260,6 +260,42 @@ impl App {
                             MultipliedCurve::new_multiplier(beat_offset);
                     }
                 }
+                (Some(project), UiAction::SetSceneOpacityMultiplier(path, value)) => {
+                    if let Some(scene_instance) = scene_instance_by_target(
+                        project,
+                        path,
+                        self.selected_scene_instance,
+                    ) {
+                        scene_instance.opacity.set_multiplier(value);
+                    }
+                }
+                (Some(project), UiAction::SetSceneOpacityCurve(path, curve)) => {
+                    if let Some(scene_instance) = scene_instance_by_target(
+                        project,
+                        path,
+                        self.selected_scene_instance,
+                    ) {
+                        scene_instance.opacity.set_curve(curve);
+                    }
+                }
+                (Some(project), UiAction::SetSceneBeatOffsetMultiplier(path, value)) => {
+                    if let Some(scene_instance) = scene_instance_by_target(
+                        project,
+                        path,
+                        self.selected_scene_instance,
+                    ) {
+                        scene_instance.beat_progression_offset.set_multiplier(value);
+                    }
+                }
+                (Some(project), UiAction::SetSceneBeatOffsetCurve(path, curve)) => {
+                    if let Some(scene_instance) = scene_instance_by_target(
+                        project,
+                        path,
+                        self.selected_scene_instance,
+                    ) {
+                        scene_instance.beat_progression_offset.set_curve(curve);
+                    }
+                }
                 (Some(project), UiAction::SetSceneSetOffsetOnFlash(path, set_offset_on_flash)) => {
                     if let Some(scene_instance) = scene_instance_by_target(
                         project,
@@ -342,6 +378,26 @@ impl App {
                         effect.opacity = MultipliedCurve::new_multiplier(opacity);
                     }
                 }
+                (Some(project), UiAction::SetSceneEffectOpacityMultiplier(target, effect_index, value)) => {
+                    if let Some(effect) = scene_effect_by_target(
+                        project,
+                        target,
+                        self.selected_scene_instance,
+                        effect_index,
+                    ) {
+                        effect.opacity.set_multiplier(value);
+                    }
+                }
+                (Some(project), UiAction::SetSceneEffectOpacityCurve(target, effect_index, curve)) => {
+                    if let Some(effect) = scene_effect_by_target(
+                        project,
+                        target,
+                        self.selected_scene_instance,
+                        effect_index,
+                    ) {
+                        effect.opacity.set_curve(curve);
+                    }
+                }
                 (
                     Some(project),
                     UiAction::SetSceneEffectColorShift(target, effect_index, color_shift),
@@ -353,6 +409,26 @@ impl App {
                         effect_index,
                     ) {
                         effect.color_shift = MultipliedCurve::new_multiplier(color_shift);
+                    }
+                }
+                (Some(project), UiAction::SetSceneEffectColorShiftMultiplier(target, effect_index, value)) => {
+                    if let Some(effect) = scene_effect_by_target(
+                        project,
+                        target,
+                        self.selected_scene_instance,
+                        effect_index,
+                    ) {
+                        effect.color_shift.set_multiplier(value);
+                    }
+                }
+                (Some(project), UiAction::SetSceneEffectColorShiftCurve(target, effect_index, curve)) => {
+                    if let Some(effect) = scene_effect_by_target(
+                        project,
+                        target,
+                        self.selected_scene_instance,
+                        effect_index,
+                    ) {
+                        effect.color_shift.set_curve(curve);
                     }
                 }
                 (
@@ -368,6 +444,26 @@ impl App {
                         effect.beat_progression = MultipliedCurve::new_multiplier(beat_progression);
                     }
                 }
+                (Some(project), UiAction::SetSceneEffectBeatProgressionMultiplier(target, effect_index, value)) => {
+                    if let Some(effect) = scene_effect_by_target(
+                        project,
+                        target,
+                        self.selected_scene_instance,
+                        effect_index,
+                    ) {
+                        effect.beat_progression.set_multiplier(value);
+                    }
+                }
+                (Some(project), UiAction::SetSceneEffectBeatProgressionCurve(target, effect_index, curve)) => {
+                    if let Some(effect) = scene_effect_by_target(
+                        project,
+                        target,
+                        self.selected_scene_instance,
+                        effect_index,
+                    ) {
+                        effect.beat_progression.set_curve(curve);
+                    }
+                }
                 (
                     Some(project),
                     UiAction::SetSceneEffectBeatOffset(target, effect_index, beat_offset),
@@ -380,6 +476,26 @@ impl App {
                     ) {
                         effect.beat_progression_offset =
                             MultipliedCurve::new_multiplier(beat_offset);
+                    }
+                }
+                (Some(project), UiAction::SetSceneEffectBeatOffsetMultiplier(target, effect_index, value)) => {
+                    if let Some(effect) = scene_effect_by_target(
+                        project,
+                        target,
+                        self.selected_scene_instance,
+                        effect_index,
+                    ) {
+                        effect.beat_progression_offset.set_multiplier(value);
+                    }
+                }
+                (Some(project), UiAction::SetSceneEffectBeatOffsetCurve(target, effect_index, curve)) => {
+                    if let Some(effect) = scene_effect_by_target(
+                        project,
+                        target,
+                        self.selected_scene_instance,
+                        effect_index,
+                    ) {
+                        effect.beat_progression_offset.set_curve(curve);
                     }
                 }
                 (

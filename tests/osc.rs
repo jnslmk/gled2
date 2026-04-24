@@ -514,7 +514,49 @@ fn test_osc_integration() {
             }
         },
     );
+    suite(
+        "16: Curve/value sub-path setters — scene and effect",
+        &gled,
+        || {
+            // Scene-level: opacity and beat_offset, each with /value and /curve
+            for selector in ["/scene/grid/0/0", "/scene/quick/0", "/scene/selected"] {
+                send(&format!("{selector}/opacity/value"), vec![f(0.75)]);
+                delay();
+                send(&format!("{selector}/opacity/static"), vec![f(0.65)]);
+                delay();
+                send(&format!("{selector}/opacity/curve"), vec![s(FAKE_UUID)]);
+                delay();
+                send(&format!("{selector}/opacity/curve"), vec![s("none")]);
+                delay();
+                send(&format!("{selector}/beat_offset/value"), vec![f(0.25)]);
+                delay();
+                send(&format!("{selector}/beat_offset/static"), vec![f(0.15)]);
+                delay();
+                send(&format!("{selector}/beat_offset/curve"), vec![s(FAKE_UUID)]);
+                delay();
+                send(&format!("{selector}/beat_offset/curve"), vec![s("none")]);
+                delay();
+            }
 
+            // Effect-level: all four curve fields, each with /value and /curve
+            for selector in [
+                "/scene/grid/0/0/effect/0",
+                "/scene/quick/0/effect/0",
+                "/scene/selected/effect/0",
+            ] {
+                for field in ["opacity", "color_shift", "beat_progression", "beat_offset"] {
+                    send(&format!("{selector}/{field}/value"), vec![f(0.5)]);
+                    delay();
+                    send(&format!("{selector}/{field}/static"), vec![f(0.4)]);
+                    delay();
+                    send(&format!("{selector}/{field}/curve"), vec![s(FAKE_UUID)]);
+                    delay();
+                    send(&format!("{selector}/{field}/curve"), vec![s("none")]);
+                    delay();
+                }
+            }
+        },
+    );
     // Final error report (gled is dropped/killed after this scope).
     let errors = gled.errors.lock().unwrap();
     if !errors.is_empty() {
