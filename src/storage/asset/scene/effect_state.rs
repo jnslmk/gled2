@@ -47,6 +47,11 @@ impl EffectState {
         self.renderer = Some(renderer);
         self.texture_to_output = Some(texture_to_output);
         self.texture_id = Some(texture_id);
+        // The freshly created `texture_to_output` has an empty positions buffer.
+        // Force the next `prepare()` to upload positions, otherwise the chain
+        // would write zeros into the global OUTPUT_BUFFER (preview/artnet output)
+        // even though the per-effect texture is rendered correctly.
+        self.sent_group = None;
     }
 
     /// Resend positions to gpu
