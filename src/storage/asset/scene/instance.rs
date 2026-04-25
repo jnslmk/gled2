@@ -133,6 +133,17 @@ impl SceneInstance {
         self.scene.reload_shader_code(animation, collections);
     }
 
+    /// Clone this instance, but assign a fresh `id` so the duplicate is treated
+    /// as a distinct instance (e.g. for drag-and-drop and equality checks).
+    /// Also re-initializes the per-effect GPU pipelines, since `EffectState`
+    /// is not part of `Clone` and the new instance starts with a default state.
+    pub fn cloned_with_new_id(&self, collections: &Collections) -> Self {
+        let mut clone = self.clone();
+        clone.id = Uuid::new_v4();
+        clone.scene.reload_shader_code(None, collections);
+        clone
+    }
+
     fn update_input_state(&mut self, beat_progression: f32) {
         if let Some(event) = self.activation_input.as_ref()
             && event.is_new()

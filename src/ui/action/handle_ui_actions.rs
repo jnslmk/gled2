@@ -33,29 +33,23 @@ impl App {
                     }
                 }
                 (Some(project), UiAction::CloneSceneInstance(location)) => {
-                    if let Some(scene_id) = project
+                    if let Some(scene_instance) = project
                         .get_scenes_instance(&location)
-                        .map(|scene_instance| scene_instance.scene_id)
+                        .map(|scene_instance| scene_instance.cloned_with_new_id(&self.collections))
                     {
-                        project.add_scene(
-                            project.next_empty_grid_location(location),
-                            scene_id,
-                            &self.collections,
-                        );
+                        let target = project.next_empty_grid_location(location);
+                        project.add_scene_instance(target, scene_instance);
                     }
                 }
                 (Some(project), UiAction::CloneSceneInstancePath(path)) => {
                     if let Some(location) =
                         location_by_target(project, path, self.selected_scene_instance)
-                        && let Some(scene_id) = project
+                        && let Some(scene_instance) = project
                             .get_scenes_instance(&location)
-                            .map(|scene_instance| scene_instance.scene_id)
+                            .map(|scene_instance| scene_instance.cloned_with_new_id(&self.collections))
                     {
-                        project.add_scene(
-                            project.next_empty_grid_location(location),
-                            scene_id,
-                            &self.collections,
-                        );
+                        let target = project.next_empty_grid_location(location);
+                        project.add_scene_instance(target, scene_instance);
                     }
                 }
                 (Some(project), UiAction::ReloadShaderCode(animation)) => {
