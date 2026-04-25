@@ -583,7 +583,9 @@ impl App {
                         target,
                         self.selected_scene_instance,
                     ) {
-                        scene_instance.scene.add_effect(Default::default());
+                        scene_instance
+                            .scene
+                            .add_effect(Default::default(), &self.collections);
                     }
                 }
                 (Some(project), UiAction::RemoveSceneEffect(target, effect_index)) => {
@@ -603,7 +605,7 @@ impl App {
                     )
                         && let Some(effect) = scene_instance.scene.effect(effect_index).cloned()
                     {
-                        scene_instance.scene.add_effect(effect);
+                        scene_instance.scene.add_effect(effect, &self.collections);
                     }
                 }
                 (_, UiAction::SetAnimationShaderCode(animation_id, shader_code)) => {

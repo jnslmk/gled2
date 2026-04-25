@@ -37,7 +37,13 @@ impl Scene {
         &self.effects
     }
 
-    pub fn add_effect(&mut self, effect: Effect) -> usize {
+    pub fn add_effect(&mut self, mut effect: Effect, collections: &Collections) -> usize {
+        // Initialize the GPU pipeline for this newly added effect so it renders
+        // immediately at runtime (otherwise it only works after save/reload, when
+        // `reload_shader_code` is invoked during scene loading).
+        effect
+            .state
+            .set_shader_code(&effect.shader_code_complete(collections));
         self.effects.push(effect);
 
         self.effects.len() - 1

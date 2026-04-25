@@ -59,7 +59,7 @@ pub fn selected_effect_editor_ui(
             .add(Button::new("+ Add Animation").fill(Color32::DARK_GREEN))
             .clicked()
         {
-            state.selected_effect = scene.add_effect(Effect::default());
+            state.selected_effect = scene.add_effect(Effect::default(), collections);
             changed = true;
         }
     });
@@ -69,7 +69,7 @@ pub fn selected_effect_editor_ui(
             .clicked()
             && let Some(effect) = scene.effect(state.selected_effect).cloned()
         {
-            state.selected_effect = scene.add_effect(effect);
+            state.selected_effect = scene.add_effect(effect, collections);
             changed = true;
         }
     });
