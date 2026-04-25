@@ -368,7 +368,7 @@ pub fn audio_device_info_loop(continue_scan: &AtomicBool) {
 }
 
 fn is_capture_input_device(description: &DeviceDescription) -> bool {
-    if !description.supports_input() || description.supports_output() {
+    if !description.supports_input() {
         return false;
     }
 
@@ -385,16 +385,24 @@ fn is_capture_input_device(description: &DeviceDescription) -> bool {
         return false;
     }
 
-    // On Linux the driver field is the ALSA PCM ID.
-    // Only keep real hardware addresses (hw:X,Y / plughw:X,Y).
-    // This filters out ALSA virtual/plugin pseudo-devices such as
-    // default, pulse, pipewire, sysdefault:*, dsnoop:*, iec958:*, etc.
+    // On Linux the driver field can identify pseudo-devices.
+    // Filter common ALSA virtual/plugin sources while keeping PipeWire,
+    // which can represent real microphones on modern Linux desktops.
     #[cfg(target_os = "linux")]
-    if let Some(driver) = description.driver()
-        && !driver.starts_with("hw:")
-        && !driver.starts_with("plughw:")
-    {
-        return false;
+    if let Some(driver) = description.driver() {
+        let driver = driver.to_lowercase();
+        let is_pipewire = driver == "pipewire" || driver.starts_with("pipewire:");
+        let is_virtual_driver = driver == "default"
+            || driver == "pulse"
+            || driver.starts_with("sysdefault:")
+            || driver.starts_with("dsnoop:")
+            || driver.starts_with("iec958:")
+            || driver.starts_with("dmix:")
+            || driver.starts_with("usbstream:");
+
+        if is_virtual_driver && !is_pipewire {
+            return false;
+        }
     }
 
     true
@@ -405,7 +413,11 @@ mod tests {
     use super::*;
     use cpal::DeviceDescriptionBuilder;
     use cpal::DeviceDirection;
+    use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+    use std::sync::{Arc, atomic::AtomicBool};
+    use std::sync::atomic::Ordering::Relaxed;
     use std::str::FromStr;
+    use std::time::{Duration, Instant};
 
     #[test]
     fn format_audio_device_label_prefers_manufacturer_and_address() {
@@ -507,12 +519,12 @@ mod tests {
     }
 
     #[test]
-    fn is_capture_input_device_rejects_duplex_device() {
+    fn is_capture_input_device_accepts_duplex_device() {
         let description = DeviceDescriptionBuilder::new("USB Audio Codec".to_string())
             .direction(DeviceDirection::Duplex)
             .build();
 
-        assert!(!is_capture_input_device(&description));
+        assert!(is_capture_input_device(&description));
     }
 
     #[test]
@@ -531,7 +543,6 @@ mod tests {
         for pseudo_driver in &[
             "default",
             "pulse",
-            "pipewire",
             "sysdefault:CARD=PCH",
             "dsnoop:CARD=PCH,DEV=0",
             "iec958:CARD=PCH",
@@ -549,6 +560,20 @@ mod tests {
 
     #[test]
     #[cfg(target_os = "linux")]
+    fn is_capture_input_device_accepts_pipewire_mic_device() {
+        let description = DeviceDescriptionBuilder::new("Built-in Microphone".to_string())
+            .direction(DeviceDirection::Input)
+            .driver("pipewire")
+            .build();
+
+        assert!(
+            is_capture_input_device(&description),
+            "should accept real mic exposed via PipeWire"
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
     fn is_capture_input_device_accepts_hw_addressed_devices() {
         for driver in &["hw:0,0", "hw:1,0", "plughw:0,0"] {
             let description = DeviceDescriptionBuilder::new("Built-in Mic".to_string())
@@ -560,5 +585,173 @@ mod tests {
                 "should accept real device with driver={driver}"
             );
         }
+    }
+
+    #[test]
+    #[ignore = "Requires a live microphone/audio input device"]
+    fn live_audio_input_stream_receives_samples() {
+        let host = cpal::default_host();
+        let default_input_id = host.default_input_device().and_then(|device| device.id().ok());
+
+        let mut candidates = host
+            .input_devices()
+            .expect("Failed to enumerate input devices")
+            .filter_map(|device| {
+                let description = device.description().ok()?;
+                if !is_capture_input_device(&description) {
+                    return None;
+                }
+                if device.default_input_config().is_err() {
+                    return None;
+                }
+                Some(device)
+            })
+            .collect::<Vec<_>>();
+
+        if let Some(default_id) = default_input_id {
+            candidates.sort_by_key(|device| {
+                if device.id().ok().as_ref() == Some(&default_id) {
+                    0
+                } else {
+                    1
+                }
+            });
+        }
+
+        assert!(
+            !candidates.is_empty(),
+            "No usable input device found. Connect/select a microphone and retry."
+        );
+
+        let mut attempts = Vec::new();
+
+        for device in candidates {
+            let label = device
+                .description()
+                .map(|description| audio_device_label(&device.id().expect("Missing device id"), &description))
+                .unwrap_or_else(|_| "Unknown input device".to_string());
+
+            let config = device
+                .default_input_config()
+                .expect("Input device has no default input config");
+            let stream_config = cpal::StreamConfig::from(config.clone());
+
+            let got_samples = Arc::new(AtomicBool::new(false));
+            let got_non_silent_signal = Arc::new(AtomicBool::new(false));
+            let stream_error = Arc::new(AtomicBool::new(false));
+
+            let stream = match config.sample_format() {
+                cpal::SampleFormat::F32 => {
+                    let got_samples = got_samples.clone();
+                    let got_non_silent_signal = got_non_silent_signal.clone();
+                    let stream_error = stream_error.clone();
+                    device.build_input_stream(
+                        &stream_config,
+                        move |data: &[f32], _| {
+                            if !data.is_empty() {
+                                got_samples.store(true, Relaxed);
+                            }
+                            if data.iter().any(|sample| sample.abs() > 0.0) {
+                                got_non_silent_signal.store(true, Relaxed);
+                            }
+                        },
+                        move |_| {
+                            stream_error.store(true, Relaxed);
+                        },
+                        None,
+                    )
+                }
+                cpal::SampleFormat::I16 => {
+                    let got_samples = got_samples.clone();
+                    let got_non_silent_signal = got_non_silent_signal.clone();
+                    let stream_error = stream_error.clone();
+                    device.build_input_stream(
+                        &stream_config,
+                        move |data: &[i16], _| {
+                            if !data.is_empty() {
+                                got_samples.store(true, Relaxed);
+                            }
+                            if data.iter().any(|sample| *sample != 0) {
+                                got_non_silent_signal.store(true, Relaxed);
+                            }
+                        },
+                        move |_| {
+                            stream_error.store(true, Relaxed);
+                        },
+                        None,
+                    )
+                }
+                cpal::SampleFormat::I32 => {
+                    let got_samples = got_samples.clone();
+                    let got_non_silent_signal = got_non_silent_signal.clone();
+                    let stream_error = stream_error.clone();
+                    device.build_input_stream(
+                        &stream_config,
+                        move |data: &[i32], _| {
+                            if !data.is_empty() {
+                                got_samples.store(true, Relaxed);
+                            }
+                            if data.iter().any(|sample| *sample != 0) {
+                                got_non_silent_signal.store(true, Relaxed);
+                            }
+                        },
+                        move |_| {
+                            stream_error.store(true, Relaxed);
+                        },
+                        None,
+                    )
+                }
+                cpal::SampleFormat::U16 => {
+                    let got_samples = got_samples.clone();
+                    let got_non_silent_signal = got_non_silent_signal.clone();
+                    let stream_error = stream_error.clone();
+                    device.build_input_stream(
+                        &stream_config,
+                        move |data: &[u16], _| {
+                            if !data.is_empty() {
+                                got_samples.store(true, Relaxed);
+                            }
+                            if data.iter().any(|sample| *sample != u16::MAX / 2) {
+                                got_non_silent_signal.store(true, Relaxed);
+                            }
+                        },
+                        move |_| {
+                            stream_error.store(true, Relaxed);
+                        },
+                        None,
+                    )
+                }
+                other => panic!("Unsupported sample format for test: {other:?}"),
+            }
+            .expect("Failed to build audio input stream");
+
+            stream.play().expect("Failed to start audio input stream");
+
+            let start = Instant::now();
+            while start.elapsed() < Duration::from_secs(2) {
+                if stream_error.load(Relaxed) {
+                    attempts.push(format!("{label}: stream error"));
+                    break;
+                }
+                if got_samples.load(Relaxed) && got_non_silent_signal.load(Relaxed) {
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(20));
+            }
+
+            if !stream_error.load(Relaxed) {
+                let state = if !got_samples.load(Relaxed) {
+                    "no samples"
+                } else {
+                    "samples but silent"
+                };
+                attempts.push(format!("{label}: {state}"));
+            }
+        }
+
+        panic!(
+            "No input device produced non-silent signal. Device attempts: {}. Ensure microphone permissions are granted, the mic is not muted, and speak/tap near the mic during the test.",
+            attempts.join(" | ")
+        );
     }
 }

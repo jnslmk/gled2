@@ -144,6 +144,24 @@ impl FFTAudioSource {
                                     None,
                                 )
                             }
+                            SampleFormat::I32 => {
+                                let error_flag = stream_failed.clone();
+                                device.build_input_stream(
+                                    &stream_config,
+                                    move |data: &[i32], _: &cpal::InputCallbackInfo| {
+                                        let f32_data: Vec<f32> = data
+                                            .iter()
+                                            .map(|&sample| normalize_i32_sample(sample))
+                                            .collect();
+                                        push_sample(f32_data, channels, &mut producer);
+                                    },
+                                    move |err| {
+                                        log::error!("Audio stream error: {}", err);
+                                        error_flag.store(true, Ordering::Relaxed);
+                                    },
+                                    None,
+                                )
+                            }
                             SampleFormat::U16 => {
                                 let error_flag = stream_failed.clone();
                                 device.build_input_stream(
@@ -214,6 +232,10 @@ impl FFTAudioSource {
 
 fn normalize_i16_sample(sample: i16) -> f32 {
     sample as f32 / i16::MAX as f32
+}
+
+fn normalize_i32_sample(sample: i32) -> f32 {
+    sample as f32 / i32::MAX as f32
 }
 
 fn normalize_u16_sample(sample: u16) -> f32 {
@@ -359,5 +381,12 @@ mod tests {
         assert!((normalize_u16_sample(0) + 1.0).abs() < f32::EPSILON);
         assert!(normalize_u16_sample(u16::MAX) >= 1.0);
         assert!(normalize_u16_sample(u16::MAX / 2).abs() < 0.001);
+    }
+
+    #[test]
+    fn normalize_i32_sample_maps_full_scale_range() {
+        assert_eq!(normalize_i32_sample(0), 0.0);
+        assert!((normalize_i32_sample(i32::MAX) - 1.0).abs() < f32::EPSILON);
+        assert!(normalize_i32_sample(i32::MIN) <= -1.0);
     }
 }
