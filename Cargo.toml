@@ -45,7 +45,7 @@ keyring = { version = "3", features = [
 ] }
 kurbo = "0.13"
 log = "0.4"
-midir = { version = "0.10", features = ["winrt"] }
+midir = { version = "0.11", features = ["winrt"] }
 mkdirp = "1"
 naga = "29"
 ndarray = "0.17"
@@ -122,7 +122,6 @@ macos = { "signingIdentity" = "Developer ID Application: FreshX GmbH (V5GQY7AUWA
 
 [patch.crates-io]
 egui_phosphor_icons = { git = "https://github.com/elwerene/egui_phosphor_icons", branch = "update_egui" }
-profiling = { git = "https://github.com/rerun-io/profiling", branch = "emilk/puffin-0.20"}
 wgpu-profiler = { git = "https://github.com/elwerene/wgpu-profiler", branch = "update_dependencies" }
 
 [features]
