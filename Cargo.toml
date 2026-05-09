@@ -29,7 +29,7 @@ egui_extras = { version = "0.34", features = ["image", "syntect"] }
 egui_flex = "0.6"
 egui_knob = "0.3"
 egui_ltreeview = "0.7"
-egui_phosphor_icons = "0.2"
+egui_phosphor_icons = "0.3"
 emath = "0.34"
 env_logger = "0.11"
 epaint = "0.34"
@@ -70,7 +70,7 @@ serialport = "4"
 static_assertions = "1"
 strum = { version = "0.28", features = ["derive"] }
 svgdom = "0.18"
-sysinfo = "0.38"
+sysinfo = "0.39"
 tiny-skia = { version = "0.12", default-features = false, features = [
     "simd",
     "std",
@@ -121,7 +121,6 @@ icons = ["logo/logo.png", "logo/logo.icns"]
 macos = { "signingIdentity" = "Developer ID Application: FreshX GmbH (V5GQY7AUWA)" }
 
 [patch.crates-io]
-egui_phosphor_icons = { git = "https://github.com/elwerene/egui_phosphor_icons", branch = "update_egui" }
 wgpu-profiler = { git = "https://github.com/elwerene/wgpu-profiler", branch = "update_dependencies" }
 
 [features]

@@ -114,9 +114,7 @@ pub fn start_thread(
                         debug!("Artnet poll from {src:?}");
 
                         let networks = Networks::new_with_refreshed_list();
-                        let bind_addr = &networks
-                            .iter()
-                            .flat_map(|(_, network)| network.ip_networks().iter())
+                        let bind_addr = &networks.values().flat_map(|network| network.ip_networks().iter())
                             .find_map(|ip_network| match (ip_network.addr, src.ip()) {
                                 (IpAddr::V4(interface_addr), IpAddr::V4(src_addr)) => {
                                     let netmask = u32::MAX.shl(32 - ip_network.prefix);
