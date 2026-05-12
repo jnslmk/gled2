@@ -11,6 +11,7 @@ use crate::{
         artnet::{ARTNET_CONFIG, ArtnetConfig},
         event::{GamepadEvent, InputEvent},
         external_control::ArtnetControlConfig,
+        osc::OscConfig,
     },
     pipeline::{
         extract_output::ExtractOutput,
@@ -77,6 +78,7 @@ pub struct Project {
     )]
     pub audio_input_device: Option<DeviceId>,
     artnet_control_config: ArtnetControlConfig,
+    pub osc_config: OscConfig,
 }
 
 impl Default for Project {
@@ -107,6 +109,7 @@ impl Default for Project {
             main_dimmer: 1.0,
             audio_input_device: None,
             artnet_control_config: ArtnetControlConfig::default(),
+            osc_config: OscConfig::default(),
         }
     }
 }

@@ -34,7 +34,7 @@ pub(super) fn start_network_loop(handler: Arc<OSCHandler>) {
 
             let state_receiver = crate::output_state::new_receiver();
 
-            loop {
+            while handler.running.load(Ordering::Relaxed) {
                 subscribers.retain(|_, last_seen| last_seen.elapsed() < SUBSCRIBER_TTL);
                 handler
                     .has_subscribers

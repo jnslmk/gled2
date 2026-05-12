@@ -108,6 +108,9 @@ impl ExternalDeviceSettings {
                         })
                         .add_submenu("Artnet Trigger".into(), |ui, project| {
                             artnet_trigger_settings(ui, project)
+                        })
+                        .add_submenu("OSC".into(), |ui, project| {
+                            osc_settings(ui, project)
                         });
                     ui.add(settings_menu);
                 });
@@ -430,6 +433,24 @@ fn artnet_trigger_settings(ui: &mut Ui, _project: &mut Project) {
     ui.separator();
     ui.label("Universe");
     ui.add(Slider::new(&mut config.universe, 0..=32768));
+}
+
+fn osc_settings(ui: &mut Ui, project: &mut Project) {
+    let osc_config = project.osc_config;
+    ui.heading("OSC");
+    let mut active = osc_config.active;
+    if ui.checkbox(&mut active, "Active").changed() {
+        UiAction::SetProjectOscActive(active).enqueue();
+    }
+    ui.horizontal(|ui| {
+        ui.label("Port");
+        let mut port = osc_config.port;
+        let response = ui.add(DragValue::new(&mut port).range(1..=65535));
+        if (response.lost_focus() || response.drag_stopped())
+            && port != osc_config.port {
+                UiAction::SetProjectOscPort(port).enqueue();
+            }
+    });
 }
 
 struct SettingsMenu<'a, S> {

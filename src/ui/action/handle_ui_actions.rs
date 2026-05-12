@@ -83,6 +83,16 @@ impl App {
                 (Some(project), UiAction::SetProjectArtnetControlUniverse(universe)) => {
                     project.artnet_control_config(|config| config.universe = universe);
                 }
+                (Some(project), UiAction::SetProjectOscActive(active)) => {
+                    project.osc_config.active = active;
+                    let osc_config = project.osc_config;
+                    self.apply_osc_config(osc_config);
+                }
+                (Some(project), UiAction::SetProjectOscPort(port)) => {
+                    project.osc_config.port = port;
+                    let osc_config = project.osc_config;
+                    self.apply_osc_config(osc_config);
+                }
                 (Some(project), UiAction::SetProjectGroup(group_index, group_name)) => {
                     project.groups.insert(group_index, Group(group_name));
                 }
@@ -661,6 +671,7 @@ impl App {
                         );
                         self.extract_output.routings = project.output_routings.clone();
                         *ARTNET_CONFIG.lock() = project.artnet_config.clone();
+                        self.apply_osc_config(project.osc_config);
                         project.channel_overwrites.clone().set();
                         self.audio_pool.selected_device = project.audio_input_device.clone();
                         self.audio_pool.restart_fft();

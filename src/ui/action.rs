@@ -94,6 +94,8 @@ pub enum UiAction {
     SetProjectPaletteGradient(usize, [f32; 3]),
     SetProjectArtnetControlActive(bool),
     SetProjectArtnetControlUniverse(u16),
+    SetProjectOscActive(bool),
+    SetProjectOscPort(u16),
     SetProjectGroup(usize, String),
     RemoveProjectGroup(usize),
     ClearProjectGroups,

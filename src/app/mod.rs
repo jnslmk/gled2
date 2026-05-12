@@ -10,7 +10,7 @@ pub mod storage;
 pub mod svg;
 pub mod timing;
 
-use crate::input::osc::OSCHandler;
+use crate::input::osc::{OSCHandler, OscConfig};
 use crate::storage::is_loading;
 use crate::{
     audio::{AudioPool, sound_data::SoundData},
@@ -294,10 +294,19 @@ impl App {
             external_control_state: ExternalControlState::new(artnet_control_receiver),
             audio_pool,
             sound_data: Default::default(),
-            osc_handler: OSCHandler::start().ok(),
+            osc_handler: None,
         };
 
         Some(app)
+    }
+
+    pub fn apply_osc_config(&mut self, config: OscConfig) {
+        if let Some(handler) = self.osc_handler.take() {
+            handler.stop();
+        }
+        if config.active {
+            self.osc_handler = OSCHandler::start(config.port).ok();
+        }
     }
 }
 
