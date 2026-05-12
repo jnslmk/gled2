@@ -109,7 +109,7 @@ impl ExternalDeviceSettings {
                         .add_submenu("Artnet Trigger".into(), |ui, project| {
                             artnet_trigger_settings(ui, project)
                         })
-                        .add_submenu("OSC".into(), |ui, project| {
+                        .add_submenu("OSC Input".into(), |ui, project| {
                             osc_settings(ui, project)
                         });
                     ui.add(settings_menu);
