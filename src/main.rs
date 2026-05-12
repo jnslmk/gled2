@@ -62,6 +62,27 @@ struct Args {
     show_open_font_license: bool,
 }
 
+fn init_keyring_store() {
+    #[cfg(target_os = "macos")]
+    {
+        let store =
+            apple_native_keyring_store::Store::new().expect("Could not create Apple keyring store");
+        keyring_core::set_default_store(store);
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let store = windows_native_keyring_store::Store::new()
+            .expect("Could not create Windows keyring store");
+        keyring_core::set_default_store(store);
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let store = dbus_secret_service_keyring_store::Store::new()
+            .expect("Could not create DBus Secret Service keyring store");
+        keyring_core::set_default_store(store);
+    }
+}
+
 fn main() {
     let args = Args::parse();
     if args.show_open_font_license {
@@ -76,6 +97,7 @@ fn main() {
     #[cfg(feature = "profiling")]
     let _puffin_servers = start_profile_servers();
     env_logger::init();
+    init_keyring_store();
     let ui_action_receiver = UiAction::init_queue();
     RendererCallback::init();
     storage::start_thread();

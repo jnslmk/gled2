@@ -13,8 +13,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub static SSH_KEY_PASSPHRASE_ENTRY: Lazy<Option<keyring::Entry>> = Lazy::new(|| {
-    keyring::Entry::new("gled2", "ssh_key_passphrase")
+pub static SSH_KEY_PASSPHRASE_ENTRY: Lazy<Option<keyring_core::Entry>> = Lazy::new(|| {
+    keyring_core::Entry::new("gled2", "ssh_key_passphrase")
         .map_err(|err| UiAction::Error(format!("Could not get keyring entry: {err:?}")).enqueue())
         .ok()
 });
