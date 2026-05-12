@@ -1853,7 +1853,7 @@ dependencies = [
 
 [[package]]
 name = "gled"
-version = "2.27.7"
+version = "2.27.8"
 dependencies = [
  "anyhow",
  "apple-native-keyring-store",
