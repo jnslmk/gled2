@@ -25,7 +25,7 @@ It is practical, opinionated, and optimized for consistency across teams.
 #![forbid(clippy::unwrap_used)]
 ```
 
-3. Errors are modeled with `thiserror`.
+3. Errors are modeled with `anyhow`.
 4. Runtime diagnostics use `tracing`, not `println!`.
 5. Public APIs are surfaced through `lib.rs`; internals stay `pub(crate)`.
 6. Serde derives are standard for domain/protocol types.
@@ -63,7 +63,6 @@ Recommended baseline:
 ```rust
 #![forbid(unsafe_code)]
 #![forbid(clippy::unwrap_used)]
-#![forbid(clippy::expect_used)]
 #![warn(clippy::panic)]
 #![warn(clippy::todo)]
 #![warn(missing_debug_implementations)]
@@ -234,7 +233,7 @@ A good Rustdoc section answers:
 
 1. `let-else` guard clauses.
 2. Small, strong domain types.
-3. `thiserror` for error modeling.
+3. `anyhow` for error modeling.
 4. `tracing` for diagnostics.
 5. Early return over deep nesting.
 6. Explicit `match` for domain states.
@@ -244,7 +243,7 @@ Avoid:
 1. Oversized service files.
 2. `String` as universal domain error.
 3. `serde_json::Value` as typed-model replacement.
-4. `unwrap`/`expect` in normal runtime code.
+4. `unwrap` in normal runtime code.
 5. Overly broad mutable global state.
 
 ## New Project Baseline 🚀
@@ -252,7 +251,7 @@ Avoid:
 1. Multi-crate workspace layout.
 2. Shared dependencies at workspace level.
 3. Repository `rustfmt` config.
-4. Lints against `unsafe`, `unwrap`, and ideally `expect`.
+4. Lints against `unsafe`, `unwrap`.
 5. `thiserror` + `tracing` by default.
 6. API facade via `lib.rs`.
 7. Restrictive visibility (`pub(crate)` first).
