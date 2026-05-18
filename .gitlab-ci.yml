@@ -18,21 +18,21 @@ linux:
       dotenv: variables.env
     expire_in: never
 
-#darwin:
-#  stage: build
-#  tags:
-#    - darwin
-#  rules:
-#    - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+$/'
-#  script:
-#    - .cd/bundle.sh
-#    - echo "ARTIFACT_URL_DMG=${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/gled_${CI_COMMIT_TAG}_aarch64.dmg" >> variables.env
-#  artifacts:
-#    paths:
-#      - "gled_${CI_COMMIT_TAG}_aarch64.dmg"
-#    reports:
-#      dotenv: variables.env
-#    expire_in: never
+mac:
+  stage: build
+  tags:
+    - mac
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+$/'
+  script:
+    - .cd/bundle.sh
+    - echo "ARTIFACT_URL_DMG=${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/gled_${CI_COMMIT_TAG}_aarch64.dmg" >> variables.env
+  artifacts:
+    paths:
+      - "gled_${CI_COMMIT_TAG}_aarch64.dmg"
+    reports:
+      dotenv: variables.env
+    expire_in: never
 
 release:
   stage: deploy
@@ -40,8 +40,8 @@ release:
   needs:
     - job: linux
       artifacts: true
-#    - job: darwin
-#      artifacts: true
+    - job: mac
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+$/'
   script:
@@ -61,10 +61,10 @@ release:
           url: ${ARTIFACT_URL_EXE}
           direct_asset_path: '/assets/gled_${CI_COMMIT_TAG}_x64-setup.exe'
           link_type: package
-#        - name: 'Mac DMG (Apple Silicon)'
-#          url: ${ARTIFACT_URL_DMG}
-#          direct_asset_path: '/assets/gled_${CI_COMMIT_TAG}_aarch64.dmg'
-#          link_type: package
+        - name: 'Mac DMG (Apple Silicon)'
+          url: ${ARTIFACT_URL_DMG}
+          direct_asset_path: '/assets/gled_${CI_COMMIT_TAG}_aarch64.dmg'
+          link_type: package
 
 pages:
   stage: deploy
