@@ -73,8 +73,8 @@ fn show_open_font_license_requested() -> bool {
 fn init_keyring_store() {
     #[cfg(target_os = "macos")]
     {
-        let store =
-            apple_native_keyring_store::Store::new().expect("Could not create Apple keyring store");
+        let store = apple_native_keyring_store::keychain::Store::new()
+            .expect("Could not create Apple keyring store");
         keyring_core::set_default_store(store);
     }
     #[cfg(target_os = "windows")]
