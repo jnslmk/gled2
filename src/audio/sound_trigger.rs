@@ -139,7 +139,11 @@ impl SoundTrigger {
         });
 
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
-        let start = self.params.center_bin.saturating_sub(self.params.bin_radius).clamp(1, FREQ_BINS - 1);
+        let start = self
+            .params
+            .center_bin
+            .saturating_sub(self.params.bin_radius)
+            .clamp(1, FREQ_BINS - 1);
         let len = max_f.saturating_sub(start);
         self.impulse = (self
             .spectrum
