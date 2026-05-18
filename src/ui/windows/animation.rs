@@ -1,5 +1,5 @@
 use crate::{
-    app::{persistant_state::PersistantState, timing::Timing},
+    app::{persistent_state::PersistentState, timing::Timing},
     audio::sound_data::SoundData,
     pipeline::renderer_callback::RendererCallback,
     storage::{
@@ -70,7 +70,7 @@ impl AnimationWindow {
         ctx: &Context,
         timing: &Timing,
         collections: &mut Collections,
-        persistant_state: &mut PersistantState,
+        persistent_state: &mut PersistentState,
         sound_data: &mut SoundData,
     ) {
         if !self.open {
@@ -96,7 +96,7 @@ impl AnimationWindow {
             let queue = &wgpu_render_state.queue;
             effect.prepare(
                 queue,
-                persistant_state
+                persistent_state
                     .preview_palette()
                     .and_then(|id| Asset::get(id, collections))
                     .map(|palette| palette.data.clone()),
@@ -118,7 +118,7 @@ impl AnimationWindow {
         }
 
         if self.preview {
-            self.show_preview_window(ctx, collections, persistant_state, sound_data);
+            self.show_preview_window(ctx, collections, persistent_state, sound_data);
         }
 
         ctx.show_viewport_immediate(
@@ -227,7 +227,7 @@ impl AnimationWindow {
         &mut self,
         ctx: &Context,
         collections: &mut Collections,
-        persistant_state: &mut PersistantState,
+        persistent_state: &mut PersistentState,
         sound_data: &mut SoundData,
     ) {
         ctx.show_viewport_immediate(
@@ -271,11 +271,11 @@ impl AnimationWindow {
                             .show(ui, |ui| {
                                 ui.label("Preview Palette");
                                 ui.vertical_centered_justified(|ui| {
-                                    if persistant_state
+                                    if persistent_state
                                         .preview_palette_mut()
                                         .collections_change_button(ui, collections)
                                     {
-                                        persistant_state.save();
+                                        persistent_state.save();
                                     }
                                 });
                             });

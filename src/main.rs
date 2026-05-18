@@ -1,5 +1,6 @@
 #![windows_subsystem = "windows"]
 #![forbid(clippy::unwrap_used)]
+#![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 pub mod app;
@@ -16,7 +17,7 @@ pub mod ui;
 use crate::audio::AudioPool;
 use crate::input::artnet;
 use crate::pipeline::{extract_output, output_sender};
-use app::{App, persistant_state::PersistantState};
+use app::{App, persistent_state::PersistentState};
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
 use egui::{Color32, ThemePreference};
 use egui_extras::install_image_loaders;
@@ -124,7 +125,7 @@ fn main() {
     wgpu_options.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
-            power_preference: if PersistantState::default().prefer_discrete_gpu() {
+            power_preference: if PersistentState::default().prefer_discrete_gpu() {
                 PowerPreference::HighPerformance
             } else {
                 PowerPreference::LowPower

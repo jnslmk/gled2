@@ -1,5 +1,5 @@
 use crate::{
-    app::{persistant_state::PersistantState, timing::Timing},
+    app::{persistent_state::PersistentState, timing::Timing},
     audio::sound_data::SoundData,
     pipeline::extract_output::ExtractOutput,
     storage::{asset::project::Project, collections::Collections},
@@ -47,7 +47,7 @@ impl Windows {
         timing: &Timing,
         project: &mut Option<Project>,
         collections: &mut Collections,
-        persistant_state: &mut PersistantState,
+        persistent_state: &mut PersistentState,
         extract_output: &mut ExtractOutput,
         sound_data: &mut SoundData,
         midi_monitor_receiver: &kanal::Receiver<crate::midi::monitor::MidiMonitorEvent>,
@@ -56,11 +56,11 @@ impl Windows {
     ) {
         self.about.update(ctx);
         self.animations
-            .update(ctx, timing, collections, persistant_state, sound_data);
+            .update(ctx, timing, collections, persistent_state, sound_data);
         self.channel_overwrites.update(ctx, collections);
         self.curves.update(ctx, collections);
         self.errors.update(ctx);
-        self.git_config.update(ctx, persistant_state);
+        self.git_config.update(ctx, persistent_state);
         self.midi_controllers.update(
             ctx,
             project,
@@ -78,7 +78,7 @@ impl Windows {
         self.palettes.update(ctx, collections);
         self.projects.update(ctx, collections);
         self.scenes
-            .update(ctx, timing, collections, persistant_state, sound_data);
+            .update(ctx, timing, collections, persistent_state, sound_data);
         self.shortcuts.update(ctx, project);
     }
 }

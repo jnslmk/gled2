@@ -1,4 +1,4 @@
-use crate::app::persistant_state::PersistantState;
+use crate::app::persistent_state::PersistentState;
 use egui::{Button, Color32, CornerRadius, Stroke, TextFormat, Ui, Vec2, text::LayoutJob};
 use rusty_link::{AblLink, SessionState};
 use std::{
@@ -59,9 +59,9 @@ impl Timing {
     }
 
     #[cfg_attr(feature = "profiling", profiling::function)]
-    pub fn tick(&mut self, fps_limit: f32, persistant_state: &PersistantState) {
+    pub fn tick(&mut self, fps_limit: f32, persistent_state: &PersistentState) {
         self.limit_fps(fps_limit);
-        self.set_link_values(persistant_state);
+        self.set_link_values(persistent_state);
         self.get_link_values();
         self.calculate_avg_fps();
         self.remove_old_taps();
@@ -88,8 +88,8 @@ impl Timing {
     }
 
     #[cfg_attr(feature = "profiling", profiling::function)]
-    fn set_link_values(&mut self, persistant_state: &PersistantState) {
-        if persistant_state.ableton_link_read_only() {
+    fn set_link_values(&mut self, persistent_state: &PersistentState) {
+        if persistent_state.ableton_link_read_only() {
             self.previous_change_beats_per_minute = self.beats_per_minute;
             self.change_beats_per_minute = self.beats_per_minute;
             return;
@@ -143,15 +143,15 @@ impl Timing {
         &mut self,
         ui: &mut Ui,
         tap_input: bool,
-        persistant_state: &PersistantState,
+        persistent_state: &PersistentState,
     ) {
-        let ableton_link_read_only = persistant_state.ableton_link_read_only();
+        let ableton_link_read_only = persistent_state.ableton_link_read_only();
         if ui
             .add_enabled(!ableton_link_read_only, Button::new("x½"))
             .clicked()
             || (tap_input && !ableton_link_read_only)
         {
-            self.multiply_speed(0.5, persistant_state);
+            self.multiply_speed(0.5, persistent_state);
         }
     }
 
@@ -159,28 +159,28 @@ impl Timing {
         &mut self,
         ui: &mut Ui,
         tap_input: bool,
-        persistant_state: &PersistantState,
+        persistent_state: &PersistentState,
     ) {
-        let ableton_link_read_only = persistant_state.ableton_link_read_only();
+        let ableton_link_read_only = persistent_state.ableton_link_read_only();
         if ui
             .add_enabled(!ableton_link_read_only, Button::new("x2"))
             .clicked()
             || (tap_input && !ableton_link_read_only)
         {
-            self.multiply_speed(2.0, persistant_state);
+            self.multiply_speed(2.0, persistent_state);
         }
     }
 
-    pub fn multiply_speed(&mut self, multiplier: f32, persistant_state: &PersistantState) {
-        if persistant_state.ableton_link_read_only() {
+    pub fn multiply_speed(&mut self, multiplier: f32, persistent_state: &PersistentState) {
+        if persistent_state.ableton_link_read_only() {
             return;
         }
 
         self.change_beats_per_minute *= multiplier;
     }
 
-    pub fn add_speed(&mut self, delta: f32, persistant_state: &PersistantState) {
-        if persistant_state.ableton_link_read_only() {
+    pub fn add_speed(&mut self, delta: f32, persistent_state: &PersistentState) {
+        if persistent_state.ableton_link_read_only() {
             return;
         }
 
@@ -192,9 +192,9 @@ impl Timing {
         ui: &mut Ui,
         menu_button_size: Vec2,
         tap_input: bool,
-        persistant_state: &PersistantState,
+        persistent_state: &PersistentState,
     ) {
-        let ableton_link_read_only = persistant_state.ableton_link_read_only();
+        let ableton_link_read_only = persistent_state.ableton_link_read_only();
         ui.scope(|ui| {
             ui.style_mut().visuals.widgets.inactive.bg_stroke =
                 ui.style().visuals.widgets.noninteractive.bg_stroke;
@@ -287,7 +287,7 @@ impl Timing {
             let tapped = response.clicked() || (tap_input && !ableton_link_read_only);
 
             if tapped {
-                self.tap(persistant_state);
+                self.tap(persistent_state);
             }
         });
     }
@@ -301,8 +301,8 @@ impl Timing {
         }
     }
 
-    pub fn tap(&mut self, persistant_state: &PersistantState) {
-        if persistant_state.ableton_link_read_only() {
+    pub fn tap(&mut self, persistent_state: &PersistentState) {
+        if persistent_state.ableton_link_read_only() {
             return;
         }
 

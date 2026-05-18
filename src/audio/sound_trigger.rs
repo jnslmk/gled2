@@ -1,6 +1,6 @@
 use crate::audio::SOUND_TRIGGER_SAMPLE_INTERVAL_MS;
 use crate::audio::fft::{FREQ_BINS, MAX_FREQ};
-use ndarray::{Array1, s};
+use ndarray::Array1;
 use rustfft::num_traits::Float;
 use serde::{Deserialize, Serialize};
 use std::ops::Mul;
@@ -139,14 +139,13 @@ impl SoundTrigger {
         });
 
         let max_f = (self.params.center_bin + self.params.bin_radius).clamp(0, FREQ_BINS - 1);
+        let start = self.params.center_bin.saturating_sub(self.params.bin_radius).clamp(1, FREQ_BINS - 1);
+        let len = max_f.saturating_sub(start);
         self.impulse = (self
             .spectrum
-            .slice(s![self
-                .params
-                .center_bin
-                .saturating_sub(self.params.bin_radius)
-                .clamp(1, FREQ_BINS - 1)..max_f])
             .iter()
+            .skip(start)
+            .take(len)
             .map(|x| x.powf(2.))
             .sum::<f32>()
             / (2. * self.params.bin_radius as f32))

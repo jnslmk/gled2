@@ -2,7 +2,7 @@ pub mod config;
 pub mod effects;
 pub mod menu;
 pub mod no_project;
-pub mod persistant_state;
+pub mod persistent_state;
 pub mod preview;
 pub mod project_functions;
 pub mod status_bar;
@@ -30,7 +30,7 @@ use crate::{
 use eframe::egui_wgpu::Callback;
 use egui::{CentralPanel, Id, LayerId, Rect, Ui, UiBuilder, ViewportId, ahash::HashSet};
 use kanal::{Receiver, Sender};
-use persistant_state::PersistantState;
+use persistent_state::PersistentState;
 use std::sync::Arc;
 use std::time::Instant;
 use storage::{show_storage_error, show_storage_loading};
@@ -60,7 +60,7 @@ pub struct App {
     pub collections: Collections,
     pub network_stats: (f64, f64),
     pub network_stats_receiver: Receiver<(f64, f64)>,
-    pub persistant_state: PersistantState,
+    pub persistent_state: PersistentState,
     pub extract_output: ExtractOutput,
     pub external_control_state: ExternalControlState,
     pub audio_pool: AudioPool,
@@ -90,15 +90,15 @@ impl eframe::App for App {
         if let Ok(Some(network_stats)) = self.network_stats_receiver.try_recv() {
             self.network_stats = network_stats;
         }
-        self.persistant_state.update();
+        self.persistent_state.update();
         self.sound_data.update();
         self.timing
-            .tick(self.persistant_state.fps_limit(), &self.persistant_state);
+            .tick(self.persistent_state.fps_limit(), &self.persistent_state);
         self.collections.update();
 
         if !is_loading() && self.startup {
             self.startup = false;
-            if let Some(project) = self.persistant_state.last_project_id() {
+            if let Some(project) = self.persistent_state.last_project_id() {
                 UiAction::SetProject(project).enqueue();
             }
         }
@@ -129,7 +129,7 @@ impl eframe::App for App {
             project.render(
                 &self.timing,
                 self.blackout || self.blackout_hold,
-                if self.persistant_state.effects_always_render() && {
+                if self.persistent_state.effects_always_render() && {
                     self.last_always_render_fps_frame.elapsed().as_secs_f32() > 1.0 / 30.0
                 } {
                     self.last_always_render_fps_frame = Instant::now();
@@ -183,7 +183,7 @@ impl eframe::App for App {
             &self.timing,
             &mut self.project,
             &mut self.collections,
-            &mut self.persistant_state,
+            &mut self.persistent_state,
             &mut self.extract_output,
             &mut self.sound_data,
             &self.midi_monitor_receiver,
@@ -289,7 +289,7 @@ impl App {
             collections: Default::default(),
             network_stats: Default::default(),
             network_stats_receiver,
-            persistant_state: Default::default(),
+            persistent_state: Default::default(),
             extract_output,
             external_control_state: ExternalControlState::new(artnet_control_receiver),
             audio_pool,
@@ -318,11 +318,11 @@ pub struct GitUiState {
 
 impl Default for GitUiState {
     fn default() -> Self {
-        let persistant_state = PersistantState::default();
+        let persistent_state = PersistentState::default();
 
         Self {
-            url: persistant_state.git_url(),
-            use_passphrase: persistant_state.git_credentials().use_passphrase(),
+            url: persistent_state.git_url(),
+            use_passphrase: persistent_state.git_credentials().use_passphrase(),
             passphrase: Default::default(),
         }
     }

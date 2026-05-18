@@ -625,22 +625,22 @@ impl App {
                     });
                 }
                 (_, UiAction::Tap) => {
-                    self.timing.tap(&self.persistant_state);
+                    self.timing.tap(&self.persistent_state);
                 }
                 (_, UiAction::SpeedAdd(delta)) => {
-                    self.timing.add_speed(delta, &self.persistant_state);
+                    self.timing.add_speed(delta, &self.persistent_state);
                 }
                 (_, UiAction::SpeedMultiply(multiplier)) => {
                     self.timing
-                        .multiply_speed(multiplier, &self.persistant_state);
+                        .multiply_speed(multiplier, &self.persistent_state);
                 }
                 (_, UiAction::SetBlackout(blackout)) => {
                     self.blackout = blackout;
                 }
                 (_, UiAction::SetProject(project)) => {
                     if let Some(project) = Asset::get(project, &self.collections) {
-                        self.persistant_state.set_last_project_id(project.id);
-                        self.persistant_state.save();
+                        self.persistent_state.set_last_project_id(project.id);
+                        self.persistent_state.save();
 
                         self.project_id = Some(project.id);
                         let project = Arc::unwrap_or_clone(project).data;

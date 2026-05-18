@@ -319,7 +319,7 @@ impl App {
                     ui.separator();
 
                     ui.label("GPU preference");
-                    let mut prefer_discrete_gpu = self.persistant_state.prefer_discrete_gpu();
+                    let mut prefer_discrete_gpu = self.persistent_state.prefer_discrete_gpu();
                     if ui
                         .checkbox(
                             &mut prefer_discrete_gpu,
@@ -328,12 +328,12 @@ impl App {
                         .on_hover_text("Needs restart of gled")
                         .changed()
                     {
-                        self.persistant_state
+                        self.persistent_state
                             .set_prefer_discrete_gpu(prefer_discrete_gpu);
-                        self.persistant_state.save();
+                        self.persistent_state.save();
                     }
                     ui.label("Framerate Limiter");
-                    let mut fps_limit = self.persistant_state.fps_limit();
+                    let mut fps_limit = self.persistent_state.fps_limit();
                     ui.spacing_mut().slider_width = 290.0;
                     if ui
                         .add(
@@ -343,17 +343,17 @@ impl App {
                         )
                         .changed()
                     {
-                        self.persistant_state.set_fps_limit(fps_limit);
-                        self.persistant_state.save();
+                        self.persistent_state.set_fps_limit(fps_limit);
+                        self.persistent_state.save();
                     }
                     if ui
                         .checkbox(
-                            self.persistant_state.effects_always_render_mut(),
+                            self.persistent_state.effects_always_render_mut(),
                             "Always render all scenes",
                         )
                         .changed()
                     {
-                        self.persistant_state.save();
+                        self.persistent_state.save();
                     };
 
                     ui.separator();
@@ -471,7 +471,7 @@ impl Widget for BpmBar<'_> {
                         .as_ref()
                         .map(|project| project.tap_input_is_new())
                         .unwrap_or_default(),
-                    &app.persistant_state,
+                    &app.persistent_state,
                 );
 
                 app.timing.double_button(
@@ -480,7 +480,7 @@ impl Widget for BpmBar<'_> {
                         .as_ref()
                         .map(|project| project.double_input_is_new())
                         .unwrap_or_default(),
-                    &app.persistant_state,
+                    &app.persistent_state,
                 );
                 app.timing.half_button(
                     ui,
@@ -488,12 +488,12 @@ impl Widget for BpmBar<'_> {
                         .as_ref()
                         .map(|project| project.half_input_is_new())
                         .unwrap_or_default(),
-                    &app.persistant_state,
+                    &app.persistent_state,
                 );
 
                 ui.spacing_mut().slider_width = ui.available_width() - 80.0;
                 ui.add_enabled(
-                    !app.persistant_state.ableton_link_read_only(),
+                    !app.persistent_state.ableton_link_read_only(),
                     Slider::new(&mut app.timing.change_beats_per_minute, 20.0..=999.0)
                         .custom_formatter(|n, _| format!("{n:.1} bpm")),
                 );

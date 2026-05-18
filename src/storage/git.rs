@@ -1,4 +1,4 @@
-use crate::{app::persistant_state::PersistantState, ui::action::UiAction};
+use crate::{app::persistent_state::PersistentState, ui::action::UiAction};
 
 use super::STORAGE_DIR;
 use git2::{
@@ -106,7 +106,7 @@ impl Git {
                 .map(|username| username.to_owned())
                 .unwrap_or(whoami::username().expect("Could not get username"));
 
-            let credentials = PersistantState::default().git_credentials();
+            let credentials = PersistentState::default().git_credentials();
             if let Some(private_key) = credentials
                 .private_key_path()
                 .and_then(|path| std::fs::read_to_string(path).ok())

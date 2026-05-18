@@ -8,7 +8,7 @@ pub mod serde;
 
 use self::{action::StorageAction, asset::*, asset_id::AssetId};
 use crate::{
-    app::persistant_state::PersistantState, storage::collections::Collections, ui::action::UiAction,
+    app::persistent_state::PersistentState, storage::collections::Collections, ui::action::UiAction,
 };
 use animation::Animation;
 use collection::Collection;
@@ -133,7 +133,7 @@ pub fn start_thread() {
                 while let Ok(Some(_)) = actions.try_recv() {}
 
                 Loading::GitRepository.set();
-                let mut git = match git::Git::open(PersistantState::default().git_url()) {
+                let mut git = match git::Git::open(PersistentState::default().git_url()) {
                     Ok(git) => git,
                     Err(err) => {
                         let err: String = format!("Could not open git: {err}");

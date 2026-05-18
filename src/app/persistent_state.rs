@@ -13,22 +13,22 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf, sync::atomic::AtomicUsize};
 use tracing::info;
 
-static CURRENT: Lazy<Mutex<PersistantStateInner>> =
-    Lazy::new(|| Mutex::new(PersistantStateInner::load()));
-static PERSISTANT_STATE_ID: AtomicUsize = AtomicUsize::new(0);
-static SENDERS: Lazy<Mutex<HashMap<usize, Sender<PersistantStateInner>>>> =
+static CURRENT: Lazy<Mutex<PersistentStateInner>> =
+    Lazy::new(|| Mutex::new(PersistentStateInner::load()));
+static PERSISTENT_STATE_ID: AtomicUsize = AtomicUsize::new(0);
+static SENDERS: Lazy<Mutex<HashMap<usize, Sender<PersistentStateInner>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-pub struct PersistantState {
+pub struct PersistentState {
     id: usize,
-    receiver: Receiver<PersistantStateInner>,
-    current: PersistantStateInner,
+    receiver: Receiver<PersistentStateInner>,
+    current: PersistentStateInner,
 }
 
-impl Default for PersistantState {
+impl Default for PersistentState {
     fn default() -> Self {
         let (sender, receiver) = bounded(1);
-        let id = PERSISTANT_STATE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let id = PERSISTENT_STATE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         SENDERS.lock().insert(id, sender);
 
         Self {
@@ -41,7 +41,7 @@ impl Default for PersistantState {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(default)]
-pub struct PersistantStateInner {
+pub struct PersistentStateInner {
     effects_size: f32,
     effects_always_render: bool,
     fps_limit: f32,
@@ -53,7 +53,7 @@ pub struct PersistantStateInner {
     prefer_discrete_gpu: bool,
 }
 
-impl Default for PersistantStateInner {
+impl Default for PersistentStateInner {
     fn default() -> Self {
         Self {
             effects_size: 100.0,
@@ -69,7 +69,7 @@ impl Default for PersistantStateInner {
     }
 }
 
-impl PersistantStateInner {
+impl PersistentStateInner {
     fn load() -> Self {
         Self::path()
             .and_then(|path| std::fs::read(path).ok())
@@ -90,12 +90,12 @@ impl PersistantStateInner {
             .name("gled:persist:save".to_string())
             .spawn(move || {
                 let Some(path) = Self::path() else {
-                    UiAction::Error("Could not determine persistant state path".to_string())
+                    UiAction::Error("Could not determine persistent state path".to_string())
                         .enqueue();
                     return;
                 };
                 let Ok(contents) = serde_json::to_string_pretty(&self) else {
-                    UiAction::Error("Could not serialize persistant state".to_string()).enqueue();
+                    UiAction::Error("Could not serialize persistent state".to_string()).enqueue();
                     return;
                 };
 
@@ -103,19 +103,19 @@ impl PersistantStateInner {
                     UiAction::Error(format!("Could not persist state: {err:?}")).enqueue();
                 }
 
-                info!("Saved persistant state");
+                info!("Saved persistent state");
             })
             .ok();
     }
 }
 
-impl Drop for PersistantState {
+impl Drop for PersistentState {
     fn drop(&mut self) {
         SENDERS.lock().remove(&self.id);
     }
 }
 
-impl PersistantState {
+impl PersistentState {
     pub fn fps_limit(&self) -> f32 {
         self.current.fps_limit
     }
@@ -203,7 +203,7 @@ impl PersistantState {
 
             sender
                 .send(self.current.clone())
-                .expect("Could not send PersistantState");
+                .expect("Could not send PersistentState");
         }
 
         CURRENT.lock().clone_from(&self.current);

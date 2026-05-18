@@ -38,7 +38,7 @@ impl App {
                 let quick_row = project.quick_row_index();
                 let quick_col = grid_width.saturating_sub(1);
                 let grid_highlight = project.grid_highlight;
-                let effects_size = self.persistant_state.effects_size();
+                let effects_size = self.persistent_state.effects_size();
                 ui.set_width(grid_width as f32 * (effects_size + 20.) + 20.);
                 ui.set_height(grid_height as f32 * (effects_size + 20.) + 20.);
 
