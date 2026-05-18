@@ -14,7 +14,7 @@ arboard = "3"
 artnet_protocol = "0.4"
 atomic_enum = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
-clap = { version = "4", features = ["derive"] }
+clap = "4"
 cpal = "0.17"
 deku = "0.20"
 directories = "6"
@@ -31,7 +31,8 @@ egui_knob = "0.3"
 egui_ltreeview = "0.7"
 egui_phosphor_icons = "0.3"
 emath = "0.34"
-env_logger = "0.11"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 epaint = "0.34"
 gilrs = "0.11"
 git2 = "0.20"
@@ -40,7 +41,7 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 kanal = "0.1"
 keyring-core = "1"
 kurbo = "0.13"
-log = "0.4"
+
 midir = { version = "0.11", features = ["winrt"] }
 mkdirp = "1"
 naga = "29"
@@ -92,7 +93,9 @@ apple-native-keyring-store = "1"
 windows-native-keyring-store = "1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-dbus-secret-service-keyring-store = { version = "1", features = ["crypto-rust"] }
+dbus-secret-service-keyring-store = { version = "1", features = [
+    "crypto-rust",
+] }
 
 [build-dependencies]
 winresource = "0.1"

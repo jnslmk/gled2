@@ -139,8 +139,11 @@ impl Widget for GledSlider<'_> {
                 );
                 ui.painter_at(top)
                     .rect_filled(rect, corner_radius, TOP_COLOR);
-                ui.painter_at(selected_bottom)
-                    .rect_filled(rect, corner_radius, SELECTED_VALUE_COLOR);
+                ui.painter_at(selected_bottom).rect_filled(
+                    rect,
+                    corner_radius,
+                    SELECTED_VALUE_COLOR,
+                );
                 ui.painter_at(bottom)
                     .rect_filled(rect, corner_radius, ACTUAL_VALUE_COLOR);
                 ui.painter()

@@ -202,7 +202,7 @@ impl EffectState {
                         ))
                         .enqueue();
                     } else {
-                        log::info!("Copied rendered image to clipboard");
+                        tracing::info!("Copied rendered image to clipboard");
                     }
                 }
             })

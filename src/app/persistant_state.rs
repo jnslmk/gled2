@@ -8,10 +8,10 @@ use crate::{
 };
 use egui::mutex::Mutex;
 use kanal::{Receiver, Sender, bounded};
-use log::info;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf, sync::atomic::AtomicUsize};
+use tracing::info;
 
 static CURRENT: Lazy<Mutex<PersistantStateInner>> =
     Lazy::new(|| Mutex::new(PersistantStateInner::load()));
@@ -75,7 +75,7 @@ impl PersistantStateInner {
             .and_then(|path| std::fs::read(path).ok())
             .and_then(|contents| {
                 serde_json::from_slice(&contents)
-                    .map_err(|err| log::warn!("Could not parse {:?}: {err:?}", Self::path()))
+                    .map_err(|err| tracing::warn!("Could not parse {:?}: {err:?}", Self::path()))
                     .ok()
             })
             .unwrap_or_default()

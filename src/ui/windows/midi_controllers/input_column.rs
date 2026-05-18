@@ -7,7 +7,7 @@ use egui_phosphor_icons::icons;
 
 use super::{
     action_converters::{
-        input_action_from_kind, input_action_kind, scene_target_editor, MidiInputActionKind,
+        MidiInputActionKind, input_action_from_kind, input_action_kind, scene_target_editor,
     },
     binding_helpers::{input_binding_matches_filter, midi_status_label},
     iconized,

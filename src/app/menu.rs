@@ -15,11 +15,11 @@ use egui::{
     Widget, text::LayoutJob,
 };
 use epaint::{Margin, RectShape, StrokeKind};
-use log::debug;
 use std::{
     sync::{Arc, atomic::Ordering::Relaxed},
     time::{SystemTime, UNIX_EPOCH},
 };
+use tracing::debug;
 
 const BPM_BAR_WIDTH: f32 = 500.0;
 
@@ -54,7 +54,7 @@ impl App {
                     bpm_rect.set_width(BPM_BAR_WIDTH);
 
                     self.menus(ui);
-                    ui.put(bpm_rect, BpmBar{app: self });
+                    ui.put(bpm_rect, BpmBar { app: self });
                     self.window_buttons(ui);
                 });
             });
@@ -79,12 +79,12 @@ impl App {
                 let mut save_project = ui
                     .ctx()
                     .input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::S));
-                let mut open_svg_file = ui
-                    .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::O));
-                let mut save_svg_file = ui
-                    .ctx()
-                    .input_mut(|i| i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::S));
+                let mut open_svg_file = ui.ctx().input_mut(|i| {
+                    i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::O)
+                });
+                let mut save_svg_file = ui.ctx().input_mut(|i| {
+                    i.consume_key(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::S)
+                });
 
                 ui.menu_button("Project", |ui| {
                     ui.set_min_width(300.0);
@@ -210,11 +210,11 @@ impl App {
                 }
                 if save_project
                     && let (Some(project), Some(mut asset)) = (
-                    self.project.as_ref(),
-                    self.project_id
-                        .and_then(|id| Asset::get(id, &self.collections))
-                        .map(Arc::unwrap_or_clone),
-                )
+                        self.project.as_ref(),
+                        self.project_id
+                            .and_then(|id| Asset::get(id, &self.collections))
+                            .map(Arc::unwrap_or_clone),
+                    )
                 {
                     asset.data = project.to_owned();
                     asset.data.artnet_config = ARTNET_CONFIG.lock().clone();
@@ -242,24 +242,24 @@ impl App {
                                             "Could not load svg file \"{}\": {err:?}",
                                             path.display()
                                         ))
-                                            .enqueue();
+                                        .enqueue();
 
                                         None
                                     }
                                 })
-                                    .enqueue();
+                                .enqueue();
                             }
                         })
                         .ok();
                 }
                 if save_svg_file
                     && let (Some(svg), Some(path)) = (
-                    self.svg(),
-                    rfd::FileDialog::new()
-                        .set_title("Save SVG file")
-                        .add_filter("svg", &["svg"])
-                        .save_file(),
-                )
+                        self.svg(),
+                        rfd::FileDialog::new()
+                            .set_title("Save SVG file")
+                            .add_filter("svg", &["svg"])
+                            .save_file(),
+                    )
                 {
                     match svg.save(&path) {
                         Ok(_) => {
@@ -270,7 +270,7 @@ impl App {
                                 "Could not save svg file \"{}\": {err:?}",
                                 path.display()
                             ))
-                                .enqueue();
+                            .enqueue();
                         }
                     };
                 }
@@ -411,7 +411,9 @@ impl App {
             {
                 blackout = blackout.fill(Color32::DARK_RED);
             }
-            if ui.add_sized(Vec2::new(100.0, BUTTON_HEIGHT), blackout).clicked()
+            if ui
+                .add_sized(Vec2::new(100.0, BUTTON_HEIGHT), blackout)
+                .clicked()
                 || self
                     .project
                     .as_ref()
@@ -448,7 +450,9 @@ impl Widget for BpmBar<'_> {
             UiBuilder::default()
                 .max_rect(rect)
                 .layout(egui::Layout::right_to_left(egui::Align::Center)),
-            Frame::new().fill(Color32::from_gray(20)).inner_margin(Margin::symmetric(10, 0)),
+            Frame::new()
+                .fill(Color32::from_gray(20))
+                .inner_margin(Margin::symmetric(10, 0)),
             |ui| {
                 // add background shadow
                 ui.painter().add(

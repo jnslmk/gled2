@@ -1,4 +1,3 @@
-use log::{debug, trace, warn};
 use rosc::{OscMessage, OscPacket, OscType};
 use std::collections::HashMap;
 use std::net::{SocketAddr, UdpSocket};
@@ -6,6 +5,7 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 use std::{io, thread};
+use tracing::{debug, trace, warn};
 
 use crate::storage::asset::project::GridHighlight;
 use crate::storage::asset::scene::color::SceneInstanceColor;
@@ -306,7 +306,9 @@ fn send_scene_instance_feedback(
         socket,
         addr,
         &format!("{prefix}/effect/count"),
-        vec![OscType::Int(i32::try_from(effects.len()).unwrap_or(i32::MAX))],
+        vec![OscType::Int(
+            i32::try_from(effects.len()).unwrap_or(i32::MAX),
+        )],
     );
     for (i, effect) in effects.iter().enumerate() {
         send_feedback(
@@ -393,8 +395,8 @@ mod tests {
     use crate::storage::asset::scene::effect::Effect;
     use crate::storage::asset::scene::grid::GridLocation;
     use crate::storage::asset::{project::Project, scene::instance::SceneInstance};
-    use crate::storage::collections::Collections;
     use crate::storage::asset_id::AssetId;
+    use crate::storage::collections::Collections;
 
     use super::*;
 
@@ -434,12 +436,12 @@ mod tests {
 
     #[test]
     fn broadcast_snapshot_sends_core_fields_to_subscriber() {
-        let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
-        let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let sender = UdpSocket::bind("127.0.0.1:0").expect("failed to bind test socket");
+        let receiver = UdpSocket::bind("127.0.0.1:0").expect("failed to bind test socket");
         receiver
             .set_read_timeout(Some(Duration::from_millis(200)))
-            .unwrap();
-        let receiver_addr = receiver.local_addr().unwrap();
+            .expect("failed to set read timeout");
+        let receiver_addr = receiver.local_addr().expect("failed to get local addr");
 
         let mut subscribers = HashMap::new();
         subscribers.insert(receiver_addr, Instant::now());
@@ -482,12 +484,12 @@ mod tests {
     fn broadcast_snapshot_sends_palette_fields() {
         use crate::storage::asset::palette::Palette;
 
-        let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
-        let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let sender = UdpSocket::bind("127.0.0.1:0").expect("failed to bind test socket");
+        let receiver = UdpSocket::bind("127.0.0.1:0").expect("failed to bind test socket");
         receiver
             .set_read_timeout(Some(Duration::from_millis(200)))
-            .unwrap();
-        let receiver_addr = receiver.local_addr().unwrap();
+            .expect("failed to set read timeout");
+        let receiver_addr = receiver.local_addr().expect("failed to get local addr");
 
         let mut subscribers = HashMap::new();
         subscribers.insert(receiver_addr, Instant::now());
@@ -533,12 +535,12 @@ mod tests {
 
     #[test]
     fn broadcast_snapshot_sends_extended_scene_fields_for_grid_and_quick() {
-        let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
-        let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let sender = UdpSocket::bind("127.0.0.1:0").expect("failed to bind test socket");
+        let receiver = UdpSocket::bind("127.0.0.1:0").expect("failed to bind test socket");
         receiver
             .set_read_timeout(Some(Duration::from_millis(300)))
-            .unwrap();
-        let receiver_addr = receiver.local_addr().unwrap();
+            .expect("failed to set read timeout");
+        let receiver_addr = receiver.local_addr().expect("failed to get local addr");
 
         let mut subscribers = HashMap::new();
         subscribers.insert(receiver_addr, Instant::now());
@@ -548,10 +550,8 @@ mod tests {
             col: 2,
             row: project.quick_row_index(),
         };
-        let mut scene_instance = SceneInstance::from_scene_id(
-            AssetId::default(),
-            &Collections::default(),
-        );
+        let mut scene_instance =
+            SceneInstance::from_scene_id(AssetId::default(), &Collections::default());
         scene_instance.input_dimmer = 0.42;
         scene_instance.ignore_main_dimmer = true;
         scene_instance.scene.effects.push(Effect::default());
@@ -566,9 +566,12 @@ mod tests {
         };
         broadcast_snapshot(&sender, &subscribers, &snapshot);
 
-        let grid_input_dimmer_path = format!("/scene/grid/{}/{}/input_dimmer", location.col, location.row);
-        let grid_effect_count_path = format!("/scene/grid/{}/{}/effect/count", location.col, location.row);
-        let quick_ignore_main_dimmer_path = format!("/scene/quick/{}/ignore_main_dimmer", location.col);
+        let grid_input_dimmer_path =
+            format!("/scene/grid/{}/{}/input_dimmer", location.col, location.row);
+        let grid_effect_count_path =
+            format!("/scene/grid/{}/{}/effect/count", location.col, location.row);
+        let quick_ignore_main_dimmer_path =
+            format!("/scene/quick/{}/ignore_main_dimmer", location.col);
         let quick_effect_opacity_path = format!("/scene/quick/{}/effect/0/opacity", location.col);
 
         let mut found_grid_input_dimmer = false;

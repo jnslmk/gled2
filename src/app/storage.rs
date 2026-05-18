@@ -1,5 +1,5 @@
 use crate::{
-    storage::{STORAGE_DIR},
+    storage::STORAGE_DIR,
     ui::{action::UiAction, logo::logo_image},
 };
 use egui::{Color32, Image, Label, Margin, Pos2, Rect, RichText, Spinner, Stroke, Ui, Vec2};

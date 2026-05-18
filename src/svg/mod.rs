@@ -10,10 +10,10 @@ pub mod universe_color_channels;
 use crate::ui::action::UiAction;
 use anyhow::{Context, Result};
 use led::Led;
-use log::debug;
 use parameter::Parameter;
 use std::collections::{HashMap, HashSet};
 use svgdom::{Document, ElementId, FilterSvg, Node};
+use tracing::debug;
 use usvg::Tree;
 
 pub struct ParsedSvg {
@@ -38,7 +38,8 @@ impl ParsedSvg {
         let mut parameters = HashMap::new();
         traverse_node(&mut parameters, &doc.root(), 0, 0, &HashSet::new());
 
-        let tree = Tree::from_str(svg_contents, &Default::default()).unwrap();
+        let tree = Tree::from_str(svg_contents, &Default::default())
+            .context("Could not build render tree from svg")?;
         debug!(
             "Done parsing svg. Found {} parameter sets",
             parameters.len()

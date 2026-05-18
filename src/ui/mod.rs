@@ -113,10 +113,10 @@ impl ContextMenuBuilder {
             }
         });
         for action in &self.actions {
-            if !response
-                .ctx.egui_wants_keyboard_input() && response
-                .ctx
-                .input_mut(|i| i.consume_shortcut(&action.keyboard_shortcut))
+            if !response.ctx.egui_wants_keyboard_input()
+                && response
+                    .ctx
+                    .input_mut(|i| i.consume_shortcut(&action.keyboard_shortcut))
             {
                 (action.key_action)();
             }

@@ -253,55 +253,63 @@ fn test_osc_integration() {
         thread::sleep(Duration::from_millis(500));
     });
 
-    suite("6: Remaining scene properties (grid + quick + selected)", &gled, || {
-        // set_offset_on_flash, select
-        for addr in [
-            "/scene/grid/0/0/set_offset_on_flash",
-            "/scene/quick/0/set_offset_on_flash",
-            "/scene/selected/set_offset_on_flash",
-        ] {
-            send(addr, vec![b(true)]);
-            delay();
-            send(addr, vec![b(false)]);
-            delay();
-        }
-        send("/scene/grid/1/1/select", vec![]);
-        delay();
-        send("/scene/quick/2/select", vec![]);
-        delay();
-        // clone / delete on grid (result is a no-op on an empty cell – safe)
-        send("/scene/grid/6/4/clone", vec![]);
-        delay();
-        send("/scene/grid/6/4/delete", vec![]);
-        delay();
-        // add a scene placeholder (unknown UUID → silent no-op)
-        send(
-            "/scene/grid/7/4/add",
-            vec![s(FAKE_UUID)],
-        );
-        delay();
-        // reorder two cells
-        send("/scene/reorder/0/0/1/0", vec![]);
-        delay();
-        send("/scene/reorder/1/0/0/0", vec![]);
-        delay();
-    });
-
-    suite("7: Scene input bindings (activation / flash / dimmer)", &gled, || {
-        for input_kind in ["activation_input", "flash_input", "dimmer_input"] {
-            for selector in ["/scene/grid/0/0", "/scene/quick/0", "/scene/selected"] {
-                send(&format!("{}/{}/artnet", selector, input_kind), vec![i(42)]);
+    suite(
+        "6: Remaining scene properties (grid + quick + selected)",
+        &gled,
+        || {
+            // set_offset_on_flash, select
+            for addr in [
+                "/scene/grid/0/0/set_offset_on_flash",
+                "/scene/quick/0/set_offset_on_flash",
+                "/scene/selected/set_offset_on_flash",
+            ] {
+                send(addr, vec![b(true)]);
                 delay();
-                send(&format!("{}/{}/clear", selector, input_kind), vec![]);
+                send(addr, vec![b(false)]);
                 delay();
             }
-        }
-    });
+            send("/scene/grid/1/1/select", vec![]);
+            delay();
+            send("/scene/quick/2/select", vec![]);
+            delay();
+            // clone / delete on grid (result is a no-op on an empty cell – safe)
+            send("/scene/grid/6/4/clone", vec![]);
+            delay();
+            send("/scene/grid/6/4/delete", vec![]);
+            delay();
+            // add a scene placeholder (unknown UUID → silent no-op)
+            send("/scene/grid/7/4/add", vec![s(FAKE_UUID)]);
+            delay();
+            // reorder two cells
+            send("/scene/reorder/0/0/1/0", vec![]);
+            delay();
+            send("/scene/reorder/1/0/0/0", vec![]);
+            delay();
+        },
+    );
+
+    suite(
+        "7: Scene input bindings (activation / flash / dimmer)",
+        &gled,
+        || {
+            for input_kind in ["activation_input", "flash_input", "dimmer_input"] {
+                for selector in ["/scene/grid/0/0", "/scene/quick/0", "/scene/selected"] {
+                    send(&format!("{}/{}/artnet", selector, input_kind), vec![i(42)]);
+                    delay();
+                    send(&format!("{}/{}/clear", selector, input_kind), vec![]);
+                    delay();
+                }
+            }
+        },
+    );
 
     suite("8: Scene palette overwrite", &gled, || {
         // inherit / none / primary / secondary / gradient – via grid, quick, selected
         for selector in ["/scene/grid/0/0", "/scene/quick/0", "/scene/selected"] {
-            send(&format!("{}/palette_overwrite", selector), vec![s("inherit")]);
+            send(
+                &format!("{}/palette_overwrite", selector),
+                vec![s("inherit")],
+            );
             delay();
             send(&format!("{}/palette_overwrite", selector), vec![s("none")]);
             delay();
@@ -341,66 +349,70 @@ fn test_osc_integration() {
         }
     });
 
-    suite("10: Effect commands (add, properties, config, clone, delete)", &gled, || {
-        // effect/add across all selectors
-        for selector in ["/scene/grid/0/0", "/scene/quick/0", "/scene/selected"] {
-            send(&format!("{}/effect/add", selector), vec![]);
+    suite(
+        "10: Effect commands (add, properties, config, clone, delete)",
+        &gled,
+        || {
+            // effect/add across all selectors
+            for selector in ["/scene/grid/0/0", "/scene/quick/0", "/scene/selected"] {
+                send(&format!("{}/effect/add", selector), vec![]);
+                delay();
+            }
+            // grid effect property setters on effect index 0
+            let base = "/scene/grid/0/0/effect/0";
+            for (addr, args) in [
+                (format!("{base}/opacity"), vec![f(0.5)]),
+                (format!("{base}/color_shift"), vec![f(0.25)]),
+                (format!("{base}/beat_progression"), vec![f(0.1)]),
+                (format!("{base}/beat_offset"), vec![f(0.5)]),
+                (format!("{base}/speed_exponent"), vec![i(1)]),
+                (format!("{base}/group_index"), vec![i(0)]),
+                (format!("{base}/animation"), vec![s("none")]),
+                (format!("{base}/animation"), vec![s(FAKE_UUID)]),
+                (format!("{base}/config/u32/0"), vec![i(3)]),
+                (format!("{base}/config/f32/0"), vec![f(0.3)]),
+            ] {
+                send(&addr, args);
+                delay();
+            }
+            // quick effect properties
+            let base_q = "/scene/quick/0/effect/0";
+            for (addr, args) in [
+                (format!("{base_q}/opacity"), vec![f(0.8)]),
+                (format!("{base_q}/speed_exponent"), vec![i(-1)]),
+                (format!("{base_q}/config/u32/1"), vec![i(7)]),
+                (format!("{base_q}/config/f32/1"), vec![f(0.7)]),
+                (format!("{base_q}/clone"), vec![]),
+                (format!("{base_q}/delete"), vec![]),
+            ] {
+                send(&addr, args);
+                delay();
+            }
+            // selected effect
+            let base_s = "/scene/selected/effect/0";
+            for (addr, args) in [
+                (format!("{base_s}/opacity"), vec![f(0.6)]),
+                (format!("{base_s}/color_shift"), vec![f(0.5)]),
+                (format!("{base_s}/beat_progression"), vec![f(0.2)]),
+                (format!("{base_s}/beat_offset"), vec![f(0.3)]),
+                (format!("{base_s}/speed_exponent"), vec![i(2)]),
+                (format!("{base_s}/group_index"), vec![i(1)]),
+                (format!("{base_s}/animation"), vec![s("none")]),
+                (format!("{base_s}/config/u32/0"), vec![i(5)]),
+                (format!("{base_s}/config/f32/0"), vec![f(0.55)]),
+                (format!("{base_s}/clone"), vec![]),
+                (format!("{base_s}/delete"), vec![]),
+            ] {
+                send(&addr, args);
+                delay();
+            }
+            // grid effect clone/delete
+            send("/scene/grid/0/0/effect/0/clone", vec![]);
             delay();
-        }
-        // grid effect property setters on effect index 0
-        let base = "/scene/grid/0/0/effect/0";
-        for (addr, args) in [
-            (format!("{base}/opacity"), vec![f(0.5)]),
-            (format!("{base}/color_shift"), vec![f(0.25)]),
-            (format!("{base}/beat_progression"), vec![f(0.1)]),
-            (format!("{base}/beat_offset"), vec![f(0.5)]),
-            (format!("{base}/speed_exponent"), vec![i(1)]),
-            (format!("{base}/group_index"), vec![i(0)]),
-            (format!("{base}/animation"), vec![s("none")]),
-            (format!("{base}/animation"), vec![s(FAKE_UUID)]),
-            (format!("{base}/config/u32/0"), vec![i(3)]),
-            (format!("{base}/config/f32/0"), vec![f(0.3)]),
-        ] {
-            send(&addr, args);
+            send("/scene/grid/0/0/effect/0/delete", vec![]);
             delay();
-        }
-        // quick effect properties
-        let base_q = "/scene/quick/0/effect/0";
-        for (addr, args) in [
-            (format!("{base_q}/opacity"), vec![f(0.8)]),
-            (format!("{base_q}/speed_exponent"), vec![i(-1)]),
-            (format!("{base_q}/config/u32/1"), vec![i(7)]),
-            (format!("{base_q}/config/f32/1"), vec![f(0.7)]),
-            (format!("{base_q}/clone"), vec![]),
-            (format!("{base_q}/delete"), vec![]),
-        ] {
-            send(&addr, args);
-            delay();
-        }
-        // selected effect
-        let base_s = "/scene/selected/effect/0";
-        for (addr, args) in [
-            (format!("{base_s}/opacity"), vec![f(0.6)]),
-            (format!("{base_s}/color_shift"), vec![f(0.5)]),
-            (format!("{base_s}/beat_progression"), vec![f(0.2)]),
-            (format!("{base_s}/beat_offset"), vec![f(0.3)]),
-            (format!("{base_s}/speed_exponent"), vec![i(2)]),
-            (format!("{base_s}/group_index"), vec![i(1)]),
-            (format!("{base_s}/animation"), vec![s("none")]),
-            (format!("{base_s}/config/u32/0"), vec![i(5)]),
-            (format!("{base_s}/config/f32/0"), vec![f(0.55)]),
-            (format!("{base_s}/clone"), vec![]),
-            (format!("{base_s}/delete"), vec![]),
-        ] {
-            send(&addr, args);
-            delay();
-        }
-        // grid effect clone/delete
-        send("/scene/grid/0/0/effect/0/clone", vec![]);
-        delay();
-        send("/scene/grid/0/0/effect/0/delete", vec![]);
-        delay();
-    });
+        },
+    );
 
     suite("11: Project palette", &gled, || {
         send("/project/palette", vec![s("none")]);
@@ -458,21 +470,32 @@ fn test_osc_integration() {
         }
     });
 
-    suite("14: Animation asset edits (fake UUID – silent no-op)", &gled, || {
-        let base = format!("/asset/animation/{FAKE_UUID}");
-        send(&format!("{base}/shader_code"), vec![s("void main() {}")]);
-        delay();
-        send(&format!("{base}/argument/add"), vec![]);
-        delay();
-        for kind in ["center", "selection", "slider", "checkbox", "percentage", "degrees"] {
-            send(&format!("{base}/argument/0/kind"), vec![s(kind)]);
+    suite(
+        "14: Animation asset edits (fake UUID – silent no-op)",
+        &gled,
+        || {
+            let base = format!("/asset/animation/{FAKE_UUID}");
+            send(&format!("{base}/shader_code"), vec![s("void main() {}")]);
             delay();
-        }
-        send(&format!("{base}/argument/0/name"), vec![s("speed")]);
-        delay();
-        send(&format!("{base}/argument/0/remove"), vec![]);
-        delay();
-    });
+            send(&format!("{base}/argument/add"), vec![]);
+            delay();
+            for kind in [
+                "center",
+                "selection",
+                "slider",
+                "checkbox",
+                "percentage",
+                "degrees",
+            ] {
+                send(&format!("{base}/argument/0/kind"), vec![s(kind)]);
+                delay();
+            }
+            send(&format!("{base}/argument/0/name"), vec![s("speed")]);
+            delay();
+            send(&format!("{base}/argument/0/remove"), vec![]);
+            delay();
+        },
+    );
 
     suite(
         "15: Scene scalar setters — grid, quick, and selected",
@@ -493,15 +516,9 @@ fn test_osc_integration() {
                 delay();
                 send(&format!("{selector}/input_dimmer"), vec![f(input_dimmer)]);
                 delay();
-                send(
-                    &format!("{selector}/ignore_main_dimmer"),
-                    vec![b(true)],
-                );
+                send(&format!("{selector}/ignore_main_dimmer"), vec![b(true)]);
                 delay();
-                send(
-                    &format!("{selector}/ignore_main_dimmer"),
-                    vec![b(false)],
-                );
+                send(&format!("{selector}/ignore_main_dimmer"), vec![b(false)]);
                 delay();
                 send(&format!("{selector}/beat_offset"), vec![f(beat_offset)]);
                 delay();

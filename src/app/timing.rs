@@ -1,11 +1,11 @@
 use crate::app::persistant_state::PersistantState;
 use egui::{Button, Color32, CornerRadius, Stroke, TextFormat, Ui, Vec2, text::LayoutJob};
-use log::debug;
 use rusty_link::{AblLink, SessionState};
 use std::{
     sync::atomic::{AtomicU64, Ordering::Relaxed},
     time::{Duration, Instant},
 };
+use tracing::debug;
 
 pub static CONNECTED_PEERS: AtomicU64 = AtomicU64::new(0);
 pub static LINK_ACTIVE_COLOR: Color32 = Color32::from_rgb(41, 116, 145);
@@ -139,7 +139,12 @@ impl Timing {
         }
     }
 
-    pub fn half_button(&mut self, ui: &mut Ui, tap_input: bool, persistant_state: &PersistantState) {
+    pub fn half_button(
+        &mut self,
+        ui: &mut Ui,
+        tap_input: bool,
+        persistant_state: &PersistantState,
+    ) {
         let ableton_link_read_only = persistant_state.ableton_link_read_only();
         if ui
             .add_enabled(!ableton_link_read_only, Button::new("x½"))
@@ -150,7 +155,12 @@ impl Timing {
         }
     }
 
-    pub fn double_button(&mut self, ui: &mut Ui, tap_input: bool, persistant_state: &PersistantState) {
+    pub fn double_button(
+        &mut self,
+        ui: &mut Ui,
+        tap_input: bool,
+        persistant_state: &PersistantState,
+    ) {
         let ableton_link_read_only = persistant_state.ableton_link_read_only();
         if ui
             .add_enabled(!ableton_link_read_only, Button::new("x2"))
@@ -188,7 +198,6 @@ impl Timing {
         ui.scope(|ui| {
             ui.style_mut().visuals.widgets.inactive.bg_stroke =
                 ui.style().visuals.widgets.noninteractive.bg_stroke;
-
 
             let underlined = TextFormat {
                 underline: Stroke::new(1.0, Color32::GRAY),
@@ -229,47 +238,47 @@ impl Timing {
                     match self.beat_flank() {
                         0 =>
                         // top left
-                            {
-                                response
-                                    .rect
-                                    .split_left_right_at_fraction(0.5)
-                                    .0
-                                    .split_top_bottom_at_fraction(0.5)
-                                    .0
-                            }
+                        {
+                            response
+                                .rect
+                                .split_left_right_at_fraction(0.5)
+                                .0
+                                .split_top_bottom_at_fraction(0.5)
+                                .0
+                        }
                         1 =>
                         // top right
-                            {
-                                response
-                                    .rect
-                                    .split_left_right_at_fraction(0.5)
-                                    .1
-                                    .split_top_bottom_at_fraction(0.5)
-                                    .0
-                            }
+                        {
+                            response
+                                .rect
+                                .split_left_right_at_fraction(0.5)
+                                .1
+                                .split_top_bottom_at_fraction(0.5)
+                                .0
+                        }
                         2 =>
                         // bottom left
-                            {
-                                response
-                                    .rect
-                                    .split_left_right_at_fraction(0.5)
-                                    .0
-                                    .split_top_bottom_at_fraction(0.5)
-                                    .1
-                            }
+                        {
+                            response
+                                .rect
+                                .split_left_right_at_fraction(0.5)
+                                .0
+                                .split_top_bottom_at_fraction(0.5)
+                                .1
+                        }
                         3 =>
                         // bottom right
-                            {
-                                response
-                                    .rect
-                                    .split_left_right_at_fraction(0.5)
-                                    .1
-                                    .split_top_bottom_at_fraction(0.5)
-                                    .1
-                            }
+                        {
+                            response
+                                .rect
+                                .split_left_right_at_fraction(0.5)
+                                .1
+                                .split_top_bottom_at_fraction(0.5)
+                                .1
+                        }
                         _ => unreachable!(),
                     }
-                        .shrink(1.0),
+                    .shrink(1.0),
                     CornerRadius::default(),
                     Color32::from_white_alpha(alpha as u8),
                 );

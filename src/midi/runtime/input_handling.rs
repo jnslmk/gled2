@@ -44,7 +44,9 @@ pub(super) fn handle_input_from_snapshot(
 
         let action = match binding.action {
             MidiInputAction::Tap => Some(UiAction::Tap),
-            MidiInputAction::SetMainDimmer => Some(UiAction::SetMainDimmer(f32::from(value) / 127.0)),
+            MidiInputAction::SetMainDimmer => {
+                Some(UiAction::SetMainDimmer(f32::from(value) / 127.0))
+            }
             MidiInputAction::SetBlackout => Some(UiAction::SetBlackout(value > 0)),
             MidiInputAction::SetSpeedAdd => {
                 let delta = if value > 64 {
@@ -57,12 +59,11 @@ pub(super) fn handle_input_from_snapshot(
             MidiInputAction::SetSpeedMultiply => {
                 Some(UiAction::SpeedMultiply(if value > 63 { 2.0 } else { 0.5 }))
             }
-            MidiInputAction::SelectSceneDistributed => distributed_scene_index_from_midi(
-                value,
-                snapshot.scene_locations_row_major.len(),
-            )
-            .and_then(|index| snapshot.scene_locations_row_major.get(index).copied())
-            .map(UiAction::SelectSceneByLocation),
+            MidiInputAction::SelectSceneDistributed => {
+                distributed_scene_index_from_midi(value, snapshot.scene_locations_row_major.len())
+                    .and_then(|index| snapshot.scene_locations_row_major.get(index).copied())
+                    .map(UiAction::SelectSceneByLocation)
+            }
             MidiInputAction::SelectScene { ref target } => match target {
                 MidiSceneTarget::Selected => None,
                 _ => scene_target_to_union(target).map(UiAction::SelectScene),
@@ -80,10 +81,14 @@ pub(super) fn handle_input_from_snapshot(
                 .map(|target| UiAction::SetSceneInputDimmer(target, f32::from(value) / 127.0)),
             MidiInputAction::SetSceneBeatOffset { ref target } => scene_target_to_union(target)
                 .map(|target| UiAction::SetSceneBeatOffset(target, f32::from(value) / 127.0)),
-            MidiInputAction::SetSceneIgnoreMainDimmer { ref target } => scene_target_to_union(target)
-                .map(|target| UiAction::SetSceneIgnoreMainDimmer(target, value > 63)),
-            MidiInputAction::SetSceneSetOffsetOnFlash { ref target } => scene_target_to_union(target)
-                .map(|target| UiAction::SetSceneSetOffsetOnFlash(target, value > 63)),
+            MidiInputAction::SetSceneIgnoreMainDimmer { ref target } => {
+                scene_target_to_union(target)
+                    .map(|target| UiAction::SetSceneIgnoreMainDimmer(target, value > 63))
+            }
+            MidiInputAction::SetSceneSetOffsetOnFlash { ref target } => {
+                scene_target_to_union(target)
+                    .map(|target| UiAction::SetSceneSetOffsetOnFlash(target, value > 63))
+            }
             MidiInputAction::SetSceneEffectSettingF32 {
                 ref target,
                 effect_index,
@@ -96,36 +101,62 @@ pub(super) fn handle_input_from_snapshot(
                     f32::from(value) / 127.0,
                 )
             }),
-            MidiInputAction::SetSceneEffectOpacity { ref target, effect_index } => {
-                scene_target_to_union(target).map(|target| {
-                    UiAction::SetSceneEffectOpacity(target, effect_index as usize, f32::from(value) / 127.0)
-                })
-            }
-            MidiInputAction::SetSceneEffectColorShift { ref target, effect_index } => {
-                scene_target_to_union(target).map(|target| {
-                    UiAction::SetSceneEffectColorShift(target, effect_index as usize, f32::from(value) / 127.0)
-                })
-            }
-            MidiInputAction::SetSceneEffectBeatProgression { ref target, effect_index } => {
-                scene_target_to_union(target).map(|target| {
-                    UiAction::SetSceneEffectBeatProgression(target, effect_index as usize, f32::from(value) / 127.0)
-                })
-            }
-            MidiInputAction::SetSceneEffectBeatOffset { ref target, effect_index } => {
-                scene_target_to_union(target).map(|target| {
-                    UiAction::SetSceneEffectBeatOffset(target, effect_index as usize, f32::from(value) / 127.0)
-                })
-            }
-            MidiInputAction::SetSceneEffectSpeedExponent { ref target, effect_index } => {
-                scene_target_to_union(target).map(|target| {
-                    UiAction::SetSceneEffectSpeedExponent(target, effect_index as usize, i32::from(value) - 63)
-                })
-            }
-            MidiInputAction::SetSceneEffectGroupIndex { ref target, effect_index } => {
-                scene_target_to_union(target).map(|target| {
-                    UiAction::SetSceneEffectGroupIndex(target, effect_index as usize, value as usize)
-                })
-            }
+            MidiInputAction::SetSceneEffectOpacity {
+                ref target,
+                effect_index,
+            } => scene_target_to_union(target).map(|target| {
+                UiAction::SetSceneEffectOpacity(
+                    target,
+                    effect_index as usize,
+                    f32::from(value) / 127.0,
+                )
+            }),
+            MidiInputAction::SetSceneEffectColorShift {
+                ref target,
+                effect_index,
+            } => scene_target_to_union(target).map(|target| {
+                UiAction::SetSceneEffectColorShift(
+                    target,
+                    effect_index as usize,
+                    f32::from(value) / 127.0,
+                )
+            }),
+            MidiInputAction::SetSceneEffectBeatProgression {
+                ref target,
+                effect_index,
+            } => scene_target_to_union(target).map(|target| {
+                UiAction::SetSceneEffectBeatProgression(
+                    target,
+                    effect_index as usize,
+                    f32::from(value) / 127.0,
+                )
+            }),
+            MidiInputAction::SetSceneEffectBeatOffset {
+                ref target,
+                effect_index,
+            } => scene_target_to_union(target).map(|target| {
+                UiAction::SetSceneEffectBeatOffset(
+                    target,
+                    effect_index as usize,
+                    f32::from(value) / 127.0,
+                )
+            }),
+            MidiInputAction::SetSceneEffectSpeedExponent {
+                ref target,
+                effect_index,
+            } => scene_target_to_union(target).map(|target| {
+                UiAction::SetSceneEffectSpeedExponent(
+                    target,
+                    effect_index as usize,
+                    i32::from(value) - 63,
+                )
+            }),
+            MidiInputAction::SetSceneEffectGroupIndex {
+                ref target,
+                effect_index,
+            } => scene_target_to_union(target).map(|target| {
+                UiAction::SetSceneEffectGroupIndex(target, effect_index as usize, value as usize)
+            }),
         };
 
         if let Some(action) = action {

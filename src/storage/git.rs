@@ -143,15 +143,15 @@ impl Git {
     }
 
     pub fn init(&mut self) -> Result<(), Error> {
-        log::debug!("Loading repository at {}", STORAGE_DIR.display());
+        tracing::debug!("Loading repository at {}", STORAGE_DIR.display());
         match Repository::open(&*STORAGE_DIR) {
             Ok(repository) => {
-                log::debug!("Repository loaded!");
+                tracing::debug!("Repository loaded!");
                 self.repository = Some(repository);
                 Ok(())
             }
             Err(err) => {
-                log::warn!("Could not open repository: {err:?}");
+                tracing::warn!("Could not open repository: {err:?}");
                 self.clone()
             }
         }
@@ -221,7 +221,7 @@ impl Git {
             let mut idx = repository.merge_trees(&ancestor, &local_tree, &remote_tree, None)?;
 
             if idx.has_conflicts() {
-                println!("Merge conflicts detected...");
+                tracing::warn!("Merge conflicts detected");
                 repository.checkout_index(Some(&mut idx), None)?;
                 return Ok(());
             }
@@ -259,7 +259,7 @@ impl Git {
     }
 
     pub fn add(&self, file: &Path) -> Result<(), Error> {
-        log::info!("Adding file: {}", file.display());
+        tracing::info!("Adding file: {}", file.display());
 
         let repository = self
             .repository
@@ -277,7 +277,7 @@ impl Git {
     }
 
     fn delete(&self, file: &Path) -> Result<(), Error> {
-        log::info!("Deleting file: {}", file.display());
+        tracing::info!("Deleting file: {}", file.display());
 
         let repository = self
             .repository
@@ -300,7 +300,7 @@ impl Git {
     }
 
     pub fn commit(&self, msg: &str) -> Result<(), Error> {
-        log::info!("Committing..");
+        tracing::info!("Committing..");
 
         let repository = self
             .repository
@@ -316,7 +316,7 @@ impl Git {
         let tree = repository.find_tree(tree_oid)?;
 
         let parent_commit = match repository.revparse_single("HEAD") {
-            Ok(obj) => Some(obj.into_commit().unwrap()),
+            Ok(obj) => Some(obj.into_commit().expect("HEAD must point to a commit")),
             // First commit so no parent commit
             Err(e) if e.code() == ErrorCode::NotFound => None,
             Err(e) => return Err(e),

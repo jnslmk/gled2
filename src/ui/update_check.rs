@@ -44,10 +44,10 @@ impl Update {
         }
 
         reqwest::blocking::get(RELEASES_URL)
-            .map_err(|err| log::warn!("Failed to fetch releases: {err:?}"))
+            .map_err(|err| tracing::warn!("Failed to fetch releases: {err:?}"))
             .ok()?
             .json::<Vec<GitlabRelease>>()
-            .map_err(|err| log::warn!("Failed to parse releases: {err:?}"))
+            .map_err(|err| tracing::warn!("Failed to parse releases: {err:?}"))
             .ok()?
             .into_iter()
             .next()

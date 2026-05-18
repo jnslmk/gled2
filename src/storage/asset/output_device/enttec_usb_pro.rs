@@ -1,6 +1,5 @@
 use egui::mutex::Mutex;
 use kanal::{Sender, unbounded};
-use log::{debug, trace, warn};
 use once_cell::sync::{Lazy, OnceCell};
 use serialport::SerialPort;
 use std::{
@@ -8,6 +7,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+use tracing::{debug, trace, warn};
 
 static SERIAL_NUMBERS_PORT: Lazy<Mutex<HashMap<String, String>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
@@ -45,7 +45,7 @@ pub fn start() {
                     enttec_data.extend_from_slice(&data);
                     enttec_data.push(0xE7); // End of message
 
-                    log::trace!("Sending data to enttec dmx usb pro: {enttec_data:?}");
+                    tracing::trace!("Sending data to enttec dmx usb pro: {enttec_data:?}");
 
                     match devices.entry(serial_number) {
                         Entry::Occupied(mut occupied_entry) => {

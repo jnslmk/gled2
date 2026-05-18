@@ -1,13 +1,11 @@
-use crate::storage::asset::{
-    midi_controller::{MidiController, MidiValueOutput, MidiValueSource},
-};
+use crate::storage::asset::midi_controller::{MidiController, MidiValueOutput, MidiValueSource};
 use egui::{ComboBox, DragValue, Ui};
 
 use super::{
     action_converters::scene_target_editor,
     value_source_converters::{
-        value_source_from_kind, value_source_kind, value_source_label,
-        value_source_uses_active_value, MidiValueSourceKind,
+        MidiValueSourceKind, value_source_from_kind, value_source_kind, value_source_label,
+        value_source_uses_active_value,
     },
 };
 
@@ -197,7 +195,10 @@ pub(super) fn value_output_editor(
             ui.small("Inclusive beat range on 0.0..4.0, wrap supported");
 
             let mut blink_enabled = blackout_blink_value.is_some();
-            if ui.checkbox(&mut blink_enabled, "Blink at 4 Hz on blackout").changed() {
+            if ui
+                .checkbox(&mut blink_enabled, "Blink at 4 Hz on blackout")
+                .changed()
+            {
                 *blackout_blink_value = if blink_enabled { Some(127) } else { None };
                 *dirty = true;
             }

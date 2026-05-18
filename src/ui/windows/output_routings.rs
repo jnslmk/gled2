@@ -75,7 +75,7 @@ impl OutputRoutingsWindow {
                             ui.with_layout(Layout::top_down_justified(egui::Align::Min), |ui| {
                                 let svg_universes = Svg::universes();
                                 routings.remove_old(&svg_universes);
-                                
+
                                 universes
                                 .retain(|universe| svg_universes.contains(universe));
 

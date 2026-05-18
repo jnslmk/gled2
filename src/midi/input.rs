@@ -59,8 +59,8 @@ pub fn discover(runtime_bus: RuntimeBus) {
                 continue;
             }
 
-            log::trace!("Discovered midi input device \"{name}\" at \"{id}\"");
-            log::info!("Connecting to input of \"{name}\" at \"{id}\"");
+            tracing::trace!("Discovered midi input device \"{name}\" at \"{id}\"");
+            tracing::info!("Connecting to input of \"{name}\" at \"{id}\"");
             monitor::push_event(&name, "input connected", &[]);
             if let Some(input) = input.take() {
                 let mut runtime = runtime_bus.runtime();
@@ -71,7 +71,7 @@ pub fn discover(runtime_bus: RuntimeBus) {
                         &port,
                         "gled_read_input",
                         move |_stamp, message, _| {
-                            log::trace!(
+                            tracing::trace!(
                                 "Midi message from \"{port_name}\" at \"{id}\": {message:?}"
                             );
 

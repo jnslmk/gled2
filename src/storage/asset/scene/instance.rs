@@ -3,9 +3,7 @@ use crate::{
     app::timing::Timing,
     audio::sound_data::SoundData,
     input::event::InputEvent,
-    pipeline::{
-        group::{GroupIndices, Groups},
-    },
+    pipeline::group::{GroupIndices, Groups},
     storage::{
         Asset, AssetId,
         asset::{animation::Animation, scene::color::SceneInstanceColor},
@@ -198,10 +196,9 @@ impl SceneInstance {
                 1.0
             } else {
                 main_dimmer
-            } 
-                * self
-                    .opacity
-                    .value(beat_progression, collections, sound_data)
+            } * self
+                .opacity
+                .value(beat_progression, collections, sound_data)
                 * self.input_dimmer;
             self.scene.prepare(
                 queue,

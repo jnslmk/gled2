@@ -25,11 +25,11 @@ impl<T: AssetTrait> Collection<T> {
             .into_iter()
             .filter_map(|entry| {
                 let entry = entry
-                    .map_err(|err| log::warn!("Could not read dir entry: {err:?}"))
+                    .map_err(|err| tracing::warn!("Could not read dir entry: {err:?}"))
                     .ok()?;
                 let file_type = entry
                     .file_type()
-                    .map_err(|err| log::warn!("Could not get file type: {err:?}"))
+                    .map_err(|err| tracing::warn!("Could not get file type: {err:?}"))
                     .ok()?;
 
                 if file_type.is_file() {
@@ -38,12 +38,12 @@ impl<T: AssetTrait> Collection<T> {
                             .file_name()
                             .into_string()
                             .map_err(|err| {
-                                log::warn!("Could not convert file name to string: {err:?}")
+                                tracing::warn!("Could not convert file name to string: {err:?}")
                             })
                             .ok()?
                             .strip_suffix(".json")?,
                     )
-                    .map_err(|err| log::warn!("Could not parse UUID: {err:?}"))
+                    .map_err(|err| tracing::warn!("Could not parse UUID: {err:?}"))
                     .ok()?;
 
                     let asset = Asset::<T>::read(

@@ -7,7 +7,6 @@ use artnet_protocol::{ArtCommand, PollReply, PortAddress};
 use chrono::{DateTime, Utc};
 use egui::mutex::Mutex;
 use kanal::{Receiver, Sender, unbounded};
-use log::{debug, trace, warn};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
@@ -20,6 +19,7 @@ use std::{
     time::Duration,
 };
 use sysinfo::Networks;
+use tracing::{debug, trace, warn};
 
 static ARTNET_PORT: u16 = 6454;
 pub static ARTNET_SOCKET: Lazy<Arc<UdpSocket>> = Lazy::new(|| {
@@ -114,7 +114,9 @@ pub fn start_thread(
                         debug!("Artnet poll from {src:?}");
 
                         let networks = Networks::new_with_refreshed_list();
-                        let bind_addr = &networks.values().flat_map(|network| network.ip_networks().iter())
+                        let bind_addr = &networks
+                            .values()
+                            .flat_map(|network| network.ip_networks().iter())
                             .find_map(|ip_network| match (ip_network.addr, src.ip()) {
                                 (IpAddr::V4(interface_addr), IpAddr::V4(src_addr)) => {
                                     let netmask = u32::MAX.shl(32 - ip_network.prefix);
@@ -209,7 +211,12 @@ pub fn start_thread(
                     });
                 }
                 // dispatch control packages
-                if output.port_address == config.artnet_control_config.universe.try_into().unwrap()
+                if output.port_address
+                    == config
+                        .artnet_control_config
+                        .universe
+                        .try_into()
+                        .expect("control universe value out of valid PortAddress range")
                 {
                     trace!("artnet data on control universe");
                     control_sender

@@ -7,7 +7,7 @@ impl App {
             let Ok(Some(action)) = self.ui_action_receiver.try_recv() else {
                 return;
             };
-            log::trace!("Handling ui action: {action:?}");
+            tracing::trace!("Handling ui action: {action:?}");
 
             if let Some(project) = &mut self.project
                 && apply_palette_action(
@@ -28,7 +28,9 @@ impl App {
                     project.remove_scene_instance(location);
                 }
                 (Some(project), UiAction::DeleteSceneInstancePath(path)) => {
-                    if let Some(location) = location_by_target(project, path, self.selected_scene_instance) {
+                    if let Some(location) =
+                        location_by_target(project, path, self.selected_scene_instance)
+                    {
                         project.remove_scene_instance(location);
                     }
                 }
@@ -44,9 +46,12 @@ impl App {
                 (Some(project), UiAction::CloneSceneInstancePath(path)) => {
                     if let Some(location) =
                         location_by_target(project, path, self.selected_scene_instance)
-                        && let Some(scene_instance) = project
-                            .get_scenes_instance(&location)
-                            .map(|scene_instance| scene_instance.cloned_with_new_id(&self.collections))
+                        && let Some(scene_instance) =
+                            project
+                                .get_scenes_instance(&location)
+                                .map(|scene_instance| {
+                                    scene_instance.cloned_with_new_id(&self.collections)
+                                })
                     {
                         let target = project.next_empty_grid_location(location);
                         project.add_scene_instance(target, scene_instance);
@@ -66,11 +71,9 @@ impl App {
                     project.remove_nonexistant_groups();
                 }
                 (Some(project), UiAction::SetSceneOpacity(path, opacity)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         set_scene_opacity(scene_instance, opacity);
                     }
                 }
@@ -166,34 +169,30 @@ impl App {
                     project.double_input_events.clear();
                 }
                 (Some(project), UiAction::ToggleSceneActive(location)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        location,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, location, self.selected_scene_instance)
+                    {
                         scene_instance.active = !scene_instance.active;
                     }
                 }
                 (Some(project), UiAction::SetSceneActive(location, active)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        location,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, location, self.selected_scene_instance)
+                    {
                         scene_instance.active = active;
                     }
                 }
                 (Some(project), UiAction::SetSceneFlash(location, flash)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        location,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, location, self.selected_scene_instance)
+                    {
                         scene_instance.flash = flash;
                     }
                 }
                 (Some(project), UiAction::SelectScene(location)) => {
-                    if let Some(pos) = location_by_target(project, location, self.selected_scene_instance) {
+                    if let Some(pos) =
+                        location_by_target(project, location, self.selected_scene_instance)
+                    {
                         self.set_selected_scene_instance(pos);
                     }
                 }
@@ -219,129 +218,101 @@ impl App {
                     self.set_selected_scene_instance(to);
                 }
                 (Some(project), UiAction::SetSceneName(path, name)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.name = name;
                     }
                 }
                 (Some(project), UiAction::SetSceneColor(path, color)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.color = color;
                     }
                 }
                 (Some(project), UiAction::SetSceneInputDimmer(path, dimmer)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.input_dimmer = dimmer;
                     }
                 }
                 (Some(project), UiAction::SetSceneIgnoreMainDimmer(path, ignore)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.ignore_main_dimmer = ignore;
                     }
                 }
                 (Some(project), UiAction::SetSceneBeatOffset(path, beat_offset)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.beat_progression_offset =
                             MultipliedCurve::new_multiplier(beat_offset);
                     }
                 }
                 (Some(project), UiAction::SetSceneOpacityMultiplier(path, value)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.opacity.set_multiplier(value);
                     }
                 }
                 (Some(project), UiAction::SetSceneOpacityCurve(path, curve)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.opacity.set_curve(curve);
                     }
                 }
                 (Some(project), UiAction::SetSceneBeatOffsetMultiplier(path, value)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.beat_progression_offset.set_multiplier(value);
                     }
                 }
                 (Some(project), UiAction::SetSceneBeatOffsetCurve(path, curve)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.beat_progression_offset.set_curve(curve);
                     }
                 }
                 (Some(project), UiAction::SetSceneSetOffsetOnFlash(path, set_offset_on_flash)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.set_offset_on_flash = set_offset_on_flash;
                     }
                 }
                 (Some(project), UiAction::SetSceneActivationInput(path, input_event)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.activation_input = input_event;
                     }
                 }
                 (Some(project), UiAction::SetSceneFlashInput(path, input_event)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.flash_input = input_event;
                     }
                 }
                 (Some(project), UiAction::SetSceneDimmerInput(path, input_event)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.dimmer_input = input_event;
                     }
                 }
                 (Some(project), UiAction::ClearSceneGroupsOverwrite(path)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         scene_instance.groups_overwrite = None;
                     }
                 }
@@ -349,21 +320,16 @@ impl App {
                     Some(project),
                     UiAction::SetSceneGroupsOverwriteEntry(path, group_index, group_name),
                 ) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
+                    {
                         let groups = scene_instance.groups_overwrite.get_or_insert_default();
                         groups.insert(group_index, Group(group_name));
                     }
                 }
                 (Some(project), UiAction::RemoveSceneGroupsOverwriteEntry(path, group_index)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        path,
-                        self.selected_scene_instance,
-                    )
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, path, self.selected_scene_instance)
                         && let Some(groups) = scene_instance.groups_overwrite.as_mut()
                     {
                         groups.remove(group_index);
@@ -382,7 +348,10 @@ impl App {
                         effect.opacity = MultipliedCurve::new_multiplier(opacity);
                     }
                 }
-                (Some(project), UiAction::SetSceneEffectOpacityMultiplier(target, effect_index, value)) => {
+                (
+                    Some(project),
+                    UiAction::SetSceneEffectOpacityMultiplier(target, effect_index, value),
+                ) => {
                     if let Some(effect) = scene_effect_by_target(
                         project,
                         target,
@@ -392,7 +361,10 @@ impl App {
                         effect.opacity.set_multiplier(value);
                     }
                 }
-                (Some(project), UiAction::SetSceneEffectOpacityCurve(target, effect_index, curve)) => {
+                (
+                    Some(project),
+                    UiAction::SetSceneEffectOpacityCurve(target, effect_index, curve),
+                ) => {
                     if let Some(effect) = scene_effect_by_target(
                         project,
                         target,
@@ -415,7 +387,10 @@ impl App {
                         effect.color_shift = MultipliedCurve::new_multiplier(color_shift);
                     }
                 }
-                (Some(project), UiAction::SetSceneEffectColorShiftMultiplier(target, effect_index, value)) => {
+                (
+                    Some(project),
+                    UiAction::SetSceneEffectColorShiftMultiplier(target, effect_index, value),
+                ) => {
                     if let Some(effect) = scene_effect_by_target(
                         project,
                         target,
@@ -425,7 +400,10 @@ impl App {
                         effect.color_shift.set_multiplier(value);
                     }
                 }
-                (Some(project), UiAction::SetSceneEffectColorShiftCurve(target, effect_index, curve)) => {
+                (
+                    Some(project),
+                    UiAction::SetSceneEffectColorShiftCurve(target, effect_index, curve),
+                ) => {
                     if let Some(effect) = scene_effect_by_target(
                         project,
                         target,
@@ -448,7 +426,10 @@ impl App {
                         effect.beat_progression = MultipliedCurve::new_multiplier(beat_progression);
                     }
                 }
-                (Some(project), UiAction::SetSceneEffectBeatProgressionMultiplier(target, effect_index, value)) => {
+                (
+                    Some(project),
+                    UiAction::SetSceneEffectBeatProgressionMultiplier(target, effect_index, value),
+                ) => {
                     if let Some(effect) = scene_effect_by_target(
                         project,
                         target,
@@ -458,7 +439,10 @@ impl App {
                         effect.beat_progression.set_multiplier(value);
                     }
                 }
-                (Some(project), UiAction::SetSceneEffectBeatProgressionCurve(target, effect_index, curve)) => {
+                (
+                    Some(project),
+                    UiAction::SetSceneEffectBeatProgressionCurve(target, effect_index, curve),
+                ) => {
                     if let Some(effect) = scene_effect_by_target(
                         project,
                         target,
@@ -482,7 +466,10 @@ impl App {
                             MultipliedCurve::new_multiplier(beat_offset);
                     }
                 }
-                (Some(project), UiAction::SetSceneEffectBeatOffsetMultiplier(target, effect_index, value)) => {
+                (
+                    Some(project),
+                    UiAction::SetSceneEffectBeatOffsetMultiplier(target, effect_index, value),
+                ) => {
                     if let Some(effect) = scene_effect_by_target(
                         project,
                         target,
@@ -492,7 +479,10 @@ impl App {
                         effect.beat_progression_offset.set_multiplier(value);
                     }
                 }
-                (Some(project), UiAction::SetSceneEffectBeatOffsetCurve(target, effect_index, curve)) => {
+                (
+                    Some(project),
+                    UiAction::SetSceneEffectBeatOffsetCurve(target, effect_index, curve),
+                ) => {
                     if let Some(effect) = scene_effect_by_target(
                         project,
                         target,
@@ -555,8 +545,7 @@ impl App {
                         target,
                         self.selected_scene_instance,
                         effect_index,
-                    )
-                        && let Some(config) = effect.animation_config.u32(config_index)
+                    ) && let Some(config) = effect.animation_config.u32(config_index)
                     {
                         *config = value;
                     }
@@ -575,38 +564,30 @@ impl App {
                         target,
                         self.selected_scene_instance,
                         effect_index,
-                    )
-                        && let Some(config) = effect.animation_config.float(config_index)
+                    ) && let Some(config) = effect.animation_config.float(config_index)
                     {
                         *config = FloatValue::F32(value);
                     }
                 }
                 (Some(project), UiAction::AddSceneEffect(target)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        target,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, target, self.selected_scene_instance)
+                    {
                         scene_instance
                             .scene
                             .add_effect(Default::default(), &self.collections);
                     }
                 }
                 (Some(project), UiAction::RemoveSceneEffect(target, effect_index)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        target,
-                        self.selected_scene_instance,
-                    ) {
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, target, self.selected_scene_instance)
+                    {
                         scene_instance.scene.remove_effect(effect_index);
                     }
                 }
                 (Some(project), UiAction::CloneSceneEffect(target, effect_index)) => {
-                    if let Some(scene_instance) = scene_instance_by_target(
-                        project,
-                        target,
-                        self.selected_scene_instance,
-                    )
+                    if let Some(scene_instance) =
+                        scene_instance_by_target(project, target, self.selected_scene_instance)
                         && let Some(effect) = scene_instance.scene.effect(effect_index).cloned()
                     {
                         scene_instance.scene.add_effect(effect, &self.collections);
@@ -650,7 +631,8 @@ impl App {
                     self.timing.add_speed(delta, &self.persistant_state);
                 }
                 (_, UiAction::SpeedMultiply(multiplier)) => {
-                    self.timing.multiply_speed(multiplier, &self.persistant_state);
+                    self.timing
+                        .multiply_speed(multiplier, &self.persistant_state);
                 }
                 (_, UiAction::SetBlackout(blackout)) => {
                     self.blackout = blackout;
@@ -710,7 +692,7 @@ impl App {
                 ) => {}
 
                 (_, UiAction::Error(error)) => {
-                    log::error!("{error}");
+                    tracing::error!("{error}");
 
                     if let Err(err) = Notification::new()
                         .summary("Error")
@@ -718,12 +700,12 @@ impl App {
                         .icon("application-gled")
                         .show()
                     {
-                        log::error!("Could not show notification: {err:?}");
+                        tracing::error!("Could not show notification: {err:?}");
                     }
 
                     self.windows.errors.entries.push(error);
                 }
-                (None, _) => log::trace!("Ingoring ui action which needs a loaded project"),
+                (None, _) => tracing::trace!("Ingoring ui action which needs a loaded project"),
             }
         }
     }

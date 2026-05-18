@@ -1,4 +1,4 @@
-use super::{App};
+use super::App;
 use crate::ui::ChangeButton;
 use egui::{CentralPanel, Color32, Margin, RichText};
 

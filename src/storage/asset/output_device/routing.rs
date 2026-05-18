@@ -75,7 +75,7 @@ impl OutputRouting {
             OutputDevice::Artnet { ip, universes, .. } => {
                 let universe = self.universe?;
                 if !universes.contains(&universe) {
-                    log::warn!("Universe which is not configured: {universe}");
+                    tracing::warn!("Universe which is not configured: {universe}");
                     return None;
                 }
                 (*ip, 6454)

@@ -62,10 +62,11 @@ static RUNTIME_TEST_STATES: OnceLock<
     StdMutex<HashMap<crate::storage::asset_id::AssetId<MidiController>, RuntimeTestState>>,
 > = OnceLock::new();
 
-static RUNTIME_TEST_EXECUTION_STATE: OnceLock<StdMutex<RuntimeTestExecutionState>> = OnceLock::new();
+static RUNTIME_TEST_EXECUTION_STATE: OnceLock<StdMutex<RuntimeTestExecutionState>> =
+    OnceLock::new();
 
-pub(super) fn runtime_test_states(
-) -> &'static StdMutex<HashMap<crate::storage::asset_id::AssetId<MidiController>, RuntimeTestState>> {
+pub(super) fn runtime_test_states()
+-> &'static StdMutex<HashMap<crate::storage::asset_id::AssetId<MidiController>, RuntimeTestState>> {
     RUNTIME_TEST_STATES.get_or_init(|| StdMutex::new(HashMap::new()))
 }
 
@@ -161,11 +162,7 @@ impl Runtime {
                     if exec_state.active_outputs.remove(&(status, data1)).is_some()
                         && let Some(port) = exec_state.selected_test_device.as_deref()
                     {
-                        crate::midi::monitor::push_event(
-                            port,
-                            "test clear",
-                            &[status, data1],
-                        );
+                        crate::midi::monitor::push_event(port, "test clear", &[status, data1]);
                     }
                 }
                 TestCommand::SetTestDevice { port_name } => {
@@ -181,7 +178,8 @@ impl Runtime {
 
     pub fn handle_input(&mut self, port_name: &str, message: &[u8]) -> bool {
         self.refresh_snapshot();
-        let handled = input_handling::handle_input_from_snapshot(&self.snapshot, port_name, message);
+        let handled =
+            input_handling::handle_input_from_snapshot(&self.snapshot, port_name, message);
         if handled && message.len() == 3 {
             self.last_input_values
                 .insert((message[0], message[1]), message[2]);
@@ -264,7 +262,10 @@ impl Default for RuntimeBus {
     }
 }
 
-fn snapshot_from_project_state(state: &ProjectState, collections: &Collections) -> MidiRuntimeSnapshot {
+fn snapshot_from_project_state(
+    state: &ProjectState,
+    collections: &Collections,
+) -> MidiRuntimeSnapshot {
     let mut mappings_by_controller = HashMap::new();
     let mut included_controller_ids = HashSet::new();
     let mut scene_locations_row_major = Vec::new();
@@ -321,7 +322,11 @@ pub fn selected_scene_color(
     selected: crate::storage::asset::scene::grid::GridLocation,
 ) -> SceneInstanceColor {
     project
-        .and_then(|project| project.get_scenes_instance(&selected).map(|scene| scene.color))
+        .and_then(|project| {
+            project
+                .get_scenes_instance(&selected)
+                .map(|scene| scene.color)
+        })
         .unwrap_or(fallback)
 }
 
@@ -369,7 +374,7 @@ mod tests {
     #[test]
     fn test_runtime_test_execution_state_active_outputs() {
         let state = runtime_test_execution_state();
-        let mut exec_state = state.lock().unwrap();
+        let mut exec_state = state.lock().expect("test execution state lock poisoned");
 
         // Initially empty
         assert!(exec_state.active_outputs.is_empty());
@@ -396,7 +401,7 @@ mod tests {
     #[test]
     fn test_runtime_test_execution_state_device_management() {
         let state = runtime_test_execution_state();
-        let mut exec_state = state.lock().unwrap();
+        let mut exec_state = state.lock().expect("test execution state lock poisoned");
 
         // Clear from any previous test
         exec_state.selected_test_device = None;

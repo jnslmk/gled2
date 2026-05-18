@@ -1,5 +1,5 @@
-use log::warn;
 use rosc::{OscMessage, OscType};
+use tracing::warn;
 use uuid::Uuid;
 
 use crate::input::event::InputEvent;
@@ -113,11 +113,17 @@ pub(super) fn parse_message(msg: &OscMessage) -> Result<UiAction, ()> {
             let effect_index = parse_index(effect_index)?;
             parse_target_effect_action(msg, selected_scene_instance_index(), effect_index, action)
         }
-        ["scene", "selected", "effect", effect_index, curve_field, sub_action]
-            if matches!(
-                *curve_field,
-                "opacity" | "color_shift" | "beat_progression" | "beat_offset"
-            ) =>
+        [
+            "scene",
+            "selected",
+            "effect",
+            effect_index,
+            curve_field,
+            sub_action,
+        ] if matches!(
+            *curve_field,
+            "opacity" | "color_shift" | "beat_progression" | "beat_offset"
+        ) =>
         {
             let effect_index = parse_index(effect_index)?;
             parse_target_effect_curve_action(
@@ -156,9 +162,9 @@ pub(super) fn parse_message(msg: &OscMessage) -> Result<UiAction, ()> {
             parse_index(config_index)?,
             parse_f32(msg, 0)?,
         )),
-        ["scene", "selected", "groups_overwrite", "clear"] => {
-            Ok(UiAction::ClearSceneGroupsOverwrite(selected_scene_instance_index()))
-        }
+        ["scene", "selected", "groups_overwrite", "clear"] => Ok(
+            UiAction::ClearSceneGroupsOverwrite(selected_scene_instance_index()),
+        ),
         [
             "scene",
             "selected",
@@ -233,11 +239,19 @@ pub(super) fn parse_message(msg: &OscMessage) -> Result<UiAction, ()> {
             let target = SceneInstanceUnion::Grid(location);
             parse_target_effect_action(msg, target, effect_index, action)
         }
-        ["scene", "grid", col, row, "effect", effect_index, curve_field, sub_action]
-            if matches!(
-                *curve_field,
-                "opacity" | "color_shift" | "beat_progression" | "beat_offset"
-            ) =>
+        [
+            "scene",
+            "grid",
+            col,
+            row,
+            "effect",
+            effect_index,
+            curve_field,
+            sub_action,
+        ] if matches!(
+            *curve_field,
+            "opacity" | "color_shift" | "beat_progression" | "beat_offset"
+        ) =>
         {
             let location = parse_grid_location(col, row)?;
             let effect_index = parse_index(effect_index)?;
@@ -367,11 +381,18 @@ pub(super) fn parse_message(msg: &OscMessage) -> Result<UiAction, ()> {
             let target = SceneInstanceUnion::Quick(QuickSceneInstanceIndex { index });
             parse_target_effect_action(msg, target, effect_index, action)
         }
-        ["scene", "quick", index, "effect", effect_index, curve_field, sub_action]
-            if matches!(
-                *curve_field,
-                "opacity" | "color_shift" | "beat_progression" | "beat_offset"
-            ) =>
+        [
+            "scene",
+            "quick",
+            index,
+            "effect",
+            effect_index,
+            curve_field,
+            sub_action,
+        ] if matches!(
+            *curve_field,
+            "opacity" | "color_shift" | "beat_progression" | "beat_offset"
+        ) =>
         {
             let index = parse_quick_index(index)?;
             let effect_index = parse_index(effect_index)?;
@@ -833,12 +854,24 @@ fn parse_target_curve_action(
     sub_action: &str,
 ) -> Result<UiAction, ()> {
     match (field, sub_action) {
-        ("opacity", "value") => Ok(UiAction::SetSceneOpacityMultiplier(target, parse_f32(msg, 0)?)),
+        ("opacity", "value") => Ok(UiAction::SetSceneOpacityMultiplier(
+            target,
+            parse_f32(msg, 0)?,
+        )),
         ("opacity", "static") => Ok(UiAction::SetSceneOpacity(target, parse_f32(msg, 0)?)),
-        ("opacity", "curve") => Ok(UiAction::SetSceneOpacityCurve(target, parse_curve_id(msg, 0)?)),
-        ("beat_offset", "value") => Ok(UiAction::SetSceneBeatOffsetMultiplier(target, parse_f32(msg, 0)?)),
+        ("opacity", "curve") => Ok(UiAction::SetSceneOpacityCurve(
+            target,
+            parse_curve_id(msg, 0)?,
+        )),
+        ("beat_offset", "value") => Ok(UiAction::SetSceneBeatOffsetMultiplier(
+            target,
+            parse_f32(msg, 0)?,
+        )),
         ("beat_offset", "static") => Ok(UiAction::SetSceneBeatOffset(target, parse_f32(msg, 0)?)),
-        ("beat_offset", "curve") => Ok(UiAction::SetSceneBeatOffsetCurve(target, parse_curve_id(msg, 0)?)),
+        ("beat_offset", "curve") => Ok(UiAction::SetSceneBeatOffsetCurve(
+            target,
+            parse_curve_id(msg, 0)?,
+        )),
         _ => Err(()),
     }
 }
@@ -851,18 +884,66 @@ fn parse_target_effect_curve_action(
     sub_action: &str,
 ) -> Result<UiAction, ()> {
     match (field, sub_action) {
-        ("opacity", "value") => Ok(UiAction::SetSceneEffectOpacityMultiplier(target, effect_index, parse_f32(msg, 0)?)),
-        ("opacity", "static") => Ok(UiAction::SetSceneEffectOpacity(target, effect_index, parse_f32(msg, 0)?)),
-        ("opacity", "curve") => Ok(UiAction::SetSceneEffectOpacityCurve(target, effect_index, parse_curve_id(msg, 0)?)),
-        ("color_shift", "value") => Ok(UiAction::SetSceneEffectColorShiftMultiplier(target, effect_index, parse_f32(msg, 0)?)),
-        ("color_shift", "static") => Ok(UiAction::SetSceneEffectColorShift(target, effect_index, parse_f32(msg, 0)?)),
-        ("color_shift", "curve") => Ok(UiAction::SetSceneEffectColorShiftCurve(target, effect_index, parse_curve_id(msg, 0)?)),
-        ("beat_progression", "value") => Ok(UiAction::SetSceneEffectBeatProgressionMultiplier(target, effect_index, parse_f32(msg, 0)?)),
-        ("beat_progression", "static") => Ok(UiAction::SetSceneEffectBeatProgression(target, effect_index, parse_f32(msg, 0)?)),
-        ("beat_progression", "curve") => Ok(UiAction::SetSceneEffectBeatProgressionCurve(target, effect_index, parse_curve_id(msg, 0)?)),
-        ("beat_offset", "value") => Ok(UiAction::SetSceneEffectBeatOffsetMultiplier(target, effect_index, parse_f32(msg, 0)?)),
-        ("beat_offset", "static") => Ok(UiAction::SetSceneEffectBeatOffset(target, effect_index, parse_f32(msg, 0)?)),
-        ("beat_offset", "curve") => Ok(UiAction::SetSceneEffectBeatOffsetCurve(target, effect_index, parse_curve_id(msg, 0)?)),
+        ("opacity", "value") => Ok(UiAction::SetSceneEffectOpacityMultiplier(
+            target,
+            effect_index,
+            parse_f32(msg, 0)?,
+        )),
+        ("opacity", "static") => Ok(UiAction::SetSceneEffectOpacity(
+            target,
+            effect_index,
+            parse_f32(msg, 0)?,
+        )),
+        ("opacity", "curve") => Ok(UiAction::SetSceneEffectOpacityCurve(
+            target,
+            effect_index,
+            parse_curve_id(msg, 0)?,
+        )),
+        ("color_shift", "value") => Ok(UiAction::SetSceneEffectColorShiftMultiplier(
+            target,
+            effect_index,
+            parse_f32(msg, 0)?,
+        )),
+        ("color_shift", "static") => Ok(UiAction::SetSceneEffectColorShift(
+            target,
+            effect_index,
+            parse_f32(msg, 0)?,
+        )),
+        ("color_shift", "curve") => Ok(UiAction::SetSceneEffectColorShiftCurve(
+            target,
+            effect_index,
+            parse_curve_id(msg, 0)?,
+        )),
+        ("beat_progression", "value") => Ok(UiAction::SetSceneEffectBeatProgressionMultiplier(
+            target,
+            effect_index,
+            parse_f32(msg, 0)?,
+        )),
+        ("beat_progression", "static") => Ok(UiAction::SetSceneEffectBeatProgression(
+            target,
+            effect_index,
+            parse_f32(msg, 0)?,
+        )),
+        ("beat_progression", "curve") => Ok(UiAction::SetSceneEffectBeatProgressionCurve(
+            target,
+            effect_index,
+            parse_curve_id(msg, 0)?,
+        )),
+        ("beat_offset", "value") => Ok(UiAction::SetSceneEffectBeatOffsetMultiplier(
+            target,
+            effect_index,
+            parse_f32(msg, 0)?,
+        )),
+        ("beat_offset", "static") => Ok(UiAction::SetSceneEffectBeatOffset(
+            target,
+            effect_index,
+            parse_f32(msg, 0)?,
+        )),
+        ("beat_offset", "curve") => Ok(UiAction::SetSceneEffectBeatOffsetCurve(
+            target,
+            effect_index,
+            parse_curve_id(msg, 0)?,
+        )),
         _ => Err(()),
     }
 }
@@ -1156,7 +1237,11 @@ mod tests {
         );
         let action = parse_message(&msg).expect("groups overwrite set should parse");
         match action {
-            UiAction::SetSceneGroupsOverwriteEntry(SceneInstanceUnion::Selected, index, group_name) => {
+            UiAction::SetSceneGroupsOverwriteEntry(
+                SceneInstanceUnion::Selected,
+                index,
+                group_name,
+            ) => {
                 assert_eq!(index, 2);
                 assert_eq!(group_name, "front");
             }

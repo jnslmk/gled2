@@ -110,7 +110,7 @@ impl GitConfigWindow {
                                         if let Some(home) = home_dir() {
                                             file_dialog = file_dialog.set_directory(home.join(".ssh"))
                                         }
-                                        if let Some(private_key_path) = 
+                                        if let Some(private_key_path) =
                                             file_dialog.pick_file() {
                                             let mut persistant_state = PersistantState::default();
                                             persistant_state.git_credentials_mut().set_private_key_path(private_key_path);
@@ -137,7 +137,7 @@ impl GitConfigWindow {
                                 self.git_ui_state.passphrase = GitUiState::default().passphrase;
                             }
                         }
-                    });                   
+                    });
                 });
             },
         );

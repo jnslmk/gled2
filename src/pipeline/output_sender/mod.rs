@@ -2,7 +2,6 @@
 
 use anyhow::{Context, Result};
 use kanal::{Receiver, Sender, bounded};
-use log::{debug, trace, warn};
 use std::{
     borrow::Cow,
     collections::{HashMap, hash_map::Entry},
@@ -11,6 +10,7 @@ use std::{
     thread,
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
+use tracing::{debug, trace, warn};
 
 use crate::{
     input::artnet::ARTNET_SOCKET,
@@ -234,7 +234,7 @@ fn merge_and_send_thread(receiver: Receiver<OutputPackage>) {
                     continue;
                 };
 
-                log::debug!("Preparing artnet command for universe {universe}");
+                tracing::debug!("Preparing artnet command for universe {universe}");
                 let output = artnet_protocol::Output {
                     data: artnet_protocol::PaddedData::from(data.to_vec()),
                     port_address,

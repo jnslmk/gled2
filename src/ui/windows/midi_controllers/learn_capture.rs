@@ -23,13 +23,23 @@ pub(super) fn apply_learn_captures(
 
         match capture.target {
             MidiLearnTarget::InputBinding(binding_index) => {
-                if let Some(binding) = controller.data.mapping.input_bindings.get_mut(binding_index) {
+                if let Some(binding) = controller
+                    .data
+                    .mapping
+                    .input_bindings
+                    .get_mut(binding_index)
+                {
                     binding.trigger = capture.trigger;
                     changed = true;
                 }
             }
             MidiLearnTarget::OutputBinding(binding_index) => {
-                if let Some(binding) = controller.data.mapping.output_bindings.get_mut(binding_index) {
+                if let Some(binding) = controller
+                    .data
+                    .mapping
+                    .output_bindings
+                    .get_mut(binding_index)
+                {
                     match &mut binding.kind {
                         MidiOutputBindingKind::Value(value) => {
                             value.status = capture.trigger.status;

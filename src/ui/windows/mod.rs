@@ -61,15 +61,14 @@ impl Windows {
         self.curves.update(ctx, collections);
         self.errors.update(ctx);
         self.git_config.update(ctx, persistant_state);
-        self.midi_controllers
-            .update(
-                ctx,
-                project,
-                collections,
-                midi_monitor_receiver,
-                test_command_sender,
-                midi_learn_state,
-            );
+        self.midi_controllers.update(
+            ctx,
+            project,
+            collections,
+            midi_monitor_receiver,
+            test_command_sender,
+            midi_learn_state,
+        );
         let midi_diagnostics = self.midi_controllers.diagnostics();
         self.external_device_settings
             .update(ctx, project, collections, &midi_diagnostics);

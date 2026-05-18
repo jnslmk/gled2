@@ -48,7 +48,7 @@ impl<T: AssetTrait> AssetId<T> {
     }
 
     pub fn delete(self, collections: &mut Collections) {
-        log::info!("Deleting palette from cache: {self:?}");
+        tracing::info!("Deleting palette from cache: {self:?}");
 
         collections.get_mut::<T>().delete_asset(self);
         collections.save();

@@ -109,9 +109,7 @@ impl ExternalDeviceSettings {
                         .add_submenu("Artnet Trigger".into(), |ui, project| {
                             artnet_trigger_settings(ui, project)
                         })
-                        .add_submenu("OSC Input".into(), |ui, project| {
-                            osc_settings(ui, project)
-                        });
+                        .add_submenu("OSC Input".into(), |ui, project| osc_settings(ui, project));
                     ui.add(settings_menu);
                 });
 
@@ -146,14 +144,19 @@ fn audio_input_settings(ui: &mut Ui, state: &mut Project) {
     let mut selected = project.audio_input_device.clone();
     let old_selected = selected.clone();
 
-    let devices = audio_device_labels(&AUDIO_DEVICES.lock().unwrap().clone());
+    let devices = audio_device_labels(
+        &AUDIO_DEVICES
+            .lock()
+            .expect("audio devices lock poisoned")
+            .clone(),
+    );
     ui.selectable_value(&mut selected, None, "None");
     for (id, label) in devices {
         ui.selectable_value(&mut selected, Some(id), label);
     }
 
     if selected != old_selected {
-        log::info!("Audio input device changed to {:?}", selected);
+        tracing::info!("Audio input device changed to {:?}", selected);
         {
             UiAction::SetAudioDevice(selected).enqueue();
         }
@@ -326,8 +329,7 @@ fn list_midi_output_ports() -> Vec<String> {
 }
 
 fn is_gled_midi_port(port_name: &str) -> bool {
-    port_name.contains("gled_read_input")
-    || port_name.contains("gled_write_output")
+    port_name.contains("gled_read_input") || port_name.contains("gled_write_output")
 }
 
 fn artnet_control_input_settings(ui: &mut Ui, project: &mut Project) {
@@ -446,10 +448,9 @@ fn osc_settings(ui: &mut Ui, project: &mut Project) {
         ui.label("Port");
         let mut port = osc_config.port;
         let response = ui.add(DragValue::new(&mut port).range(1..=65535));
-        if (response.lost_focus() || response.drag_stopped())
-            && port != osc_config.port {
-                UiAction::SetProjectOscPort(port).enqueue();
-            }
+        if (response.lost_focus() || response.drag_stopped()) && port != osc_config.port {
+            UiAction::SetProjectOscPort(port).enqueue();
+        }
     });
 }
 
@@ -491,10 +492,18 @@ impl<'a, S> Widget for SettingsMenu<'a, S> {
                 });
             });
         if !self.submenus.contains_key(self.selected_submenu) {
-            *self.selected_submenu = self.submenus.keys().next().unwrap().clone();
+            *self.selected_submenu = self
+                .submenus
+                .keys()
+                .next()
+                .expect("settings menu must have at least one submenu")
+                .clone();
         }
 
-        let submenu = self.submenus.remove(self.selected_submenu).unwrap();
+        let submenu = self
+            .submenus
+            .remove(self.selected_submenu)
+            .expect("submenu was just confirmed to be present");
         CentralPanel::default()
             .show_inside(ui, |ui| submenu(ui, self.edit_state))
             .response

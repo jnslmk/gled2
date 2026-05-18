@@ -5,12 +5,12 @@ use crate::audio::{
 };
 use egui::mutex::Mutex;
 use kanal::{Receiver, Sender, bounded};
-use log::trace;
 use once_cell::sync::Lazy;
 use std::{
     collections::HashMap,
     sync::{Arc, atomic::AtomicUsize},
 };
+use tracing::trace;
 use uuid::Uuid;
 
 const SOUND_TRIGGER_SAMPLE_INTERVAL_MS: u64 = 10;

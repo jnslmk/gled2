@@ -64,8 +64,8 @@ pub fn discover(runtime_bus: RuntimeBus) {
                 continue;
             }
 
-            log::trace!("Discovered midi output device \"{name}\" at \"{id}\"");
-            log::info!("Connecting to output of \"{name}\" at \"{id}\"");
+            tracing::trace!("Discovered midi output device \"{name}\" at \"{id}\"");
+            tracing::info!("Connecting to output of \"{name}\" at \"{id}\"");
             monitor::push_event(&name, "output connected", &[]);
             if let Some(output) = output.take() {
                 let mut connection = match output.connect(&port, "gled_write_output") {

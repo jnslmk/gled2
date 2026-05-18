@@ -115,7 +115,7 @@ impl ExternalControlState {
                     );
                 }
             } else {
-                log::warn!("Received Artnet DMX data, but no project is loaded");
+                tracing::warn!("Received Artnet DMX data, but no project is loaded");
             }
             self.prev_values[i] = scene_state;
         }

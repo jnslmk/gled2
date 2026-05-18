@@ -1,4 +1,5 @@
 #![windows_subsystem = "windows"]
+#![forbid(clippy::unwrap_used)]
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 pub mod app;
@@ -16,7 +17,6 @@ use crate::audio::AudioPool;
 use crate::input::artnet;
 use crate::pipeline::{extract_output, output_sender};
 use app::{App, persistant_state::PersistantState};
-use clap::Parser;
 use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
 use egui::{Color32, ThemePreference};
 use egui_extras::install_image_loaders;
@@ -54,12 +54,19 @@ static WGPU_PROFILER: Lazy<egui::mutex::Mutex<wgpu_profiler::GpuProfiler>> = Laz
 pub static PUFFIN_GPU_PROFILER: Lazy<egui::mutex::Mutex<puffin::GlobalProfiler>> =
     Lazy::new(|| egui::mutex::Mutex::new(puffin::GlobalProfiler::default()));
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    /// Show OpenFont License
-    #[arg(short, long)]
-    show_open_font_license: bool,
+fn show_open_font_license_requested() -> bool {
+    clap::Command::new(env!("CARGO_PKG_NAME"))
+        .version(env!("CARGO_PKG_VERSION"))
+        .about(env!("CARGO_PKG_DESCRIPTION"))
+        .arg(
+            clap::Arg::new("show_open_font_license")
+                .short('s')
+                .long("show-open-font-license")
+                .help("Show OpenFont License")
+                .action(clap::ArgAction::SetTrue),
+        )
+        .get_matches()
+        .get_flag("show_open_font_license")
 }
 
 fn init_keyring_store() {
@@ -84,8 +91,7 @@ fn init_keyring_store() {
 }
 
 fn main() {
-    let args = Args::parse();
-    if args.show_open_font_license {
+    if show_open_font_license_requested() {
         println!(
             "{}",
             std::str::from_utf8(include_bytes!("../assets/OFL.txt"))
@@ -96,7 +102,7 @@ fn main() {
 
     #[cfg(feature = "profiling")]
     let _puffin_servers = start_profile_servers();
-    env_logger::init();
+    tracing_subscriber::fmt::init();
     init_keyring_store();
     let ui_action_receiver = UiAction::init_queue();
     RendererCallback::init();
@@ -176,7 +182,7 @@ fn main() {
             fonts
                 .families
                 .get_mut(&FontFamily::Proportional)
-                .unwrap()
+                .expect("Proportional font family must exist")
                 .insert(0, "Oxanium_Regular".to_owned());
 
             fonts.families.insert(
@@ -196,9 +202,13 @@ fn main() {
             Input::init(&cc.egui_ctx, artnet_bridge_receiver);
             output_state::init();
 
-            cc.wgpu_render_state.as_ref().expect("wgpu render state is not available").device.on_uncaptured_error(Arc::new(|error| {
-                log::error!("WGPU error: {:?}", error);
-            }));
+            cc.wgpu_render_state
+                .as_ref()
+                .expect("wgpu render state is not available")
+                .device
+                .on_uncaptured_error(Arc::new(|error| {
+                    tracing::error!("WGPU error: {:?}", error);
+                }));
 
             WGPU_RENDER_STATE
                 .set(
@@ -240,8 +250,8 @@ struct PuffinViewerChildGuard(std::process::Child);
 impl Drop for PuffinViewerChildGuard {
     fn drop(&mut self) {
         match self.0.kill() {
-            Err(e) => println!("Could not kill puffin viewer process: {}", e),
-            Ok(_) => println!("Successfully killed puffin viewer process"),
+            Err(e) => tracing::warn!("Could not kill puffin viewer process: {}", e),
+            Ok(_) => tracing::info!("Successfully killed puffin viewer process"),
         }
     }
 }

@@ -303,7 +303,9 @@ fn update_animation(
 impl UiAction {
     pub fn init_queue() -> Receiver<UiAction> {
         let (sender, receiver) = unbounded();
-        ACTION_SENDER.set(sender).unwrap();
+        ACTION_SENDER
+            .set(sender)
+            .expect("init_queue called more than once");
         receiver
     }
 

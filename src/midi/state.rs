@@ -117,13 +117,23 @@ impl MidiState {
                             Self::float_value_to_f32(value),
                         );
                     }
-                    scene_effect_opacity.insert((*location, effect_index), effect.opacity.multiplier);
-                    scene_effect_color_shift.insert((*location, effect_index), effect.color_shift.multiplier);
-                    scene_effect_beat_progression.insert((*location, effect_index), effect.beat_progression.multiplier);
-                    scene_effect_beat_offset.insert((*location, effect_index), effect.beat_progression_offset.multiplier);
+                    scene_effect_opacity
+                        .insert((*location, effect_index), effect.opacity.multiplier);
+                    scene_effect_color_shift
+                        .insert((*location, effect_index), effect.color_shift.multiplier);
+                    scene_effect_beat_progression.insert(
+                        (*location, effect_index),
+                        effect.beat_progression.multiplier,
+                    );
+                    scene_effect_beat_offset.insert(
+                        (*location, effect_index),
+                        effect.beat_progression_offset.multiplier,
+                    );
                     let speed_exp_norm = ((effect.speed_exponent as f32) + 63.0) / 127.0;
-                    scene_effect_speed_exponent.insert((*location, effect_index), speed_exp_norm.clamp(0.0, 1.0));
-                    scene_effect_group_index.insert((*location, effect_index), effect.group_index as f32);
+                    scene_effect_speed_exponent
+                        .insert((*location, effect_index), speed_exp_norm.clamp(0.0, 1.0));
+                    scene_effect_group_index
+                        .insert((*location, effect_index), effect.group_index as f32);
                 }
             }
         }

@@ -7,9 +7,9 @@ use crate::{
     storage::asset::{palette::Palette, scene::effect_state::EffectState},
     wgpu_render_state,
 };
-use log::debug;
 use positions::Positions;
 use std::num::{NonZero, NonZeroU64};
+use tracing::debug;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType,

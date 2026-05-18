@@ -2,7 +2,9 @@ use super::App;
 use crate::{
     app::timing::LINK_ACTIVE_COLOR,
     storage::{
-        action::StorageAction, asset::{curve::polynomial::polynomials_fitting, project::{GridHighlight}}, staged_files, working,
+        action::StorageAction,
+        asset::{curve::polynomial::polynomials_fitting, project::GridHighlight},
+        staged_files, working,
     },
     ui::temperature::temperature,
 };
@@ -233,15 +235,15 @@ impl App {
                 ui.spacing_mut().slider_width = 195.0;
 
                 ui.label("Scene preview size");
-                    if ui
-                        .add(
-                            Slider::new(self.persistant_state.effects_size_mut(), 50.0..=500.0)
-                                .show_value(false),
-                        )
-                        .changed()
-                    {
-                        self.persistant_state.save();
-                    }
+                if ui
+                    .add(
+                        Slider::new(self.persistant_state.effects_size_mut(), 50.0..=500.0)
+                            .show_value(false),
+                    )
+                    .changed()
+                {
+                    self.persistant_state.save();
+                }
             });
             ui.add_space(4.0);
         }
@@ -262,9 +264,7 @@ impl App {
         );
 
         MenuButton::from_button(Button::new(layout_job))
-            .config(
-                MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
-            )
+            .config(MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside))
             .ui(ui, |ui| {
                 self.git_menu(ui);
             });

@@ -5,10 +5,7 @@ use crate::{
 };
 use midir::MidiOutputConnection;
 
-use super::{
-    MidiRuntimeSnapshot, RuntimeControllerKey, scene_state,
-    runtime_test_execution_state,
-};
+use super::{MidiRuntimeSnapshot, RuntimeControllerKey, runtime_test_execution_state, scene_state};
 
 pub(super) fn send_output_from_snapshot(
     snapshot: &MidiRuntimeSnapshot,
@@ -35,7 +32,7 @@ pub(super) fn send_output_from_snapshot(
 
         let effective_mapping = &mapping.mapping;
 
-            for binding in &effective_mapping.output_bindings {
+        for binding in &effective_mapping.output_bindings {
             match &binding.kind {
                 MidiOutputBindingKind::Value(output) => {
                     let midi_value = match output.source {
@@ -51,25 +48,31 @@ pub(super) fn send_output_from_snapshot(
                                     let selected_index = snapshot
                                         .scene_locations_row_major
                                         .iter()
-                                        .position(|location| *location == state.selected_scene_location)
+                                        .position(|location| {
+                                            *location == state.selected_scene_location
+                                        })
                                         .unwrap_or(0);
 
                                     value_for_distributed_scene_index(selected_index, scene_count)
                                 });
                             scale_to_range(f32::from(value) / 127.0, output.min, output.max)
                         }
-                        MidiValueSource::SelectedSceneInputDimmer => {
-                            scale_to_range(state.selected_scene_input_dimmer, output.min, output.max)
-                        }
+                        MidiValueSource::SelectedSceneInputDimmer => scale_to_range(
+                            state.selected_scene_input_dimmer,
+                            output.min,
+                            output.max,
+                        ),
                         MidiValueSource::SelectedSceneBeatOffset => {
                             scale_to_range(state.selected_scene_beat_offset, output.min, output.max)
                         }
-                        MidiValueSource::SelectedSceneIgnoreMainDimmer => {
-                            binary_output_value(state.selected_scene_ignore_main_dimmer, output.active_value)
-                        }
-                        MidiValueSource::SelectedSceneSetOffsetOnFlash => {
-                            binary_output_value(state.selected_scene_set_offset_on_flash, output.active_value)
-                        }
+                        MidiValueSource::SelectedSceneIgnoreMainDimmer => binary_output_value(
+                            state.selected_scene_ignore_main_dimmer,
+                            output.active_value,
+                        ),
+                        MidiValueSource::SelectedSceneSetOffsetOnFlash => binary_output_value(
+                            state.selected_scene_set_offset_on_flash,
+                            output.active_value,
+                        ),
                         MidiValueSource::MainDimmer => {
                             scale_to_range(state.main_dimmer, output.min, output.max)
                         }
@@ -101,30 +104,45 @@ pub(super) fn send_output_from_snapshot(
                                 )
                             }
                         }
-                        MidiValueSource::Blackout { inverted, blink } => {
-                            binary_output_value(blackout_output_active(state, inverted, blink), output.active_value)
-                        }
-                        MidiValueSource::SceneOpacity { ref target } => {
-                            scale_to_range(scene_state::scene_opacity(state, target), output.min, output.max)
-                        }
-                        MidiValueSource::SceneInputDimmer { ref target } => {
-                            scale_to_range(scene_state::scene_input_dimmer(state, target), output.min, output.max)
-                        }
-                        MidiValueSource::SceneBeatOffset { ref target } => {
-                            scale_to_range(scene_state::scene_beat_offset(state, target), output.min, output.max)
-                        }
+                        MidiValueSource::Blackout { inverted, blink } => binary_output_value(
+                            blackout_output_active(state, inverted, blink),
+                            output.active_value,
+                        ),
+                        MidiValueSource::SceneOpacity { ref target } => scale_to_range(
+                            scene_state::scene_opacity(state, target),
+                            output.min,
+                            output.max,
+                        ),
+                        MidiValueSource::SceneInputDimmer { ref target } => scale_to_range(
+                            scene_state::scene_input_dimmer(state, target),
+                            output.min,
+                            output.max,
+                        ),
+                        MidiValueSource::SceneBeatOffset { ref target } => scale_to_range(
+                            scene_state::scene_beat_offset(state, target),
+                            output.min,
+                            output.max,
+                        ),
                         MidiValueSource::SceneIgnoreMainDimmer { ref target } => {
-                            binary_output_value(scene_state::scene_ignore_main_dimmer(state, target), output.active_value)
+                            binary_output_value(
+                                scene_state::scene_ignore_main_dimmer(state, target),
+                                output.active_value,
+                            )
                         }
                         MidiValueSource::SceneSetOffsetOnFlash { ref target } => {
-                            binary_output_value(scene_state::scene_set_offset_on_flash(state, target), output.active_value)
+                            binary_output_value(
+                                scene_state::scene_set_offset_on_flash(state, target),
+                                output.active_value,
+                            )
                         }
-                        MidiValueSource::SceneActive { ref target } => {
-                            binary_output_value(scene_state::scene_is_active(state, target), output.active_value)
-                        }
-                        MidiValueSource::SceneFlashed { ref target } => {
-                            binary_output_value(scene_state::scene_is_flashed(state, target), output.active_value)
-                        }
+                        MidiValueSource::SceneActive { ref target } => binary_output_value(
+                            scene_state::scene_is_active(state, target),
+                            output.active_value,
+                        ),
+                        MidiValueSource::SceneFlashed { ref target } => binary_output_value(
+                            scene_state::scene_is_flashed(state, target),
+                            output.active_value,
+                        ),
                         MidiValueSource::SceneEffectSettingF32 {
                             ref target,
                             effect_index,
@@ -139,48 +157,74 @@ pub(super) fn send_output_from_snapshot(
                             output.min,
                             output.max,
                         ),
-                        MidiValueSource::SceneEffectOpacity { ref target, effect_index } => {
-                            scale_to_range(
-                                scene_state::scene_effect_opacity(state, target, effect_index as usize),
-                                output.min,
-                                output.max,
-                            )
-                        }
-                        MidiValueSource::SceneEffectColorShift { ref target, effect_index } => {
-                            scale_to_range(
-                                scene_state::scene_effect_color_shift(state, target, effect_index as usize),
-                                output.min,
-                                output.max,
-                            )
-                        }
-                        MidiValueSource::SceneEffectBeatProgression { ref target, effect_index } => {
-                            scale_to_range(
-                                scene_state::scene_effect_beat_progression(state, target, effect_index as usize),
-                                output.min,
-                                output.max,
-                            )
-                        }
-                        MidiValueSource::SceneEffectBeatOffset { ref target, effect_index } => {
-                            scale_to_range(
-                                scene_state::scene_effect_beat_offset(state, target, effect_index as usize),
-                                output.min,
-                                output.max,
-                            )
-                        }
-                        MidiValueSource::SceneEffectSpeedExponent { ref target, effect_index } => {
-                            scale_to_range(
-                                scene_state::scene_effect_speed_exponent(state, target, effect_index as usize),
-                                output.min,
-                                output.max,
-                            )
-                        }
-                        MidiValueSource::SceneEffectGroupIndex { ref target, effect_index } => {
-                            scale_to_range(
-                                scene_state::scene_effect_group_index(state, target, effect_index as usize),
-                                output.min,
-                                output.max,
-                            )
-                        }
+                        MidiValueSource::SceneEffectOpacity {
+                            ref target,
+                            effect_index,
+                        } => scale_to_range(
+                            scene_state::scene_effect_opacity(state, target, effect_index as usize),
+                            output.min,
+                            output.max,
+                        ),
+                        MidiValueSource::SceneEffectColorShift {
+                            ref target,
+                            effect_index,
+                        } => scale_to_range(
+                            scene_state::scene_effect_color_shift(
+                                state,
+                                target,
+                                effect_index as usize,
+                            ),
+                            output.min,
+                            output.max,
+                        ),
+                        MidiValueSource::SceneEffectBeatProgression {
+                            ref target,
+                            effect_index,
+                        } => scale_to_range(
+                            scene_state::scene_effect_beat_progression(
+                                state,
+                                target,
+                                effect_index as usize,
+                            ),
+                            output.min,
+                            output.max,
+                        ),
+                        MidiValueSource::SceneEffectBeatOffset {
+                            ref target,
+                            effect_index,
+                        } => scale_to_range(
+                            scene_state::scene_effect_beat_offset(
+                                state,
+                                target,
+                                effect_index as usize,
+                            ),
+                            output.min,
+                            output.max,
+                        ),
+                        MidiValueSource::SceneEffectSpeedExponent {
+                            ref target,
+                            effect_index,
+                        } => scale_to_range(
+                            scene_state::scene_effect_speed_exponent(
+                                state,
+                                target,
+                                effect_index as usize,
+                            ),
+                            output.min,
+                            output.max,
+                        ),
+                        MidiValueSource::SceneEffectGroupIndex {
+                            ref target,
+                            effect_index,
+                        } => scale_to_range(
+                            scene_state::scene_effect_group_index(
+                                state,
+                                target,
+                                effect_index as usize,
+                            ),
+                            output.min,
+                            output.max,
+                        ),
                     };
                     if send_if_changed(
                         connection,
@@ -234,13 +278,13 @@ pub(super) fn send_output_from_snapshot(
         let exec_state = runtime_test_execution_state()
             .lock()
             .expect("test execution state lock poisoned");
-        
+
         if let Some(test_port) = &exec_state.selected_test_device {
             let test_port_normalized = normalize_controller_key(test_port);
             let current_port_normalized = normalize_controller_key(port_name);
-            let is_test_port = test_port == port_name
-                || test_port_normalized == current_port_normalized;
-            
+            let is_test_port =
+                test_port == port_name || test_port_normalized == current_port_normalized;
+
             if is_test_port {
                 for ((status, data1), value) in &exec_state.active_outputs {
                     if send_if_changed(
@@ -282,7 +326,7 @@ fn send_if_changed(
     }
 
     if let Err(err) = connection.send(&[status, data1, value]) {
-        log::error!("Could not send {label}: {err:?}");
+        tracing::error!("Could not send {label}: {err:?}");
         return false;
     }
 
@@ -291,11 +335,7 @@ fn send_if_changed(
 }
 
 fn binary_output_value(active: bool, active_value: u8) -> u8 {
-    if active {
-        active_value
-    } else {
-        0
-    }
+    if active { active_value } else { 0 }
 }
 
 fn beat_range_contains(position: f32, start: f32, end: f32) -> bool {
@@ -310,7 +350,11 @@ fn beat_range_contains(position: f32, start: f32, end: f32) -> bool {
 }
 
 fn blackout_output_active(state: &MidiState, inverted: bool, blink: bool) -> bool {
-    let base_active = if inverted { !state.blackout } else { state.blackout };
+    let base_active = if inverted {
+        !state.blackout
+    } else {
+        state.blackout
+    };
     if !base_active || !blink {
         return base_active;
     }
@@ -369,7 +413,10 @@ mod tests {
         let scene_count = 24;
         for index in 0..scene_count {
             let value = value_for_distributed_scene_index(index, scene_count);
-            assert_eq!(distributed_scene_index_from_midi(value, scene_count), Some(index));
+            assert_eq!(
+                distributed_scene_index_from_midi(value, scene_count),
+                Some(index)
+            );
         }
     }
 }

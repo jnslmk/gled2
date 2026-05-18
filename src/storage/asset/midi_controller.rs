@@ -3,12 +3,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::storage::asset::scene::color::SceneInstanceColor;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
 pub struct MidiController {
     pub mapping: MidiControllerMapping,
 }
-
 
 impl AssetTrait for MidiController {
     const DIR_NAME: &'static str = "midi_controllers";
@@ -261,9 +259,7 @@ impl Eq for MidiValueSource {}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum MidiColorSource {
-    SceneColor {
-        target: MidiSceneTarget,
-    },
+    SceneColor { target: MidiSceneTarget },
 }
 
 impl Default for MidiColorSource {
@@ -362,4 +358,3 @@ impl MidiSceneColorMessageMap {
         }
     }
 }
-

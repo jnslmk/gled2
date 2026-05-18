@@ -14,12 +14,8 @@ use crate::{
         osc::OscConfig,
     },
     pipeline::{
-        extract_output::ExtractOutput,
-        group::Groups,
-        output_clear::OutputClear,
-        preview::Preview,
-        preview_indices::PreviewIndices,
-        renderer_callback::RendererCallback,
+        extract_output::ExtractOutput, group::Groups, output_clear::OutputClear, preview::Preview,
+        preview_indices::PreviewIndices, renderer_callback::RendererCallback,
     },
     storage::{
         asset::{

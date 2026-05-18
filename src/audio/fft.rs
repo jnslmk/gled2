@@ -4,7 +4,6 @@ use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
 };
 use kanal::Sender;
-use log::debug;
 use rtrb::{Consumer, Producer, RingBuffer};
 use rustfft::{FftPlanner, num_complex::Complex};
 use std::{
@@ -15,6 +14,7 @@ use std::{
     },
     time::Duration,
 };
+use tracing::debug;
 
 pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
@@ -72,7 +72,7 @@ impl FFTAudioSource {
                     while running.load(Ordering::Relaxed) {
                         let device = match host.device_by_id(&device_id) {
                             Some(device) => {
-                                log::info!(
+                                tracing::info!(
                                     "Using audio input device: {}",
                                     device
                                         .description()
@@ -85,7 +85,7 @@ impl FFTAudioSource {
                                 device
                             }
                             None => {
-                                log::warn!(
+                                tracing::warn!(
                                     "No audio input device found, retrying in {} ms",
                                     STREAM_RESTART_DELAY_MS
                                 );
@@ -97,13 +97,13 @@ impl FFTAudioSource {
                         let config = match device.default_input_config() {
                             Ok(config) => config,
                             Err(err) => {
-                                log::error!("Failed to get default input config: {}", err);
+                                tracing::error!("Failed to get default input config: {}", err);
                                 std::thread::sleep(Duration::from_millis(STREAM_RESTART_DELAY_MS));
                                 continue;
                             }
                         };
 
-                        log::info!("Audio input config: {:?}", config);
+                        tracing::info!("Audio input config: {:?}", config);
                         let channels = config.channels() as usize;
                         let stream_config = StreamConfig::from(config.clone());
                         let stream_failed = Arc::new(AtomicBool::new(false));
@@ -120,7 +120,7 @@ impl FFTAudioSource {
                                         push_sample(Vec::from(data), channels, &mut producer);
                                     },
                                     move |err| {
-                                        log::error!("Audio stream error: {}", err);
+                                        tracing::error!("Audio stream error: {}", err);
                                         error_flag.store(true, Ordering::Relaxed);
                                     },
                                     None,
@@ -138,7 +138,7 @@ impl FFTAudioSource {
                                         push_sample(f32_data, channels, &mut producer);
                                     },
                                     move |err| {
-                                        log::error!("Audio stream error: {}", err);
+                                        tracing::error!("Audio stream error: {}", err);
                                         error_flag.store(true, Ordering::Relaxed);
                                     },
                                     None,
@@ -156,7 +156,7 @@ impl FFTAudioSource {
                                         push_sample(f32_data, channels, &mut producer);
                                     },
                                     move |err| {
-                                        log::error!("Audio stream error: {}", err);
+                                        tracing::error!("Audio stream error: {}", err);
                                         error_flag.store(true, Ordering::Relaxed);
                                     },
                                     None,
@@ -174,14 +174,14 @@ impl FFTAudioSource {
                                         push_sample(f32_data, channels, &mut producer);
                                     },
                                     move |err| {
-                                        log::error!("Audio stream error: {}", err);
+                                        tracing::error!("Audio stream error: {}", err);
                                         error_flag.store(true, Ordering::Relaxed);
                                     },
                                     None,
                                 )
                             }
                             _ => {
-                                log::error!(
+                                tracing::error!(
                                     "Unsupported sample format: {:?}",
                                     config.sample_format()
                                 );
@@ -193,17 +193,17 @@ impl FFTAudioSource {
                         let stream = match stream {
                             Ok(stream) => stream,
                             Err(err) => {
-                                log::error!("Failed to build audio stream: {}", err);
+                                tracing::error!("Failed to build audio stream: {}", err);
                                 std::thread::sleep(Duration::from_millis(STREAM_RESTART_DELAY_MS));
                                 continue;
                             }
                         };
                         if let Err(err) = stream.play() {
-                            log::error!("Failed to start audio stream: {}", err);
+                            tracing::error!("Failed to start audio stream: {}", err);
                             std::thread::sleep(Duration::from_millis(STREAM_RESTART_DELAY_MS));
                             continue;
                         }
-                        log::info!("Audio stream started successfully");
+                        tracing::info!("Audio stream started successfully");
 
                         while running.load(Ordering::Relaxed)
                             && !stream_failed.load(Ordering::Relaxed)
@@ -213,7 +213,7 @@ impl FFTAudioSource {
 
                         if stream_failed.load(Ordering::Relaxed) && running.load(Ordering::Relaxed)
                         {
-                            log::warn!(
+                            tracing::warn!(
                                 "Audio stream stopped unexpectedly, retrying in {} ms",
                                 STREAM_RESTART_DELAY_MS
                             );
@@ -221,7 +221,7 @@ impl FFTAudioSource {
                         }
                     }
 
-                    log::info!("Audio capture stopping...");
+                    tracing::info!("Audio capture stopping...");
                 }
             })
             .expect("Could not spawn audio capture thread");
@@ -351,7 +351,9 @@ impl FFTProcessor {
             }
         }
 
-        let sample = magnitudes.try_into().unwrap();
+        let sample = magnitudes
+            .try_into()
+            .expect("magnitudes must have exactly FREQ_BINS elements");
         if let Err(error) = self.fft_tx.try_send(sample) {
             debug!("Error sending fft: {error}")
         };

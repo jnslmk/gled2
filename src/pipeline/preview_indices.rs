@@ -10,7 +10,6 @@ use crate::{
     },
     wgpu_render_state,
 };
-use log::debug;
 use std::{
     num::{NonZero, NonZeroU64},
     sync::{
@@ -18,6 +17,7 @@ use std::{
         atomic::{AtomicBool, Ordering::Relaxed},
     },
 };
+use tracing::debug;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     *,

@@ -6,10 +6,7 @@ use crate::{
         runtime::{self, TestCommand},
     },
     storage::{
-        asset::{
-            Asset,
-            midi_controller::MidiController,
-        },
+        asset::{Asset, midi_controller::MidiController},
         collections::Collections,
     },
     ui::{
@@ -23,9 +20,9 @@ use egui_phosphor_icons::{Icon, icons};
 use kanal::{Receiver, Sender};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-mod color_editor;
 mod action_converters;
 mod binding_helpers;
+mod color_editor;
 mod input_column;
 mod learn_capture;
 mod monitor_panel;
@@ -97,7 +94,10 @@ fn emit_test_output_commands(
     for &index in &test_state.blackout_blink_preview_binding_indices {
         if let Some(binding) = bindings.get(index)
             && let MidiOutputBindingKind::Value(value_output) = &binding.kind
-            && let MidiValueSource::BeatFlankPulse { blackout_blink_value: Some(v), .. } = &value_output.source
+            && let MidiValueSource::BeatFlankPulse {
+                blackout_blink_value: Some(v),
+                ..
+            } = &value_output.source
         {
             let _ = test_command_sender.send(TestCommand::SendOutput {
                 status: value_output.status,
@@ -109,7 +109,9 @@ fn emit_test_output_commands(
 
     // Clear blackout blink previews that became inactive.
     for &index in &test_state.blackout_blink_preview_binding_indices_previous {
-        if !test_state.blackout_blink_preview_binding_indices.contains(&index)
+        if !test_state
+            .blackout_blink_preview_binding_indices
+            .contains(&index)
             && let Some(binding) = bindings.get(index)
             && let MidiOutputBindingKind::Value(value_output) = &binding.kind
         {
@@ -135,8 +137,7 @@ pub struct MidiControllersWindow {
         HashMap<crate::storage::asset_id::AssetId<MidiController>, MidiControllerTestState>,
 }
 
-#[derive(Clone)]
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct MidiControllerTestState {
     selected_output_port: Option<String>,
     value_preview_binding_indices: HashSet<usize>,
@@ -274,7 +275,6 @@ impl MidiControllersWindow {
     }
 }
 
-
 fn midi_controller_editor(
     ui: &mut Ui,
     controller: &mut Asset<MidiController>,
@@ -307,8 +307,13 @@ fn midi_controller_editor(
         let hovered_status_data1 = test_state.hovered_status_data1;
         let mut hovered_status_data1_next = None;
 
-        let selected_test_port =
-            render_test_device_box(ui, test_state, diagnostics, controller_id, test_command_sender);
+        let selected_test_port = render_test_device_box(
+            ui,
+            test_state,
+            diagnostics,
+            controller_id,
+            test_command_sender,
+        );
         if let Some(port_name) = selected_test_port {
             disconnect_project_mapping_for_test_port(project, &port_name);
         }
@@ -377,11 +382,21 @@ fn midi_controller_editor(
         if let Some(index) = remove_output {
             // If this output was being previewed, clear it
             if (test_state.value_preview_binding_indices.contains(&index)
-                || test_state.value_preview_binding_indices_previous.contains(&index)
-                || test_state.blackout_blink_preview_binding_indices.contains(&index)
-                || test_state.blackout_blink_preview_binding_indices_previous.contains(&index))
+                || test_state
+                    .value_preview_binding_indices_previous
+                    .contains(&index)
+                || test_state
+                    .blackout_blink_preview_binding_indices
+                    .contains(&index)
+                || test_state
+                    .blackout_blink_preview_binding_indices_previous
+                    .contains(&index))
                 && let Some((status, data1)) = output_binding_status_data1(
-                    &mapping.output_bindings.get(index).cloned().unwrap_or_default(),
+                    &mapping
+                        .output_bindings
+                        .get(index)
+                        .cloned()
+                        .unwrap_or_default(),
                     &mapping.color_mappings,
                 )
             {
@@ -392,11 +407,7 @@ fn midi_controller_editor(
         }
 
         // Emit commands for preview state transitions
-        emit_test_output_commands(
-            &mapping.output_bindings,
-            test_state,
-            test_command_sender,
-        );
+        emit_test_output_commands(&mapping.output_bindings, test_state, test_command_sender);
     });
 }
 
@@ -413,4 +424,3 @@ fn disconnect_project_mapping_for_test_port(
         .midi_active_mappings
         .retain(|port_name, _| normalize_controller_key(port_name) != normalized_selected);
 }
-

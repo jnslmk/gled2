@@ -7,10 +7,10 @@ use crate::pipeline::{
     texture_to_output::positions::{Lamp, Positions, Universe},
 };
 use kurbo::{ParamCurve, ParamCurveArclen};
-use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use tiny_skia::{Path, PathSegment, Point};
+use tracing::debug;
 use usvg::Node;
 
 pub type Universes = BTreeSet<u16>;

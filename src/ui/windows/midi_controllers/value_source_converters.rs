@@ -52,26 +52,43 @@ pub(super) fn value_source_kind(source: &MidiValueSource) -> MidiValueSourceKind
         MidiValueSource::SceneEffectSettingF32 { .. } => MidiValueSourceKind::SceneEffectSettingF32,
         MidiValueSource::SceneEffectOpacity { .. } => MidiValueSourceKind::SceneEffectOpacity,
         MidiValueSource::SceneEffectColorShift { .. } => MidiValueSourceKind::SceneEffectColorShift,
-        MidiValueSource::SceneEffectBeatProgression { .. } => MidiValueSourceKind::SceneEffectBeatProgression,
+        MidiValueSource::SceneEffectBeatProgression { .. } => {
+            MidiValueSourceKind::SceneEffectBeatProgression
+        }
         MidiValueSource::SceneEffectBeatOffset { .. } => MidiValueSourceKind::SceneEffectBeatOffset,
-        MidiValueSource::SceneEffectSpeedExponent { .. } => MidiValueSourceKind::SceneEffectSpeedExponent,
+        MidiValueSource::SceneEffectSpeedExponent { .. } => {
+            MidiValueSourceKind::SceneEffectSpeedExponent
+        }
         MidiValueSource::SceneEffectGroupIndex { .. } => MidiValueSourceKind::SceneEffectGroupIndex,
     }
 }
 
-pub(super) fn value_source_from_kind(kind: MidiValueSourceKind, current: MidiValueSource) -> MidiValueSource {
+pub(super) fn value_source_from_kind(
+    kind: MidiValueSourceKind,
+    current: MidiValueSource,
+) -> MidiValueSource {
     match kind {
         MidiValueSourceKind::SelectedSceneOpacity => MidiValueSource::SelectedSceneOpacity,
         MidiValueSourceKind::SelectedSceneDistributed => MidiValueSource::SelectedSceneDistributed,
         MidiValueSourceKind::SelectedSceneInputDimmer => MidiValueSource::SelectedSceneInputDimmer,
         MidiValueSourceKind::SelectedSceneBeatOffset => MidiValueSource::SelectedSceneBeatOffset,
-        MidiValueSourceKind::SelectedSceneIgnoreMainDimmer => MidiValueSource::SelectedSceneIgnoreMainDimmer,
-        MidiValueSourceKind::SelectedSceneSetOffsetOnFlash => MidiValueSource::SelectedSceneSetOffsetOnFlash,
+        MidiValueSourceKind::SelectedSceneIgnoreMainDimmer => {
+            MidiValueSource::SelectedSceneIgnoreMainDimmer
+        }
+        MidiValueSourceKind::SelectedSceneSetOffsetOnFlash => {
+            MidiValueSource::SelectedSceneSetOffsetOnFlash
+        }
         MidiValueSourceKind::MainDimmer => MidiValueSource::MainDimmer,
         MidiValueSourceKind::BeatFlank => match current {
-            MidiValueSource::BeatFlankPulse { start_beat, end_beat, blackout_blink_value } => {
-                MidiValueSource::BeatFlankPulse { start_beat, end_beat, blackout_blink_value }
-            }
+            MidiValueSource::BeatFlankPulse {
+                start_beat,
+                end_beat,
+                blackout_blink_value,
+            } => MidiValueSource::BeatFlankPulse {
+                start_beat,
+                end_beat,
+                blackout_blink_value,
+            },
             _ => MidiValueSource::BeatFlankPulse {
                 start_beat: 0.0,
                 end_beat: 0.0,
@@ -79,10 +96,9 @@ pub(super) fn value_source_from_kind(kind: MidiValueSourceKind, current: MidiVal
             },
         },
         MidiValueSourceKind::Blackout => match current {
-            MidiValueSource::Blackout { inverted, blink } => MidiValueSource::Blackout {
-                inverted,
-                blink,
-            },
+            MidiValueSource::Blackout { inverted, blink } => {
+                MidiValueSource::Blackout { inverted, blink }
+            }
             _ => MidiValueSource::Blackout {
                 inverted: false,
                 blink: false,
@@ -125,18 +141,22 @@ pub(super) fn value_source_from_kind(kind: MidiValueSourceKind, current: MidiVal
             target: current_target_from_value_source(&current),
             effect_index: current_effect_index_from_value_source(&current),
         },
-        MidiValueSourceKind::SceneEffectBeatProgression => MidiValueSource::SceneEffectBeatProgression {
-            target: current_target_from_value_source(&current),
-            effect_index: current_effect_index_from_value_source(&current),
-        },
+        MidiValueSourceKind::SceneEffectBeatProgression => {
+            MidiValueSource::SceneEffectBeatProgression {
+                target: current_target_from_value_source(&current),
+                effect_index: current_effect_index_from_value_source(&current),
+            }
+        }
         MidiValueSourceKind::SceneEffectBeatOffset => MidiValueSource::SceneEffectBeatOffset {
             target: current_target_from_value_source(&current),
             effect_index: current_effect_index_from_value_source(&current),
         },
-        MidiValueSourceKind::SceneEffectSpeedExponent => MidiValueSource::SceneEffectSpeedExponent {
-            target: current_target_from_value_source(&current),
-            effect_index: current_effect_index_from_value_source(&current),
-        },
+        MidiValueSourceKind::SceneEffectSpeedExponent => {
+            MidiValueSource::SceneEffectSpeedExponent {
+                target: current_target_from_value_source(&current),
+                effect_index: current_effect_index_from_value_source(&current),
+            }
+        }
         MidiValueSourceKind::SceneEffectGroupIndex => MidiValueSource::SceneEffectGroupIndex {
             target: current_target_from_value_source(&current),
             effect_index: current_effect_index_from_value_source(&current),

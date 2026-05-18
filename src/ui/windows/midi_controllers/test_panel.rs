@@ -1,13 +1,10 @@
-use crate::{
-    midi::runtime::TestCommand,
-    storage::asset::midi_controller::MidiController,
-};
+use crate::{midi::runtime::TestCommand, storage::asset::midi_controller::MidiController};
 use egui::{ComboBox, Ui};
 use egui_phosphor_icons::icons;
 use midir::MidiOutput;
 use std::collections::BTreeSet;
 
-use super::{iconized, monitor, MidiControllerTestState};
+use super::{MidiControllerTestState, iconized, monitor};
 
 fn is_selectable_output_port(name: &str) -> bool {
     !name.trim().is_empty()
@@ -62,11 +59,17 @@ pub(super) fn render_test_device_box(
                     .selected_text(if test_state.selected_output_port.is_none() {
                         "No Test Device"
                     } else {
-                        test_state.selected_output_port.as_deref().unwrap_or("No Test Device")
+                        test_state
+                            .selected_output_port
+                            .as_deref()
+                            .unwrap_or("No Test Device")
                     })
                     .show_ui(ui, |ui| {
                         if ui
-                            .selectable_label(test_state.selected_output_port.is_none(), "No Test Device")
+                            .selectable_label(
+                                test_state.selected_output_port.is_none(),
+                                "No Test Device",
+                            )
                             .clicked()
                         {
                             test_state.selected_output_port = None;

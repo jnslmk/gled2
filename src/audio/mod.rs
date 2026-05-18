@@ -251,7 +251,7 @@ pub struct AudioPool {
 impl AudioPool {
     pub fn restart_fft(&mut self) {
         self.audio_source = self.selected_device.clone().map(|device_id| {
-            log::info!("Restarting FFT with device: {:?}", device_id);
+            tracing::info!("Restarting FFT with device: {:?}", device_id);
             let fft_tx = start_process_fft_data_thread();
             FFTAudioSource::start(device_id, fft_tx)
         });
@@ -326,7 +326,7 @@ pub fn start_process_fft_data_thread() -> Sender<[f32; FREQ_BINS]> {
         .spawn(move || {
             #[cfg(feature = "profiling")]
             profiling::register_thread!("SoundTriggerThread");
-            log::info!("Sound trigger thread started");
+            tracing::info!("Sound trigger thread started");
             let mut sound_data = SoundData::default();
 
             while let Ok(samples) = rx.recv() {
@@ -344,7 +344,7 @@ pub fn start_process_fft_data_thread() -> Sender<[f32; FREQ_BINS]> {
 pub fn audio_device_info_loop(continue_scan: &AtomicBool) {
     #[cfg(feature = "profiling")]
     profiling::register_thread!("audio_device_info_loop");
-    log::info!("Started scanning for audio devices...");
+    tracing::info!("Started scanning for audio devices...");
     while continue_scan.load(Relaxed) {
         #[cfg(feature = "profiling")]
         puffin::profile_scope!("audio_device_info_loop");
@@ -361,10 +361,10 @@ pub fn audio_device_info_loop(continue_scan: &AtomicBool) {
             Some((id, description))
         }));
 
-        *AUDIO_DEVICES.lock().unwrap() = device_map;
+        *AUDIO_DEVICES.lock().expect("audio devices lock poisoned") = device_map;
         sleep(Duration::from_secs(1));
     }
-    log::info!("Audio devices scanning stopped.");
+    tracing::info!("Audio devices scanning stopped.");
 }
 
 fn is_capture_input_device(description: &DeviceDescription) -> bool {
@@ -414,9 +414,9 @@ mod tests {
     use cpal::DeviceDescriptionBuilder;
     use cpal::DeviceDirection;
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-    use std::sync::{Arc, atomic::AtomicBool};
-    use std::sync::atomic::Ordering::Relaxed;
     use std::str::FromStr;
+    use std::sync::atomic::Ordering::Relaxed;
+    use std::sync::{Arc, atomic::AtomicBool};
     use std::time::{Duration, Instant};
 
     #[test]
@@ -492,11 +492,11 @@ mod tests {
     fn audio_device_labels_add_number_suffix_for_identical_final_labels() {
         let devices = vec![
             (
-                DeviceId::from_str("ALSA://device/1").unwrap(),
+                DeviceId::from_str("ALSA://device/1").expect("valid device id"),
                 DeviceDescriptionBuilder::new("USB Audio".to_string()).build(),
             ),
             (
-                DeviceId::from_str("ALSA://device/2").unwrap(),
+                DeviceId::from_str("ALSA://device/2").expect("valid device id"),
                 DeviceDescriptionBuilder::new("USB Audio".to_string()).build(),
             ),
         ];
@@ -591,7 +591,9 @@ mod tests {
     #[ignore = "Requires a live microphone/audio input device"]
     fn live_audio_input_stream_receives_samples() {
         let host = cpal::default_host();
-        let default_input_id = host.default_input_device().and_then(|device| device.id().ok());
+        let default_input_id = host
+            .default_input_device()
+            .and_then(|device| device.id().ok());
 
         let mut candidates = host
             .input_devices()
@@ -628,7 +630,9 @@ mod tests {
         for device in candidates {
             let label = device
                 .description()
-                .map(|description| audio_device_label(&device.id().expect("Missing device id"), &description))
+                .map(|description| {
+                    audio_device_label(&device.id().expect("Missing device id"), &description)
+                })
                 .unwrap_or_else(|_| "Unknown input device".to_string());
 
             let config = device

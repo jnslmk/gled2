@@ -137,7 +137,7 @@ pub fn start_thread() {
                     Ok(git) => git,
                     Err(err) => {
                         let err: String = format!("Could not open git: {err}");
-                        log::error!("{err}");
+                        tracing::error!("{err}");
                         ERROR.lock().replace(err);
                         continue;
                     }
@@ -214,7 +214,7 @@ pub fn start_thread() {
                                 Ok(branches) => branches,
                                 Err(err) => {
                                     let err: String = format!("Could not get branches: {err}");
-                                    log::error!("{err}");
+                                    tracing::error!("{err}");
                                     ERROR.lock().replace(err);
                                     continue;
                                 }
@@ -225,7 +225,7 @@ pub fn start_thread() {
                                 Ok(current_branch) => current_branch,
                                 Err(err) => {
                                     let err: String = format!("Could not get current_branch: {err}");
-                                    log::error!("{err}");
+                                    tracing::error!("{err}");
                                     ERROR.lock().replace(err);
                                     continue;
                                 }
@@ -242,7 +242,7 @@ pub fn start_thread() {
                             let version_file = STORAGE_DIR.join("version");
                             match read_to_string(version_file).ok().and_then(|version| {
                                 semver::Version::parse(version.trim())
-                                    .map_err(|err| log::error!("Could not parse version file: {err:?}"))
+                                    .map_err(|err| tracing::error!("Could not parse version file: {err:?}"))
                                     .ok()
                             }) {
                                 Some(version) => {
@@ -250,7 +250,7 @@ pub fn start_thread() {
                                         > semver::Version::parse(env!("CARGO_PKG_VERSION"))
                                             .expect("Could not parse cargo pkg version")
                                     {
-                                        log::error!(
+                                        tracing::error!(
                                             "Gled version is too old. Please update to the latest version."
                                         );
                                         ERROR.lock().replace("Gled version is too old. Please update to the latest version.".to_string());
@@ -325,7 +325,7 @@ pub fn start_thread() {
                         }
                         StorageAction::DeleteAsset { uuid, dir_name } => {
                             if let Err(err) = git.delete_asset(&asset_path(uuid, dir_name)) {
-                                log::error!("Could not delete asset: {err:?}");
+                                tracing::error!("Could not delete asset: {err:?}");
                             }
 
                             StorageAction::CountStagedFiles.enqueue();
@@ -354,7 +354,7 @@ pub fn write_storage_version_file(git: &mut Git) {
         STORAGE_VERSION_FILE.as_path(),
         format!("{}\n", env!("CARGO_PKG_VERSION")),
     ) {
-        log::error!("Could not write storage version file: {err}");
+        tracing::error!("Could not write storage version file: {err}");
         ERROR
             .lock()
             .replace(format!("Could not write storage version file: {err}"));
@@ -363,7 +363,7 @@ pub fn write_storage_version_file(git: &mut Git) {
     }
 
     if let Err(err) = git.add(STORAGE_VERSION_FILE.as_path()) {
-        log::error!("Could not add storage version file to git: {err}");
+        tracing::error!("Could not add storage version file to git: {err}");
         ERROR
             .lock()
             .replace(format!("Could not add storage version file to git: {err}"));

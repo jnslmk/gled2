@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use egui::{Button, Id, Vec2, ViewportId};
-use log::debug;
+use tracing::debug;
 
 #[derive(Default)]
 pub struct ProjectsWindow {
@@ -69,7 +69,7 @@ impl ProjectsWindow {
                                         Button::new("🖻 Export SVG file"),
                                     )
                                     .clicked()
-                                {  
+                                {
                                     let svg = project.data.svg.as_ref().cloned();
                                     std::thread::Builder::new()
                                         .name("gled:ui:save_svg".to_string())

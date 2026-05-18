@@ -242,11 +242,9 @@ fn shared_curve_and_trigger_menus(
             };
 
             ui.set_min_height(400.0);
-            if let Some(id) = AssetTree::show_asset_selection(
-                ui,
-                ui.make_persistent_id(Curve::NAME),
-                collections,
-            ) {
+            if let Some(id) =
+                AssetTree::show_asset_selection(ui, ui.make_persistent_id(Curve::NAME), collections)
+            {
                 *curve_id = Some(id);
                 ui.data_mut(|d| {
                     d.remove::<TreeViewState<usize>>(ui.make_persistent_id(Curve::NAME))

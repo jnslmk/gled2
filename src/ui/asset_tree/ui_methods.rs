@@ -77,7 +77,7 @@ impl<T: AssetTrait> AssetTree<T> {
                                 .unwrap_or_default();
                             selection_changed = true;
                             // we do not want keyboard focus so that keyboard bindings still work
-                            ui.memory_mut(|memory|memory.stop_text_input());
+                            ui.memory_mut(|memory| memory.stop_text_input());
                         }
                         Action::Move(DragAndDrop { source, target, .. }) => {
                             for source in source {
@@ -98,7 +98,11 @@ impl<T: AssetTrait> AssetTree<T> {
                                         asset.path = target
                                             .into_iter()
                                             .chain(std::iter::once(
-                                                asset.path.last().unwrap().clone(),
+                                                asset
+                                                    .path
+                                                    .last()
+                                                    .expect("asset path must not be empty")
+                                                    .clone(),
                                             ))
                                             .collect();
                                         asset.save(collections);

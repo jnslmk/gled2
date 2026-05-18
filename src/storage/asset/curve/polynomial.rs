@@ -55,7 +55,7 @@ impl BezierCurve {
     }
 
     pub fn polynomial(&self) -> Polynomial {
-        log::debug!("Fitting polynomial to curve: {self:?}");
+        tracing::debug!("Fitting polynomial to curve: {self:?}");
 
         let curve = QuadraticBezierShape::from_points_stroke(
             [self.start, self.bezier, self.end],
@@ -103,7 +103,7 @@ impl BezierCurve {
 
         let polynomial = polynomials.remove(0).1.polynomial;
 
-        log::debug!("Done fitting polynomial to curve: {self:?}");
+        tracing::debug!("Done fitting polynomial to curve: {self:?}");
 
         POLYNOMIALS_FITTING.fetch_sub(1, Relaxed);
 

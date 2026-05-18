@@ -131,24 +131,48 @@ fn output_source_from_input_action(action: &MidiInputAction) -> Option<MidiValue
             effect_index: *effect_index,
             setting_index: *setting_index,
         }),
-        MidiInputAction::SetSceneEffectOpacity { target, effect_index } => {
-            Some(MidiValueSource::SceneEffectOpacity { target: target.clone(), effect_index: *effect_index })
-        }
-        MidiInputAction::SetSceneEffectColorShift { target, effect_index } => {
-            Some(MidiValueSource::SceneEffectColorShift { target: target.clone(), effect_index: *effect_index })
-        }
-        MidiInputAction::SetSceneEffectBeatProgression { target, effect_index } => {
-            Some(MidiValueSource::SceneEffectBeatProgression { target: target.clone(), effect_index: *effect_index })
-        }
-        MidiInputAction::SetSceneEffectBeatOffset { target, effect_index } => {
-            Some(MidiValueSource::SceneEffectBeatOffset { target: target.clone(), effect_index: *effect_index })
-        }
-        MidiInputAction::SetSceneEffectSpeedExponent { target, effect_index } => {
-            Some(MidiValueSource::SceneEffectSpeedExponent { target: target.clone(), effect_index: *effect_index })
-        }
-        MidiInputAction::SetSceneEffectGroupIndex { target, effect_index } => {
-            Some(MidiValueSource::SceneEffectGroupIndex { target: target.clone(), effect_index: *effect_index })
-        }
+        MidiInputAction::SetSceneEffectOpacity {
+            target,
+            effect_index,
+        } => Some(MidiValueSource::SceneEffectOpacity {
+            target: target.clone(),
+            effect_index: *effect_index,
+        }),
+        MidiInputAction::SetSceneEffectColorShift {
+            target,
+            effect_index,
+        } => Some(MidiValueSource::SceneEffectColorShift {
+            target: target.clone(),
+            effect_index: *effect_index,
+        }),
+        MidiInputAction::SetSceneEffectBeatProgression {
+            target,
+            effect_index,
+        } => Some(MidiValueSource::SceneEffectBeatProgression {
+            target: target.clone(),
+            effect_index: *effect_index,
+        }),
+        MidiInputAction::SetSceneEffectBeatOffset {
+            target,
+            effect_index,
+        } => Some(MidiValueSource::SceneEffectBeatOffset {
+            target: target.clone(),
+            effect_index: *effect_index,
+        }),
+        MidiInputAction::SetSceneEffectSpeedExponent {
+            target,
+            effect_index,
+        } => Some(MidiValueSource::SceneEffectSpeedExponent {
+            target: target.clone(),
+            effect_index: *effect_index,
+        }),
+        MidiInputAction::SetSceneEffectGroupIndex {
+            target,
+            effect_index,
+        } => Some(MidiValueSource::SceneEffectGroupIndex {
+            target: target.clone(),
+            effect_index: *effect_index,
+        }),
         MidiInputAction::Tap
         | MidiInputAction::SetSpeedAdd
         | MidiInputAction::SetSpeedMultiply
@@ -164,7 +188,8 @@ pub(super) fn add_matching_output_binding(
     input_data1: u8,
     action: &MidiInputAction,
 ) -> bool {
-    let source = output_source_from_input_action(action).unwrap_or(MidiValueSource::SelectedSceneOpacity);
+    let source =
+        output_source_from_input_action(action).unwrap_or(MidiValueSource::SelectedSceneOpacity);
 
     let already_exists = mapping.output_bindings.iter().any(|binding| {
         matches!(
@@ -180,21 +205,24 @@ pub(super) fn add_matching_output_binding(
         return false;
     }
 
-    mapping.output_bindings.insert(0, MidiOutputBinding {
-        name: if input_name.is_empty() {
-            "Output".to_owned()
-        } else {
-            format!("{} Output", input_name)
+    mapping.output_bindings.insert(
+        0,
+        MidiOutputBinding {
+            name: if input_name.is_empty() {
+                "Output".to_owned()
+            } else {
+                format!("{} Output", input_name)
+            },
+            kind: MidiOutputBindingKind::Value(MidiValueOutput {
+                status: input_status,
+                data1: input_data1,
+                min: 0,
+                max: 127,
+                active_value: 127,
+                source,
+            }),
         },
-        kind: MidiOutputBindingKind::Value(MidiValueOutput {
-            status: input_status,
-            data1: input_data1,
-            min: 0,
-            max: 127,
-            active_value: 127,
-            source,
-        }),
-    });
+    );
 
     true
 }

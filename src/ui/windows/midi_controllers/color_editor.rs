@@ -1,8 +1,8 @@
-use crate::storage::asset::midi_controller::{
-    MidiNamedSceneColorMapping, MidiSceneColorMessage, MidiSceneColorMessageMap,
-    MidiSceneColorValueOutput, MidiOutputBinding, MidiOutputBindingKind,
-};
 use crate::midi::runtime::TestCommand;
+use crate::storage::asset::midi_controller::{
+    MidiNamedSceneColorMapping, MidiOutputBinding, MidiOutputBindingKind, MidiSceneColorMessage,
+    MidiSceneColorMessageMap, MidiSceneColorValueOutput,
+};
 use egui::{ComboBox, DragValue, Ui};
 use egui_phosphor_icons::icons;
 use kanal::Sender;
@@ -15,7 +15,9 @@ pub(super) fn scene_color_value_output_editor(
     color_mappings: &[MidiNamedSceneColorMapping],
     test_device_selected: bool,
     dirty: &mut bool,
-    controller_id: crate::storage::asset_id::AssetId<crate::storage::asset::midi_controller::MidiController>,
+    controller_id: crate::storage::asset_id::AssetId<
+        crate::storage::asset::midi_controller::MidiController,
+    >,
     index: usize,
 ) {
     let crate::storage::asset::midi_controller::MidiColorSource::SceneColor { target } =
@@ -58,7 +60,9 @@ pub(super) fn scene_color_value_output_editor(
     if color_mappings.is_empty() {
         ui.small("Add a color mapping first.");
     } else if test_device_selected {
-        ui.small("Hover or edit a color value in Color Mappings to preview on the active test device.");
+        ui.small(
+            "Hover or edit a color value in Color Mappings to preview on the active test device.",
+        );
     }
 }
 
@@ -68,7 +72,9 @@ pub(super) fn render_color_mappings_section(
     bindings: &[MidiOutputBinding],
     test_command_sender: &Sender<TestCommand>,
     dirty: &mut bool,
-    _controller_id: crate::storage::asset_id::AssetId<crate::storage::asset::midi_controller::MidiController>,
+    _controller_id: crate::storage::asset_id::AssetId<
+        crate::storage::asset::midi_controller::MidiController,
+    >,
 ) {
     egui::CollapsingHeader::new(iconized(ui, icons::PALETTE, " Color Mappings"))
         .default_open(true)
@@ -131,7 +137,8 @@ pub(super) fn render_color_mappings_section(
                     if let Some(value) = preview_value {
                         // Emit SendOutput commands for all bindings that use this mapping
                         for binding in bindings {
-                            if let MidiOutputBindingKind::SceneColorValue(color_output) = &binding.kind
+                            if let MidiOutputBindingKind::SceneColorValue(color_output) =
+                                &binding.kind
                                 && color_output.mapping_name == mapping.name
                             {
                                 let _ = test_command_sender.send(TestCommand::SendOutput {

@@ -14,7 +14,7 @@ where
     D: serde::Deserializer<'de>,
 {
     let Some(serialized) = Option::<String>::deserialize(deserializer)? else {
-      return Ok(None)
+        return Ok(None);
     };
     Ok(DeviceId::from_str(&serialized).ok())
 }

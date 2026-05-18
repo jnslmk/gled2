@@ -355,8 +355,6 @@ mod tests {
                 [0f32; FREQ_BINS]
             };
             signal.tick(data);
-            eprintln!("{:?}", signal.running_sum);
-            eprintln!("--------------")
         }
         signal
     }
@@ -373,8 +371,6 @@ mod tests {
         signal.params.averaging_samples = 1;
         for i in 0..(MAX_BUFFER_LENGTH + 10) {
             signal.tick([1f32; FREQ_BINS]);
-            eprintln!("running_rms_sum = {:?}", signal.running_sum);
-            eprintln!("--------------");
             if i >= 2 {
                 assert_eq!(signal.running_sum, Array1::from_vec(vec![2f32; FREQ_BINS]))
             }

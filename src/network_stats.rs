@@ -14,7 +14,7 @@ pub fn start_thread() -> Receiver<(f64, f64)> {
     std::thread::Builder::new()
         .name("gled:network:stats".to_string())
         .spawn(move || {
-            log::info!("Starting network stats thread");
+            tracing::info!("Starting network stats thread");
             #[cfg(feature = "profiling")]
             profiling::register_thread!("network:stats");
 

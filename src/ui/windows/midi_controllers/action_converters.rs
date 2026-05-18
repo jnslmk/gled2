@@ -59,11 +59,21 @@ pub(super) fn input_action_kind(action: &MidiInputAction) -> MidiInputActionKind
             MidiInputActionKind::SetSceneEffectSettingF32
         }
         MidiInputAction::SetSceneEffectOpacity { .. } => MidiInputActionKind::SetSceneEffectOpacity,
-        MidiInputAction::SetSceneEffectColorShift { .. } => MidiInputActionKind::SetSceneEffectColorShift,
-        MidiInputAction::SetSceneEffectBeatProgression { .. } => MidiInputActionKind::SetSceneEffectBeatProgression,
-        MidiInputAction::SetSceneEffectBeatOffset { .. } => MidiInputActionKind::SetSceneEffectBeatOffset,
-        MidiInputAction::SetSceneEffectSpeedExponent { .. } => MidiInputActionKind::SetSceneEffectSpeedExponent,
-        MidiInputAction::SetSceneEffectGroupIndex { .. } => MidiInputActionKind::SetSceneEffectGroupIndex,
+        MidiInputAction::SetSceneEffectColorShift { .. } => {
+            MidiInputActionKind::SetSceneEffectColorShift
+        }
+        MidiInputAction::SetSceneEffectBeatProgression { .. } => {
+            MidiInputActionKind::SetSceneEffectBeatProgression
+        }
+        MidiInputAction::SetSceneEffectBeatOffset { .. } => {
+            MidiInputActionKind::SetSceneEffectBeatOffset
+        }
+        MidiInputAction::SetSceneEffectSpeedExponent { .. } => {
+            MidiInputActionKind::SetSceneEffectSpeedExponent
+        }
+        MidiInputAction::SetSceneEffectGroupIndex { .. } => {
+            MidiInputActionKind::SetSceneEffectGroupIndex
+        }
     }
 }
 
@@ -126,27 +136,45 @@ pub(super) fn input_action_from_kind(
         }
         MidiInputActionKind::SetSceneEffectOpacity => {
             let effect_index = current_effect_index_from_action(&current);
-            MidiInputAction::SetSceneEffectOpacity { target: current_target_from_action(&current), effect_index }
+            MidiInputAction::SetSceneEffectOpacity {
+                target: current_target_from_action(&current),
+                effect_index,
+            }
         }
         MidiInputActionKind::SetSceneEffectColorShift => {
             let effect_index = current_effect_index_from_action(&current);
-            MidiInputAction::SetSceneEffectColorShift { target: current_target_from_action(&current), effect_index }
+            MidiInputAction::SetSceneEffectColorShift {
+                target: current_target_from_action(&current),
+                effect_index,
+            }
         }
         MidiInputActionKind::SetSceneEffectBeatProgression => {
             let effect_index = current_effect_index_from_action(&current);
-            MidiInputAction::SetSceneEffectBeatProgression { target: current_target_from_action(&current), effect_index }
+            MidiInputAction::SetSceneEffectBeatProgression {
+                target: current_target_from_action(&current),
+                effect_index,
+            }
         }
         MidiInputActionKind::SetSceneEffectBeatOffset => {
             let effect_index = current_effect_index_from_action(&current);
-            MidiInputAction::SetSceneEffectBeatOffset { target: current_target_from_action(&current), effect_index }
+            MidiInputAction::SetSceneEffectBeatOffset {
+                target: current_target_from_action(&current),
+                effect_index,
+            }
         }
         MidiInputActionKind::SetSceneEffectSpeedExponent => {
             let effect_index = current_effect_index_from_action(&current);
-            MidiInputAction::SetSceneEffectSpeedExponent { target: current_target_from_action(&current), effect_index }
+            MidiInputAction::SetSceneEffectSpeedExponent {
+                target: current_target_from_action(&current),
+                effect_index,
+            }
         }
         MidiInputActionKind::SetSceneEffectGroupIndex => {
             let effect_index = current_effect_index_from_action(&current);
-            MidiInputAction::SetSceneEffectGroupIndex { target: current_target_from_action(&current), effect_index }
+            MidiInputAction::SetSceneEffectGroupIndex {
+                target: current_target_from_action(&current),
+                effect_index,
+            }
         }
     }
 }

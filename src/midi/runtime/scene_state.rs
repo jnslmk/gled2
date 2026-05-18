@@ -49,11 +49,15 @@ pub(super) fn scene_color(state: &MidiState, target: &MidiSceneTarget) -> SceneI
 }
 
 pub(super) fn scene_is_active(state: &MidiState, target: &MidiSceneTarget) -> bool {
-    state.active_scenes.contains(&target_location(state, target))
+    state
+        .active_scenes
+        .contains(&target_location(state, target))
 }
 
 pub(super) fn scene_is_flashed(state: &MidiState, target: &MidiSceneTarget) -> bool {
-    state.flashed_scenes.contains(&target_location(state, target))
+    state
+        .flashed_scenes
+        .contains(&target_location(state, target))
 }
 
 pub(super) fn scene_opacity(state: &MidiState, target: &MidiSceneTarget) -> f32 {
@@ -129,7 +133,11 @@ pub(super) fn scene_effect_setting_f32(
         .unwrap_or(0.0)
 }
 
-pub(super) fn scene_effect_opacity(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+pub(super) fn scene_effect_opacity(
+    state: &MidiState,
+    target: &MidiSceneTarget,
+    effect_index: usize,
+) -> f32 {
     state
         .scene_effect_opacity
         .get(&(target_location(state, target), effect_index))
@@ -137,7 +145,11 @@ pub(super) fn scene_effect_opacity(state: &MidiState, target: &MidiSceneTarget, 
         .unwrap_or(0.0)
 }
 
-pub(super) fn scene_effect_color_shift(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+pub(super) fn scene_effect_color_shift(
+    state: &MidiState,
+    target: &MidiSceneTarget,
+    effect_index: usize,
+) -> f32 {
     state
         .scene_effect_color_shift
         .get(&(target_location(state, target), effect_index))
@@ -145,7 +157,11 @@ pub(super) fn scene_effect_color_shift(state: &MidiState, target: &MidiSceneTarg
         .unwrap_or(0.0)
 }
 
-pub(super) fn scene_effect_beat_progression(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+pub(super) fn scene_effect_beat_progression(
+    state: &MidiState,
+    target: &MidiSceneTarget,
+    effect_index: usize,
+) -> f32 {
     state
         .scene_effect_beat_progression
         .get(&(target_location(state, target), effect_index))
@@ -153,7 +169,11 @@ pub(super) fn scene_effect_beat_progression(state: &MidiState, target: &MidiScen
         .unwrap_or(0.0)
 }
 
-pub(super) fn scene_effect_beat_offset(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+pub(super) fn scene_effect_beat_offset(
+    state: &MidiState,
+    target: &MidiSceneTarget,
+    effect_index: usize,
+) -> f32 {
     state
         .scene_effect_beat_offset
         .get(&(target_location(state, target), effect_index))
@@ -161,7 +181,11 @@ pub(super) fn scene_effect_beat_offset(state: &MidiState, target: &MidiSceneTarg
         .unwrap_or(0.0)
 }
 
-pub(super) fn scene_effect_speed_exponent(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+pub(super) fn scene_effect_speed_exponent(
+    state: &MidiState,
+    target: &MidiSceneTarget,
+    effect_index: usize,
+) -> f32 {
     state
         .scene_effect_speed_exponent
         .get(&(target_location(state, target), effect_index))
@@ -169,7 +193,11 @@ pub(super) fn scene_effect_speed_exponent(state: &MidiState, target: &MidiSceneT
         .unwrap_or(0.5)
 }
 
-pub(super) fn scene_effect_group_index(state: &MidiState, target: &MidiSceneTarget, effect_index: usize) -> f32 {
+pub(super) fn scene_effect_group_index(
+    state: &MidiState,
+    target: &MidiSceneTarget,
+    effect_index: usize,
+) -> f32 {
     state
         .scene_effect_group_index
         .get(&(target_location(state, target), effect_index))

@@ -8,11 +8,11 @@ use egui::{Context, mutex::Mutex};
 use event::{GamepadEvent, InputEvent};
 use gilrs::{Axis, Button, Event, Gilrs};
 use kanal::Receiver;
-use log::debug;
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, OnceLock},
 };
+use tracing::debug;
 
 static INPUT: OnceLock<Arc<Mutex<Input>>> = OnceLock::new();
 
@@ -76,7 +76,7 @@ impl Input {
         }
 
         while let Ok(Some(event)) = input.artnet_receiver.try_recv() {
-            log::trace!("Received Artnet event: {event:?}");
+            tracing::trace!("Received Artnet event: {event:?}");
             if event.value == 0 {
                 input.events.remove(&InputEvent::Artnet(event.channel));
             } else {

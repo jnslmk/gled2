@@ -106,7 +106,7 @@ impl ChannelOverwritesWindow {
                                         );
                                         channel_overwrites.clone().set();
                                     }
-                                
+
                         }
                     });
                     ui.separator();
@@ -114,7 +114,7 @@ impl ChannelOverwritesWindow {
                     egui::ScrollArea::vertical()
                         .scroll_bar_visibility(AlwaysVisible)
                         .id_salt("channel_overwrites_scroll")
-                        .show(ui, |ui| {                
+                        .show(ui, |ui| {
                             ui.set_min_width(ui.available_width());
                             for (channel_identifier, value) in channel_overwrites.0.iter() {
                                 ui.horizontal(|ui| {
