@@ -14,6 +14,7 @@ pub mod pills;
 pub mod scene_effect_editor;
 pub mod scene_instance;
 pub mod temperature;
+#[cfg(not(debug_assertions))]
 pub mod update_check;
 pub mod window_common;
 pub mod windows;

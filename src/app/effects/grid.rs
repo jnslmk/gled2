@@ -14,7 +14,7 @@ use crate::{
     },
 };
 use egui::{
-    Color32, Frame, Id, KeyboardShortcut, Modifiers, TextureHandle, Ui, UiBuilder, Vec2,
+    Color32, Frame, Id, KeyboardShortcut, Modifiers, Ui, UiBuilder, Vec2,
     scroll_area::ScrollBarVisibility::AlwaysVisible,
 };
 use egui::{DragAndDrop, Label, LayerId, Order, Response, Sense, Widget};
@@ -24,7 +24,7 @@ use epaint::{Stroke, StrokeKind};
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 
 impl App {
-    pub fn effects_grid(&mut self, ui: &mut Ui, svg: Option<TextureHandle>) {
+    pub fn effects_grid(&mut self, ui: &mut Ui) {
         egui::ScrollArea::both()
             .id_salt("grid scroll")
             .auto_shrink([false, false])
@@ -46,7 +46,6 @@ impl App {
                     .ctx()
                     .layer_transform_to_global(ui.layer_id())
                     .unwrap_or_default();
-                let groups = project.groups.clone();
 
                 let grid = &mut project.scenes_instances_grid;
                 let start_pos = ui.cursor().min;
@@ -115,9 +114,6 @@ impl App {
                                                     dnd_drag_source(ui, item_id, location, |ui| {
                                                         ui.add(SceneInstanceWidget {
                                                             scene_instance,
-                                                            svg: svg.clone(),
-                                                            size: Vec2::splat(effects_size),
-                                                            groups: &groups,
                                                             timing: &self.timing,
                                                             collections: &self.collections,
                                                             effects_size,

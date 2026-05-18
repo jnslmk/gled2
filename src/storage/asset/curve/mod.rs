@@ -310,9 +310,10 @@ impl Curve {
     }
 
     pub fn value(&self, beat_position: f32) -> f32 {
-        if !(0.0..=4.0).contains(&beat_position) {
-            panic!("Beat position out of range 0.0..=4.0: {beat_position}");
-        }
+        assert!(
+            (0.0..=4.0).contains(&beat_position),
+            "Beat position out of range 0.0..=4.0: {beat_position}"
+        );
 
         let value = self
             .points

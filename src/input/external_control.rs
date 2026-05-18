@@ -29,6 +29,10 @@ impl Default for ArtnetControlConfig {
     }
 }
 
+// INVARIANT: All fields are required for correct binary protocol layout (DekuRead from ArtNet DMX bytes).
+// Not all fields are used by the current business logic, but they must be present for
+// correct offset calculations during deserialization.
+#[allow(dead_code)]
 #[derive(Debug, DekuRead, Default, Copy, Clone)]
 pub struct ArtnetSceneControlState {
     pub scene_index: u8, // 0: disabled

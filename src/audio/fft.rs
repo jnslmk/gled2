@@ -16,7 +16,6 @@ use std::{
 };
 use tracing::debug;
 
-pub const SAMPLE_RATE: f32 = 48_000.0;
 pub const MAX_FREQ: f32 = 24_000.0;
 
 // FFT size - power of 2 for efficient FFT
@@ -25,15 +24,6 @@ pub const FREQ_BINS: usize = 256;
 const STREAM_RESTART_DELAY_MS: u64 = 500;
 
 static DROPPED_SAMPLES: AtomicU64 = AtomicU64::new(0);
-
-pub fn get_fft_bin_index_by_frequency(frequency: f32) -> usize {
-    let k = WINDOW_SIZE as f32 * frequency / SAMPLE_RATE;
-    k.floor() as usize
-}
-
-pub fn max_frequency() -> f32 {
-    SAMPLE_RATE / FREQ_BINS as f32
-}
 
 pub fn fft_data_u8(fft_data: Vec<f32>) -> [u8; FREQ_BINS * 4] {
     let mut fft_data_u8 = [0u8; FREQ_BINS * 4];

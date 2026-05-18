@@ -30,7 +30,6 @@ impl Default for OscConfig {
 
 pub struct OSCHandler {
     pub(super) socket: UdpSocket,
-    pub(super) has_subscribers: AtomicBool,
     pub(super) running: AtomicBool,
 }
 
@@ -49,7 +48,6 @@ impl OSCHandler {
         socket.set_read_timeout(Some(Duration::from_millis(10)))?;
         let ret = Arc::new(Self {
             socket,
-            has_subscribers: AtomicBool::new(false),
             running: AtomicBool::new(true),
         });
         feedback::start_network_loop(ret.clone());
@@ -58,9 +56,5 @@ impl OSCHandler {
 
     pub fn stop(&self) {
         self.running.store(false, Ordering::Relaxed);
-    }
-
-    pub fn has_subscribers(&self) -> bool {
-        self.has_subscribers.load(Ordering::Relaxed)
     }
 }

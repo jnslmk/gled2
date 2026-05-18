@@ -17,7 +17,16 @@ use serde::{Deserialize, Serialize};
 use std::num::NonZeroU64;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
-use wgpu::*;
+use wgpu::{
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferUsages,
+    CommandEncoderDescriptor, Extent3d, FragmentState, LoadOp, MultisampleState, Operations,
+    PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState,
+    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
+    ShaderModuleDescriptor, ShaderSource, ShaderStages, StoreOp, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor,
+    VertexState,
+};
 
 #[derive(PartialEq, Debug)]
 struct PreviewShader {
@@ -105,11 +114,12 @@ impl PreviewShader {
         });
 
         let contents = [0u8; 1024];
-        let spectrum_texture_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("audio spectrum uniform buffer"),
-            contents: &contents,
-            usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
-        });
+        let spectrum_texture_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("audio spectrum uniform buffer"),
+                contents: &contents,
+                usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
+            });
 
         let spectrum_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("audio spectrum bind group"),

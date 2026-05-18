@@ -1,7 +1,12 @@
 //! Clear output buffer.
 use crate::{OUTPUT_BUFFER, pipeline::constants::OUTPUT_BUFFER_SIZE, wgpu_render_state};
 use std::{num::NonZeroU64, sync::OnceLock};
-use wgpu::*;
+use wgpu::{
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingType, BufferBindingType, CommandEncoder, ComputePassDescriptor,
+    ComputePipeline, ComputePipelineDescriptor, PipelineLayoutDescriptor, ShaderModuleDescriptor,
+    ShaderSource, ShaderStages,
+};
 
 #[derive(Debug)]
 pub struct OutputClear {

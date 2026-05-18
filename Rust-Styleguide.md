@@ -86,7 +86,6 @@ Recommended `main.rs` skeleton:
 ```rust
 #![forbid(unsafe_code)]
 #![forbid(clippy::unwrap_used)]
-#![warn(clippy::panic)]
 #![warn(clippy::todo)]
 #![warn(missing_debug_implementations)]
 

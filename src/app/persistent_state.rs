@@ -25,6 +25,12 @@ pub struct PersistentState {
     current: PersistentStateInner,
 }
 
+impl std::fmt::Debug for PersistentState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PersistentState").finish_non_exhaustive()
+    }
+}
+
 impl Default for PersistentState {
     fn default() -> Self {
         let (sender, receiver) = bounded(1);

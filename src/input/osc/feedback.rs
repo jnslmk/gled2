@@ -36,9 +36,6 @@ pub(super) fn start_network_loop(handler: Arc<OSCHandler>) {
 
             while handler.running.load(Ordering::Relaxed) {
                 subscribers.retain(|_, last_seen| last_seen.elapsed() < SUBSCRIBER_TTL);
-                handler
-                    .has_subscribers
-                    .store(!subscribers.is_empty(), Ordering::Relaxed);
 
                 let mut latest_snapshot = None;
                 while let Ok(Some(state)) = state_receiver.try_recv() {
@@ -98,9 +95,6 @@ pub(super) fn start_network_loop(handler: Arc<OSCHandler>) {
                                     subscribers.entry(src).and_modify(|t| *t = Instant::now());
                                 }
                             }
-                            handler
-                                .has_subscribers
-                                .store(!subscribers.is_empty(), Ordering::Relaxed);
                             continue;
                         }
 

@@ -9,7 +9,7 @@ use crate::{
 };
 use egui::{Button, Color32, Ui, Vec2};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SceneEffectEditorState {
     pub selected_effect: usize,
 }

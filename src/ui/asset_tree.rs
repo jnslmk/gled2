@@ -3,11 +3,8 @@ use crate::storage::{
     asset_id::AssetId,
     collections::Collections,
 };
-use egui::{
-    Button, Color32, Id, Label, Margin, Pos2, Rect, ScrollArea, Stroke, Ui, UiKind, Vec2,
-    scroll_area::ScrollBarVisibility::AlwaysVisible,
-};
-use egui_ltreeview::{Action, DragAndDrop, NodeBuilder, TreeView, TreeViewBuilder};
+use egui::{Button, Label, Pos2, Rect, UiKind, Vec2};
+use egui_ltreeview::{NodeBuilder, TreeViewBuilder};
 use std::{collections::BTreeMap, sync::Arc};
 
 mod ui_methods;
@@ -202,23 +199,6 @@ impl<T: AssetTrait> AssetTree<T> {
             unreachable!();
         };
         dir.into_values().collect()
-    }
-
-    pub fn find_index(&self, id: &TreeId<T>, collections: &mut Collections) -> Option<usize> {
-        let mut empty_dirs = vec![];
-        let entries = self.load(collections);
-        let mut tree_ids = vec![];
-        for entry in entries.iter() {
-            entry.build(
-                &mut empty_dirs,
-                &mut tree_ids,
-                &mut None,
-                self.only_asset_selection,
-                collections,
-            );
-        }
-
-        tree_ids.iter().position(|tree_id| tree_id == id)
     }
 
     fn add_dir(root: &mut TreeEntry<T>, dir: Vec<String>) -> &mut TreeEntry<T> {

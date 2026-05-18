@@ -5,8 +5,6 @@ use crate::{
         asset::{
             Asset,
             midi_controller::{MidiController, MidiControllerMapping},
-            project::Project,
-            scene::color::SceneInstanceColor,
         },
         collections::Collections,
     },
@@ -40,6 +38,7 @@ fn create_test_command_channel() -> (Sender<TestCommand>, Arc<Mutex<Receiver<Tes
     (sender, Arc::new(Mutex::new(receiver)))
 }
 
+#[allow(dead_code)]
 #[derive(Default, Clone)]
 pub struct RuntimeTestState {
     pub selected_output_port: Option<String>,
@@ -74,6 +73,7 @@ pub(super) fn runtime_test_execution_state() -> &'static StdMutex<RuntimeTestExe
     RUNTIME_TEST_EXECUTION_STATE.get_or_init(|| StdMutex::new(RuntimeTestExecutionState::default()))
 }
 
+#[allow(dead_code)]
 pub fn set_controller_test_state(
     controller_id: crate::storage::asset_id::AssetId<MidiController>,
     state: Option<RuntimeTestState>,
@@ -314,20 +314,6 @@ fn snapshot_from_project_state(
         mappings_by_controller,
         scene_locations_row_major,
     }
-}
-
-pub fn selected_scene_color(
-    project: Option<&mut Project>,
-    fallback: SceneInstanceColor,
-    selected: crate::storage::asset::scene::grid::GridLocation,
-) -> SceneInstanceColor {
-    project
-        .and_then(|project| {
-            project
-                .get_scenes_instance(&selected)
-                .map(|scene| scene.color)
-        })
-        .unwrap_or(fallback)
 }
 
 #[cfg(test)]

@@ -16,6 +16,12 @@ pub struct Collections {
     current: ShareCloneMap,
 }
 
+impl std::fmt::Debug for Collections {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Collections").finish_non_exhaustive()
+    }
+}
+
 impl Default for Collections {
     fn default() -> Self {
         let (sender, receiver) = bounded(8);

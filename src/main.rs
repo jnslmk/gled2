@@ -1,18 +1,20 @@
 #![windows_subsystem = "windows"]
-#![forbid(clippy::unwrap_used)]
 #![forbid(unsafe_code)]
+#![forbid(clippy::unwrap_used)]
+#![warn(clippy::todo)]
+#![warn(missing_debug_implementations)]
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
-pub mod app;
-pub mod audio;
-pub mod input;
-pub mod midi;
-pub mod network_stats;
-pub mod output_state;
-pub mod pipeline;
-pub mod storage;
-pub mod svg;
-pub mod ui;
+pub(crate) mod app;
+pub(crate) mod audio;
+pub(crate) mod input;
+pub(crate) mod midi;
+pub(crate) mod network_stats;
+pub(crate) mod output_state;
+pub(crate) mod pipeline;
+pub(crate) mod storage;
+pub(crate) mod svg;
+pub(crate) mod ui;
 
 use crate::audio::AudioPool;
 use crate::input::artnet;
@@ -31,8 +33,8 @@ use std::sync::{Arc, OnceLock};
 use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
 
-pub static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
-pub static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
+pub(crate) static WGPU_RENDER_STATE: OnceLock<RenderState> = OnceLock::new();
+pub(crate) static OUTPUT_BUFFER: Lazy<Buffer> = Lazy::new(|| {
     wgpu_render_state().device.create_buffer(&BufferDescriptor {
         size: OUTPUT_BUFFER_SIZE,
         usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
@@ -52,7 +54,7 @@ static WGPU_PROFILER: Lazy<egui::mutex::Mutex<wgpu_profiler::GpuProfiler>> = Laz
     )
 });
 #[cfg(feature = "profiling")]
-pub static PUFFIN_GPU_PROFILER: Lazy<egui::mutex::Mutex<puffin::GlobalProfiler>> =
+pub(crate) static PUFFIN_GPU_PROFILER: Lazy<egui::mutex::Mutex<puffin::GlobalProfiler>> =
     Lazy::new(|| egui::mutex::Mutex::new(puffin::GlobalProfiler::default()));
 
 fn show_open_font_license_requested() -> bool {
@@ -238,7 +240,7 @@ fn main() {
     .expect("Could not run native");
 }
 
-pub fn wgpu_render_state() -> RenderState {
+pub(crate) fn wgpu_render_state() -> RenderState {
     WGPU_RENDER_STATE
         .get()
         .expect("Could not find wgpu render state")

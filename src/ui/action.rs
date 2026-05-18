@@ -1,13 +1,11 @@
-use crate::pipeline::group::Group;
 use crate::{
-    app::{App, svg::Svg},
-    input::artnet::ARTNET_CONFIG,
+    app::svg::Svg,
     input::event::InputEvent,
     storage::{
         asset::{
             Asset,
-            animation::argument::{Argument, ArgumentKind, ArgumentKindId},
-            animation::{Animation, config::float_value::FloatValue},
+            animation::Animation,
+            animation::argument::ArgumentKindId,
             curve::{Curve, multiplied_curve::MultipliedCurve},
             palette::{Color as PaletteColor, Palette},
             project::{Project, scene_instance_path::SceneInstanceUnion},
@@ -23,7 +21,6 @@ use crate::{
 use cpal::DeviceId;
 use egui::ViewportId;
 use kanal::{Receiver, Sender, unbounded};
-use notify_rust::Notification;
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
 
@@ -79,7 +76,6 @@ pub enum UiAction {
     SetSceneActivationInput(SceneInstanceUnion, Option<InputEvent>),
     SetSceneFlashInput(SceneInstanceUnion, Option<InputEvent>),
     SetSceneDimmerInput(SceneInstanceUnion, Option<InputEvent>),
-    SetScenePaletteOverwrite(SceneInstanceUnion, Option<Option<Palette>>),
     SetScenePaletteOverwriteFromAsset(SceneInstanceUnion, Option<Option<AssetId<Palette>>>),
     SetScenePaletteOverwritePrimary(SceneInstanceUnion, [f32; 3]),
     SetScenePaletteOverwriteSecondary(SceneInstanceUnion, [f32; 3]),
@@ -87,7 +83,6 @@ pub enum UiAction {
     ClearSceneGroupsOverwrite(SceneInstanceUnion),
     SetSceneGroupsOverwriteEntry(SceneInstanceUnion, usize, String),
     RemoveSceneGroupsOverwriteEntry(SceneInstanceUnion, usize),
-    SetProjectPalette(Option<Palette>),
     SetProjectPaletteFromAsset(Option<AssetId<Palette>>),
     SetProjectPalettePrimary([f32; 3]),
     SetProjectPaletteSecondary([f32; 3]),
@@ -189,10 +184,6 @@ fn apply_palette_action(
     action: &UiAction,
 ) -> bool {
     match action {
-        UiAction::SetProjectPalette(palette) => {
-            project.palette = palette.clone();
-            true
-        }
         UiAction::SetProjectPaletteFromAsset(palette_id) => {
             project.palette = palette_id
                 .and_then(|palette_id| Asset::get(palette_id, collections))
@@ -213,14 +204,6 @@ fn apply_palette_action(
                 *gradient_index,
                 *rgb,
             );
-            true
-        }
-        UiAction::SetScenePaletteOverwrite(path, palette_overwrite) => {
-            if let Some(scene_instance) =
-                scene_instance_by_target(project, *path, selected_scene_instance)
-            {
-                scene_instance.palette_overwrite = palette_overwrite.clone();
-            }
             true
         }
         UiAction::SetScenePaletteOverwriteFromAsset(path, palette_overwrite) => {

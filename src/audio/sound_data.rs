@@ -30,6 +30,12 @@ pub struct SoundData {
     pub default_trigger: SoundTrigger,
 }
 
+impl std::fmt::Debug for SoundData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SoundData").finish_non_exhaustive()
+    }
+}
+
 impl Default for SoundData {
     fn default() -> Self {
         let (sender, receiver) = bounded(10);

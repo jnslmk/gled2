@@ -1,4 +1,22 @@
-use super::*;
+use super::{
+    UiAction, apply_palette_action, location_by_target, scene_effect_by_target,
+    scene_instance_by_target, set_scene_opacity, update_animation,
+};
+use crate::{
+    app::{App, svg::Svg},
+    input::{artnet::ARTNET_CONFIG, event::InputEvent},
+    pipeline::group::Group,
+    storage::asset::{
+        Asset,
+        animation::{
+            argument::{Argument, ArgumentKind},
+            config::float_value::FloatValue,
+        },
+        curve::multiplied_curve::MultipliedCurve,
+    },
+};
+use notify_rust::Notification;
+use std::sync::Arc;
 
 impl App {
     #[cfg_attr(feature = "profiling", profiling::function)]
@@ -679,12 +697,10 @@ impl App {
                 }
                 (
                     Some(_),
-                    UiAction::SetProjectPalette(_)
-                    | UiAction::SetProjectPaletteFromAsset(_)
+                    UiAction::SetProjectPaletteFromAsset(_)
                     | UiAction::SetProjectPalettePrimary(_)
                     | UiAction::SetProjectPaletteSecondary(_)
                     | UiAction::SetProjectPaletteGradient(_, _)
-                    | UiAction::SetScenePaletteOverwrite(_, _)
                     | UiAction::SetScenePaletteOverwriteFromAsset(_, _)
                     | UiAction::SetScenePaletteOverwritePrimary(_, _)
                     | UiAction::SetScenePaletteOverwriteSecondary(_, _)

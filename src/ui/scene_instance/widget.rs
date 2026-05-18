@@ -6,13 +6,13 @@ use crate::storage::collections::Collections;
 use crate::ui::action::UiAction;
 use crate::ui::asset_tree::AssetTree;
 use crate::{
-    app::timing::Timing, pipeline::group::Groups, storage::asset::scene::instance::SceneInstance,
+    app::timing::Timing, storage::asset::scene::instance::SceneInstance,
     ui::gled_slider::GledSlider,
 };
 use egui::containers::menu::MenuButton;
 use egui::{
     Align, Button, Color32, CornerRadius, Frame, InnerResponse, Label, Layout, Rect, Response,
-    RichText, Sense, Shape, TextureHandle, Ui, UiBuilder, Vec2, Widget, epaint::RectShape, pos2,
+    RichText, Sense, Shape, Ui, UiBuilder, Vec2, Widget, epaint::RectShape, pos2,
 };
 use egui_ltreeview::TreeViewState;
 use egui_phosphor_icons::icons;
@@ -21,9 +21,6 @@ use epaint::{FontFamily, Stroke, StrokeKind};
 
 pub struct SceneInstanceWidget<'a> {
     pub scene_instance: &'a mut SceneInstance,
-    pub groups: &'a Groups,
-    pub svg: Option<TextureHandle>,
-    pub size: Vec2,
     pub timing: &'a Timing,
     pub collections: &'a Collections,
     pub effects_size: f32,

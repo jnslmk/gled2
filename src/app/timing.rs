@@ -24,6 +24,15 @@ pub struct Timing {
     tap_count: usize,
 }
 
+impl std::fmt::Debug for Timing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Timing")
+            .field("beats_per_minute", &self.beats_per_minute)
+            .field("change_beats_per_minute", &self.change_beats_per_minute)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Default for Timing {
     fn default() -> Self {
         let link = AblLink::new(120.0);

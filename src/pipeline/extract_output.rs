@@ -17,6 +17,12 @@ pub struct ExtractOutput {
     pub routings: Arc<OutputRoutings>,
 }
 
+impl std::fmt::Debug for ExtractOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExtractOutput").finish_non_exhaustive()
+    }
+}
+
 impl ExtractOutput {
     pub fn new() -> (
         Self,
