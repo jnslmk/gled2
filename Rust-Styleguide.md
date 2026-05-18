@@ -23,7 +23,6 @@ It is practical, opinionated, and optimized for consistency across the team.
 ```rust
 #![forbid(unsafe_code)]
 #![forbid(clippy::unwrap_used)]
-#![warn(clippy::panic)]
 #![warn(clippy::todo)]
 #![warn(missing_debug_implementations)]
 ```
@@ -59,7 +58,6 @@ Required baseline in `main.rs`:
 ```rust
 #![forbid(unsafe_code)]
 #![forbid(clippy::unwrap_used)]
-#![warn(clippy::panic)]
 #![warn(clippy::todo)]
 #![warn(missing_debug_implementations)]
 ```
