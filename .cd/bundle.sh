@@ -6,8 +6,8 @@ cargo install cargo-packager --locked
 if [[ $(uname) == "Linux" ]]; then
     cargo install cargo-generate-rpm cargo-xwin --locked
 
-    # echo "Publishing to crates.io"
-    # cargo publish
+    echo "Publishing to crates.io"
+    cargo publish
 
     echo "Building Linux rpm"
     cargo build --release
