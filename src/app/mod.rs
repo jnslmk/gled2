@@ -125,22 +125,14 @@ impl eframe::App for App {
         self.external_control_state
             .process_events(&mut self.project, &self.collections);
 
-        if let Some(project) = &mut self.project {
-            project.render(
-                &self.timing,
-                self.blackout || self.blackout_hold,
-                if self.persistent_state.effects_always_render() && {
-                    self.last_always_render_fps_frame.elapsed().as_secs_f32() > 1.0 / 30.0
-                } {
-                    self.last_always_render_fps_frame = Instant::now();
-                    true
-                } else {
-                    false
-                },
-                &self.collections,
-                &self.extract_output,
-                &self.sound_data,
-            );
+        self.render_project();
+        // Optionally render (and therefore output) a second time on the same
+        // displayed frame. The beat position is re-sampled in between so the
+        // extra render reflects the freshest timing, doubling the Art-Net/DMX
+        // output rate without waiting for another surface present.
+        if self.persistent_state.double_render() {
+            self.timing.refresh_beat();
+            self.render_project();
         }
 
         ProjectState {
@@ -199,6 +191,27 @@ impl App {
     pub(crate) fn set_selected_scene_instance(&mut self, location: GridLocation) {
         self.selected_scene_instance = location;
         self.selected_scene_effect_editor.reset();
+    }
+
+    #[cfg_attr(feature = "profiling", profiling::function)]
+    fn render_project(&mut self) {
+        if let Some(project) = &mut self.project {
+            project.render(
+                &self.timing,
+                self.blackout || self.blackout_hold,
+                if self.persistent_state.effects_always_render() && {
+                    self.last_always_render_fps_frame.elapsed().as_secs_f32() > 1.0 / 30.0
+                } {
+                    self.last_always_render_fps_frame = Instant::now();
+                    true
+                } else {
+                    false
+                },
+                &self.collections,
+                &mut self.extract_output,
+                &self.sound_data,
+            );
+        }
     }
 
     #[cfg_attr(feature = "profiling", profiling::function)]

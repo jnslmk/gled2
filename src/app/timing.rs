@@ -20,6 +20,8 @@ pub struct Timing {
     avg_fps_time: Instant,
     last_frame: Instant,
     frame_count: usize,
+    total_frames: usize,
+    max_frame_nanos: u128,
     taps: [Option<Instant>; 4],
     tap_count: usize,
 }
@@ -48,6 +50,8 @@ impl Default for Timing {
             avg_fps_time: Instant::now(),
             last_frame: Instant::now(),
             frame_count: 0,
+            total_frames: 0,
+            max_frame_nanos: 0,
             taps: [None; 4],
             tap_count: 0,
         }
@@ -82,7 +86,27 @@ impl Timing {
         while target_frame_time_nanos > (self.last_frame.elapsed().as_nanos() as f32) {
             std::thread::sleep(std::time::Duration::from_nanos(100));
         }
+        // Full wall-clock time of the previous frame, including the time eframe
+        // spent acquiring the surface texture and presenting outside of our own
+        // update code. The maximum over a sampling window is a proxy for the
+        // worst-case surface wait / stall. The first 10 frames are skipped
+        // because startup (window creation, swapchain setup) makes them much
+        // slower than steady-state frames.
+        self.total_frames += 1;
+        if self.total_frames > 10 {
+            self.max_frame_nanos = self
+                .max_frame_nanos
+                .max(self.last_frame.elapsed().as_nanos());
+        }
         self.last_frame = Instant::now();
+    }
+
+    /// Re-sample the current Ableton Link beat position without running a full
+    /// `tick` (no fps limiting, no fps accounting). Used when rendering more than
+    /// once per displayed frame so each extra render reflects the freshest beat
+    /// position instead of repeating the same instant.
+    pub fn refresh_beat(&mut self) {
+        self.get_link_values();
     }
 
     #[cfg_attr(feature = "profiling", profiling::function)]
@@ -125,9 +149,11 @@ impl Timing {
             let avg_frame_time = self.avg_fps_time.elapsed() / self.frame_count as u32;
             let fps = 1e+9f32 / (avg_frame_time.as_nanos() as f32);
             self.avg_fps = Some(fps);
-            debug!("fps: {fps}");
+            let max_frame_ms = self.max_frame_nanos as f32 / 1e6f32;
+            debug!("frame_stats: fps={fps:.1} max_frame_ms={max_frame_ms:.3}");
             self.avg_fps_time = now;
             self.frame_count = 0;
+            self.max_frame_nanos = 0;
         }
     }
 

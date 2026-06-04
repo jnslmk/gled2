@@ -23,7 +23,14 @@ use tracing::{debug, trace, warn};
 
 static ARTNET_PORT: u16 = 6454;
 pub static ARTNET_SOCKET: Lazy<Arc<UdpSocket>> = Lazy::new(|| {
-    Arc::new(UdpSocket::bind(("0.0.0.0", ARTNET_PORT)).expect("Could not bind on artnet port"))
+    let socket = UdpSocket::bind(("0.0.0.0", ARTNET_PORT)).expect("Could not bind on artnet port");
+    // Enlarge the kernel send buffer. At hundreds of fps × dozens of universes
+    // the default ~200 KB buffer overflows instantly, forcing every send into a
+    // WouldBlock retry spin that throttled output throughput to ~20 Mbit.
+    if let Err(e) = socket2::SockRef::from(&socket).set_send_buffer_size(8 * 1024 * 1024) {
+        warn!("Could not enlarge artnet socket send buffer: {e}");
+    }
+    Arc::new(socket)
 });
 
 #[derive(Debug)]

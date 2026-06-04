@@ -41,6 +41,13 @@ impl App {
                                 0.0,
                                 TextFormat::default(),
                             );
+                            if self.persistent_state.double_render() {
+                                layout_job.append(
+                                    format!(" ({:.0} fps out)", framerate * 2.0).as_str(),
+                                    0.0,
+                                    TextFormat::default(),
+                                );
+                            }
                             ui.add(Label::new(layout_job).selectable(false));
                         }
 

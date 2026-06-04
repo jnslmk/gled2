@@ -19,6 +19,15 @@ static PERSISTENT_STATE_ID: AtomicUsize = AtomicUsize::new(0);
 static SENDERS: Lazy<Mutex<HashMap<usize, Sender<PersistentStateInner>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
+/// Optional override for the FPS limit, read once from the `GLED_FPS_LIMIT`
+/// environment variable. Used by performance tests to raise the limiter above
+/// the persisted value without mutating the user's `~/.gled` config.
+static FPS_LIMIT_OVERRIDE: Lazy<Option<f32>> = Lazy::new(|| {
+    std::env::var("GLED_FPS_LIMIT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+});
+
 pub struct PersistentState {
     id: usize,
     receiver: Receiver<PersistentStateInner>,
@@ -57,6 +66,7 @@ pub struct PersistentStateInner {
     git_url: String,
     git_credentials: GitCredentials,
     prefer_discrete_gpu: bool,
+    double_render: bool,
 }
 
 impl Default for PersistentStateInner {
@@ -71,6 +81,7 @@ impl Default for PersistentStateInner {
             git_url: "https://gitlab.com/photonenkollektiv/gled2_assets.git".to_string(),
             git_credentials: Default::default(),
             prefer_discrete_gpu: true,
+            double_render: false,
         }
     }
 }
@@ -123,7 +134,7 @@ impl Drop for PersistentState {
 
 impl PersistentState {
     pub fn fps_limit(&self) -> f32 {
-        self.current.fps_limit
+        FPS_LIMIT_OVERRIDE.unwrap_or(self.current.fps_limit)
     }
 
     pub fn set_fps_limit(&mut self, limit: f32) {
@@ -168,6 +179,14 @@ impl PersistentState {
 
     pub fn set_prefer_discrete_gpu(&mut self, prefer: bool) {
         self.current.prefer_discrete_gpu = prefer;
+    }
+
+    pub fn double_render(&self) -> bool {
+        self.current.double_render
+    }
+
+    pub fn double_render_mut(&mut self) -> &mut bool {
+        &mut self.current.double_render
     }
 
     pub fn git_credentials(&self) -> GitCredentials {

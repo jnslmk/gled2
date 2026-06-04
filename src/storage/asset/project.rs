@@ -15,7 +15,7 @@ use crate::{
     },
     pipeline::{
         extract_output::ExtractOutput, group::Groups, output_clear::OutputClear, preview::Preview,
-        preview_indices::PreviewIndices, renderer_callback::RendererCallback,
+        preview_indices::PreviewIndices,
     },
     storage::{
         asset::{
@@ -265,7 +265,7 @@ impl Project {
         blackout: bool,
         always_render: bool,
         collections: &Collections,
-        extract_output: &ExtractOutput,
+        extract_output: &mut ExtractOutput,
         sound_data: &SoundData,
     ) {
         let wgpu_render_state = wgpu_render_state();
@@ -326,7 +326,19 @@ impl Project {
             Preview::run(&mut encoder);
         }
 
-        RendererCallback::add(encoder.finish());
+        // Submit the animation/output work directly instead of deferring it to
+        // egui's paint callback. This decouples the GPU->CPU readback (and the
+        // resulting Art-Net/DMX output) from the surface-present path, so the
+        // output for this frame is dispatched at the start of the frame and no
+        // longer waits behind `Surface::get_current_texture` (which can stall
+        // for whole vblank intervals when we render faster than the compositor
+        // presents). The preview/output textures are written before egui samples
+        // them later in the same frame, so ordering is preserved.
+        let submission = queue.submit([encoder.finish()]);
+        // Let the output poll thread deliver this frame's readback as soon as
+        // the GPU finishes it, independently of any other frame submitted in the
+        // same displayed frame (e.g. the second `double_render` pass).
+        extract_output.notify_submitted(submission);
     }
 
     pub fn tap_input_is_new(&self) -> bool {

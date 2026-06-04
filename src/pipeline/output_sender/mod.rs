@@ -8,7 +8,7 @@ use std::{
     net::SocketAddr,
     sync::Arc,
     thread,
-    time::{Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tracing::{debug, trace, warn};
 
@@ -31,7 +31,11 @@ pub fn start(
 
     debug!("Spawning output thread");
 
-    let (sender, receiver) = bounded(16);
+    // Sized to several frames' worth of per-universe packets so the prepare
+    // thread never blocks mid-frame waiting on the sender; this decouples the
+    // two stages and absorbs short UDP send_to stalls without back-pressuring
+    // the GPU readback path (which would otherwise drop whole frames).
+    let (sender, receiver) = bounded(256);
     thread::Builder::new()
         .name("gled:output:tx".to_owned())
         .spawn(move || {
@@ -148,6 +152,11 @@ fn merge_and_send_thread(receiver: Receiver<OutputPackage>) {
     let mut gled_cache =
         HashMap::<Recipient, (Instant, Instant, [u8; UNIVERSE_BUFFER_SIZE as usize])>::new();
 
+    // Stale-entry expiry only needs ~1s granularity, so run it on a timer instead
+    // of rescanning both caches on every single packet (which is O(n) per packet
+    // and dominates the send loop at hundreds of frames × dozens of universes).
+    let mut last_expiry = Instant::now();
+
     loop {
         let package = match receiver.recv() {
             Ok(package) => package,
@@ -187,8 +196,11 @@ fn merge_and_send_thread(receiver: Receiver<OutputPackage>) {
             OutputPackage::Hovered { recipient } => (recipient, true),
         };
 
-        artnet_input_cache.retain(|_, (last_data, ..)| last_data.elapsed().as_secs() < 1);
-        gled_cache.retain(|_, (last_data, ..)| last_data.elapsed().as_secs() < 1);
+        if last_expiry.elapsed() >= Duration::from_millis(250) {
+            last_expiry = Instant::now();
+            artnet_input_cache.retain(|_, (last_data, ..)| last_data.elapsed().as_secs() < 1);
+            gled_cache.retain(|_, (last_data, ..)| last_data.elapsed().as_secs() < 1);
+        }
 
         let data = match (
             artnet_input_cache.get(&recipient),
@@ -249,7 +261,7 @@ fn merge_and_send_thread(receiver: Receiver<OutputPackage>) {
                 let mut count = 0;
                 loop {
                     count += 1;
-                    debug!("Sending package to {addr}");
+                    trace!("Sending package to {addr}");
                     trace!("Package data: {data:02x?}");
 
                     match ARTNET_SOCKET.send_to(&data, addr) {
@@ -258,11 +270,15 @@ fn merge_and_send_thread(receiver: Receiver<OutputPackage>) {
                             break;
                         }
                         Err(err) => {
-                            warn!("Could not send data on try {count} - {err:?}");
-                            std::thread::sleep(std::time::Duration::from_nanos(1));
+                            trace!("Could not send data on try {count} - {err:?}");
+                            // Yield (not sleep): std::thread::sleep(1ns) rounds up
+                            // to a ~50µs nanosleep on Linux, which throttled the
+                            // sender to ~5k packets/s. yield_now lets the kernel
+                            // drain the send buffer without that fixed penalty.
+                            std::thread::yield_now();
                         }
                         Ok(count) => {
-                            debug!("Sent data to {addr}");
+                            trace!("Sent data to {addr}");
                             crate::network_stats::add_outgoing_bytes(count);
                             break;
                         }

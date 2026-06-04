@@ -356,6 +356,16 @@ impl App {
                         self.persistent_state.save();
                     };
 
+                    if ui
+                        .checkbox(
+                            self.persistent_state.double_render_mut(),
+                            "Render twice per frame (2× output rate)",
+                        )
+                        .changed()
+                    {
+                        self.persistent_state.save();
+                    };
+
                     ui.separator();
 
                     egui::gui_zoom::zoom_menu_buttons(ui);
