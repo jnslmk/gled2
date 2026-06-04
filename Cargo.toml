@@ -35,7 +35,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 epaint = "0.34"
 gilrs = "0.11"
-git2 = "0.20"
+git2 = "0.21"
 home = "0.5"
 image = { version = "0.25", default-features = false, features = ["png"] }
 kanal = "0.1"

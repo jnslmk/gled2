@@ -80,8 +80,7 @@ impl Git {
         repository.set_head(
             reference
                 .ok_or_else(|| Error::from_str("Reference is empty"))?
-                .name()
-                .ok_or_else(|| Error::from_str("Can not parse string"))?,
+                .name()?,
         )?;
 
         Ok(())
@@ -132,13 +131,13 @@ impl Git {
 
     fn branch_name(&self) -> String {
         self.branch_reference()
-            .and_then(|h| h.name().map(|name| name.to_owned()))
+            .and_then(|h| h.name().ok().map(|name| name.to_owned()))
             .unwrap_or_else(|| "main".to_owned())
     }
 
     fn branch_shorthand(&self) -> String {
         self.branch_reference()
-            .and_then(|h| h.shorthand().map(|name| name.to_owned()))
+            .and_then(|h| h.shorthand().ok().map(|name| name.to_owned()))
             .unwrap_or_else(|| "main".to_owned())
     }
 
@@ -181,8 +180,8 @@ impl Git {
             match repository.find_reference(&refname) {
                 Ok(mut r) => {
                     let name = match r.name() {
-                        Some(s) => s.to_string(),
-                        None => String::from_utf8_lossy(r.name_bytes()).to_string(),
+                        Ok(s) => s.to_string(),
+                        Err(_) => String::from_utf8_lossy(r.name_bytes()).to_string(),
                     };
                     let msg = format!(
                         "Fast-Forward: Setting {} to id: {}",
