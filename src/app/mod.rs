@@ -28,9 +28,10 @@ use crate::{
     },
 };
 use eframe::egui_wgpu::Callback;
-use egui::{CentralPanel, Id, LayerId, Rect, Ui, UiBuilder, ViewportId, ahash::HashSet};
+use egui::{CentralPanel, Id, LayerId, Rect, Ui, UiBuilder, ViewportId};
 use kanal::{Receiver, Sender};
 use persistent_state::PersistentState;
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 use storage::{show_storage_error, show_storage_loading};
@@ -231,7 +232,7 @@ impl App {
 
         CentralPanel::default()
             .frame(panel_frame)
-            .show_inside(&mut root_ui, |ui| {
+            .show(&mut root_ui, |ui| {
                 if viewport_id.is_none() {
                     let callback = Callback::new_paint_callback(Rect::ZERO, RendererCallback);
                     ui.painter().add(callback);
@@ -253,13 +254,13 @@ impl App {
                     egui::Panel::left("config")
                         .resizable(false)
                         .exact_size(400.0)
-                        .show_inside(&mut ui, |ui| self.config(ui));
+                        .show(&mut ui, |ui| self.config(ui));
                     egui::Panel::top("preview")
                         .resizable(true)
                         .default_size(200.0)
                         .min_size(200.0)
-                        .show_inside(&mut ui, |ui| self.preview(ui));
-                    egui::CentralPanel::default().show_inside(&mut ui, |ui| self.scenes(ui));
+                        .show(&mut ui, |ui| self.preview(ui));
+                    egui::CentralPanel::default().show(&mut ui, |ui| self.scenes(ui));
                 } else {
                     self.no_project(&mut ui);
                 }

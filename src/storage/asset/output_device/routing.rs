@@ -2,9 +2,9 @@ use crate::{
     pipeline::output_sender::Recipient,
     storage::{AssetId, OutputDevice, asset::Asset, collections::Collections},
 };
-use egui::ahash::HashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+use std::collections::HashMap;
 use std::net::ToSocketAddrs;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]

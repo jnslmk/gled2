@@ -30,7 +30,7 @@ impl ErrorsWindow {
                 gled_window_frame(ctx, "Errors", |ui| {
                     egui::CentralPanel::default()
                         .frame(Frame::default().fill(Color32::DARK_RED))
-                        .show_inside(ui, |ui| {
+                        .show(ui, |ui| {
                             ui.with_layout(Layout::top_down_justified(egui::Align::Center), |ui| {
                                 ui.heading("Errors!");
                                 ui.spacing();

@@ -25,7 +25,7 @@ const BPM_BAR_WIDTH: f32 = 500.0;
 
 impl App {
     pub fn menu(&mut self, ui: &mut Ui, viewport_id: Option<ViewportId>) {
-        egui::Panel::top(format!("{viewport_id:?} menu")).show_inside(ui, |ui| {
+        egui::Panel::top(format!("{viewport_id:?} menu")).show(ui, |ui| {
             if crate::storage::is_loading() {
                 ui.disable();
             }

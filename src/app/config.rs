@@ -13,7 +13,7 @@ impl App {
         egui::Panel::top("project config")
             .resizable(false)
             .frame(egui::Frame::NONE.inner_margin(Margin::from(4.0)))
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 if project.groups.is_empty() {
                     ui.painter().rect_filled(
                         {
@@ -37,7 +37,7 @@ impl App {
 
         CentralPanel::default()
             .frame(egui::Frame::NONE.inner_margin(Margin::from(4.0)))
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 let groups = project.groups.clone();
                 match project.get_scenes_instance(&self.selected_scene_instance) {
                     Some(scene_instance) => scene_instance.config_ui(

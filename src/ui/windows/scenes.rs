@@ -64,7 +64,7 @@ impl ScenesWindow {
                     egui::Panel::left("scenes tree")
                         .exact_size(TREE_WIDTH)
                         .resizable(false)
-                        .show_inside(ui, |ui| {
+                        .show(ui, |ui| {
                             if self
                                 .tree
                                 .show(ui, ui.make_persistent_id("scenes_tree"), collections)
@@ -77,7 +77,7 @@ impl ScenesWindow {
                     egui::Panel::right("scene editor")
                         .exact_size(300.0)
                         .resizable(false)
-                        .show_inside(ui, |ui| {
+                        .show(ui, |ui| {
                             let TreeSelection::Asset(scene) = self.tree.selected() else {
                                 return;
                             };
@@ -99,7 +99,7 @@ impl ScenesWindow {
                                 });
                         });
 
-                    egui::CentralPanel::default().show_inside(ui, |ui| {
+                    egui::CentralPanel::default().show(ui, |ui| {
                         let asset_changed: bool =
                             self.tree.common_settings(ui, &mut self.dirty, collections);
 

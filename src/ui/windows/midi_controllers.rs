@@ -218,7 +218,7 @@ impl MidiControllersWindow {
                     egui::Panel::left("midi controllers tree")
                         .exact_size(TREE_WIDTH)
                         .resizable(false)
-                        .show_inside(ui, |ui| {
+                        .show(ui, |ui| {
                             if self.tree.show(
                                 ui,
                                 ui.make_persistent_id("midi_controllers_tree"),
@@ -231,11 +231,11 @@ impl MidiControllersWindow {
                     egui::Panel::right("midi_monitor_panel")
                         .exact_size(330.0)
                         .resizable(false)
-                        .show_inside(ui, |ui| {
+                        .show(ui, |ui| {
                             show_live_midi_monitor(ui, &mut self.events, &diagnostics);
                         });
 
-                    egui::CentralPanel::default().show_inside(ui, |ui| {
+                    egui::CentralPanel::default().show(ui, |ui| {
                         self.tree.common_settings(ui, &mut self.dirty, collections);
 
                         match self.tree.selected() {

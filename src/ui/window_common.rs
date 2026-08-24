@@ -26,7 +26,7 @@ pub fn gled_window_frame(
 
     CentralPanel::default()
         .frame(panel_frame)
-        .show_inside(&mut root_ui, |ui| {
+        .show(&mut root_ui, |ui| {
             let app_rect = ui.max_rect();
 
             let title_bar_height = 32.0;

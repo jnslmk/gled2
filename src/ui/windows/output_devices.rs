@@ -66,7 +66,7 @@ impl OutputDevicesWindow {
                     egui::Panel::left("output devices tree")
                         .exact_size(200.0)
                         .resizable(false)
-                        .show_inside(ui, |ui| {
+                        .show(ui, |ui| {
                             if self.tree.show(
                                 ui,
                                 ui.make_persistent_id("output_devices_tree"),
@@ -77,7 +77,7 @@ impl OutputDevicesWindow {
                             }
                         });
 
-                    egui::CentralPanel::default().show_inside(ui, |ui| {
+                    egui::CentralPanel::default().show(ui, |ui| {
                         self.tree.common_settings(ui, &mut self.dirty, collections);
                         if let TreeSelection::Asset(output_device) = &mut self.tree.selected() {
                             output_device_editor(

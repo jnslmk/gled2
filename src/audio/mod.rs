@@ -49,7 +49,7 @@ pub fn audio_device_labels(devices: &[(DeviceId, DeviceDescription)]) -> Vec<(De
                     description.address(),
                     description.interface_type(),
                     description.driver(),
-                    description.extended(),
+                    &description.extended().collect::<Vec<_>>(),
                     duplicate_names[description.name()] > 1,
                 ),
             )
@@ -85,7 +85,7 @@ pub fn audio_device_label(_device_id: &DeviceId, description: &DeviceDescription
         description.address(),
         description.interface_type(),
         description.driver(),
-        description.extended(),
+        &description.extended().collect::<Vec<_>>(),
         false,
     )
 }
@@ -96,7 +96,7 @@ fn format_audio_device_label(
     address: Option<&str>,
     interface_type: InterfaceType,
     driver: Option<&str>,
-    extended: &[String],
+    extended: &[&str],
     duplicate_name: bool,
 ) -> String {
     let primary = preferred_primary_label(name, manufacturer, extended);
@@ -118,7 +118,7 @@ fn format_audio_device_label(
     }
 }
 
-fn preferred_primary_label(name: &str, manufacturer: Option<&str>, extended: &[String]) -> String {
+fn preferred_primary_label(name: &str, manufacturer: Option<&str>, extended: &[&str]) -> String {
     let normalized_name = normalize_label(name);
     let best_extended = preferred_extended_line(extended, &normalized_name);
 
@@ -144,7 +144,7 @@ fn label_detail(
     address: Option<&str>,
     interface_type: InterfaceType,
     driver: Option<&str>,
-    extended: &[String],
+    extended: &[&str],
     duplicate_name: bool,
 ) -> Option<String> {
     if duplicate_name {
@@ -189,14 +189,14 @@ fn sanitize_metadata_line(text: &str) -> Option<String> {
     }
 }
 
-fn preferred_extended_line(extended: &[String], name: &str) -> Option<String> {
+fn preferred_extended_line(extended: &[&str], name: &str) -> Option<String> {
     extended
         .iter()
         .filter_map(|line| sanitize_metadata_line(line))
         .find(|line| is_useful_extended_line(line, name))
 }
 
-fn secondary_extended_line(extended: &[String], primary_label: &str) -> Option<String> {
+fn secondary_extended_line(extended: &[&str], primary_label: &str) -> Option<String> {
     extended
         .iter()
         .filter_map(|line| sanitize_metadata_line(line))
@@ -379,7 +379,6 @@ fn is_capture_input_device(description: &DeviceDescription) -> bool {
 
     if description
         .extended()
-        .iter()
         .any(|line| line.to_lowercase().contains("monitor of"))
     {
         return false;
@@ -466,7 +465,7 @@ mod tests {
 
     #[test]
     fn format_audio_device_label_prefers_extended_human_description() {
-        let description = DeviceDescriptionBuilder::new("USB Audio".to_string())
+        let description = DeviceDescriptionBuilder::new("USB Audio")
             .manufacturer("Focusrite Audio")
             .address("hw:2,0")
             .extended(vec![
@@ -481,7 +480,7 @@ mod tests {
             description.address(),
             description.interface_type(),
             description.driver(),
-            description.extended(),
+            &description.extended().collect::<Vec<_>>(),
             true,
         );
 
@@ -493,11 +492,11 @@ mod tests {
         let devices = vec![
             (
                 DeviceId::from_str("ALSA://device/1").expect("valid device id"),
-                DeviceDescriptionBuilder::new("USB Audio".to_string()).build(),
+                DeviceDescriptionBuilder::new("USB Audio").build(),
             ),
             (
                 DeviceId::from_str("ALSA://device/2").expect("valid device id"),
-                DeviceDescriptionBuilder::new("USB Audio".to_string()).build(),
+                DeviceDescriptionBuilder::new("USB Audio").build(),
             ),
         ];
 
@@ -511,7 +510,7 @@ mod tests {
 
     #[test]
     fn is_capture_input_device_accepts_real_input_device() {
-        let description = DeviceDescriptionBuilder::new("Built-in Microphone".to_string())
+        let description = DeviceDescriptionBuilder::new("Built-in Microphone")
             .direction(DeviceDirection::Input)
             .build();
 
@@ -520,7 +519,7 @@ mod tests {
 
     #[test]
     fn is_capture_input_device_accepts_duplex_device() {
-        let description = DeviceDescriptionBuilder::new("USB Audio Codec".to_string())
+        let description = DeviceDescriptionBuilder::new("USB Audio Codec")
             .direction(DeviceDirection::Duplex)
             .build();
 
@@ -529,7 +528,7 @@ mod tests {
 
     #[test]
     fn is_capture_input_device_rejects_monitor_sources() {
-        let description = DeviceDescriptionBuilder::new("Monitor of Built-in Audio".to_string())
+        let description = DeviceDescriptionBuilder::new("Monitor of Built-in Audio")
             .direction(DeviceDirection::Input)
             .extended(vec!["Monitor of sink output".to_string()])
             .build();
@@ -547,7 +546,7 @@ mod tests {
             "dsnoop:CARD=PCH,DEV=0",
             "iec958:CARD=PCH",
         ] {
-            let description = DeviceDescriptionBuilder::new("Some Device".to_string())
+            let description = DeviceDescriptionBuilder::new("Some Device")
                 .direction(DeviceDirection::Input)
                 .driver(*pseudo_driver)
                 .build();
@@ -561,7 +560,7 @@ mod tests {
     #[test]
     #[cfg(target_os = "linux")]
     fn is_capture_input_device_accepts_pipewire_mic_device() {
-        let description = DeviceDescriptionBuilder::new("Built-in Microphone".to_string())
+        let description = DeviceDescriptionBuilder::new("Built-in Microphone")
             .direction(DeviceDirection::Input)
             .driver("pipewire")
             .build();
@@ -576,7 +575,7 @@ mod tests {
     #[cfg(target_os = "linux")]
     fn is_capture_input_device_accepts_hw_addressed_devices() {
         for driver in &["hw:0,0", "hw:1,0", "plughw:0,0"] {
-            let description = DeviceDescriptionBuilder::new("Built-in Mic".to_string())
+            let description = DeviceDescriptionBuilder::new("Built-in Mic")
                 .direction(DeviceDirection::Input)
                 .driver(*driver)
                 .build();
@@ -638,7 +637,7 @@ mod tests {
             let config = device
                 .default_input_config()
                 .expect("Input device has no default input config");
-            let stream_config = cpal::StreamConfig::from(config.clone());
+            let stream_config = cpal::StreamConfig::from(config);
 
             let got_samples = Arc::new(AtomicBool::new(false));
             let got_non_silent_signal = Arc::new(AtomicBool::new(false));
@@ -650,7 +649,7 @@ mod tests {
                     let got_non_silent_signal = got_non_silent_signal.clone();
                     let stream_error = stream_error.clone();
                     device.build_input_stream(
-                        &stream_config,
+                        stream_config,
                         move |data: &[f32], _| {
                             if !data.is_empty() {
                                 got_samples.store(true, Relaxed);
@@ -670,7 +669,7 @@ mod tests {
                     let got_non_silent_signal = got_non_silent_signal.clone();
                     let stream_error = stream_error.clone();
                     device.build_input_stream(
-                        &stream_config,
+                        stream_config,
                         move |data: &[i16], _| {
                             if !data.is_empty() {
                                 got_samples.store(true, Relaxed);
@@ -690,7 +689,7 @@ mod tests {
                     let got_non_silent_signal = got_non_silent_signal.clone();
                     let stream_error = stream_error.clone();
                     device.build_input_stream(
-                        &stream_config,
+                        stream_config,
                         move |data: &[i32], _| {
                             if !data.is_empty() {
                                 got_samples.store(true, Relaxed);
@@ -710,7 +709,7 @@ mod tests {
                     let got_non_silent_signal = got_non_silent_signal.clone();
                     let stream_error = stream_error.clone();
                     device.build_input_stream(
-                        &stream_config,
+                        stream_config,
                         move |data: &[u16], _| {
                             if !data.is_empty() {
                                 got_samples.store(true, Relaxed);

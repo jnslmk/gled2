@@ -124,7 +124,7 @@ fn main() {
     ui::update_check::Update::start_thread();
 
     let mut wgpu_options = WgpuConfiguration::default();
-    wgpu_options.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
+    wgpu_options.surface.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
             power_preference: if PersistentState::default().prefer_discrete_gpu() {
@@ -163,8 +163,7 @@ fn main() {
                 scale: 1.0,
                 y_offset_factor: 0.15,
                 y_offset: 0.0,
-                hinting_override: None,
-                coords: Default::default(),
+                ..Default::default()
             };
             // Register the font by name
             fonts.font_data.insert(

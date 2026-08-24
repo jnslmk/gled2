@@ -177,7 +177,10 @@ impl EffectState {
         rx.recv()
             .expect("Could not receive on gpu rx")
             .expect("Error receiving answer to output_data map on gpu");
-        let mut data = buffer_slice.get_mapped_range().to_vec();
+        let mut data = buffer_slice
+            .get_mapped_range()
+            .expect("Could not get mapped range of effect state buffer")
+            .to_vec();
         buffer.unmap();
 
         std::thread::Builder::new()

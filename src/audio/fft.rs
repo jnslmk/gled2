@@ -95,7 +95,7 @@ impl FFTAudioSource {
 
                         tracing::info!("Audio input config: {:?}", config);
                         let channels = config.channels() as usize;
-                        let stream_config = StreamConfig::from(config.clone());
+                        let stream_config = StreamConfig::from(config);
                         let stream_failed = Arc::new(AtomicBool::new(false));
 
                         let (mut producer, consumer) = RingBuffer::<f32>::new(WINDOW_SIZE * 2);
@@ -105,7 +105,7 @@ impl FFTAudioSource {
                             SampleFormat::F32 => {
                                 let error_flag = stream_failed.clone();
                                 device.build_input_stream(
-                                    &stream_config,
+                                    stream_config,
                                     move |data: &[f32], _: &cpal::InputCallbackInfo| {
                                         push_sample(Vec::from(data), channels, &mut producer);
                                     },
@@ -119,7 +119,7 @@ impl FFTAudioSource {
                             SampleFormat::I16 => {
                                 let error_flag = stream_failed.clone();
                                 device.build_input_stream(
-                                    &stream_config,
+                                    stream_config,
                                     move |data: &[i16], _: &cpal::InputCallbackInfo| {
                                         let f32_data: Vec<f32> = data
                                             .iter()
@@ -137,7 +137,7 @@ impl FFTAudioSource {
                             SampleFormat::I32 => {
                                 let error_flag = stream_failed.clone();
                                 device.build_input_stream(
-                                    &stream_config,
+                                    stream_config,
                                     move |data: &[i32], _: &cpal::InputCallbackInfo| {
                                         let f32_data: Vec<f32> = data
                                             .iter()
@@ -155,7 +155,7 @@ impl FFTAudioSource {
                             SampleFormat::U16 => {
                                 let error_flag = stream_failed.clone();
                                 device.build_input_stream(
-                                    &stream_config,
+                                    stream_config,
                                     move |data: &[u16], _: &cpal::InputCallbackInfo| {
                                         let f32_data: Vec<f32> = data
                                             .iter()

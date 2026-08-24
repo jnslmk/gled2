@@ -41,7 +41,7 @@ impl CurvesWindow {
                     egui::Panel::left("curves tree")
                         .exact_size(TREE_WIDTH)
                         .resizable(false)
-                        .show_inside(ui, |ui| {
+                        .show(ui, |ui| {
                             if self
                                 .tree
                                 .show(ui, ui.make_persistent_id("curves_tree"), collections)
@@ -50,7 +50,7 @@ impl CurvesWindow {
                             }
                         });
 
-                    egui::CentralPanel::default().show_inside(ui, |ui| {
+                    egui::CentralPanel::default().show(ui, |ui| {
                         self.tree.common_settings(ui, &mut self.dirty, collections);
 
                         if let TreeSelection::Asset(curve) = &mut self.tree.selected() {

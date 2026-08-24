@@ -485,7 +485,7 @@ impl<'a, S> Widget for SettingsMenu<'a, S> {
             .resizable(true)
             .size_range(100.0..=200.0)
             .default_size(150.0)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 ui.take_available_space();
                 self.submenus.keys().for_each(|key| {
                     ui.selectable_value(self.selected_submenu, key.clone(), key);
@@ -505,7 +505,7 @@ impl<'a, S> Widget for SettingsMenu<'a, S> {
             .remove(self.selected_submenu)
             .expect("submenu was just confirmed to be present");
         CentralPanel::default()
-            .show_inside(ui, |ui| submenu(ui, self.edit_state))
+            .show(ui, |ui| submenu(ui, self.edit_state))
             .response
     }
 }

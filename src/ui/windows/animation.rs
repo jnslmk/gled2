@@ -137,7 +137,7 @@ impl AnimationWindow {
                     egui::Panel::left("animations tree")
                         .exact_size(TREE_WIDTH)
                         .resizable(false)
-                        .show_inside(ui, |ui| {
+                        .show(ui, |ui| {
                             if self.tree.show(
                                 ui,
                                 ui.make_persistent_id("animations_tree"),
@@ -151,7 +151,7 @@ impl AnimationWindow {
                     egui::Panel::right("animation editor")
                         .exact_size(300.0)
                         .resizable(false)
-                        .show_inside(ui, |ui| {
+                        .show(ui, |ui| {
                             if let TreeSelection::Asset(animation) = &mut self.tree.selected() {
                                 ui.vertical_centered_justified(|ui| {
                                     if self.preview {
@@ -169,7 +169,7 @@ impl AnimationWindow {
                             }
                         });
 
-                    egui::CentralPanel::default().show_inside(ui, |ui| {
+                    egui::CentralPanel::default().show(ui, |ui| {
                         if self.tree.common_settings(ui, &mut self.dirty, collections) {
                             validate = true;
                             if let TreeSelection::Asset(animation) = &self.tree.selected() {
@@ -247,7 +247,7 @@ impl AnimationWindow {
                         egui::Panel::right("animation preview right side")
                             .exact_size(300.0)
                             .resizable(false)
-                            .show_inside(ui, |ui| {
+                            .show(ui, |ui| {
                                 ScrollArea::vertical()
                                     .scroll_bar_visibility(AlwaysVisible)
                                     .max_height(ui.available_height())
@@ -264,7 +264,7 @@ impl AnimationWindow {
                             });
                     }
 
-                    egui::CentralPanel::default().show_inside(ui, |ui| {
+                    egui::CentralPanel::default().show(ui, |ui| {
                         egui::Frame::NONE
                             .inner_margin(Margin::from(6.0))
                             .stroke(Stroke::new(1.0, Color32::DARK_GRAY))

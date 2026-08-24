@@ -594,7 +594,9 @@ impl SoundTriggerEditor {
 fn knob_default<'a>(value: &'a mut f32, min: f32, max: f32, reset: f32) -> Knob<'a> {
     Knob::new(value, min, max, KnobStyle::Wiper)
         .with_font_size(12.0)
-        .with_colors(Color32::GRAY, Color32::WHITE, Color32::WHITE)
+        .with_knob_color(Color32::GRAY)
+        .with_line_color(Color32::WHITE)
+        .with_text_color(Color32::WHITE)
         .with_stroke_width(3.0)
         .with_double_click_reset(reset)
 }

@@ -160,7 +160,10 @@ impl ExtractOutput {
         let routings = self.routings.clone();
         let capturable = output_cpu.clone();
         encoder.map_buffer_on_submit(&output_cpu, MapMode::Read, ..active_len, move |_v| {
-            let output_data = capturable.get_mapped_range(..active_len).to_vec();
+            let output_data = capturable
+                .get_mapped_range(..active_len)
+                .expect("Could not get mapped range of output buffer")
+                .to_vec();
             capturable.unmap();
             // Non-blocking: keep only the latest frame, never stall the render
             // thread on a slow output consumer.
