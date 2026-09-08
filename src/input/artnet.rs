@@ -23,7 +23,18 @@ use tracing::{debug, trace, warn};
 
 static ARTNET_PORT: u16 = 6454;
 pub static ARTNET_SOCKET: Lazy<Arc<UdpSocket>> = Lazy::new(|| {
-    let socket = UdpSocket::bind(("0.0.0.0", ARTNET_PORT)).expect("Could not bind on artnet port");
+    // Art-Net's own port is the natural one to send from, but another console
+    // on the same machine (QLC+, for one) may already hold it. Sending works
+    // from any source port, so fall back to an ephemeral one rather than
+    // panicking and taking the output threads down with it - only Art-Net
+    // *input* actually needs to own 6454.
+    let socket = UdpSocket::bind(("0.0.0.0", ARTNET_PORT)).unwrap_or_else(|err| {
+        warn!(
+            "Could not bind artnet port {ARTNET_PORT} ({err}); \
+             artnet input is disabled, output continues from an ephemeral port"
+        );
+        UdpSocket::bind(("0.0.0.0", 0)).expect("Could not bind any artnet socket")
+    });
     // Enlarge the kernel send buffer. At hundreds of fps × dozens of universes
     // the default ~200 KB buffer overflows instantly, forcing every send into a
     // WouldBlock retry spin that throttled output throughput to ~20 Mbit.

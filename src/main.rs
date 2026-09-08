@@ -20,7 +20,9 @@ use crate::audio::AudioPool;
 use crate::input::artnet;
 use crate::pipeline::{extract_output, output_sender};
 use app::{App, persistent_state::PersistentState};
-use eframe::egui_wgpu::{RenderState, WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
+use eframe::egui_wgpu::{
+    RenderState, SurfaceErrorAction, WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew,
+};
 use egui::{Color32, ThemePreference};
 use egui_extras::install_image_loaders;
 use egui_phosphor_icons::add_fonts;
@@ -29,7 +31,7 @@ use epaint::text::{FontData, FontDefinitions, FontTweak};
 use input::Input;
 use once_cell::sync::Lazy;
 use pipeline::{constants::OUTPUT_BUFFER_SIZE, renderer_callback::RendererCallback};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, OnceLock, atomic::Ordering};
 use ui::{action::UiAction, window_common::default_viewport_builder};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, PowerPreference, PresentMode};
 
@@ -125,6 +127,33 @@ fn main() {
 
     let mut wgpu_options = WgpuConfiguration::default();
     wgpu_options.surface.present_mode = PresentMode::AutoNoVsync; // We do not care about vsync as we have our own framerate limiter
+
+    // Keep running (and keep outputting) while the window is hidden.
+    //
+    // A hidden window gets no frame callbacks from a Wayland compositor, so
+    // `Surface::get_current_texture` blocks until it times out - measured at
+    // exactly 1.000s per frame on niri. Because eframe runs `App::logic` once
+    // per paint, that pins the whole show - animations, Art-Net, DMX - to 1 fps
+    // as soon as the console is behind another window.
+    //
+    // eframe already knows how to run logic without painting; it just picks
+    // that path from `Window::is_visible()`, which Wayland does not implement
+    // (and winit never reports `Occluded` on Wayland either). So detect the
+    // starvation here, from the surface status, and tell eframe to stop
+    // painting; `App::logic` keeps ticking at the fps limiter's rate and output
+    // continues. `App::logic` clears the flag as soon as the window is
+    // interactive again.
+    wgpu_options.on_surface_status = Arc::new(|status| match status {
+        wgpu::CurrentSurfaceTexture::Outdated => SurfaceErrorAction::Reconfigure,
+        wgpu::CurrentSurfaceTexture::Lost => SurfaceErrorAction::RecreateSurface,
+        status => {
+            // Timeout (compositor is not releasing buffers) or Occluded: the
+            // window is not on screen, so painting is pointless until it is.
+            tracing::debug!("Surface starved ({status:?}); painting paused, output continues");
+            eframe::SKIP_PAINTING.store(true, Ordering::Relaxed);
+            SurfaceErrorAction::SkipFrame
+        }
+    });
     wgpu_options.wgpu_setup = match wgpu_options.wgpu_setup {
         WgpuSetup::CreateNew(create_new) => WgpuSetup::CreateNew(WgpuSetupCreateNew {
             power_preference: if PersistentState::default().prefer_discrete_gpu() {
