@@ -34,8 +34,53 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashMap},
     sync::Arc,
+    time::{Duration, Instant},
 };
 use wgpu::CommandEncoderDescriptor;
+
+/// How often a static frame is re-rendered and re-sent while no scene instance
+/// counts as changed. 3 Hz keeps a rebooted endpoint (which boots black and
+/// otherwise latches darkness) re-synced within ~333 ms with no operator
+/// action, while skipping ~99% of the encode/submit/readback/send work. Stays
+/// inside the required 2-4 Hz band; raise it (shorter interval) if endpoints
+/// need tighter re-sync, lower it to save more CPU on long static holds.
+const OUTPUT_KEEPALIVE_INTERVAL: Duration = Duration::from_millis(333);
+
+/// Per-tick gate for the GPU output path. A tick runs the full
+/// encode/submit/readback/send pipeline when it counts as changed, otherwise
+/// only when the keepalive is due. Feeding it an explicit `now` keeps the
+/// decision deterministic and unit-testable without a GPU.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct OutputGate {
+    last_render: Option<Instant>,
+}
+
+impl OutputGate {
+    fn new() -> Self {
+        Self { last_render: None }
+    }
+
+    /// Whether this tick must run the output pipeline. Records the tick when
+    /// it does, so both activity and keepalive renders refresh the keepalive
+    /// clock. The first tick after startup always renders (no last frame yet).
+    fn should_render(&mut self, changed: bool, now: Instant) -> bool {
+        let due = self
+            .last_render
+            .is_none_or(|last| now.saturating_duration_since(last) >= OUTPUT_KEEPALIVE_INTERVAL);
+        if changed || due {
+            self.last_render = Some(now);
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl Default for OutputGate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -75,6 +120,10 @@ pub struct Project {
     pub audio_input_device: Option<DeviceId>,
     artnet_control_config: ArtnetControlConfig,
     pub osc_config: OscConfig,
+    /// Runtime-only static-frame gate state. Skipped by serde (like
+    /// `SceneInstance::flash`): never persisted, always fresh on load.
+    #[serde(skip)]
+    output_gate: OutputGate,
 }
 
 impl Default for Project {
@@ -106,6 +155,7 @@ impl Default for Project {
             audio_input_device: None,
             artnet_control_config: ArtnetControlConfig::default(),
             osc_config: OscConfig::default(),
+            output_gate: OutputGate::new(),
         }
     }
 }
@@ -290,6 +340,18 @@ impl Project {
 
         PreviewIndices::get().prepare(queue);
 
+        // Static-frame gate: when no scene instance counts as changed this tick,
+        // skip the whole encode/submit/readback path below, so a static hold
+        // costs no GPU work and sends no packets. `prepare` above still ran, so
+        // input edges (activation toggles, flash presses) are observed at full
+        // rate and flip the gate on the very tick they arrive. The keepalive
+        // re-renders and re-sends the (unchanged) output at
+        // `OUTPUT_KEEPALIVE_INTERVAL` so rebooted endpoints re-sync unaided.
+        let changed = self.output_changed(always_render);
+        if !self.output_gate.should_render(changed, Instant::now()) {
+            return;
+        }
+
         #[allow(unused_mut)]
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("Render animations"),
@@ -339,6 +401,18 @@ impl Project {
         // the GPU finishes it, independently of any other frame submitted in the
         // same displayed frame (e.g. the second `double_render` pass).
         extract_output.notify_submitted(submission);
+    }
+
+    /// Whether any scene instance contributes output this tick. This is the
+    /// exact condition under which `SceneInstance::render` does work (active,
+    /// flash, or forced always-render) — kept in sync with its early return by
+    /// the gate tests below, never redefined here.
+    fn output_changed(&self, always_render: bool) -> bool {
+        always_render
+            || self
+                .scenes_instances_grid
+                .values()
+                .any(|instance| instance.active || instance.flash)
     }
 
     pub fn tap_input_is_new(&self) -> bool {
@@ -418,4 +492,123 @@ impl AssetTrait for Project {
     const DIR_NAME: &'static str = "projects";
     const NAME: &'static str = "Project";
     const SHOW_NAME_IF_SELECTED: bool = true;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::asset::scene::color::SceneInstanceColor;
+    use uuid::Uuid;
+
+    fn scene_instance(active: bool, flash: bool) -> SceneInstance {
+        SceneInstance {
+            id: Uuid::new_v4(),
+            name: String::new(),
+            color: SceneInstanceColor::default(),
+            active,
+            opacity: Default::default(),
+            input_dimmer: 1.0,
+            ignore_main_dimmer: false,
+            beat_progression_offset: Default::default(),
+            activation_input: None,
+            flash_input: None,
+            set_offset_on_flash: false,
+            dimmer_input: None,
+            scene_id: Default::default(),
+            scene: Scene::default(),
+            groups_overwrite: None,
+            palette_overwrite: None,
+            flash,
+        }
+    }
+
+    fn project_with(instance: SceneInstance) -> Project {
+        let mut project = Project::default();
+        project.add_scene_instance(GridLocation { row: 0, col: 0 }, instance);
+        project
+    }
+
+    #[test]
+    fn keepalive_rate_stays_within_two_to_four_hertz() {
+        assert!(OUTPUT_KEEPALIVE_INTERVAL >= Duration::from_millis(250));
+        assert!(OUTPUT_KEEPALIVE_INTERVAL <= Duration::from_millis(500));
+    }
+
+    #[test]
+    fn empty_project_counts_as_unchanged() {
+        assert!(!Project::default().output_changed(false));
+    }
+
+    #[test]
+    fn always_render_counts_as_changed() {
+        assert!(Project::default().output_changed(true));
+    }
+
+    #[test]
+    fn inactive_instance_counts_as_unchanged() {
+        assert!(!project_with(scene_instance(false, false)).output_changed(false));
+    }
+
+    #[test]
+    fn active_instance_counts_as_changed() {
+        assert!(project_with(scene_instance(true, false)).output_changed(false));
+    }
+
+    #[test]
+    fn flashed_instance_counts_as_changed() {
+        assert!(project_with(scene_instance(false, true)).output_changed(false));
+    }
+
+    #[test]
+    fn gate_renders_first_static_tick_then_skips() {
+        let mut gate = OutputGate::new();
+        let now = Instant::now();
+        assert!(gate.should_render(false, now));
+        assert!(!gate.should_render(false, now + Duration::from_millis(1)));
+    }
+
+    #[test]
+    fn gate_changed_ticks_always_render_and_reset_keepalive() {
+        let mut gate = OutputGate::new();
+        let start = Instant::now();
+        for tick in 0..200 {
+            assert!(gate.should_render(true, start + Duration::from_millis(tick)));
+        }
+        // Activity refreshes the keepalive clock: the next static tick skips
+        // even though no keepalive render happened for a while.
+        assert!(!gate.should_render(false, start + Duration::from_millis(200)));
+    }
+
+    #[test]
+    fn gate_keepalive_rerenders_three_times_per_second_of_static_ticks() {
+        let mut gate = OutputGate::new();
+        let start = Instant::now();
+        let mut renders = 0;
+        let mut last_render = start;
+        let mut max_gap = Duration::ZERO;
+        // ~120fps tick spacing.
+        for tick in 0..125 {
+            let now = start + Duration::from_millis(tick * 8);
+            if gate.should_render(false, now) {
+                renders += 1;
+                max_gap = max_gap.max(now - last_render);
+                last_render = now;
+            }
+        }
+        assert_eq!(renders, 3);
+        assert!(max_gap <= OUTPUT_KEEPALIVE_INTERVAL + Duration::from_millis(8));
+    }
+
+    #[test]
+    fn gate_skips_all_but_keepalive_renders_on_long_static_hold() {
+        let mut gate = OutputGate::new();
+        let start = Instant::now();
+        let mut renders = 0;
+        for tick in 0..1000 {
+            if gate.should_render(false, start + Duration::from_millis(tick)) {
+                renders += 1;
+            }
+        }
+        assert_eq!(renders, 4);
+    }
 }
