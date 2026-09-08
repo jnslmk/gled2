@@ -47,27 +47,34 @@ use wgpu::CommandEncoderDescriptor;
 const OUTPUT_KEEPALIVE_INTERVAL: Duration = Duration::from_millis(333);
 
 /// Per-tick gate for the GPU output path. A tick runs the full
-/// encode/submit/readback/send pipeline when it counts as changed, otherwise
-/// only when the keepalive is due. Feeding it an explicit `now` keeps the
-/// decision deterministic and unit-testable without a GPU.
+/// encode/submit/readback/send pipeline while changed, once on a falling edge,
+/// and when the static keepalive is due. Feeding it an explicit `now` keeps
+/// the decision deterministic and unit-testable without a GPU.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct OutputGate {
     last_render: Option<Instant>,
+    was_changed: bool,
 }
 
 impl OutputGate {
     fn new() -> Self {
-        Self { last_render: None }
+        Self {
+            last_render: None,
+            was_changed: false,
+        }
     }
 
-    /// Whether this tick must run the output pipeline. Records the tick when
-    /// it does, so both activity and keepalive renders refresh the keepalive
-    /// clock. The first tick after startup always renders (no last frame yet).
+    /// Whether this tick must run the output pipeline. A falling edge renders
+    /// once to flush deactivated or released output before static ticks resume
+    /// skipping. Every render refreshes the keepalive clock, and the first tick
+    /// after startup always renders because no last frame exists.
     fn should_render(&mut self, changed: bool, now: Instant) -> bool {
         let due = self
             .last_render
             .is_none_or(|last| now.saturating_duration_since(last) >= OUTPUT_KEEPALIVE_INTERVAL);
-        if changed || due {
+        let falling_edge = self.was_changed && !changed;
+        self.was_changed = changed;
+        if changed || falling_edge || due {
             self.last_render = Some(now);
             true
         } else {
@@ -343,10 +350,10 @@ impl Project {
         // Static-frame gate: when no scene instance counts as changed this tick,
         // skip the whole encode/submit/readback path below, so a static hold
         // costs no GPU work and sends no packets. `prepare` above still ran, so
-        // input edges (activation toggles, flash presses) are observed at full
-        // rate and flip the gate on the very tick they arrive. The keepalive
-        // re-renders and re-sends the (unchanged) output at
-        // `OUTPUT_KEEPALIVE_INTERVAL` so rebooted endpoints re-sync unaided.
+        // activation and flash edges are observed at full rate. A falling edge
+        // renders once to flush the inactive frame; otherwise the keepalive
+        // re-renders and re-sends the unchanged output so rebooted endpoints
+        // re-sync unaided.
         let changed = self.output_changed(always_render);
         if !self.output_gate.should_render(changed, Instant::now()) {
             return;
@@ -568,15 +575,63 @@ mod tests {
     }
 
     #[test]
-    fn gate_changed_ticks_always_render_and_reset_keepalive() {
+    fn gate_falling_edge_renders_once_then_resumes_skipping() {
         let mut gate = OutputGate::new();
         let start = Instant::now();
         for tick in 0..200 {
             assert!(gate.should_render(true, start + Duration::from_millis(tick)));
         }
-        // Activity refreshes the keepalive clock: the next static tick skips
-        // even though no keepalive render happened for a while.
-        assert!(!gate.should_render(false, start + Duration::from_millis(200)));
+        assert!(gate.should_render(false, start + Duration::from_millis(200)));
+        assert!(!gate.should_render(false, start + Duration::from_millis(201)));
+    }
+
+    #[test]
+    fn gate_flash_press_then_release_renders_both_edges() {
+        let mut gate = OutputGate::new();
+        let mut project = project_with(scene_instance(false, false));
+        let start = Instant::now();
+
+        assert!(gate.should_render(project.output_changed(false), start));
+        assert!(!gate.should_render(
+            project.output_changed(false),
+            start + Duration::from_millis(1)
+        ));
+
+        project
+            .scenes_instances_grid
+            .values_mut()
+            .next()
+            .expect("test project contains one scene instance")
+            .flash = true;
+        assert!(gate.should_render(
+            project.output_changed(false),
+            start + Duration::from_millis(2)
+        ));
+
+        project
+            .scenes_instances_grid
+            .values_mut()
+            .next()
+            .expect("test project contains one scene instance")
+            .flash = false;
+        assert!(gate.should_render(
+            project.output_changed(false),
+            start + Duration::from_millis(3)
+        ));
+        assert!(!gate.should_render(
+            project.output_changed(false),
+            start + Duration::from_millis(4)
+        ));
+    }
+
+    #[test]
+    fn gate_rising_edge_behavior_is_unchanged() {
+        let mut gate = OutputGate::new();
+        let start = Instant::now();
+        assert!(gate.should_render(false, start));
+        assert!(!gate.should_render(false, start + Duration::from_millis(1)));
+        assert!(gate.should_render(true, start + Duration::from_millis(2)));
+        assert!(gate.should_render(true, start + Duration::from_millis(3)));
     }
 
     #[test]
@@ -600,15 +655,16 @@ mod tests {
     }
 
     #[test]
-    fn gate_skips_all_but_keepalive_renders_on_long_static_hold() {
+    fn gate_long_static_hold_adds_only_one_deactivation_render() {
         let mut gate = OutputGate::new();
         let start = Instant::now();
         let mut renders = 0;
         for tick in 0..1000 {
-            if gate.should_render(false, start + Duration::from_millis(tick)) {
+            let changed = tick == 1;
+            if gate.should_render(changed, start + Duration::from_millis(tick)) {
                 renders += 1;
             }
         }
-        assert_eq!(renders, 4);
+        assert_eq!(renders, 5);
     }
 }
