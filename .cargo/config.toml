@@ -6,3 +6,16 @@ rustflags = ["-Ctarget-feature=+avx2"]
 
 [target.x86_64-apple-darwin]
 rustflags = ["-Ctarget-feature=+avx2"]
+
+# Build fixes (not upstream): both patches live as branches on the
+# `gled2-patch` branches of the forks below. Remove each entry once the
+# upstream project ships the fix.
+#   - rusty_link 0.4.9: bindgen-generated layout assertions fail with
+#     bindgen 0.72 + clang 22; patched build.rs adds `.layout_tests(false)`.
+#     Fork: jnslmk/rusty_link @ gled2-patch (base c0f0ecf, version 0.4.9).
+#   - eframe 0.36.1: adds an app-settable `SKIP_PAINTING` flag so a hidden
+#     window can keep running app logic (and therefore output) on Wayland.
+#     See src/main.rs. Fork: jnslmk/egui @ gled2-patch (base tag 0.36.1).
+[patch.crates-io]
+rusty_link = { git = "https://github.com/jnslmk/rusty_link", branch = "gled2-patch" }
+eframe = { git = "https://github.com/jnslmk/egui", branch = "gled2-patch" }

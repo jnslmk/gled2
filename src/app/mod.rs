@@ -104,6 +104,35 @@ impl eframe::App for App {
             }
         }
 
+        // Painting is paused while the compositor starves our surface (see the
+        // `on_surface_status` handler in main.rs). Resume as soon as the window
+        // is interactive again - any input event, or regaining focus, means it
+        // is back on screen. Until then `logic` keeps running, so animations and
+        // output carry on at the fps limiter's rate with no window on screen.
+        // Only real interaction means the window is back on screen. A steady
+        // `focused` flag or stray window events are not enough: every wrong
+        // guess costs another 1s surface timeout before painting pauses again.
+        if eframe::skip_painting()
+            && ctx.input(|input| {
+                input.events.iter().any(|event| {
+                    matches!(
+                        event,
+                        egui::Event::WindowFocused(true)
+                            | egui::Event::PointerMoved(..)
+                            | egui::Event::PointerButton { .. }
+                            | egui::Event::MouseWheel { .. }
+                            | egui::Event::Key { .. }
+                            | egui::Event::Touch { .. }
+                    )
+                })
+            })
+        {
+            eframe::SKIP_PAINTING.store(false, std::sync::atomic::Ordering::Relaxed);
+        }
+        // `ui` is not called while painting is paused, so the repaint request
+        // that keeps the event loop ticking has to come from here.
+        ctx.request_repaint();
+
         Input::tick();
         self.handle_ui_actions();
 
