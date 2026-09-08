@@ -9,6 +9,23 @@ use tracing::debug;
 
 pub static CONNECTED_PEERS: AtomicU64 = AtomicU64::new(0);
 pub static LINK_ACTIVE_COLOR: Color32 = Color32::from_rgb(41, 116, 145);
+#[cfg(test)]
+thread_local! {
+    // Per-thread so parallel tests never count each other's sleeps.
+    static SLEEP_CALLS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Sub-millisecond tail at the end of a frame wait covered by spinning instead
+/// of sleeping: OS timers can wake early (notably on macOS), and a spin is the
+/// only way to hit the deadline precisely at 120fps (~8.3ms frames).
+const SPIN_TAIL: Duration = Duration::from_millis(1);
+
+/// Single indirection over `thread::sleep` so tests can count OS sleeps per frame.
+fn frame_sleep(duration: Duration) {
+    #[cfg(test)]
+    SLEEP_CALLS.with(|calls| calls.set(calls.get() + 1));
+    std::thread::sleep(duration);
+}
 
 pub struct Timing {
     link: AblLink,
@@ -82,9 +99,21 @@ impl Timing {
 
     #[cfg_attr(feature = "profiling", profiling::function)]
     fn limit_fps(&mut self, fps_limit: f32) {
-        let target_frame_time_nanos = 1e+9f32 / fps_limit;
-        while target_frame_time_nanos > (self.last_frame.elapsed().as_nanos() as f32) {
-            std::thread::sleep(std::time::Duration::from_nanos(100));
+        // One OS sleep covers the bulk of the frame instead of a 100ns
+        // spin-sleep loop; a short spin covers the sub-millisecond tail where
+        // timers wake early. An overrun frame skips sleeping entirely.
+        if fps_limit > 0.0 {
+            let deadline = self.last_frame + Duration::from_secs_f32(1.0 / fps_limit);
+            let now = Instant::now();
+            if now < deadline {
+                let remaining = deadline - now;
+                if remaining > SPIN_TAIL {
+                    frame_sleep(remaining - SPIN_TAIL);
+                }
+                while Instant::now() < deadline {
+                    std::hint::spin_loop();
+                }
+            }
         }
         // Full wall-clock time of the previous frame, including the time eframe
         // spent acquiring the surface texture and presenting outside of our own
@@ -376,5 +405,104 @@ impl Timing {
             4.0,
         );
         self.link.commit_app_session_state(&session_state);
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sleep_calls() -> usize {
+        SLEEP_CALLS.with(|calls| calls.get())
+    }
+
+    fn reset_sleep_calls() {
+        SLEEP_CALLS.with(|calls| calls.set(0));
+    }
+
+    #[test]
+    fn limit_fps_holds_configured_cadence() {
+        let mut timing = Timing::default();
+        let frames = 10;
+        let fps_limit = 200.0;
+        let start = Instant::now();
+        for _ in 0..frames {
+            timing.limit_fps(fps_limit);
+        }
+        let elapsed = start.elapsed();
+        let period = Duration::from_secs_f32(1.0 / fps_limit);
+        let target = period * frames;
+        assert!(
+            elapsed >= target - period,
+            "frames ran early: {elapsed:?} for {frames} frames at {fps_limit}fps"
+        );
+        // 20ms over 10 frames: a systematic over-sleep of 2ms per frame fails,
+        // while observed overshoot is ~0 and CI scheduling jitter stays far below.
+        assert!(
+            elapsed < target + Duration::from_millis(20),
+            "frames ran late: {elapsed:?} for {frames} frames at {fps_limit}fps"
+        );
+    }
+
+    #[test]
+    fn limit_fps_sleeps_once_per_frame() {
+        let mut timing = Timing::default();
+        let frames = 5;
+        reset_sleep_calls();
+        for _ in 0..frames {
+            timing.limit_fps(120.0);
+        }
+        let calls = sleep_calls();
+        // Each frame enters with ~8.3ms minus microsecond-scale test overhead of
+        // remaining time, always clearing the 1ms spin-tail threshold: exactly
+        // one OS sleep per frame (a >7ms scheduling stall would under-sleep).
+        assert_eq!(
+            calls, frames,
+            "expected exactly one OS sleep per frame: {calls} for {frames} frames"
+        );
+    }
+
+    #[test]
+    fn limit_fps_skips_sleep_on_overrun() {
+        let mut timing = Timing {
+            last_frame: Instant::now() - Duration::from_secs(1),
+            ..Timing::default()
+        };
+        reset_sleep_calls();
+        let start = Instant::now();
+        timing.limit_fps(120.0);
+        let elapsed = start.elapsed();
+        assert_eq!(sleep_calls(), 0, "overrun frame must not sleep");
+        assert!(
+            elapsed < Duration::from_millis(100),
+            "overrun frame blocked: {elapsed:?}"
+        );
+    }
+
+    #[test]
+    fn limit_fps_keeps_frame_accounting() {
+        let mut timing = Timing::default();
+        for _ in 0..12 {
+            timing.limit_fps(1000.0);
+        }
+        assert_eq!(timing.total_frames, 12);
+        assert!(timing.max_frame_nanos > 0);
+        assert!(timing.last_frame.elapsed() < Duration::from_millis(100));
+    }
+
+    #[test]
+    fn avg_fps_reports_after_one_second_window() {
+        let mut timing = Timing {
+            avg_fps_time: Instant::now() - Duration::from_millis(1100),
+            frame_count: 100,
+            max_frame_nanos: 5_000_000,
+            ..Timing::default()
+        };
+        timing.calculate_avg_fps();
+        let fps = timing
+            .avg_fps
+            .expect("avg fps must be reported after 1s window");
+        assert!((80.0..120.0).contains(&fps), "unexpected fps report: {fps}");
+        assert_eq!(timing.frame_count, 0);
+        assert_eq!(timing.max_frame_nanos, 0);
     }
 }
