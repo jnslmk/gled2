@@ -7,15 +7,21 @@ rustflags = ["-Ctarget-feature=+avx2"]
 [target.x86_64-apple-darwin]
 rustflags = ["-Ctarget-feature=+avx2"]
 
-# Build fixes (not upstream): both patches live as branches on the
-# `gled2-patch` branches of the forks below. Remove each entry once the
-# upstream project ships the fix.
-#   - rusty_link 0.4.9: bindgen-generated layout assertions fail with
-#     bindgen 0.72 + clang 22; patched build.rs adds `.layout_tests(false)`.
-#     Fork: jnslmk/rusty_link @ gled2-patch (base c0f0ecf, version 0.4.9).
+# The global ~/.cargo/config.toml forces LIBCLANG_PATH to the ESP32 Xtensa
+# toolchain's libclang (32-bit-pointer default target), which makes bindgen
+# report the host pointer width as 32: debug builds trip bindgen's internal
+# debug_assert and release builds silently generate wrong layout assumptions.
+# This project builds for the host only, so load the system libclang instead.
+[env]
+LIBCLANG_PATH = { value = "/usr/lib", force = true }
+
+# Build fixes (not upstream): the eframe patch lives on the `gled2-patch`
+# branch of the fork below. Remove it once upstream ships the change.
 #   - eframe 0.36.1: adds an app-settable `SKIP_PAINTING` flag so a hidden
 #     window can keep running app logic (and therefore output) on Wayland.
-#     See src/main.rs. Fork: jnslmk/egui @ gled2-patch (base tag 0.36.1).
+#     See src/main.rs. Fork: jnslmk/egui @ gled2-patch (standalone 0.36.1).
+#   - rusty_link needed no patch once LIBCLANG_PATH points at the system
+#     libclang (see [env] above); the previous .layout_tests(false) workaround
+#     existed only because the ESP toolchain libclang misreported target sizes.
 [patch.crates-io]
-rusty_link = { git = "https://github.com/jnslmk/rusty_link", branch = "gled2-patch" }
 eframe = { git = "https://github.com/jnslmk/egui", branch = "gled2-patch" }
