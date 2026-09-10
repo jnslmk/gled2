@@ -33,15 +33,110 @@ use kanal::{Receiver, Sender};
 use persistent_state::PersistentState;
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use storage::{show_storage_error, show_storage_loading};
 use timing::Timing;
+
+/// Ignore construction-to-first-frame work without delaying detection of the
+/// compositor's first 1 Hz callback.
+const PAUSE_GRACE: Duration = Duration::from_millis(500);
+/// Smallest logic-call gap treated as "the event loop is externally paced".
+/// Comfortably above any legitimate display cadence, yet far below the ~1 s
+/// drip a Wayland compositor imposes on windows it does not show.
+const STARVE_MIN_GAP: Duration = Duration::from_millis(150);
+/// Largest starvation threshold. This leaves 100 ms below the measured 1 Hz
+/// compositor drip while allowing more than two configured periods at 3 fps.
+const STARVE_MAX_GAP: Duration = Duration::from_millis(900);
+/// Consecutive starved logic calls before painting is paused: two in a row
+/// mean a steady external throttle (the ~1 s drip repeats every frame), not a
+/// one-off stall.
+const STARVED_FRAMES_TO_PAUSE: u8 = 2;
+
+/// The logic-call gap that counts as starved, scaled by the fps limiter and
+/// capped below the compositor's measured ~1 s drip.
+///
+/// A configured period at or above the cap leaves no safe margin below the
+/// drip, so the watchdog is disabled rather than falsely pausing a visible UI.
+fn starve_threshold(fps_limit: f32) -> Option<Duration> {
+    let limiter_period_secs = if fps_limit.is_finite() && fps_limit > 0.0 {
+        1.0 / fps_limit
+    } else {
+        0.0
+    };
+    if limiter_period_secs >= STARVE_MAX_GAP.as_secs_f32() {
+        return None;
+    }
+
+    let limiter_period = Duration::from_secs_f32(limiter_period_secs);
+    Some((limiter_period * 4).clamp(STARVE_MIN_GAP, STARVE_MAX_GAP))
+}
+
+fn has_real_interaction(input: &egui::InputState) -> bool {
+    input.events.iter().any(|event| {
+        matches!(
+            event,
+            egui::Event::WindowFocused(true)
+                | egui::Event::PointerMoved(..)
+                | egui::Event::PointerButton { .. }
+                | egui::Event::MouseWheel { .. }
+                | egui::Event::Key { .. }
+                | egui::Event::Touch { .. }
+        )
+    })
+}
+
+/// Keep native child windows declared while bypassing their immediate renderers.
+///
+/// eframe still runs the root UI pass when a child is visible, even while
+/// `SKIP_PAINTING` suppresses surface presentation. An immediate viewport would
+/// paint inline during that pass, so temporarily declare existing children as
+/// deferred, input-only viewports instead. Repainting them consumes pending
+/// child input without presenting their surfaces.
+fn declare_paused_viewports(ctx: &egui::Context) {
+    let viewport_ids = ctx.input(|input| {
+        input
+            .raw
+            .viewports
+            .keys()
+            .copied()
+            .filter(|viewport_id| *viewport_id != ViewportId::ROOT)
+            .collect::<Vec<_>>()
+    });
+
+    for viewport_id in viewport_ids {
+        let builder = ctx.viewport_for(viewport_id, |viewport| viewport.builder.clone());
+        ctx.show_viewport_deferred(viewport_id, builder, |ui, _viewport_class| {
+            let close_requested = ui.ctx().input(|input| input.viewport().close_requested());
+            if close_requested {
+                // eframe clears this input event after the deferred pass. Sending
+                // Close queues it again for the restored immediate callback.
+                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+            if close_requested || ui.ctx().input(has_real_interaction) {
+                eframe::SKIP_PAINTING.store(false, std::sync::atomic::Ordering::Relaxed);
+                ui.ctx().request_repaint_of(ViewportId::ROOT);
+            }
+        });
+        ctx.request_repaint_of(viewport_id);
+    }
+}
 
 pub struct App {
     pub startup: bool,
     pub windows: Windows,
     pub timing: Timing,
     pub last_always_render_fps_frame: Instant,
+    /// Wall-clock anchor of the previous `App::logic` call. A gap far beyond
+    /// the frame cadence means the event loop is being paced externally - a
+    /// Wayland compositor drips ~1 frame/s to a window it does not show -
+    /// which would pin animations and output to that rate. See the watchdog
+    /// in `App::logic`.
+    last_logic_frame: Instant,
+    /// Consecutive `App::logic` calls whose gap exceeded the starve
+    /// threshold; painting pauses once this reaches `STARVED_FRAMES_TO_PAUSE`.
+    starved_logic_frames: u8,
+    /// When the app was created; the watchdog ignores first-frame setup.
+    started_at: Instant,
     pub project: Option<Project>,
     pub project_id: Option<AssetId<Project>>,
     pub other_main_windows: HashSet<ViewportId>,
@@ -104,33 +199,54 @@ impl eframe::App for App {
             }
         }
 
-        // Painting is paused while the compositor starves our surface (see the
-        // `on_surface_status` handler in main.rs). Resume as soon as the window
-        // is interactive again - any input event, or regaining focus, means it
-        // is back on screen. Until then `logic` keeps running, so animations and
-        // output carry on at the fps limiter's rate with no window on screen.
-        // Only real interaction means the window is back on screen. A steady
-        // `focused` flag or stray window events are not enough: every wrong
-        // guess costs another 1s surface timeout before painting pauses again.
-        if eframe::skip_painting()
-            && ctx.input(|input| {
-                input.events.iter().any(|event| {
-                    matches!(
-                        event,
-                        egui::Event::WindowFocused(true)
-                            | egui::Event::PointerMoved(..)
-                            | egui::Event::PointerButton { .. }
-                            | egui::Event::MouseWheel { .. }
-                            | egui::Event::Key { .. }
-                            | egui::Event::Touch { .. }
-                    )
-                })
-            })
+        // Keep the show running when the window is not on screen.
+        //
+        // eframe runs `App::logic` once per frame callback, and a Wayland
+        // compositor paces a window it does not show at ~1 frame/s instead of
+        // the refresh rate (measured: exactly once per second on niri). That
+        // would pin animations, Art-Net and DMX output to ~1 fps as soon as
+        // the console is hidden or covered. The compositor never reports an
+        // error while dripped - every 1 Hz paint succeeds - so the
+        // `on_surface_status` handler in main.rs never fires and 8d93838's
+        // pause never engaged. Detect the drip from the actual logic cadence
+        // instead, and pause painting. While painting is paused eframe stops
+        // requesting compositor frame callbacks, so `App::logic` free-runs at
+        // the fps limiter's rate and the show - timing, scene renders, DMX
+        // readback and send - continues unchanged.
+        let now = Instant::now();
+        let frame_gap = now.saturating_duration_since(self.last_logic_frame);
+        self.last_logic_frame = now;
+        if !eframe::skip_painting()
+            && self.started_at.elapsed() > PAUSE_GRACE
+            && starve_threshold(self.persistent_state.fps_limit())
+                .is_some_and(|threshold| frame_gap > threshold)
         {
+            self.starved_logic_frames = self.starved_logic_frames.saturating_add(1);
+            if self.starved_logic_frames >= STARVED_FRAMES_TO_PAUSE {
+                tracing::debug!(
+                    "Logic cadence starved ({frame_gap:?} per frame); window not visible - \
+                     pausing painting, output continues"
+                );
+                eframe::SKIP_PAINTING.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+        } else {
+            self.starved_logic_frames = 0;
+        }
+
+        // Resume painting as soon as the window is interactive again - any
+        // input event, or regaining focus, means it is back on screen. Until
+        // then `logic` keeps running, so animations and output carry on at the
+        // fps limiter's rate with no window on screen.
+        // Only real interaction means the window is back on screen. A steady
+        // `focused` flag or stray window events are not enough: while painting
+        // is paused there is no frame-callback pacing to observe, so a wrong
+        // guess cannot be corrected by cadence and would freeze a visible
+        // window until the drip resumes.
+        if eframe::skip_painting() && ctx.input(has_real_interaction) {
             eframe::SKIP_PAINTING.store(false, std::sync::atomic::Ordering::Relaxed);
         }
-        // `ui` is not called while painting is paused, so the repaint request
-        // that keeps the event loop ticking has to come from here.
+        // Painting may be paused without a full UI pass, so keep the event
+        // loop ticking from `logic`.
         ctx.request_repaint();
 
         Input::tick();
@@ -177,6 +293,15 @@ impl eframe::App for App {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+
+        // `SKIP_PAINTING` is sampled by eframe before `logic`, so it can become
+        // true during this same pass. Keep child declarations alive, but avoid
+        // their immediate renderers: unlike eframe's root renderer, immediate
+        // viewport renderers do not consult `SKIP_PAINTING`.
+        if eframe::skip_painting() {
+            declare_paused_viewports(&ctx);
+            return;
+        }
 
         self.draw_main_window(&ctx, None);
 
@@ -309,6 +434,9 @@ impl App {
             startup: true,
             timing: Default::default(),
             last_always_render_fps_frame: Instant::now(),
+            last_logic_frame: Instant::now(),
+            starved_logic_frames: 0,
+            started_at: Instant::now(),
             blackout: true,
             blackout_hold: false,
             selected_scene_instance: Default::default(),
@@ -368,5 +496,106 @@ impl Default for GitUiState {
             use_passphrase: persistent_state.git_credentials().use_passphrase(),
             passphrase: Default::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn starve_threshold_sits_between_healthy_and_dripped_cadence() {
+        assert!(
+            PAUSE_GRACE < Duration::from_secs(1),
+            "startup grace must expire before the compositor's first 1 Hz callback"
+        );
+        assert!(
+            STARVE_MAX_GAP < Duration::from_secs(1),
+            "threshold cap must stay below the compositor's 1 Hz drip"
+        );
+
+        for fps_limit in [2.0, 3.0, 10.0, 30.0, 60.0, 120.0, 5000.0] {
+            let limiter_period = Duration::from_secs_f32(1.0 / fps_limit);
+            let threshold =
+                starve_threshold(fps_limit).expect("cadence faster than the drip must be watched");
+            assert!(
+                limiter_period < threshold,
+                "threshold {threshold:?} at {fps_limit} fps would flag healthy limiter cadence"
+            );
+            assert!(
+                (STARVE_MIN_GAP..=STARVE_MAX_GAP).contains(&threshold),
+                "threshold {threshold:?} at {fps_limit} fps escaped its bounds"
+            );
+        }
+
+        assert_eq!(starve_threshold(3.0), Some(STARVE_MAX_GAP));
+        assert_eq!(starve_threshold(0.0), Some(STARVE_MIN_GAP));
+        assert_eq!(
+            starve_threshold(1.0),
+            None,
+            "a configured cadence no faster than the drip must not pause a visible window"
+        );
+    }
+
+    #[test]
+    fn paused_viewports_preserve_close_and_resume_on_child_input() {
+        let ctx = egui::Context::default();
+        ctx.set_embed_viewports(false);
+        let child = ViewportId(Id::new("paused child viewport"));
+
+        let initial_output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            ui.ctx().show_viewport_deferred(
+                child,
+                egui::ViewportBuilder::default(),
+                |_ui, _viewport_class| {},
+            );
+        });
+        assert!(initial_output.viewport_output.contains_key(&child));
+        initial_output.drop_without_applying_deltas();
+
+        let mut root_input = egui::RawInput::default();
+        root_input.viewports.insert(child, Default::default());
+        let paused_output = ctx.run_ui(root_input, |ui| declare_paused_viewports(ui.ctx()));
+        let child_callback = paused_output.viewport_output[&child]
+            .viewport_ui_cb
+            .clone()
+            .expect("paused child must use a deferred input callback");
+        paused_output.drop_without_applying_deltas();
+
+        eframe::SKIP_PAINTING.store(true, std::sync::atomic::Ordering::Relaxed);
+        let mut child_input = egui::RawInput {
+            viewport_id: child,
+            ..Default::default()
+        };
+        child_input.viewports.insert(child, Default::default());
+        child_input
+            .events
+            .push(egui::Event::PointerMoved(egui::Pos2::ZERO));
+        ctx.run_ui(child_input, |ui| child_callback(ui))
+            .drop_without_applying_deltas();
+        let resumed = !eframe::skip_painting();
+        assert!(resumed, "real child input must resume painting");
+
+        eframe::SKIP_PAINTING.store(true, std::sync::atomic::Ordering::Relaxed);
+        let mut close_info = egui::ViewportInfo::default();
+        close_info.events.push(egui::ViewportEvent::Close);
+        let mut close_input = egui::RawInput {
+            viewport_id: child,
+            ..Default::default()
+        };
+        close_input.viewports.insert(child, close_info);
+        let close_output = ctx.run_ui(close_input, |ui| child_callback(ui));
+        let close_forwarded = close_output.viewport_output[&child]
+            .commands
+            .contains(&egui::ViewportCommand::Close);
+        let close_resumed = !eframe::skip_painting();
+        close_output.drop_without_applying_deltas();
+
+        eframe::SKIP_PAINTING.store(false, std::sync::atomic::Ordering::Relaxed);
+        assert!(
+            close_forwarded,
+            "paused child close must be replayed to its immediate callback"
+        );
+        assert!(close_resumed, "paused child close must resume the root UI");
     }
 }

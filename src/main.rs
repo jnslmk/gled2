@@ -130,19 +130,26 @@ fn main() {
 
     // Keep running (and keep outputting) while the window is hidden.
     //
-    // A hidden window gets no frame callbacks from a Wayland compositor, so
-    // `Surface::get_current_texture` blocks until it times out - measured at
-    // exactly 1.000s per frame on niri. Because eframe runs `App::logic` once
-    // per paint, that pins the whole show - animations, Art-Net, DMX - to 1 fps
-    // as soon as the console is behind another window.
+    // A hidden window gets no frame callbacks at the refresh rate from a
+    // Wayland compositor: niri answers at ~1 Hz instead. Because eframe runs
+    // `App::logic` once per frame callback, that pins the whole show -
+    // animations, Art-Net, DMX - to 1 fps as soon as the console is behind
+    // another window or on another workspace.
     //
     // eframe already knows how to run logic without painting; it just picks
     // that path from `Window::is_visible()`, which Wayland does not implement
-    // (and winit never reports `Occluded` on Wayland either). So detect the
-    // starvation here, from the surface status, and tell eframe to stop
-    // painting; `App::logic` keeps ticking at the fps limiter's rate and output
+    // (and winit never reports `Occluded` on Wayland either). So `App::logic`
+    // detects the frame drip from its own cadence and sets SKIP_PAINTING:
+    // once painting is paused, no frame callbacks are requested, eframe's
+    // logic-only path free-runs at the fps limiter's rate, and output
     // continues. `App::logic` clears the flag as soon as the window is
     // interactive again.
+    //
+    // The handler below is a second, platform-agnostic line of defence: on
+    // backends where a genuinely failing surface *does* surface as an error
+    // (lost/outdated surface, an acquire that times out instead of dripped
+    // frame callbacks), pause painting immediately rather than after the
+    // watchdog's two starved frames.
     wgpu_options.on_surface_status = Arc::new(|status| match status {
         wgpu::CurrentSurfaceTexture::Outdated => SurfaceErrorAction::Reconfigure,
         wgpu::CurrentSurfaceTexture::Lost => SurfaceErrorAction::RecreateSurface,
