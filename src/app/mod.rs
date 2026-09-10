@@ -205,6 +205,7 @@ impl eframe::App for App {
             );
             crate::PUFFIN_GPU_PROFILER.lock().new_frame();
         }
+        crate::niri::set_context(ctx);
         if let Ok(Some(network_stats)) = self.network_stats_receiver.try_recv() {
             self.network_stats = network_stats;
         }

@@ -10,6 +10,8 @@ pub(crate) mod audio;
 pub(crate) mod input;
 pub(crate) mod midi;
 pub(crate) mod network_stats;
+#[cfg(unix)]
+pub(crate) mod niri;
 pub(crate) mod output_state;
 pub(crate) mod pipeline;
 pub(crate) mod storage;
@@ -113,6 +115,8 @@ fn main() {
     RendererCallback::init();
     storage::start_thread();
     ui::temperature::start_thread();
+    #[cfg(unix)]
+    niri::start_thread();
     let (midi_monitor_receiver, test_command_sender) = midi::start_threads();
     let midi_learn_receiver = midi::learn::init();
     let network_stats_receiver = network_stats::start_thread();
@@ -148,8 +152,8 @@ fn main() {
     // The handler below is a second, platform-agnostic line of defence: on
     // backends where a genuinely failing surface *does* surface as an error
     // (lost/outdated surface, an acquire that times out instead of dripped
-    // frame callbacks), pause painting immediately rather than after the
-    // watchdog's two starved frames.
+    // frame callbacks), pause painting immediately rather than waiting for
+    // the cadence watchdog's confirming drips.
     wgpu_options.on_surface_status = Arc::new(|status| match status {
         wgpu::CurrentSurfaceTexture::Outdated => SurfaceErrorAction::Reconfigure,
         wgpu::CurrentSurfaceTexture::Lost => SurfaceErrorAction::RecreateSurface,
