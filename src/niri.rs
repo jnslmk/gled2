@@ -9,7 +9,11 @@
 //! niri's IPC event stream reports layout changes within milliseconds, so
 //! this thread flips [`eframe::SKIP_PAINTING`] the moment the window leaves
 //! the screen, and clears it the moment it is back, without waiting for a
-//! user interaction. Events are only change notifications: visibility is
+//! user interaction. A recheck runs the moment an event lands, so the flag
+//! follows the compositor by about one socket round trip; bursts fold into a
+//! pending recheck flushed by the read timeout, and a sustained flood never
+//! rechecks faster than [`CHECK_INTERVAL`], bounding the worst case near
+//! 100 ms. Events are only change notifications: visibility is
 //! always recomputed from authoritative `Windows`/`Workspaces` replies, so
 //! unknown event variants or payload drift cannot break detection. Without
 //! `NIRI_SOCKET` (any other platform or compositor) the thread never starts
@@ -25,11 +29,16 @@ use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
-/// At most one visibility recheck per interval; events in between are folded
-/// into the next check. Well under the watchdog's 150 ms starve threshold,
-/// and cheap: two tiny JSON replies over a local Unix socket.
+/// Fold window for event bursts: an event rechecks immediately unless one
+/// ran within this window, in which case it only arms a pending recheck -
+/// so a quiet compositor reaches the flag in one recheck while a flood
+/// never queries faster than ~10/s. Well under the watchdog's 150 ms starve
+/// threshold, and cheap: two tiny JSON replies over a local Unix socket.
 const CHECK_INTERVAL: Duration = Duration::from_millis(100);
-/// The event stream read timeout doubles as the recheck ticker.
+/// The event stream read timeout doubles as the flush ticker for a recheck
+/// pended by [`CHECK_INTERVAL`], bounding the burst worst case at one tick
+/// plus the queries. There is no idle polling: every state input emits an
+/// event, so quiet time queries nothing at all.
 const READ_TIMEOUT: Duration = Duration::from_millis(50);
 
 static CONTEXT: OnceLock<egui::Context> = OnceLock::new();
@@ -93,20 +102,47 @@ fn watch_stream(
     // cadence watchdog covers the window.
     let mut line = String::new();
     let mut last_check = Instant::now();
+    let mut pending = false;
     loop {
-        match reader.read_line(&mut line) {
-            Ok(0) => return,       // EOF: niri went away, reconnect
-            Ok(_) => line.clear(), // a change happened somewhere; fall through to the check
+        let event = match reader.read_line(&mut line) {
+            Ok(0) => return, // EOF: niri went away, reconnect
+            Ok(_) => {
+                line.clear(); // a change happened somewhere; recheck below
+                true
+            }
             Err(err)
                 if err.kind() == std::io::ErrorKind::WouldBlock
-                    || err.kind() == std::io::ErrorKind::TimedOut => {}
+                    || err.kind() == std::io::ErrorKind::TimedOut => false,
             Err(_) => return,
-        }
-        if last_check.elapsed() < CHECK_INTERVAL {
+        };
+        // An event outside the fold window rechecks at once, so the flag
+        // lands one recheck after the compositor reports the change;
+        // inside it the event only arms a pending recheck, which the next
+        // read timeout flushes - a flood then never queries faster than
+        // the fold window, and quiet time never queries at all. The check
+        // covers every event that queued while it ran, so it clears the
+        // pending flag.
+        if event {
+            if last_check.elapsed() < CHECK_INTERVAL {
+                pending = true;
+                continue;
+            }
+        } else if !pending {
             continue;
         }
+        pending = false;
         last_check = Instant::now();
         let Some(visible) = compute_visible(socket) else {
+            // `None` has two causes: the compositor did not answer, or it
+            // answered and none of our windows is mapped yet. One probe
+            // query tells them apart: if it also fails, the compositor is
+            // unreachable and the state that raised this check is still
+            // unknown - re-arm the pending recheck so the next read
+            // timeout retries instead of waiting for a further event. A
+            // successful probe means startup without a mapped window (or
+            // reply drift); that state only changes with an event, so
+            // waiting for one is correct and polling cannot help.
+            pending = query(socket, "\"Workspaces\"").is_none();
             continue;
         };
         if visible {
@@ -172,4 +208,170 @@ fn query(socket: &Path, request: &str) -> Option<Value> {
     let mut reply = String::new();
     BufReader::new(stream).read_line(&mut reply).ok()?;
     serde_json::from_str(&reply).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::net::UnixListener;
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::mpsc::{Receiver, RecvTimeoutError, channel};
+    use std::thread;
+
+    /// A stand-in niri compositor: answers every query connection so our
+    /// window (same pid) sits on an inactive workspace, and timestamps each
+    /// query's arrival. With `answering` cleared it accepts queries but
+    /// never replies, which is indistinguishable to `query` from a
+    /// compositor that went away. The event stream is a socket pair, so
+    /// event lines need no accept-ordering and dropping the test end EOFs
+    /// the watcher. The blocking accept loop outlives the test; the process
+    /// reaps it.
+    struct FakeNiri {
+        /// Query endpoint path handed to `watch_stream`.
+        socket: PathBuf,
+        /// Test end of the event pair: write event lines, drop for EOF.
+        events: UnixStream,
+        /// Arrival time of each query connection, in accept order.
+        queries: Receiver<Instant>,
+        /// Whether queries are answered; cleared to simulate an
+        /// unreachable compositor.
+        answering: Arc<AtomicBool>,
+    }
+
+    impl FakeNiri {
+        /// Binds the query endpoint and returns itself plus the watcher's
+        /// event stream end.
+        fn spawn() -> (Self, UnixStream) {
+            let dir =
+                std::env::temp_dir().join(format!("gled-niri-test-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).expect("temp dir");
+            let socket = dir.join("niri.sock");
+            let _ = std::fs::remove_file(&socket);
+            let listener = UnixListener::bind(&socket).expect("bind fake niri socket");
+            let (sender, queries) = channel();
+            let answering = Arc::new(AtomicBool::new(true));
+            let windows = format!(
+                r#"{{"Ok":{{"Windows":[{{"pid":{},"workspace_id":1}}]}}}}"#,
+                std::process::id()
+            );
+            let workspaces = r#"{"Ok":{"Workspaces":[{"id":1,"is_active":false}]}}"#;
+            let answering_loop = Arc::clone(&answering);
+            thread::spawn(move || {
+                for stream in listener.incoming() {
+                    let mut stream = stream.expect("accept query");
+                    let mut request = String::new();
+                    BufReader::new(&stream)
+                        .read_line(&mut request)
+                        .expect("read query");
+                    sender.send(Instant::now()).expect("send query time");
+                    if !answering_loop.load(Ordering::Relaxed) {
+                        continue;
+                    }
+                    let reply = if request.contains("Windows") {
+                        &windows
+                    } else {
+                        workspaces
+                    };
+                    stream.write_all(reply.as_bytes()).expect("write reply");
+                    stream.write_all(b"\n").expect("write reply newline");
+                }
+            });
+            let (events, watcher_events) = UnixStream::pair().expect("event stream pair");
+            (
+                Self {
+                    socket,
+                    events,
+                    queries,
+                    answering,
+                },
+                watcher_events,
+            )
+        }
+    }
+
+    /// The latency contract: an event outside the fold window rechecks at
+    /// once, an event inside it rechecks via the read-timeout flush, quiet
+    /// time queries nothing, and an unreachable compositor is retried on
+    /// the read timeout instead of waiting for a further event. Fails
+    /// against the old ticker-gated loop, which re-polled every ~100-150 ms
+    /// even without events.
+    #[test]
+    fn watcher_recheck_contract() {
+        let (mut niri, watcher_events) = FakeNiri::spawn();
+        let socket = niri.socket.clone();
+        let watcher = thread::spawn(move || {
+            let mut paused_by_us = false;
+            // Arming allowed from the start, like a window that has been
+            // on screen: the invisibility answers below must pause.
+            let mut seen_visible = true;
+            watch_stream(
+                watcher_events,
+                &socket,
+                &mut paused_by_us,
+                &mut seen_visible,
+            );
+            (paused_by_us, seen_visible)
+        });
+        // Outlast the startup fold window so the first event takes the
+        // immediate path, not the pending flush.
+        thread::sleep(Duration::from_millis(150));
+
+        let sent = Instant::now();
+        niri.events.write_all(b"{}\n").expect("send event");
+        // READ_TIMEOUT is 50 ms and the flush path cannot fire before one
+        // full read timeout, so a first query inside 45 ms proves the
+        // immediate path; the previous 140 ms bound also passed a folded
+        // recheck.
+        niri.queries.recv_timeout(Duration::from_millis(45)).expect("immediate Windows");
+        niri.queries.recv_timeout(Duration::from_millis(150)).expect("immediate Workspaces");
+        assert!(sent.elapsed() < Duration::from_millis(45), "first recheck not immediate");
+
+        // An event within the fold window must recheck via the next read
+        // timeout: within READ_TIMEOUT plus queries and scheduler slack.
+        niri.events.write_all(b"{}\n").expect("send folded event");
+        niri.queries.recv_timeout(Duration::from_millis(200)).expect("flushed Windows");
+        niri.queries.recv_timeout(Duration::from_millis(200)).expect("flushed Workspaces");
+
+        // Quiet time queries nothing - the old loop would have re-polled
+        // within ~150 ms.
+        assert_eq!(
+            niri.queries.recv_timeout(Duration::from_millis(400)),
+            Err(RecvTimeoutError::Timeout),
+            "idle period must not query"
+        );
+
+        // An unreachable compositor must self-heal: a failed check re-arms
+        // the pending recheck via its probe query, so retries arrive on the
+        // read timeout with no further events - the old idle tick's job.
+        niri.answering.store(false, Ordering::Relaxed);
+        niri.events.write_all(b"{}\n").expect("send event to dead compositor");
+        for _ in 0..4 {
+            niri.queries
+                .recv_timeout(Duration::from_millis(150))
+                .expect("unreachable retries not seen");
+        }
+        niri.answering.store(true, Ordering::Relaxed);
+        // The pending recheck heals within a read timeout of the
+        // compositor answering. A retry whose probe slipped in after the
+        // store found the compositor reachable and consumed the pending
+        // flag - waiting for events is that path's documented contract -
+        // so one more event re-arms the check deterministically either way.
+        niri.events.write_all(b"{}\n").expect("send event to heal");
+        niri.queries.recv_timeout(Duration::from_millis(200)).expect("healed Windows");
+        niri.queries.recv_timeout(Duration::from_millis(200)).expect("healed Workspaces");
+
+        // EOF ends the watcher; both checks saw the window off screen, so
+        // the pause must be armed. The flag store that goes with it is not
+        // asserted: the global is process-shared with other tests in this
+        // binary, so it is reset instead - `paused_by_us` is only set in
+        // the branch that stores the flag.
+        let dir = niri.socket.parent().expect("socket parent").to_owned();
+        drop(niri);
+        let (paused_by_us, seen_visible) = watcher.join().expect("watcher thread");
+        assert!(seen_visible);
+        assert!(paused_by_us);
+        eframe::SKIP_PAINTING.store(false, Ordering::Relaxed);
+        let _ = std::fs::remove_dir_all(dir);
+    }
 }

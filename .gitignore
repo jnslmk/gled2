@@ -123,3 +123,6 @@ fabric.properties
 
 .codex-tmp/
 .worktrees/
+
+# implement-review run ledgers
+.implement-review/

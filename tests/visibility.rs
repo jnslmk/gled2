@@ -14,8 +14,10 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-/// Detection is an IPC event (~16 ms) plus a bounded recheck (100 ms) plus
-/// two tiny socket queries; the budget leaves room for scheduling jitter.
+/// Detection is one IPC event plus one immediate recheck (two tiny socket
+/// queries); an event burst delays the recheck by at most one read timeout
+/// (50 ms), a sustained flood by at most the 100 ms fold window. The budget
+/// leaves room for scheduling jitter.
 const PAUSE_BUDGET: Duration = Duration::from_millis(500);
 const RESUME_BUDGET: Duration = Duration::from_millis(500);
 
