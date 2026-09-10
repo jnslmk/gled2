@@ -153,11 +153,22 @@ fn main() {
     wgpu_options.on_surface_status = Arc::new(|status| match status {
         wgpu::CurrentSurfaceTexture::Outdated => SurfaceErrorAction::Reconfigure,
         wgpu::CurrentSurfaceTexture::Lost => SurfaceErrorAction::RecreateSurface,
-        status => {
-            // Timeout (compositor is not releasing buffers) or Occluded: the
-            // window is not on screen, so painting is pointless until it is.
+        wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
+            // The compositor is not releasing buffers or the window is not on
+            // screen, so painting is pointless until it is available again.
             tracing::debug!("Surface starved ({status:?}); painting paused, output continues");
             eframe::SKIP_PAINTING.store(true, Ordering::Relaxed);
+            SurfaceErrorAction::SkipFrame
+        }
+        wgpu::CurrentSurfaceTexture::Validation => {
+            // Validation is a real rendering error, not evidence that the
+            // window is hidden. Keep it visible without pausing the output
+            // watchdog's recovery path.
+            tracing::error!("Surface validation error ({status:?}); painting skipped");
+            SurfaceErrorAction::SkipFrame
+        }
+        status => {
+            tracing::warn!("Unexpected surface status ({status:?}); painting skipped");
             SurfaceErrorAction::SkipFrame
         }
     });
