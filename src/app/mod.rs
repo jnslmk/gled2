@@ -49,9 +49,9 @@ const STARVE_MIN_GAP: Duration = Duration::from_millis(150);
 const STARVE_MAX_GAP: Duration = Duration::from_millis(900);
 /// Consecutive starved logic calls before painting is paused: two in a row
 /// mean a steady external throttle (the ~1 s drip repeats every frame), not a
-/// one-off stall.
+/// one-off stall. A single gap at or beyond `STARVE_MAX_GAP` skips that
+/// confirmation because it is unambiguous - see `starvation_update`.
 const STARVED_FRAMES_TO_PAUSE: u8 = 2;
-
 /// The logic-call gap that counts as starved, scaled by the fps limiter and
 /// capped below the compositor's measured ~1 s drip.
 ///
@@ -69,6 +69,29 @@ fn starve_threshold(fps_limit: f32) -> Option<Duration> {
 
     let limiter_period = Duration::from_secs_f32(limiter_period_secs);
     Some((limiter_period * 4).clamp(STARVE_MIN_GAP, STARVE_MAX_GAP))
+}
+
+/// Watchdog step for one `logic` call: consume the measured logic-call gap and
+/// return the updated starved-frame counter plus whether painting must pause
+/// now. A gap beyond the scaled threshold counts toward
+/// `STARVED_FRAMES_TO_PAUSE`. A gap at or beyond `STARVE_MAX_GAP` is the
+/// compositor's ~1 Hz drip beyond doubt - no display cadence and no transient
+/// stall is that slow - so it pauses immediately instead of costing a second
+/// confirming drip of ~1 fps output.
+fn starvation_update(
+    threshold: Option<Duration>,
+    frame_gap: Duration,
+    starved_logic_frames: u8,
+) -> (u8, bool) {
+    match threshold {
+        Some(threshold) if frame_gap > threshold => {
+            let starved_logic_frames = starved_logic_frames.saturating_add(1);
+            let pause =
+                starved_logic_frames >= STARVED_FRAMES_TO_PAUSE || frame_gap >= STARVE_MAX_GAP;
+            (starved_logic_frames, pause)
+        }
+        _ => (0, false),
+    }
 }
 
 fn has_real_interaction(input: &egui::InputState) -> bool {
@@ -182,7 +205,6 @@ impl eframe::App for App {
             );
             crate::PUFFIN_GPU_PROFILER.lock().new_frame();
         }
-
         if let Ok(Some(network_stats)) = self.network_stats_receiver.try_recv() {
             self.network_stats = network_stats;
         }
@@ -212,25 +234,29 @@ impl eframe::App for App {
         // instead, and pause painting. While painting is paused eframe stops
         // requesting compositor frame callbacks, so `App::logic` free-runs at
         // the fps limiter's rate and the show - timing, scene renders, DMX
-        // readback and send - continues unchanged.
+        // readback and send - continues unchanged. Detection cannot start
+        // before the compositor's first drip, but it need not wait for a
+        // second one: a gap at or beyond `STARVE_MAX_GAP` is unambiguous, so
+        // painting pauses on the first dripped frame and the degraded window
+        // shrinks to a single ~1 s drip.
         let now = Instant::now();
         let frame_gap = now.saturating_duration_since(self.last_logic_frame);
         self.last_logic_frame = now;
-        if !eframe::skip_painting()
-            && self.started_at.elapsed() > PAUSE_GRACE
-            && starve_threshold(self.persistent_state.fps_limit())
-                .is_some_and(|threshold| frame_gap > threshold)
-        {
-            self.starved_logic_frames = self.starved_logic_frames.saturating_add(1);
-            if self.starved_logic_frames >= STARVED_FRAMES_TO_PAUSE {
-                tracing::debug!(
-                    "Logic cadence starved ({frame_gap:?} per frame); window not visible - \
-                     pausing painting, output continues"
-                );
-                eframe::SKIP_PAINTING.store(true, std::sync::atomic::Ordering::Relaxed);
-            }
+        let watched = !eframe::skip_painting() && self.started_at.elapsed() > PAUSE_GRACE;
+        let threshold = if watched {
+            starve_threshold(self.persistent_state.fps_limit())
         } else {
-            self.starved_logic_frames = 0;
+            None
+        };
+        let (starved_logic_frames, pause_painting) =
+            starvation_update(threshold, frame_gap, self.starved_logic_frames);
+        self.starved_logic_frames = starved_logic_frames;
+        if pause_painting {
+            tracing::debug!(
+                "Logic cadence starved ({frame_gap:?} per frame); window not visible - \
+                 pausing painting, output continues"
+            );
+            eframe::SKIP_PAINTING.store(true, std::sync::atomic::Ordering::Relaxed);
         }
 
         // Resume painting as soon as the window is interactive again - any
@@ -535,6 +561,38 @@ mod tests {
             None,
             "a configured cadence no faster than the drip must not pause a visible window"
         );
+    }
+
+    #[test]
+    fn starvation_needs_two_borderline_gaps_but_pauses_on_one_unambiguous_drip() {
+        let threshold = Some(Duration::from_millis(150));
+
+        // A single borderline stall does not pause a visible window ...
+        let (starved, pause) = starvation_update(threshold, Duration::from_millis(200), 0);
+        assert_eq!(starved, 1);
+        assert!(!pause, "one slow frame must not freeze a visible window");
+
+        // ... and a healthy frame resets the count.
+        let (starved, pause) = starvation_update(threshold, Duration::from_millis(150), 1);
+        assert_eq!(starved, 0);
+        assert!(!pause);
+
+        // Two consecutive borderline gaps mean a steady external throttle.
+        let (starved, pause) = starvation_update(threshold, Duration::from_millis(200), 1);
+        assert_eq!(starved, 2);
+        assert!(pause);
+
+        // A gap at the cap is the ~1 Hz drip beyond doubt: pause on first
+        // sight instead of costing another second of ~1 fps output.
+        let (starved, pause) = starvation_update(threshold, STARVE_MAX_GAP, 0);
+        assert_eq!(starved, 1);
+        assert!(pause, "an unambiguous drip must not wait for confirmation");
+
+        // An unwatched cadence (limiter at or below the drip, startup grace,
+        // painting already paused) never counts and never pauses.
+        let (starved, pause) = starvation_update(None, Duration::from_secs(5), 1);
+        assert_eq!(starved, 0);
+        assert!(!pause);
     }
 
     #[test]
