@@ -40,6 +40,7 @@ pub struct OutputDevicesWindow {
 #[derive(Default)]
 struct DeviceStrings {
     ip: Option<String>,
+    port: Option<String>,
     universes: Option<String>,
 }
 
@@ -127,6 +128,7 @@ fn output_device_editor(
                         OutputDeviceKind::Artnet => {
                             output_device.data = OutputDevice::Artnet {
                                 ip: [127, 0, 0, 1].into(),
+                                port: 6454,
                                 universes: vec![],
                             }
                         }
@@ -150,6 +152,17 @@ fn output_device_editor(
             && let Ok(ip) = ip.parse()
         {
             output_device.data.set_ip(ip);
+            *dirty = true;
+        }
+    }
+    if let Some(port) = output_device.data.port() {
+        ui.heading("Port");
+        let port = device_strings.port.get_or_insert_with(|| port.to_string());
+
+        if ui.add(TextEdit::singleline(port)).changed()
+            && let Ok(port) = port.parse()
+        {
+            output_device.data.set_port(port);
             *dirty = true;
         }
     }

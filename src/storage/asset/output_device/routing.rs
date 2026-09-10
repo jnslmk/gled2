@@ -72,13 +72,17 @@ impl OutputRouting {
         let device = self.device.and_then(|id| Asset::get(id, collections))?;
 
         match &device.data {
-            OutputDevice::Artnet { ip, universes, .. } => {
+            OutputDevice::Artnet {
+                ip,
+                port,
+                universes,
+            } => {
                 let universe = self.universe?;
                 if !universes.contains(&universe) {
                     tracing::warn!("Universe which is not configured: {universe}");
                     return None;
                 }
-                (*ip, 6454)
+                (*ip, *port)
                     .to_socket_addrs()
                     .ok()
                     .and_then(|mut addrs| addrs.next())

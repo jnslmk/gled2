@@ -7,7 +7,12 @@ use std::net::IpAddr;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub enum OutputDevice {
-    Artnet { ip: IpAddr, universes: Vec<u16> },
+    Artnet {
+        ip: IpAddr,
+        #[serde(default = "default_artnet_port")]
+        port: u16,
+        universes: Vec<u16>,
+    },
     EnttecDmxUsbPro { serial_number: String },
 }
 
@@ -15,6 +20,7 @@ impl Default for OutputDevice {
     fn default() -> Self {
         Self::Artnet {
             ip: [127, 0, 0, 1].into(),
+            port: default_artnet_port(),
             universes: vec![],
         }
     }
@@ -50,6 +56,25 @@ impl OutputDevice {
     pub fn set_univeres(&mut self, universes: Vec<u16>) {
         if let OutputDevice::Artnet { universes: u, .. } = self {
             *u = universes
+        }
+    }
+}
+
+fn default_artnet_port() -> u16 {
+    6454
+}
+
+impl OutputDevice {
+    pub fn port(&self) -> Option<u16> {
+        match self {
+            OutputDevice::Artnet { port, .. } => Some(*port),
+            _ => None,
+        }
+    }
+
+    pub fn set_port(&mut self, port: u16) {
+        if let OutputDevice::Artnet { port: p, .. } = self {
+            *p = port;
         }
     }
 }
